@@ -4,11 +4,15 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <map>
 #include "capture.h"
 #include "visuals.h"
 #include "detector.h"
 #include "mouse.h"
-#include "target.h" 
+#include "target.h"
 #include "sunone_aimbot_cpp.h"
 #include "detector.h"
 #include <Windows.h>
@@ -26,25 +30,68 @@ std::atomic<bool> shouldExit(false);
 
 Detector detector;
 
-int detection_window_width = 480;
-int detection_window_height = 320;
+int detection_window_width;
+int detection_window_height;
+double dpi;
+double sensitivity;
+double fovX;
+double fovY;
+double minSpeedMultiplier;
+double maxSpeedMultiplier;
+double predictionInterval;
 
-double dpi = 1000;
-double sensitivity = 100.0;
-double fovX = 50.0;
-double fovY = 50.0;
-double minSpeedMultiplier = 0.5;
-double maxSpeedMultiplier = 1.5;
-double predictionInterval = 0.3;
+MouseThread* mouseThread;
 
-MouseThread mouseThread(detection_window_width, detection_window_height, dpi, sensitivity, fovX, fovY, minSpeedMultiplier, maxSpeedMultiplier, predictionInterval);
+// Функция для чтения параметров из файла конфигурации
+void loadConfig(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Не удалось открыть файл конфигурации: " << filename << std::endl;
+        exit(EXIT_FAILURE); // Выход, если файл не найден
+    }
 
-void mouseThreadFunction()
-{
+    std::map<std::string, std::string> configMap;
+    std::string line;
+
+    // Читаем файл построчно
+    while (std::getline(file, line)) {
+        std::istringstream lineStream(line);
+        std::string key, value;
+
+        // Игнорируем комментарии и пустые строки
+        if (line.empty() || line[0] == ';' || line[0] == '#') {
+            continue;
+        }
+
+        // Разделяем строку на ключ и значение
+        if (std::getline(lineStream, key, '=') && std::getline(lineStream, value)) {
+            key = key.substr(key.find_first_not_of(" \t")); // убираем пробелы
+            value = value.substr(value.find_first_not_of(" \t")); // убираем пробелы
+            configMap[key] = value;
+        }
+    }
+
+    // Чтение значений из конфигурации, выход при отсутствии обязательных параметров
+    try {
+        detection_window_width = std::stoi(configMap.at("detection_window_width"));
+        detection_window_height = std::stoi(configMap.at("detection_window_height"));
+        dpi = std::stod(configMap.at("dpi"));
+        sensitivity = std::stod(configMap.at("sensitivity"));
+        fovX = std::stod(configMap.at("fovX"));
+        fovY = std::stod(configMap.at("fovY"));
+        minSpeedMultiplier = std::stod(configMap.at("minSpeedMultiplier"));
+        maxSpeedMultiplier = std::stod(configMap.at("maxSpeedMultiplier"));
+        predictionInterval = std::stod(configMap.at("predictionInterval"));
+    } catch (const std::out_of_range& e) {
+        std::cerr << "Отсутствует необходимый параметр в конфигурационном файле!" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+void mouseThreadFunction() {
     int lastDetectionVersion = -1;
 
-    while (!shouldExit)
-    {
+    while (!shouldExit) {
         std::vector<cv::Rect> boxes;
         std::vector<int> classes;
 
@@ -59,20 +106,23 @@ void mouseThreadFunction()
             classes = detector.detectedClasses;
         }
 
-        if (GetAsyncKeyState(VK_RBUTTON) & 0x8000)
-        {
+        if (GetAsyncKeyState(VK_RBUTTON) & 0x8000) {
             Target* target = sortTargets(boxes, classes, detection_window_width, detection_window_height, false);
-            if (target)
-            {
-                mouseThread.moveMouseToTarget(*target);
+            if (target) {
+                mouseThread->moveMouseToTarget(*target);
                 delete target;
             }
         }
     }
 }
 
-int main()
-{
+int main() {
+    // Загружаем конфигурацию из файла config.ini
+    loadConfig("config.ini");
+
+    // Инициализируем MouseThread только после загрузки конфигурации
+    mouseThread = new MouseThread(detection_window_width, detection_window_height, dpi, sensitivity, fovX, fovY, minSpeedMultiplier, maxSpeedMultiplier, predictionInterval);
+
     detector.initialize("models/sunxds_0.6.3.engine");
 
     std::thread capThread(captureThread, detection_window_width, detection_window_height);
@@ -85,5 +135,6 @@ int main()
     dispThread.join();
     mouseMovThread.join();
 
+    delete mouseThread; // Освобождаем память
     return 0;
 }
