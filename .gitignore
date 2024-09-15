@@ -1,0 +1,49 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# modules filders
+modules/boost_1_82_0
+modules/opencv
+modules/TensorRT-10.3.0.26
+
+# some models (temp)
+sunone_aimbot_cpp/models/sunxds_0.6.3.engine
+
+# others
+.vs
+sunone_aimbot_cpp/x64
+x64
+*.vcxproj
+*.filters
+*.user
+*.sln
