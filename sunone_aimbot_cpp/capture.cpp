@@ -9,6 +9,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <opencv2/opencv.hpp>
+#include "sunone_aimbot_cpp.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -119,15 +120,14 @@ public:
         }
 
         Mat screenshot(screenHeight, screenWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
-        Mat result;
-        screenshot.copyTo(result);
+        Mat result = screenshot.clone();
 
         d3dContext->Unmap(stagingTexture, 0);
         desktopTexture->Release();
         desktopResource->Release();
         deskDupl->ReleaseFrame();
 
-        return result;
+        return screenshot;
     }
 };
 
@@ -148,12 +148,15 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         {
             h_croppedScreenshot = cropCenterCPU(screenshot, CAPTURE_WIDTH, CAPTURE_HEIGHT);
 
-            std::lock_guard<std::mutex> lock(frameMutex);
-            latestFrame = h_croppedScreenshot.clone();
+            {
+                std::lock_guard<std::mutex> lock(frameMutex);
+                latestFrame = h_croppedScreenshot.clone();
+            }
             frameCV.notify_one();
 
             Mat resized;
-            cv::resize(h_croppedScreenshot, resized, cv::Size(640, 640));
+            cv::resize(h_croppedScreenshot, resized, cv::Size(engine_image_size, engine_image_size));
+            
             detector.processFrame(resized);
         }
     }

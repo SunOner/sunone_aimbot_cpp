@@ -14,7 +14,9 @@ extern Logger logger;
 std::mutex frameMutex;
 std::atomic<bool> isProcessing{ false };
 
-Detector::Detector() : runtime(nullptr), engine(nullptr), context(nullptr), frameReady(false), shouldExit(false), newDetectionAvailable(false), detectionVersion(0)
+Detector::Detector()
+    : runtime(nullptr), engine(nullptr), context(nullptr),
+    frameReady(false), shouldExit(false), newDetectionAvailable(false), detectionVersion(0)
 {
     cudaStreamCreate(&stream);
 }
@@ -24,6 +26,8 @@ Detector::~Detector()
     if (context) delete context;
     if (engine) delete engine;
     if (runtime) delete runtime;
+    cudaFree(d_input);
+    cudaFree(d_output);
     cudaStreamDestroy(stream);
 }
 
@@ -32,6 +36,30 @@ void Detector::initialize(const std::string& modelFile)
     runtime = nvinfer1::createInferRuntime(gLogger);
     loadEngine(modelFile);
     context = engine->createExecutionContext();
+
+    auto inputDims = engine->getTensorShape("images");
+    auto outputDims = engine->getTensorShape("output0");
+
+    if (inputDims.d[0] == -1)
+    {
+        inputDims.d[0] = 1;
+        context->setInputShape("images", inputDims);
+    }
+
+    inputSize = 1;
+    for (int i = 0; i < inputDims.nbDims; ++i)
+    {
+        inputSize *= inputDims.d[i];
+    }
+
+    outputSize = 1;
+    for (int i = 0; i < outputDims.nbDims; ++i)
+    {
+        outputSize *= outputDims.d[i];
+    }
+
+    cudaMalloc(&d_input, inputSize * sizeof(float));
+    cudaMalloc(&d_output, outputSize * sizeof(float));
 }
 
 void Detector::loadEngine(const std::string& engineFile)
@@ -73,29 +101,21 @@ void Detector::inferenceThread()
             frameReady = false;
         }
 
-        std::vector<float> inputData(3 * 640 * 640);
+        std::vector<float> inputData(inputSize);
         preProcess(frame, inputData.data());
 
-        void* d_input;
-        cudaMalloc(&d_input, inputData.size() * sizeof(float));
-        cudaMemcpyAsync(d_input, inputData.data(), inputData.size() * sizeof(float), cudaMemcpyHostToDevice, stream);
-
-        const int outputSize = 1800;
-        std::vector<float> outputData(outputSize);
-        void* d_output;
-        cudaMalloc(&d_output, outputSize * sizeof(float));
+        cudaMemcpyAsync(d_input, inputData.data(), inputSize * sizeof(float), cudaMemcpyHostToDevice, stream);
 
         context->setTensorAddress("images", d_input);
         context->setTensorAddress("output0", d_output);
+
         context->enqueueV3(stream);
 
+        std::vector<float> outputData(outputSize);
         cudaMemcpyAsync(outputData.data(), d_output, outputSize * sizeof(float), cudaMemcpyDeviceToHost, stream);
         cudaStreamSynchronize(stream);
-        
-        postProcess(outputData.data(), outputSize);
 
-        cudaFree(d_input);
-        cudaFree(d_output);
+        postProcess(outputData.data(), outputSize);
     }
 }
 
@@ -124,20 +144,13 @@ void Detector::preProcess(const cv::Mat& frame, float* inputBuffer)
     frame.convertTo(floatMat, CV_32F, 1.0 / 255.0);
 
     cv::cvtColor(floatMat, floatMat, cv::COLOR_BGR2RGB);
+    std::vector<cv::Mat> channels(3);
+    cv::split(floatMat, channels);
 
-    int channels = 3;
-    int height = frame.rows;
-    int width = frame.cols;
-
-    for (int c = 0; c < channels; c++)
+    int channelSize = frame.cols * frame.rows;
+    for (int i = 0; i < 3; ++i)
     {
-        for (int h = 0; h < height; h++)
-        {
-            for (int w = 0; w < width; w++)
-            {
-                inputBuffer[c * height * width + h * width + w] = floatMat.at<cv::Vec3f>(h, w)[c];
-            }
-        }
+        memcpy(inputBuffer + i * channelSize, channels[i].data, channelSize * sizeof(float));
     }
 }
 
@@ -145,7 +158,7 @@ void Detector::postProcess(float* output, int outputSize)
 {
     std::vector<cv::Rect> boxes;
     std::vector<int> classes;
-    float confidence_threshold = 0.3;
+    float confidence_threshold = 0.3f;
 
     int num_boxes = outputSize / 6;
 
@@ -161,17 +174,17 @@ void Detector::postProcess(float* output, int outputSize)
             float y = box[1];
             float w = box[2];
             float h = box[3];
-            
-            float scale_x = static_cast<float>(detection_window_width) / 640.0f;
-            float scale_y = static_cast<float>(detection_window_height) / 640.0f;
+
+            float scale_x = static_cast<float>(detection_window_width) / engine_image_size;
+            float scale_y = static_cast<float>(detection_window_height) / engine_image_size;
 
             int x1 = static_cast<int>(x * scale_x);
             int y1 = static_cast<int>(y * scale_y);
-            int x2 = static_cast<int>(w * scale_x) - x1;
-            int y2 = static_cast<int>(h * scale_y) - y1;
-            
-            boxes.emplace_back(x1, y1, x2, y2);
-            classes.push_back(class_id);   
+            int width = static_cast<int>((w - x) * scale_x);
+            int height = static_cast<int>((h - y) * scale_y);
+
+            boxes.emplace_back(x1, y1, width, height);
+            classes.push_back(class_id);
         }
     }
 

@@ -29,10 +29,12 @@ Detector detector;
 int detection_window_width = 480;
 int detection_window_height = 320;
 
-double dpi = 1000;
-double sensitivity = 100.0;
+int engine_image_size = 640;
+
+double dpi = 700;
+double sensitivity = 75.0;
 double fovX = 50.0;
-double fovY = 50.0;
+double fovY = 20.0;
 double minSpeedMultiplier = 0.5;
 double maxSpeedMultiplier = 1.5;
 double predictionInterval = 0.3;

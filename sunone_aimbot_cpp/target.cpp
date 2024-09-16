@@ -9,7 +9,7 @@ using namespace std;
 int screen_x_center = detection_window_width / 2;
 int screen_y_center = detection_window_height / 2;
 bool disable_headshot = false;
-float body_y_offset = 0.33f;
+float body_y_offset = 0.90f;
 
 Target::Target(int x, int y, int w, int h, int cls) : x(x), y(y), w(w), h(h), cls(cls) {}
 
@@ -32,22 +32,17 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
             continue;
         }
 
-        int adjustedY = classes[i] == 7 ? boxes[i].y : static_cast<int>(boxes[i].y - body_y_offset * boxes[i].height);
-
-        float scale_x = static_cast<float>(screenWidth) / detection_window_width;
-        float scale_y = static_cast<float>(screenHeight) / detection_window_height;
-
-        cv::Point boxCenter(
-            (boxes[i].x + boxes[i].width / 2) * scale_x,
-            (adjustedY + boxes[i].height / 2) * scale_y
-        );
-
-        double distance = std::pow(boxCenter.x - center.x, 2) + std::pow(boxCenter.y - center.y, 2);
-
-        if (disableHeadshot && classes[i] == 7)
+        cv::Point targetPoint;
+        if (classes[i] == 7)
         {
-            continue;
+            targetPoint = cv::Point(boxes[i].x + boxes[i].width / 2, boxes[i].y + boxes[i].height / 2);
         }
+        else
+        {
+            targetPoint = cv::Point(boxes[i].x + boxes[i].width / 2, boxes[i].y + boxes[i].height * 0.2);
+        }
+
+        double distance = std::pow(targetPoint.x - center.x, 2) + std::pow(targetPoint.y - center.y, 2);
 
         if (distance < minDistance)
         {
@@ -61,7 +56,5 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
         return nullptr;
     }
 
-    int adjustedY = classes[nearestIdx] == 7 ? boxes[nearestIdx].y : static_cast<int>(boxes[nearestIdx].y - body_y_offset * boxes[nearestIdx].height);
-
-    return new Target(boxes[nearestIdx].x, adjustedY, boxes[nearestIdx].width, boxes[nearestIdx].height, classes[nearestIdx]);
+    return new Target(boxes[nearestIdx].x, boxes[nearestIdx].y, boxes[nearestIdx].width, boxes[nearestIdx].height, classes[nearestIdx]);
 }

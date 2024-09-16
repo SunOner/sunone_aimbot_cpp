@@ -78,7 +78,8 @@ std::vector<int> SerialConnection::splitValue(int value)
     std::vector<int> values;
     int sign = (value < 0) ? -1 : 1;
 
-    while (abs(value) > 127) {
+    while (abs(value) > 127)
+    {
         values.push_back(sign * 127);
         value -= sign * 127;
     }

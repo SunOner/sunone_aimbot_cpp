@@ -52,6 +52,11 @@ private:
     void loadEngine(const std::string& engineFile);
     void preProcess(const cv::Mat& frame, float* inputBuffer);
     void postProcess(float* output, int outputSize);
+
+    void* d_input = nullptr;
+    void* d_output = nullptr;
+    size_t inputSize = 0;
+    size_t outputSize = 0;
 };
 
 #endif // DETECTOR_H
