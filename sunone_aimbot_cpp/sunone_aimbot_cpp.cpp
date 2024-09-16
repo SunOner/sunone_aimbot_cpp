@@ -31,13 +31,14 @@ int detection_window_height = 320;
 
 int engine_image_size = 640;
 
-double dpi = 700;
-double sensitivity = 75.0;
+double dpi = 1000;
+double sensitivity = 180.0;
 double fovX = 50.0;
-double fovY = 20.0;
+double fovY = 19.0;
 double minSpeedMultiplier = 0.5;
-double maxSpeedMultiplier = 1.5;
-double predictionInterval = 0.3;
+double maxSpeedMultiplier = 2.5;
+double predictionInterval = 0.6;
+
 
 MouseThread mouseThread(detection_window_width, detection_window_height, dpi, sensitivity, fovX, fovY, minSpeedMultiplier, maxSpeedMultiplier, predictionInterval);
 

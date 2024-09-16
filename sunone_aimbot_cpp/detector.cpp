@@ -158,7 +158,7 @@ void Detector::postProcess(float* output, int outputSize)
 {
     std::vector<cv::Rect> boxes;
     std::vector<int> classes;
-    float confidence_threshold = 0.3f;
+    float confidence_threshold = 0.1f;
 
     int num_boxes = outputSize / 6;
 

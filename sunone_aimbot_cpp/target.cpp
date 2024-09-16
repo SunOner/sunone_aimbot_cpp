@@ -9,7 +9,7 @@ using namespace std;
 int screen_x_center = detection_window_width / 2;
 int screen_y_center = detection_window_height / 2;
 bool disable_headshot = false;
-float body_y_offset = 0.90f;
+float body_y_offset = 0.95f;
 
 Target::Target(int x, int y, int w, int h, int cls) : x(x), y(y), w(w), h(h), cls(cls) {}
 
@@ -39,7 +39,7 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
         }
         else
         {
-            targetPoint = cv::Point(boxes[i].x + boxes[i].width / 2, boxes[i].y + boxes[i].height * 0.2);
+            targetPoint = cv::Point(boxes[i].x + boxes[i].width / 2, boxes[i].y + boxes[i].height * body_y_offset);
         }
 
         double distance = std::pow(targetPoint.x - center.x, 2) + std::pow(targetPoint.y - center.y, 2);

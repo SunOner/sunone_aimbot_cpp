@@ -58,13 +58,38 @@ void SerialConnection::release()
 
 void SerialConnection::move(int x, int y)
 {
+    if (x < std::numeric_limits<int>::min() || x > std::numeric_limits<int>::max() ||
+        y < std::numeric_limits<int>::min() || y > std::numeric_limits<int>::max())
+    {
+        x = y = 0;
+    }
+
     std::vector<int> x_parts = splitValue(x);
     std::vector<int> y_parts = splitValue(y);
 
+    if (x_parts.size() != y_parts.size() || x_parts.empty() || y_parts.empty())
+    {
+        x_parts.clear();
+        y_parts.clear();
+    }
+
     for (size_t i = 0; i < x_parts.size(); ++i)
     {
+        if (x_parts[i] < std::numeric_limits<int>::min() || x_parts[i] > std::numeric_limits<int>::max() ||
+            y_parts[i] < std::numeric_limits<int>::min() || y_parts[i] > std::numeric_limits<int>::max())
+        {
+            x_parts[i] = y_parts[i] = 0;
+        }
+
         std::string data = "m" + std::to_string(x_parts[i]) + "," + std::to_string(y_parts[i]) + "\n";
-        write(data);
+        try
+        {
+            write(data);
+        }
+        catch (const std::exception& e)
+        {
+            
+        }
     }
 }
 
