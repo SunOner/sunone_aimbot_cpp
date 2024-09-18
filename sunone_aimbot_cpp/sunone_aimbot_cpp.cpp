@@ -4,6 +4,8 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+#include <Windows.h>
+
 #include "capture.h"
 #include "visuals.h"
 #include "detector.h"
@@ -11,7 +13,8 @@
 #include "target.h" 
 #include "sunone_aimbot_cpp.h"
 #include "detector.h"
-#include <Windows.h>
+#include "config.h"
+#include "keyboard_listener.h"
 
 #pragma comment(lib, "nvinfer_10.lib")
 #pragma comment(lib, "nvonnxparser_10.lib")
@@ -23,26 +26,14 @@ using namespace std;
 Mat latestFrame;
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
+std::atomic<bool> aiming(false);
+std::atomic<bool> detectionPaused(false);
 
+Config config;
 Detector detector;
+MouseThread* globalMouseThread = nullptr;
 
-int detection_window_width = 480;
-int detection_window_height = 320;
-
-int engine_image_size = 640;
-
-double dpi = 1000;
-double sensitivity = 180.0;
-double fovX = 50.0;
-double fovY = 19.0;
-double minSpeedMultiplier = 0.5;
-double maxSpeedMultiplier = 2.5;
-double predictionInterval = 0.6;
-
-
-MouseThread mouseThread(detection_window_width, detection_window_height, dpi, sensitivity, fovX, fovY, minSpeedMultiplier, maxSpeedMultiplier, predictionInterval);
-
-void mouseThreadFunction()
+void mouseThreadFunction(MouseThread& mouseThread)
 {
     int lastDetectionVersion = -1;
 
@@ -61,10 +52,9 @@ void mouseThreadFunction()
             boxes = detector.detectedBoxes;
             classes = detector.detectedClasses;
         }
-
-        if (GetAsyncKeyState(VK_RBUTTON) & 0x8000)
+        if (aiming)
         {
-            Target* target = sortTargets(boxes, classes, detection_window_width, detection_window_height, false);
+            Target* target = sortTargets(boxes, classes, config.detection_window_width, config.detection_window_height, false);
             if (target)
             {
                 mouseThread.moveMouseToTarget(*target);
@@ -76,13 +66,34 @@ void mouseThreadFunction()
 
 int main()
 {
+    if (!config.loadConfig("config.ini"))
+    {
+        std::cerr << "Error with loading config.ini" << std::endl;
+        return -1;
+    }
+    MouseThread mouseThread(
+        config.detection_window_width,
+        config.detection_window_height,
+        config.dpi,
+        config.sensitivity,
+        config.fovX,
+        config.fovY,
+        config.minSpeedMultiplier,
+        config.maxSpeedMultiplier,
+        config.predictionInterval
+    );
+
+    globalMouseThread = &mouseThread;
+
     detector.initialize("models/sunxds_0.6.3.engine");
 
-    std::thread capThread(captureThread, detection_window_width, detection_window_height);
+    std::thread keyThread(keyboardListener);
+    std::thread capThread(captureThread, config.detection_window_width, config.detection_window_height);
     std::thread detThread(&Detector::inferenceThread, &detector);
     std::thread dispThread(displayThread);
-    std::thread mouseMovThread(mouseThreadFunction);
+    std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
 
+    keyThread.join();
     capThread.join();
     detThread.join();
     dispThread.join();

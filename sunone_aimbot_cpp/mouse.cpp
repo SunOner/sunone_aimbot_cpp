@@ -1,19 +1,65 @@
-#include "mouse.h"
 #include <cmath>
 #include <algorithm>
 #include <chrono>
+
+#include "config.h"
+#include "mouse.h"
 #include "capture.h"
 #include "SerialConnection.h"
 
+using namespace std;
+
 SerialConnection serial("COM6", 115200);
 
-MouseThread::MouseThread(double screenWidth, double screenHeight, double dpi, double sensitivity, double fovX, double fovY, double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval)
-    : screen_width(screenWidth), screen_height(screenHeight), dpi(dpi), mouse_sensitivity(sensitivity), fov_x(fovX), fov_y(fovY),
-    min_speed_multiplier(minSpeedMultiplier), max_speed_multiplier(maxSpeedMultiplier), prediction_interval(predictionInterval),
-    prev_x(0), prev_y(0), prev_velocity_x(0), prev_velocity_y(0), max_distance(std::sqrt(screenWidth* screenWidth + screenHeight * screenHeight) / 2)
+extern Config config;
+extern std::atomic<bool> aiming;
+
+MouseThread::MouseThread(
+    int screenWidth,
+    int screenHeight,
+    int dpi,
+    double sensitivity,
+    int fovX,
+    int fovY,
+    double minSpeedMultiplier,
+    double maxSpeedMultiplier,
+    double predictionInterval)
+    :
+    screen_width(screenWidth),
+    screen_height(screenHeight),
+    dpi(dpi),
+    mouse_sensitivity(sensitivity),
+    fov_x(fovX),
+    fov_y(fovY),
+    min_speed_multiplier(minSpeedMultiplier),
+    max_speed_multiplier(maxSpeedMultiplier),
+    prediction_interval(predictionInterval),
+    prev_x(0),
+    prev_y(0),
+    prev_velocity_x(0),
+    prev_velocity_y(0),
+    max_distance(std::sqrt(screenWidth* screenWidth + screenHeight * screenHeight) / 2),
+    center_x(screenWidth / 2),
+    center_y(screenHeight / 2)
 {
-    center_x = screenWidth / 2;
-    center_y = screenHeight / 2;
+
+}
+
+    void MouseThread::updateConfig(double screenWidth, double screenHeight, double dpi, double sensitivity, double fovX, double fovY,
+        double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval)
+{
+    this->screen_width = screenWidth;
+    this->screen_height = screenHeight;
+    this->dpi = dpi;
+    this->mouse_sensitivity = sensitivity;
+    this->fov_x = fovX;
+    this->fov_y = fovY;
+    this->min_speed_multiplier = minSpeedMultiplier;
+    this->max_speed_multiplier = maxSpeedMultiplier;
+    this->prediction_interval = predictionInterval;
+    this->center_x = screenWidth / 2;
+    this->center_y = screenHeight / 2;
+    this->max_distance = std::sqrt(screenWidth * screenWidth + screenHeight * screenHeight) / 2;
 }
 
 std::pair<double, double> MouseThread::predict_target_position(double target_x, double target_y)
@@ -24,6 +70,7 @@ std::pair<double, double> MouseThread::predict_target_position(double target_x, 
         prev_time = current_time;
         prev_x = target_x;
         prev_y = target_y;
+
         return { target_x, target_y };
     }
 
@@ -49,8 +96,6 @@ std::pair<double, double> MouseThread::predict_target_position(double target_x, 
     return { predicted_x, predicted_y };
 }
 
-#undef min
-
 double MouseThread::calculate_speed_multiplier(double distance)
 {
     double normalized_distance = std::min(distance / max_distance, 1.0);
@@ -66,16 +111,16 @@ std::pair<double, double> MouseThread::calc_movement(double target_x, double tar
     double distance = std::sqrt(offset_x * offset_x + offset_y * offset_y);
 
     double speed_multiplier = calculate_speed_multiplier(distance);
-
+    
     double degrees_per_pixel_x = fov_x / screen_width;
     double degrees_per_pixel_y = fov_y / screen_height;
-
+    
     double mouse_move_x = offset_x * degrees_per_pixel_x;
     double mouse_move_y = offset_y * degrees_per_pixel_y;
 
     double move_x = (mouse_move_x / 360) * (dpi * (1 / mouse_sensitivity)) * speed_multiplier;
     double move_y = (mouse_move_y / 360) * (dpi * (1 / mouse_sensitivity)) * speed_multiplier;
-
+    
     return { move_x, move_y };
 }
 
@@ -101,17 +146,14 @@ T clamp(const T& value, const T& low, const T& high)
 void MouseThread::moveMouseToTarget(const Target& target)
 {
     auto predicted_position = predict_target_position(target.x + target.w / 2, target.y + target.h / 2);
-    
     auto movement = calc_movement(predicted_position.first, predicted_position.second);
+    
     
     const double MAX_MOVE = 50;
     double move_x = clamp(movement.first, -MAX_MOVE, MAX_MOVE);
     double move_y = clamp(movement.second, -MAX_MOVE, MAX_MOVE);
-    
-    int dx = static_cast<INT>(move_x * 65535.0f / screen_width);
-    int dy = static_cast<INT>(move_y * 65535.0f / screen_height);
 
-    serial.move(dx, dy);
+    serial.move(static_cast<INT>(move_x), static_cast<INT>(move_y));
 
     //INPUT input = { 0 };
     //input.type = INPUT_MOUSE;

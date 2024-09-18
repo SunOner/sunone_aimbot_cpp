@@ -1,14 +1,15 @@
-#include "target.h"
 #include <cmath>
 #include <limits>
 #include <opencv2/opencv.hpp>
+
 #include "sunone_aimbot_cpp.h"
+#include "target.h"
+#include "config.h"
 
 using namespace std;
 
-int screen_x_center = detection_window_width / 2;
-int screen_y_center = detection_window_height / 2;
-bool disable_headshot = false;
+extern Config config;
+
 float body_y_offset = 0.95f;
 
 Target::Target(int x, int y, int w, int h, int cls) : x(x), y(y), w(w), h(h), cls(cls) {}
@@ -24,6 +25,7 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
 
     double minDistance = std::numeric_limits<double>::max();
     int nearestIdx = -1;
+    bool headFound = false;
 
     for (size_t i = 0; i < boxes.size(); ++i)
     {
@@ -33,13 +35,19 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
         }
 
         cv::Point targetPoint;
+
         if (classes[i] == 7)
         {
+            headFound = true;
             targetPoint = cv::Point(boxes[i].x + boxes[i].width / 2, boxes[i].y + boxes[i].height / 2);
+        }
+        else if (!headFound)
+        {
+            targetPoint = cv::Point(boxes[i].x + boxes[i].width / 2, boxes[i].y + static_cast<int>(boxes[i].height * config.body_y_offset));
         }
         else
         {
-            targetPoint = cv::Point(boxes[i].x + boxes[i].width / 2, boxes[i].y + boxes[i].height * body_y_offset);
+            continue;
         }
 
         double distance = std::pow(targetPoint.x - center.x, 2) + std::pow(targetPoint.y - center.y, 2);

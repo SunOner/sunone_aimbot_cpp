@@ -1,18 +1,23 @@
-#include "detector.h"
 #include <fstream>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
-#include "nvinf.h"
 #include <algorithm>
+
+#include "detector.h"
+#include "nvinf.h"
 #include "sunone_aimbot_cpp.h"
+#include "config.h"
 
 using namespace std;
 
 extern Logger logger;
+extern Config config;
 
 std::mutex frameMutex;
 std::atomic<bool> isProcessing{ false };
+extern Config config;
+extern std::atomic<bool> detectionPaused;
 
 Detector::Detector()
     : runtime(nullptr), engine(nullptr), context(nullptr),
@@ -81,6 +86,11 @@ void Detector::loadEngine(const std::string& engineFile)
 
 void Detector::processFrame(const cv::Mat& frame)
 {
+    if (detectionPaused)
+    {
+        return;
+    }
+
     std::unique_lock<std::mutex> lock(inferenceMutex);
     currentFrame = frame.clone();
     latestFrame = frame.clone();
@@ -158,7 +168,6 @@ void Detector::postProcess(float* output, int outputSize)
 {
     std::vector<cv::Rect> boxes;
     std::vector<int> classes;
-    float confidence_threshold = 0.1f;
 
     int num_boxes = outputSize / 6;
 
@@ -168,15 +177,15 @@ void Detector::postProcess(float* output, int outputSize)
         float confidence = box[4];
         int class_id = static_cast<int>(box[5]);
 
-        if (confidence > confidence_threshold)
+        if (confidence > config.confidence_threshold)
         {
             float x = box[0];
             float y = box[1];
             float w = box[2];
             float h = box[3];
 
-            float scale_x = static_cast<float>(detection_window_width) / engine_image_size;
-            float scale_y = static_cast<float>(detection_window_height) / engine_image_size;
+            float scale_x = static_cast<float>(config.detection_window_width) / config.engine_image_size;
+            float scale_y = static_cast<float>(config.detection_window_height) / config.engine_image_size;
 
             int x1 = static_cast<int>(x * scale_x);
             int y1 = static_cast<int>(y * scale_y);

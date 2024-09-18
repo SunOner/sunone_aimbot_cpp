@@ -1,5 +1,3 @@
-#include "capture.h"
-#include "detector.h"
 #include <Windows.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
@@ -9,7 +7,11 @@
 #include <mutex>
 #include <condition_variable>
 #include <opencv2/opencv.hpp>
+
+#include "detector.h"
 #include "sunone_aimbot_cpp.h"
+#include "capture.h"
+#include "config.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -18,6 +20,8 @@ using namespace cv;
 using namespace std;
 
 extern Detector detector;
+extern Config config;
+
 int screenWidth = 0;
 int screenHeight = 0;
 
@@ -155,7 +159,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             frameCV.notify_one();
 
             Mat resized;
-            cv::resize(h_croppedScreenshot, resized, cv::Size(engine_image_size, engine_image_size));
+            cv::resize(h_croppedScreenshot, resized, cv::Size(config.engine_image_size, config.engine_image_size));
             
             detector.processFrame(resized);
         }
