@@ -1,84 +1,65 @@
-#include <fstream>
-#include <sstream>
 #include <iostream>
-
+#include <boost/filesystem.hpp>
+#include <boost/property_tree/ini_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include "config.h"
 
-// TODO REWRITE
 bool Config::loadConfig(const std::string& filename)
 {
-    std::ifstream infile(filename);
-    if (!infile.is_open())
+    if (!boost::filesystem::exists(filename))
     {
-        std::cerr << "Error with config file: " << filename << std::endl;
+        std::cerr << "Error: Config file does not exist: " << filename << std::endl;
         return false;
     }
 
-    std::string line;
-    while (std::getline(infile, line)) {
-        auto comment_pos = line.find('#');
-        if (comment_pos != std::string::npos)
-            line = line.substr(0, comment_pos);
+    boost::property_tree::ptree pt;
+    try
+    {
+        boost::property_tree::ini_parser::read_ini(filename, pt);
 
-        line.erase(0, line.find_first_not_of(" \t"));
-        if (line.empty())
-            continue;
+        // Detection window
+        detection_window_width = pt.get<int>("detection_window_width", 0);
+        detection_window_height = pt.get<int>("detection_window_height", 0);
 
-        auto equal_pos = line.find('=');
-        if (equal_pos == std::string::npos)
-            continue;
+        // Target
+        disable_headshot = pt.get<bool>("disable_headshot", false);
+        body_y_offset = pt.get<float>("body_y_offset", 0.0f);
+        
+        // Mouse
+        dpi = pt.get<int>("dpi", 0);
+        sensitivity = pt.get<float>("sensitivity", 0.0f);
+        fovX = pt.get<int>("fovX", 0);
+        fovY = pt.get<int>("fovY", 0);
+        minSpeedMultiplier = pt.get<float>("minSpeedMultiplier", 0.0f);
+        maxSpeedMultiplier = pt.get<float>("maxSpeedMultiplier", 0.0f);
+        predictionInterval = pt.get<float>("predictionInterval", 0.0f);
+        
+        // arduino
+        arduino_enable = pt.get<bool>("arduino_enable", "false");
+        arduino_baudrate = pt.get<int>("arduino_baudrate", 9600);
+        arduino_port = pt.get<std::string>("arduino_port", "COM0");
 
-        std::string key = line.substr(0, equal_pos);
-        std::string value = line.substr(equal_pos + 1);
+        // AI
+        ai_model = pt.get<std::string>("ai_model", "sunxds_0.5.6.engine");
+        engine_image_size = pt.get<int>("engine_image_size", 0);
+        confidence_threshold = pt.get<float>("confidence_threshold", 0.0f);
 
-        key.erase(key.find_last_not_of(" \t") + 1);
-        value.erase(0, value.find_first_not_of(" \t"));
-        value.erase(value.find_last_not_of(" \t") + 1);
-
-        if (key == "disable_headshot") {
-            disable_headshot = (value == "true" || value == "1");
-        }
-        else if (key == "body_y_offset") {
-            body_y_offset = std::stof(value);
-        }
-        else if (key == "dpi") {
-            dpi = std::stof(value);
-        }
-        else if (key == "sensitivity") {
-            sensitivity = std::stof(value);
-        }
-        else if (key == "fovX") {
-            fovX = std::stof(value);
-        }
-        else if (key == "fovY") {
-            fovY = std::stof(value);
-        }
-        else if (key == "minSpeedMultiplier") {
-            minSpeedMultiplier = std::stof(value);
-        }
-        else if (key == "maxSpeedMultiplier") {
-            maxSpeedMultiplier = std::stof(value);
-        }
-        else if (key == "predictionInterval") {
-            predictionInterval = std::stof(value);
-        }
-        else if (key == "detection_window_width") {
-            detection_window_width = std::stoi(value);
-        }
-        else if (key == "detection_window_height") {
-            detection_window_height = std::stoi(value);
-        }
-        else if (key == "engine_image_size") {
-            engine_image_size = std::stoi(value);
-        }
-        else if (key == "confidence_threshold") {
-            confidence_threshold = std::stof(value);
-        }
-        else {
-            std::cerr << "Unknown option: " << key << std::endl;
-        }
+    }
+    catch (boost::property_tree::ini_parser_error& e)
+    {
+        std::cerr << "Error parsing config file: " << e.what() << std::endl;
+        return false;
+    }
+    catch (boost::property_tree::ptree_bad_path& e)
+    {
+        std::cerr << "Error reading config value: " << e.what() << std::endl;
+        return false;
+    }
+    catch (boost::property_tree::ptree_bad_data& e)
+    {
+        std::cerr << "Error converting config value: " << e.what() << std::endl;
+        return false;
     }
 
-    infile.close();
     return true;
 }

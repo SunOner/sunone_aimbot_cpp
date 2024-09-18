@@ -2,14 +2,16 @@
 #include <algorithm>
 #include <chrono>
 
-#include "config.h"
 #include "mouse.h"
 #include "capture.h"
 #include "SerialConnection.h"
+#include "config.h"
 
 using namespace std;
 
+// TODO
 SerialConnection serial("COM6", 115200);
+
 
 extern Config config;
 extern std::atomic<bool> aiming;
@@ -148,18 +150,19 @@ void MouseThread::moveMouseToTarget(const Target& target)
     auto predicted_position = predict_target_position(target.x + target.w / 2, target.y + target.h / 2);
     auto movement = calc_movement(predicted_position.first, predicted_position.second);
     
+    if (config.arduino_enable)
+    {
+        serial.move(static_cast<INT>(movement.first), static_cast<INT>(movement.second));
+    }
+    else
+    {
+    INPUT input = { 0 };
+    input.type = INPUT_MOUSE;
+    input.mi.dx = static_cast<INT>(movement.first);
+    input.mi.dy = static_cast<INT>(movement.second);
+    input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
     
-    const double MAX_MOVE = 50;
-    double move_x = clamp(movement.first, -MAX_MOVE, MAX_MOVE);
-    double move_y = clamp(movement.second, -MAX_MOVE, MAX_MOVE);
+    SendInput(1, &input, sizeof(INPUT));
+    }
 
-    serial.move(static_cast<INT>(move_x), static_cast<INT>(move_y));
-
-    //INPUT input = { 0 };
-    //input.type = INPUT_MOUSE;
-    //input.mi.dx = dx;
-    //input.mi.dy = dy;
-    //input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
-    //
-    //SendInput(1, &input, sizeof(INPUT));
 }

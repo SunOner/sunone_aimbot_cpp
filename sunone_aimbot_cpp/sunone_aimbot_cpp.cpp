@@ -71,6 +71,7 @@ int main()
         std::cerr << "Error with loading config.ini" << std::endl;
         return -1;
     }
+
     MouseThread mouseThread(
         config.detection_window_width,
         config.detection_window_height,
@@ -85,7 +86,7 @@ int main()
 
     globalMouseThread = &mouseThread;
 
-    detector.initialize("models/sunxds_0.6.3.engine");
+    detector.initialize("models/" + config.ai_model);
 
     std::thread keyThread(keyboardListener);
     std::thread capThread(captureThread, config.detection_window_width, config.detection_window_height);
