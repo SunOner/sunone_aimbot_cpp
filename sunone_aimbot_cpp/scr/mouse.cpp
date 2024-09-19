@@ -9,10 +9,6 @@
 
 using namespace std;
 
-// TODO
-SerialConnection serial("COM6", 115200);
-
-
 extern Config config;
 extern std::atomic<bool> aiming;
 
@@ -25,7 +21,8 @@ MouseThread::MouseThread(
     int fovY,
     double minSpeedMultiplier,
     double maxSpeedMultiplier,
-    double predictionInterval)
+    double predictionInterval,
+    SerialConnection* serialConnection)
     :
     screen_width(screenWidth),
     screen_height(screenHeight),
@@ -42,7 +39,8 @@ MouseThread::MouseThread(
     prev_velocity_y(0),
     max_distance(std::sqrt(screenWidth* screenWidth + screenHeight * screenHeight) / 2),
     center_x(screenWidth / 2),
-    center_y(screenHeight / 2)
+    center_y(screenHeight / 2),
+    serial(serialConnection)
 {
 
 }
@@ -149,20 +147,19 @@ void MouseThread::moveMouseToTarget(const Target& target)
 {
     auto predicted_position = predict_target_position(target.x + target.w / 2, target.y + target.h / 2);
     auto movement = calc_movement(predicted_position.first, predicted_position.second);
-    
-    if (config.arduino_enable)
+
+    if (config.arduino_enable && serial)
     {
-        serial.move(static_cast<INT>(movement.first), static_cast<INT>(movement.second));
+        serial->move(static_cast<INT>(movement.first), static_cast<INT>(movement.second));
     }
     else
     {
-    INPUT input = { 0 };
-    input.type = INPUT_MOUSE;
-    input.mi.dx = static_cast<INT>(movement.first);
-    input.mi.dy = static_cast<INT>(movement.second);
-    input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
-    
-    SendInput(1, &input, sizeof(INPUT));
-    }
+        INPUT input = { 0 };
+        input.type = INPUT_MOUSE;
+        input.mi.dx = static_cast<INT>(movement.first);
+        input.mi.dy = static_cast<INT>(movement.second);
+        input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
 
+        SendInput(1, &input, sizeof(INPUT));
+    }
 }

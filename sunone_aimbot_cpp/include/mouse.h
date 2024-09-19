@@ -2,12 +2,15 @@
 #define MOUSE_H
 
 #include "target.h"
+#include "SerialConnection.h"
 
 class MouseThread
 {
 private:
     double prev_x, prev_y, prev_velocity_x, prev_velocity_y;
     std::chrono::time_point<std::chrono::steady_clock> prev_time;
+
+    SerialConnection* serial;
 
     double prediction_interval;
     double max_distance;
@@ -24,7 +27,8 @@ private:
 
 public:
     MouseThread(int screenWidth, int screenHeight, int dpi, double sensitivity, int fovX, int fovY,
-        double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval);
+        double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval,
+        SerialConnection* serialConnection = nullptr);
     
     void updateConfig(double screenWidth, double screenHeight, double dpi, double sensitivity, double fovX, double fovY,
         double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval);

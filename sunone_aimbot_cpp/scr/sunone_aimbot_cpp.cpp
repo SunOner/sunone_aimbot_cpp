@@ -4,7 +4,6 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
-#include <Windows.h>
 
 #include "capture.h"
 #include "visuals.h"
@@ -15,10 +14,6 @@
 #include "detector.h"
 #include "config.h"
 #include "keyboard_listener.h"
-
-#pragma comment(lib, "nvinfer_10.lib")
-#pragma comment(lib, "nvonnxparser_10.lib")
-#pragma comment(lib, "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.4/lib/x64/cudart.lib")
 
 using namespace cv;
 using namespace std;
@@ -72,6 +67,8 @@ int main()
         return -1;
     }
 
+    SerialConnection serial("COM6", 115200);
+
     MouseThread mouseThread(
         config.detection_window_width,
         config.detection_window_height,
@@ -81,7 +78,8 @@ int main()
         config.fovY,
         config.minSpeedMultiplier,
         config.maxSpeedMultiplier,
-        config.predictionInterval
+        config.predictionInterval,
+        &serial
     );
 
     globalMouseThread = &mouseThread;

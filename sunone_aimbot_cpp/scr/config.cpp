@@ -2,6 +2,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+
 #include "config.h"
 
 bool Config::loadConfig(const std::string& filename)

@@ -32,9 +32,9 @@
 *.app
 
 # modules filders
-modules/boost_1_82_0
-modules/opencv
-modules/TensorRT-10.3.0.26
+sunone_aimbot_cpp/modules/boost_1_82_0
+sunone_aimbot_cpp/modules/opencv
+sunone_aimbot_cpp/modules/TensorRT-10.3.0.26
 
 # some models (temp)
 sunone_aimbot_cpp/models/sunxds_0.6.3.engine
@@ -43,7 +43,3 @@ sunone_aimbot_cpp/models/sunxds_0.6.3.engine
 .vs
 sunone_aimbot_cpp/x64
 x64
-*.vcxproj
-*.filters
-*.user
-*.sln

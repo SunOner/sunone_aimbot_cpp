@@ -1,4 +1,3 @@
-#include <Windows.h>
 #include <atomic>
 #include <chrono>
 #include <thread>
@@ -31,6 +30,7 @@ void keyboardListener()
         if (GetAsyncKeyState(VK_F2) & 0x8000)
         {
             shouldExit = true;
+            quick_exit(0);
             break;
         }
 

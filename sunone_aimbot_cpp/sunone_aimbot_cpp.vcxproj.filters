@@ -1,0 +1,81 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="scr\capture.cpp">
+      <Filter>scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr\config.cpp">
+      <Filter>scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr\detector.cpp">
+      <Filter>scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr\keyboard_listener.cpp">
+      <Filter>scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr\keycodes.cpp">
+      <Filter>scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr\mouse.cpp">
+      <Filter>scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr\nvinf.cpp">
+      <Filter>scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr\SerialConnection.cpp">
+      <Filter>scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr\sunone_aimbot_cpp.cpp">
+      <Filter>scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr\target.cpp">
+      <Filter>scr</Filter>
+    </ClCompile>
+    <ClCompile Include="scr\visuals.cpp">
+      <Filter>scr</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="scr">
+      <UniqueIdentifier>{0520f04b-237c-4399-a138-0b134198428c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{5a87bd36-3f47-4f8f-862a-c2d9ac0ec128}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\capture.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\config.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\detector.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\keyboard_listener.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\keycodes.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mouse.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\nvinf.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\SerialConnection.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\sunone_aimbot_cpp.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\target.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\visuals.h">
+      <Filter>include</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

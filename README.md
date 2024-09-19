@@ -10,8 +10,10 @@
 
 - Model export command `TensorRT-10.3.0.26/bin/trtexec.exe --onnx=sunxds_0.5.6.onnx --saveEngine=sunxds_0.5.6.engine --fp16`
 - More information here:
-	- [Desktop Duplication API](https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/desktop-dup-api)
+	
 	- [TensorRT](https://docs.nvidia.com/deeplearning/tensorrt/)
 	- [OpenCV](https://docs.opencv.org/4.x/d1/dfb/intro.html)
-	- [Python AI AIMBOT](https://github.com/SunOner/sunone_aimbot)
+	- [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/)
 	- [Boost](https://www.boost.org/)
+	- [Desktop Duplication API](https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/desktop-dup-api)
+	- [Python AI AIMBOT](https://github.com/SunOner/sunone_aimbot)
