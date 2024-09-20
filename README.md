@@ -9,8 +9,10 @@
 	- Cudnn 9.1
 
 - Model export command `TensorRT-10.3.0.26/bin/trtexec.exe --onnx=sunxds_0.5.6.onnx --saveEngine=sunxds_0.5.6.engine --fp16`
-- More information here:
-	
+> [!NOTE]
+> TensorRT version 10 does not support the Pascal architecture (10 series graphics card). Use only on video cards of at least 20 series.
+
+- Modules:
 	- [TensorRT](https://docs.nvidia.com/deeplearning/tensorrt/)
 	- [OpenCV](https://docs.opencv.org/4.x/d1/dfb/intro.html)
 	- [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/)
