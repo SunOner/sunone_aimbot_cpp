@@ -5,6 +5,9 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <chrono>
+
+#include "config.h"
 
 using namespace cv;
 using namespace std;
@@ -14,6 +17,7 @@ extern Mat latestFrame;
 extern std::mutex frameMutex;
 extern std::condition_variable frameCV;
 extern std::atomic<bool> shouldExit;
+extern Config config;
 
 void displayThread()
 {
@@ -22,7 +26,16 @@ void displayThread()
 
     int frameCount = 0;
     double fps = 0.0;
-    auto startTime = std::chrono::high_resolution_clock::now();
+    std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+
+    if (config.show_fps)
+    {
+        frameCount = 0;
+        fps = 0.0;
+        startTime = std::chrono::high_resolution_clock::now();
+    }
+
+    if (!config.show_window) { return; }
 
     while (!shouldExit)
     {
@@ -49,18 +62,21 @@ void displayThread()
             }
         }
 
-        frameCount++;
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = currentTime - startTime;
-
-        if (elapsed.count() >= 1.0)
+        if (config.show_fps)
         {
-            fps = static_cast<int>(frameCount / elapsed.count());
-            frameCount = 0;
-            startTime = currentTime;
-        }
+            frameCount++;
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = currentTime - startTime;
 
-        putText(frame, std::to_string(static_cast<int>(fps)), cv::Point(1, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 1);
+            if (elapsed.count() >= 1.0)
+            {
+                fps = static_cast<double>(frameCount) / elapsed.count();
+                frameCount = 0;
+                startTime = currentTime;
+            }
+
+            putText(frame, "FPS: " + std::to_string(static_cast<int>(fps)), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 2);
+        }
 
         imshow("Desktop", frame);
         if (waitKey(1) == 27) shouldExit = true;

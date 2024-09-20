@@ -45,6 +45,9 @@ bool Config::loadConfig(const std::string& filename)
         engine_image_size = pt.get<int>("engine_image_size", 0);
         confidence_threshold = pt.get<float>("confidence_threshold", 0.0f);
 
+        // Debug window
+        show_window = pt.get<bool>("show_window", true);
+        show_fps = pt.get<bool>("show_fps", true);
     }
     catch (boost::property_tree::ini_parser_error& e)
     {

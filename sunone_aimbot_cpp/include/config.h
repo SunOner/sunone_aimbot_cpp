@@ -6,12 +6,15 @@
 class Config
 {
 public:
+    // Detection window
     int detection_window_width;
     int detection_window_height;
 
+    // Target
     bool disable_headshot;
     float body_y_offset;
     
+    // Mouse
     int dpi;
     float sensitivity;
     int fovX;
@@ -20,13 +23,19 @@ public:
     float maxSpeedMultiplier;
     float predictionInterval;
     
+    // arduino
     bool arduino_enable;
     int arduino_baudrate;
     std::string arduino_port;
 
+    // AI
     std::string ai_model;
     int engine_image_size;
     float confidence_threshold;
+
+    // Debug window
+    bool show_window;
+    bool show_fps;
 
     bool loadConfig(const std::string& filename);
 };
