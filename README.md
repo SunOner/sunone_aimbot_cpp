@@ -31,7 +31,7 @@
 - Compile the Boost libraries:
   - Navigate to the folder `cd /sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0`
   - Run `bootstrap.bat vc142`
-  - Once everything completes without errors, run `b2.exe link=static runtime-link=static threading=multi variant=release`
+  - Once everything completes without errors, run `b2.exe --build-type=complete link=static runtime-link=static threading=multi variant=release`
 - Check the project for correct library imports in the project settings (Project->Properties).
 - Verify the presence of Cuda customization files (Right-click on the project -> Build Dependencies -> Build Customizations). CUDA 12.4 (.targets, .props) should be included in the project.
 - Switch the build to Release and build the project.
