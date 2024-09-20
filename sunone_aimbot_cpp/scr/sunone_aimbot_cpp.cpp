@@ -67,7 +67,7 @@ int main()
         return -1;
     }
 
-    SerialConnection serial("COM6", 115200);
+    SerialConnection serial(config.arduino_port, config.arduino_baudrate);
 
     MouseThread mouseThread(
         config.detection_window_width,
