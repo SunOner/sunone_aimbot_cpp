@@ -31,13 +31,14 @@ public:
         SerialConnection* serialConnection = nullptr);
     
     void updateConfig(double screenWidth, double screenHeight, double dpi, double sensitivity, double fovX, double fovY,
-        double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval);
+        double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval, bool auto_shoot, float bScope_multiplier);
 
     std::pair<double, double> predict_target_position(double target_x, double target_y);
     std::pair<double, double> calc_movement(double target_x, double target_y);
     double calculate_speed_multiplier(double distance);
     bool check_target_in_scope(double target_x, double target_y, double target_w, double target_h, double reduction_factor);
-    void moveMouseToTarget(const Target& target);
+    void moveMouse(const Target& target);
+    void shootMouse(const Target& target);
 };
 
 #endif // MOUSE_H

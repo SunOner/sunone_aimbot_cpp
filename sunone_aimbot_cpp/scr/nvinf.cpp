@@ -14,12 +14,12 @@ const char* Logger::severityLevelName(nvinfer1::ILogger::Severity severity)
 {
     switch (severity)
     {
-    case nvinfer1::ILogger::Severity::kINTERNAL_ERROR: return "INTERNAL_ERROR";
-    case nvinfer1::ILogger::Severity::kERROR:          return "ERROR";
-    case nvinfer1::ILogger::Severity::kWARNING:        return "WARNING";
-    case nvinfer1::ILogger::Severity::kINFO:           return "INFO";
-    case nvinfer1::ILogger::Severity::kVERBOSE:        return "VERBOSE";
-    default:                                           return "UNKNOWN";
+        case nvinfer1::ILogger::Severity::kINTERNAL_ERROR: return "INTERNAL_ERROR";
+        case nvinfer1::ILogger::Severity::kERROR:          return "ERROR";
+        case nvinfer1::ILogger::Severity::kWARNING:        return "WARNING";
+        case nvinfer1::ILogger::Severity::kINFO:           return "INFO";
+        case nvinfer1::ILogger::Severity::kVERBOSE:        return "VERBOSE";
+        default:                                           return "UNKNOWN";
     }
 }
 

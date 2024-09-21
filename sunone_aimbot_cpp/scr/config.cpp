@@ -35,10 +35,15 @@ bool Config::loadConfig(const std::string& filename)
         maxSpeedMultiplier = pt.get<float>("maxSpeedMultiplier", 0.0f);
         predictionInterval = pt.get<float>("predictionInterval", 0.0f);
         
+        // Mouse shooting
+        auto_shoot = pt.get<bool>("auto_shoot", false);
+        bScope_multiplier = pt.get<float>("bScope_multiplier", 1.0);
+
         // arduino
         arduino_enable = pt.get<bool>("arduino_enable", "false");
         arduino_baudrate = pt.get<int>("arduino_baudrate", 9600);
         arduino_port = pt.get<std::string>("arduino_port", "COM0");
+        arduino_16_bit_mouse = pt.get<bool>("arduino_16_bit_mouse", false);
 
         // AI
         ai_model = pt.get<std::string>("ai_model", "sunxds_0.5.6.engine");

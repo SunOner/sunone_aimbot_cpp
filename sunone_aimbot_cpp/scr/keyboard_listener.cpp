@@ -31,7 +31,6 @@ void keyboardListener()
         {
             shouldExit = true;
             quick_exit(0);
-            break;
         }
 
         if (GetAsyncKeyState(VK_F3) & 0x8000)
@@ -49,13 +48,17 @@ void keyboardListener()
                 globalMouseThread->updateConfig(
                     config.detection_window_width,
                     config.detection_window_height,
+
                     config.dpi,
                     config.sensitivity,
                     config.fovX,
                     config.fovY,
                     config.minSpeedMultiplier,
                     config.maxSpeedMultiplier,
-                    config.predictionInterval
+                    config.predictionInterval,
+
+                    config.auto_shoot,
+                    config.bScope_multiplier
                 );
             }
 

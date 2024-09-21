@@ -49,10 +49,14 @@ void mouseThreadFunction(MouseThread& mouseThread)
         }
         if (aiming)
         {
-            Target* target = sortTargets(boxes, classes, config.detection_window_width, config.detection_window_height, false);
+            Target* target = sortTargets(boxes, classes, config.detection_window_width, config.detection_window_height, config.disable_headshot);
             if (target)
             {
-                mouseThread.moveMouseToTarget(*target);
+                mouseThread.moveMouse(*target);
+                if (config.auto_shoot)
+                {
+                    mouseThread.shootMouse(*target);
+                }
                 delete target;
             }
         }

@@ -88,6 +88,12 @@ void Detector::processFrame(const cv::Mat& frame)
 {
     if (detectionPaused)
     {
+        if (!detectedBoxes.empty())
+        {
+            detectedBoxes.clear();
+            detectedClasses.clear();
+        }
+
         return;
     }
 

@@ -27,6 +27,11 @@ public:
     bool arduino_enable;
     int arduino_baudrate;
     std::string arduino_port;
+    bool arduino_16_bit_mouse;
+
+    //Mouse shooting
+    bool auto_shoot;
+    float bScope_multiplier;
 
     // AI
     std::string ai_model;

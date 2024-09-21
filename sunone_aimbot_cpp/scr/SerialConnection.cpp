@@ -2,6 +2,9 @@
 #include <vector>
 
 #include "SerialConnection.h"
+#include "config.h"
+
+extern Config config;
 
 SerialConnection::SerialConnection(const std::string& port, unsigned int baud_rate)
     : serial_port_(io_service_)
@@ -65,31 +68,45 @@ void SerialConnection::move(int x, int y)
         x = y = 0;
     }
 
-    std::vector<int> x_parts = splitValue(x);
-    std::vector<int> y_parts = splitValue(y);
-
-    if (x_parts.size() != y_parts.size() || x_parts.empty() || y_parts.empty())
+    if (config.arduino_16_bit_mouse)
     {
-        x_parts.clear();
-        y_parts.clear();
-    }
-
-    for (size_t i = 0; i < x_parts.size(); ++i)
-    {
-        if (x_parts[i] < std::numeric_limits<int>::min() || x_parts[i] > std::numeric_limits<int>::max() ||
-            y_parts[i] < std::numeric_limits<int>::min() || y_parts[i] > std::numeric_limits<int>::max())
-        {
-            x_parts[i] = y_parts[i] = 0;
-        }
-
-        std::string data = "m" + std::to_string(x_parts[i]) + "," + std::to_string(y_parts[i]) + "\n";
+        std::string data = "m" + std::to_string(x) + "," + std::to_string(y) + "\n";
         try
         {
             write(data);
         }
         catch (const std::exception& e)
         {
-            
+        }
+    }
+    else
+    {
+        std::vector<int> x_parts = splitValue(x);
+        std::vector<int> y_parts = splitValue(y);
+
+        if (x_parts.size() != y_parts.size() || x_parts.empty() || y_parts.empty())
+        {
+            x_parts.clear();
+            y_parts.clear();
+        }
+
+        for (size_t i = 0; i < x_parts.size(); ++i)
+        {
+            if (x_parts[i] < std::numeric_limits<int>::min() || x_parts[i] > std::numeric_limits<int>::max() ||
+                y_parts[i] < std::numeric_limits<int>::min() || y_parts[i] > std::numeric_limits<int>::max())
+            {
+                x_parts[i] = y_parts[i] = 0;
+            }
+
+            std::string data = "m" + std::to_string(x_parts[i]) + "," + std::to_string(y_parts[i]) + "\n";
+            try
+            {
+                write(data);
+            }
+            catch (const std::exception& e)
+            {
+                
+            }
         }
     }
 }

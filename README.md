@@ -15,7 +15,7 @@
 > [!WARNING]
 > This guide for building the application is intended for advanced users. If you encounter errors while building the modules, please report them on the [Discord server](https://discord.gg/sunone).
 
-- How to build a project from source code?
+- Build a project from source:
 	- Download and install Visual Studio 2019 Community.
 	- Install the Windows SDK.
 	- Install Cuda 12.4 and CudaNN 9.1.

@@ -46,7 +46,7 @@ MouseThread::MouseThread(
 }
 
     void MouseThread::updateConfig(double screenWidth, double screenHeight, double dpi, double sensitivity, double fovX, double fovY,
-        double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval)
+        double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval, bool auto_shoot, float bScope_multiplier)
 {
     this->screen_width = screenWidth;
     this->screen_height = screenHeight;
@@ -137,13 +137,7 @@ bool MouseThread::check_target_in_scope(double target_x, double target_y, double
     return center_x > x1 && center_x < x2 && center_y > y1 && center_y < y2;
 }
 
-template <typename T>
-T clamp(const T& value, const T& low, const T& high)
-{
-    return (value < low) ? low : (high < value) ? high : value;
-}
-
-void MouseThread::moveMouseToTarget(const Target& target)
+void MouseThread::moveMouse(const Target& target)
 {
     auto predicted_position = predict_target_position(target.x + target.w / 2, target.y + target.h / 2);
     auto movement = calc_movement(predicted_position.first, predicted_position.second);
@@ -161,5 +155,21 @@ void MouseThread::moveMouseToTarget(const Target& target)
         input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
 
         SendInput(1, &input, sizeof(INPUT));
+    }
+}
+
+void MouseThread::shootMouse(const Target& target)
+{
+    auto bScope = check_target_in_scope(target.x, target.y, target.w, target.w, config.bScope_multiplier);
+    if (bScope)
+    {
+        if (config.arduino_enable && serial)
+        {
+            serial->press();
+        }
+    }
+    else
+    {
+        serial->release();
     }
 }
