@@ -21,6 +21,8 @@ extern Config config;
 
 void displayThread()
 {
+    if (!config.show_window) { return; }
+
     std::vector<cv::Rect> boxes;
     std::vector<int> classes;
 
@@ -35,7 +37,6 @@ void displayThread()
         startTime = std::chrono::high_resolution_clock::now();
     }
 
-    if (!config.show_window) { return; }
 
     while (!shouldExit)
     {

@@ -1,5 +1,6 @@
-#include "nvinf.h"
 #include <iostream>
+
+#include "nvinf.h"
 
 void Logger::log(nvinfer1::ILogger::Severity severity, const char* msg) noexcept
 {

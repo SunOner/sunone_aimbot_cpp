@@ -1,6 +1,7 @@
-#include "SerialConnection.h"
 #include <iostream>
 #include <vector>
+
+#include "SerialConnection.h"
 
 SerialConnection::SerialConnection(const std::string& port, unsigned int baud_rate)
     : serial_port_(io_service_)
