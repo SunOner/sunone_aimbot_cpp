@@ -73,6 +73,7 @@ void Detector::loadEngine(const std::string& engineFile)
     if (!file.good())
     {
         std::cerr << "Error opening engine file" << std::endl;
+        std::cin.get();
         return;
     }
 
