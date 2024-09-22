@@ -16,7 +16,6 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 
-using namespace cv;
 using namespace std;
 
 extern Detector detector;
@@ -25,11 +24,11 @@ extern Config config;
 int screenWidth = 0;
 int screenHeight = 0;
 
-Mat cropCenterCPU(const Mat& src, int targetWidth, int targetHeight)
+cv::Mat cropCenterCPU(const cv::Mat& src, int targetWidth, int targetHeight)
 {
     int startX = (src.cols - targetWidth) / 2;
     int startY = (src.rows - targetHeight) / 2;
-    return src(Rect(startX, startY, targetWidth, targetHeight)).clone();
+    return src(cv::Rect(startX, startY, targetWidth, targetHeight)).clone();
 }
 
 class ScreenCapture
@@ -90,7 +89,7 @@ public:
         if (d3dDevice) d3dDevice->Release();
     }
 
-    Mat captureScreen()
+    cv::Mat captureScreen()
     {
         IDXGIResource* desktopResource = nullptr;
         DXGI_OUTDUPL_FRAME_INFO frameInfo;
@@ -98,9 +97,9 @@ public:
         HRESULT hr = deskDupl->AcquireNextFrame(100, &frameInfo, &desktopResource);
         if (hr == DXGI_ERROR_WAIT_TIMEOUT)
         {
-            return Mat();
+            return cv::Mat();
         }
-        if (FAILED(hr)) return Mat();
+        if (FAILED(hr)) return cv::Mat();
 
         ID3D11Texture2D* desktopTexture = nullptr;
         hr = desktopResource->QueryInterface(__uuidof(ID3D11Texture2D), (void**)(&desktopTexture));
@@ -108,7 +107,7 @@ public:
         {
             desktopResource->Release();
             deskDupl->ReleaseFrame();
-            return Mat();
+            return cv::Mat();
         }
 
         d3dContext->CopyResource(stagingTexture, desktopTexture);
@@ -120,11 +119,12 @@ public:
             desktopTexture->Release();
             desktopResource->Release();
             deskDupl->ReleaseFrame();
-            return Mat();
+            return cv::Mat();
         }
 
-        Mat screenshot(screenHeight, screenWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
-        Mat result = screenshot.clone();
+        cv::Mat screenshot(screenHeight, screenWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
+        cv::Mat result;
+        screenshot.copyTo(result);
 
         d3dContext->Unmap(stagingTexture, 0);
         desktopTexture->Release();
@@ -135,7 +135,7 @@ public:
     }
 };
 
-extern Mat latestFrame;
+extern cv::Mat latestFrame;
 extern std::mutex frameMutex;
 extern std::condition_variable frameCV;
 extern std::atomic<bool> shouldExit;
@@ -143,25 +143,25 @@ extern std::atomic<bool> shouldExit;
 void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 {
     ScreenCapture capturer;
-    Mat h_croppedScreenshot;
+    cv::Mat h_croppedScreenshot;
 
     while (!shouldExit)
     {
-        Mat screenshot = capturer.captureScreen();
+        cv::Mat screenshot = capturer.captureScreen();
         if (!screenshot.empty())
         {
             h_croppedScreenshot = cropCenterCPU(screenshot, CAPTURE_WIDTH, CAPTURE_HEIGHT);
 
-            Mat mask = Mat::zeros(h_croppedScreenshot.size(), CV_8UC1);
-            Point center(mask.cols / 2, mask.rows / 2);
+            cv::Mat mask = cv::Mat::zeros(h_croppedScreenshot.size(), CV_8UC1);
+            cv::Point center(mask.cols / 2, mask.rows / 2);
             int radius = std::min(mask.cols, mask.rows) / 2;
-            circle(mask, center, radius, Scalar(255), -1);
+            cv::circle(mask, center, radius, cv::Scalar(255), -1);
 
-            Mat maskedImage;
+            cv::Mat maskedImage;
             h_croppedScreenshot.copyTo(maskedImage, mask);
 
 
-            Mat resized;
+            cv::Mat resized;
             cv::resize(maskedImage, resized, cv::Size(config.engine_image_size, config.engine_image_size));
             
             {
