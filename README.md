@@ -22,7 +22,7 @@
 	- Create a folder named `modules` in the directory `sunone_aimbot_cpp\sunone_aimbot_cpp\modules`.
 	- Download the libraries:
 	- [Boost](https://disk.yandex.ru/d/O8XkcKeQ3vNDFg)
-	- [Opencv](https://disk.yandex.ru/d/TV7XNTwQn3VXPQ)
+	- [Opencv](https://github.com/opencv/opencv/releases/tag/4.10.0) (windows)
 	- [TensorRT](https://disk.yandex.ru/d/2W-CgOvLQy7OTw).
 	- Extract the files into the directories:
 	- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\boost_1_82_0`
