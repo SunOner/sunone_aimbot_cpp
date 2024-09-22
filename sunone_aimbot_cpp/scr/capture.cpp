@@ -152,16 +152,25 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         {
             h_croppedScreenshot = cropCenterCPU(screenshot, CAPTURE_WIDTH, CAPTURE_HEIGHT);
 
-            {
-                std::lock_guard<std::mutex> lock(frameMutex);
-                latestFrame = h_croppedScreenshot.clone();
-            }
-            frameCV.notify_one();
+            Mat mask = Mat::zeros(h_croppedScreenshot.size(), CV_8UC1);
+            Point center(mask.cols / 2, mask.rows / 2);
+            int radius = std::min(mask.cols, mask.rows) / 2;
+            circle(mask, center, radius, Scalar(255), -1);
+
+            Mat maskedImage;
+            h_croppedScreenshot.copyTo(maskedImage, mask);
+
 
             Mat resized;
-            cv::resize(h_croppedScreenshot, resized, cv::Size(config.engine_image_size, config.engine_image_size));
+            cv::resize(maskedImage, resized, cv::Size(config.engine_image_size, config.engine_image_size));
             
+            {
+                std::lock_guard<std::mutex> lock(frameMutex);
+                latestFrame = resized.clone();
+            }
+
             detector.processFrame(resized);
+            frameCV.notify_one();
         }
     }
 }

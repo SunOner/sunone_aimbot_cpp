@@ -46,8 +46,7 @@ void keyboardListener()
             if (globalMouseThread)
             {
                 globalMouseThread->updateConfig(
-                    config.detection_window_width,
-                    config.detection_window_height,
+                    config.detection_resolution,
 
                     config.dpi,
                     config.sensitivity,

@@ -13,8 +13,7 @@ extern Config config;
 extern std::atomic<bool> aiming;
 
 MouseThread::MouseThread(
-    int screenWidth,
-    int screenHeight,
+    int resolution,
     int dpi,
     double sensitivity,
     int fovX,
@@ -24,8 +23,8 @@ MouseThread::MouseThread(
     double predictionInterval,
     SerialConnection* serialConnection)
     :
-    screen_width(screenWidth),
-    screen_height(screenHeight),
+    screen_width(resolution),
+    screen_height(resolution),
     dpi(dpi),
     mouse_sensitivity(sensitivity),
     fov_x(fovX),
@@ -37,19 +36,18 @@ MouseThread::MouseThread(
     prev_y(0),
     prev_velocity_x(0),
     prev_velocity_y(0),
-    max_distance(std::sqrt(screenWidth* screenWidth + screenHeight * screenHeight) / 2),
-    center_x(screenWidth / 2),
-    center_y(screenHeight / 2),
+    max_distance(std::sqrt(resolution* resolution + resolution * resolution) / 2),
+    center_x(resolution / 2),
+    center_y(resolution / 2),
     serial(serialConnection)
 {
-
 }
 
-    void MouseThread::updateConfig(double screenWidth, double screenHeight, double dpi, double sensitivity, double fovX, double fovY,
-        double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval, bool auto_shoot, float bScope_multiplier)
+void MouseThread::updateConfig(int resolution, double dpi, double sensitivity, double fovX, double fovY,
+    double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval, bool auto_shoot, float bScope_multiplier)
 {
-    this->screen_width = screenWidth;
-    this->screen_height = screenHeight;
+    this->screen_width = resolution;
+    this->screen_height = resolution;
     this->dpi = dpi;
     this->mouse_sensitivity = sensitivity;
     this->fov_x = fovX;
@@ -57,9 +55,9 @@ MouseThread::MouseThread(
     this->min_speed_multiplier = minSpeedMultiplier;
     this->max_speed_multiplier = maxSpeedMultiplier;
     this->prediction_interval = predictionInterval;
-    this->center_x = screenWidth / 2;
-    this->center_y = screenHeight / 2;
-    this->max_distance = std::sqrt(screenWidth * screenWidth + screenHeight * screenHeight) / 2;
+    this->center_x = resolution / 2;
+    this->center_y = resolution / 2;
+    this->max_distance = std::sqrt(resolution * resolution + resolution * resolution) / 2;
 }
 
 std::pair<double, double> MouseThread::predict_target_position(double target_x, double target_y)

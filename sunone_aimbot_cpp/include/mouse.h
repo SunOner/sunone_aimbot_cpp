@@ -26,11 +26,11 @@ private:
     double fov_y;
 
 public:
-    MouseThread(int screenWidth, int screenHeight, int dpi, double sensitivity, int fovX, int fovY,
+    MouseThread(int resolution, int dpi, double sensitivity, int fovX, int fovY,
         double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval,
         SerialConnection* serialConnection = nullptr);
-    
-    void updateConfig(double screenWidth, double screenHeight, double dpi, double sensitivity, double fovX, double fovY,
+
+    void updateConfig(int resolution, double dpi, double sensitivity, double fovX, double fovY,
         double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval, bool auto_shoot, float bScope_multiplier);
 
     std::pair<double, double> predict_target_position(double target_x, double target_y);

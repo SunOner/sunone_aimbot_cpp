@@ -1,4 +1,3 @@
-#include "visuals.h"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <atomic>
@@ -7,6 +6,7 @@
 #include <condition_variable>
 #include <chrono>
 
+#include "visuals.h"
 #include "config.h"
 
 using namespace cv;
@@ -28,6 +28,7 @@ void displayThread()
 
     int frameCount = 0;
     double fps = 0.0;
+
     std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 
     if (config.show_fps)
@@ -37,7 +38,9 @@ void displayThread()
         startTime = std::chrono::high_resolution_clock::now();
     }
 
-
+    
+    namedWindow(config.window_name);
+    
     while (!shouldExit)
     {
         cv::Mat frame;
@@ -50,9 +53,17 @@ void displayThread()
 
         if (detector.getLatestDetections(boxes, classes))
         {
+            float scale = static_cast<float>(config.detection_resolution) / config.engine_image_size;
+
             for (size_t i = 0; i < boxes.size(); ++i)
             {
                 cv::Rect adjustedBox = boxes[i];
+
+                adjustedBox.x = static_cast<int>(adjustedBox.x / scale);
+                adjustedBox.y = static_cast<int>(adjustedBox.y / scale);
+                adjustedBox.width = static_cast<int>(adjustedBox.width / scale);
+                adjustedBox.height = static_cast<int>(adjustedBox.height / scale);
+
                 adjustedBox.x = std::max(0, adjustedBox.x);
                 adjustedBox.y = std::max(0, adjustedBox.y);
                 adjustedBox.width = std::min(frame.cols - adjustedBox.x, adjustedBox.width);
@@ -79,7 +90,21 @@ void displayThread()
             putText(frame, "FPS: " + std::to_string(static_cast<int>(fps)), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 2);
         }
 
-        imshow("Desktop", frame);
+        if (config.window_size != 100)
+        {
+            int size = static_cast<int>((config.detection_resolution * config.window_size) / 100);
+
+            Mat resized;
+            cv::resize(frame, resized, cv::Size(size, size));
+
+            resizeWindow(config.window_name, size, size);
+            imshow(config.window_name, resized);
+        }
+        else
+        {
+            imshow(config.window_name, frame);
+        }
+
         if (waitKey(1) == 27) shouldExit = true;
     }
 }

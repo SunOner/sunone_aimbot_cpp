@@ -7,8 +7,7 @@ class Config
 {
 public:
     // Detection window
-    int detection_window_width;
-    int detection_window_height;
+    int detection_resolution;
 
     // Target
     bool disable_headshot;
@@ -41,6 +40,8 @@ public:
     // Debug window
     bool show_window;
     bool show_fps;
+    std::string window_name;
+    int window_size;
 
     bool loadConfig(const std::string& filename);
 };

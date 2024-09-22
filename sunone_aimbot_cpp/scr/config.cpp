@@ -19,8 +19,7 @@ bool Config::loadConfig(const std::string& filename)
         boost::property_tree::ini_parser::read_ini(filename, pt);
 
         // Detection window
-        detection_window_width = pt.get<int>("detection_window_width", 0);
-        detection_window_height = pt.get<int>("detection_window_height", 0);
+        detection_resolution = pt.get<int>("detection_resolution", 0);
 
         // Target
         disable_headshot = pt.get<bool>("disable_headshot", false);
@@ -53,6 +52,8 @@ bool Config::loadConfig(const std::string& filename)
         // Debug window
         show_window = pt.get<bool>("show_window", true);
         show_fps = pt.get<bool>("show_fps", true);
+        window_name = pt.get<std::string>("window_name", "Debug");
+        window_size = pt.get<int>("window_size", 100);
     }
     catch (boost::property_tree::ini_parser_error& e)
     {

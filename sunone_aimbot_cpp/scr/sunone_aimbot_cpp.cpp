@@ -49,7 +49,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
         }
         if (aiming)
         {
-            Target* target = sortTargets(boxes, classes, config.detection_window_width, config.detection_window_height, config.disable_headshot);
+            Target* target = sortTargets(boxes, classes, config.detection_resolution, config.detection_resolution, config.disable_headshot);
             if (target)
             {
                 mouseThread.moveMouse(*target);
@@ -74,8 +74,7 @@ int main()
     SerialConnection serial(config.arduino_port, config.arduino_baudrate);
 
     MouseThread mouseThread(
-        config.detection_window_width,
-        config.detection_window_height,
+        config.detection_resolution,
         config.dpi,
         config.sensitivity,
         config.fovX,
@@ -91,7 +90,7 @@ int main()
     detector.initialize("models/" + config.ai_model);
 
     std::thread keyThread(keyboardListener);
-    std::thread capThread(captureThread, config.detection_window_width, config.detection_window_height);
+    std::thread capThread(captureThread, config.detection_resolution, config.detection_resolution);
     std::thread detThread(&Detector::inferenceThread, &detector);
     std::thread dispThread(displayThread);
     std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));

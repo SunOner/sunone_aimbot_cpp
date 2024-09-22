@@ -190,13 +190,12 @@ void Detector::postProcess(float* output, int outputSize)
             float w = box[2];
             float h = box[3];
 
-            float scale_x = static_cast<float>(config.detection_window_width) / config.engine_image_size;
-            float scale_y = static_cast<float>(config.detection_window_height) / config.engine_image_size;
+            float scale = static_cast<float>(config.detection_resolution) / config.engine_image_size;
 
-            int x1 = static_cast<int>(x * scale_x);
-            int y1 = static_cast<int>(y * scale_y);
-            int width = static_cast<int>((w - x) * scale_x);
-            int height = static_cast<int>((h - y) * scale_y);
+            int x1 = static_cast<int>(x * scale);
+            int y1 = static_cast<int>(y * scale);
+            int width = static_cast<int>((w - x) * scale);
+            int height = static_cast<int>((h - y) * scale);
 
             boxes.emplace_back(x1, y1, width, height);
             classes.push_back(class_id);
