@@ -24,13 +24,6 @@ extern Config config;
 int screenWidth = 0;
 int screenHeight = 0;
 
-cv::Mat cropCenterCPU(const cv::Mat& src, int targetWidth, int targetHeight)
-{
-    int startX = (src.cols - targetWidth) / 2;
-    int startY = (src.rows - targetHeight) / 2;
-    return src(cv::Rect(startX, startY, targetWidth, targetHeight)).clone();
-}
-
 class ScreenCapture
 {
 private:
@@ -40,9 +33,17 @@ private:
     ID3D11Texture2D* stagingTexture = nullptr;
     IDXGIOutput1* output1 = nullptr;
 
+    int screenWidth = 0;
+    int screenHeight = 0;
+    int regionWidth = 0;
+    int regionHeight = 0;
+
 public:
-    ScreenCapture()
+    ScreenCapture(int desiredWidth, int desiredHeight)
     {
+        regionWidth = desiredWidth;
+        regionHeight = desiredHeight;
+
         IDXGIFactory1* factory = nullptr;
         IDXGIAdapter* adapter = nullptr;
         IDXGIOutput* output = nullptr;
@@ -64,8 +65,8 @@ public:
         screenHeight = outputDesc.DesktopCoordinates.bottom - outputDesc.DesktopCoordinates.top;
 
         D3D11_TEXTURE2D_DESC textureDesc = {};
-        textureDesc.Width = screenWidth;
-        textureDesc.Height = screenHeight;
+        textureDesc.Width = regionWidth;
+        textureDesc.Height = regionHeight;
         textureDesc.MipLevels = 1;
         textureDesc.ArraySize = 1;
         textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
@@ -110,7 +111,27 @@ public:
             return cv::Mat();
         }
 
-        d3dContext->CopyResource(stagingTexture, desktopTexture);
+        int regionX = (screenWidth - regionWidth) / 2;
+        int regionY = (screenHeight - regionHeight) / 2;
+
+        D3D11_BOX sourceRegion;
+        sourceRegion.left = regionX;
+        sourceRegion.top = regionY;
+        sourceRegion.front = 0;
+        sourceRegion.right = regionX + regionWidth;
+        sourceRegion.bottom = regionY + regionHeight;
+        sourceRegion.back = 1;
+
+        d3dContext->CopySubresourceRegion(
+            stagingTexture,
+            0,
+            0,
+            0,
+            0,
+            desktopTexture,
+            0,
+            &sourceRegion
+        );
 
         D3D11_MAPPED_SUBRESOURCE mappedResource;
         hr = d3dContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &mappedResource);
@@ -122,7 +143,7 @@ public:
             return cv::Mat();
         }
 
-        cv::Mat screenshot(screenHeight, screenWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
+        cv::Mat screenshot(regionHeight, regionWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
         cv::Mat result;
         screenshot.copyTo(result);
 
@@ -131,7 +152,7 @@ public:
         desktopResource->Release();
         deskDupl->ReleaseFrame();
 
-        return screenshot;
+        return result;
     }
 };
 
@@ -142,7 +163,7 @@ extern std::atomic<bool> shouldExit;
 
 void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 {
-    ScreenCapture capturer;
+    ScreenCapture capturer(CAPTURE_WIDTH, CAPTURE_HEIGHT);
     cv::Mat h_croppedScreenshot;
 
     while (!shouldExit)
@@ -150,20 +171,17 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         cv::Mat screenshot = capturer.captureScreen();
         if (!screenshot.empty())
         {
-            h_croppedScreenshot = cropCenterCPU(screenshot, CAPTURE_WIDTH, CAPTURE_HEIGHT);
-
-            cv::Mat mask = cv::Mat::zeros(h_croppedScreenshot.size(), CV_8UC1);
+            cv::Mat mask = cv::Mat::zeros(screenshot.size(), CV_8UC1);
             cv::Point center(mask.cols / 2, mask.rows / 2);
             int radius = std::min(mask.cols, mask.rows) / 2;
             cv::circle(mask, center, radius, cv::Scalar(255), -1);
 
             cv::Mat maskedImage;
-            h_croppedScreenshot.copyTo(maskedImage, mask);
-
+            screenshot.copyTo(maskedImage, mask);
 
             cv::Mat resized;
             cv::resize(maskedImage, resized, cv::Size(config.engine_image_size, config.engine_image_size));
-            
+
             {
                 std::lock_guard<std::mutex> lock(frameMutex);
                 latestFrame = resized.clone();

@@ -5,8 +5,6 @@
 
 void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT);
 
-cv::Mat cropCenterCPU(const cv::Mat& src, int targetWidth, int targetHeight);
-
 extern int screenWidth;
 extern int screenHeight;
 
