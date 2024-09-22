@@ -37,6 +37,12 @@ public:
     int engine_image_size;
     float confidence_threshold;
 
+    // Buttons
+    std::string button_targeting;
+    std::string button_exit;
+    std::string button_pause;
+    std::string button_reload_config;
+
     // Debug window
     bool show_window;
     bool show_fps;

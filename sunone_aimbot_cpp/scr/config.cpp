@@ -49,6 +49,12 @@ bool Config::loadConfig(const std::string& filename)
         engine_image_size = pt.get<int>("engine_image_size", 0);
         confidence_threshold = pt.get<float>("confidence_threshold", 0.0f);
 
+        // Buttons
+        button_targeting = pt.get<std::string>("button_targeting", "RightMouseButton");
+        button_exit = pt.get<std::string>("button_exit", "F2");
+        button_pause = pt.get<std::string>("button_pause", "F3");
+        button_reload_config = pt.get<std::string>("button_reload_config", "F4");
+
         // Debug window
         show_window = pt.get<bool>("show_window", true);
         show_fps = pt.get<bool>("show_fps", true);

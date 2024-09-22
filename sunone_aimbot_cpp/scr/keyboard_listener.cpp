@@ -6,6 +6,7 @@
 #include "keyboard_listener.h"
 #include "config.h"
 #include "mouse.h"
+#include "keycodes.h"
 
 extern std::atomic<bool> shouldExit;
 extern std::atomic<bool> aiming;
@@ -18,7 +19,7 @@ void keyboardListener()
 {
     while (!shouldExit)
     {
-        if (GetAsyncKeyState(VK_RBUTTON) & 0x8000)
+        if (GetAsyncKeyState(KeyCodes::getKeyCode(config.button_targeting)) & 0x8000)
         {
             aiming = true;
         }
@@ -27,19 +28,19 @@ void keyboardListener()
             aiming = false;
         }
 
-        if (GetAsyncKeyState(VK_F2) & 0x8000)
+        if (GetAsyncKeyState(KeyCodes::getKeyCode(config.button_exit)) & 0x8000)
         {
             shouldExit = true;
             quick_exit(0);
         }
 
-        if (GetAsyncKeyState(VK_F3) & 0x8000)
+        if (GetAsyncKeyState(KeyCodes::getKeyCode(config.button_pause)) & 0x8000)
         {
             detectionPaused = !detectionPaused;
             std::this_thread::sleep_for(std::chrono::milliseconds(300));
         }
 
-        if (GetAsyncKeyState(VK_F4) & 0x8000)
+        if (GetAsyncKeyState(KeyCodes::getKeyCode(config.button_reload_config)) & 0x8000)
         {
             config.loadConfig("config.ini");
 
