@@ -8,16 +8,15 @@
 
 #include "visuals.h"
 #include "config.h"
+#include "sunone_aimbot_cpp.h"
 
 using namespace cv;
 using namespace std;
 
-extern Detector detector;
 extern Mat latestFrame;
 extern std::mutex frameMutex;
 extern std::condition_variable frameCV;
 extern std::atomic<bool> shouldExit;
-extern Config config;
 
 void displayThread()
 {

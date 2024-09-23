@@ -48,6 +48,7 @@ public:
     bool show_fps;
     std::string window_name;
     int window_size;
+    std::string screenshot_button;
 
     bool loadConfig(const std::string& filename);
 };

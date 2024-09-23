@@ -60,6 +60,7 @@ bool Config::loadConfig(const std::string& filename)
         show_fps = pt.get<bool>("show_fps", true);
         window_name = pt.get<std::string>("window_name", "Debug");
         window_size = pt.get<int>("window_size", 100);
+        screenshot_button = pt.get<std::string>("screenshot_button", "RightMouseButton");
     }
     catch (boost::property_tree::ini_parser_error& e)
     {

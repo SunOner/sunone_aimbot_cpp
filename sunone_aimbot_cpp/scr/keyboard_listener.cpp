@@ -4,14 +4,13 @@
 #include <iostream>
 
 #include "keyboard_listener.h"
-#include "config.h"
 #include "mouse.h"
 #include "keycodes.h"
+#include "sunone_aimbot_cpp.h"
 
 extern std::atomic<bool> shouldExit;
 extern std::atomic<bool> aiming;
 extern std::atomic<bool> detectionPaused;
-extern Config config;
 
 extern MouseThread* globalMouseThread;
 

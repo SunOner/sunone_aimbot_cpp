@@ -7,19 +7,22 @@
 #include <mutex>
 #include <condition_variable>
 #include <opencv2/opencv.hpp>
+#include <chrono>
 
+#include "capture.h"
 #include "detector.h"
 #include "sunone_aimbot_cpp.h"
-#include "capture.h"
-#include "config.h"
+#include "keycodes.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 
 using namespace std;
 
-extern Detector detector;
-extern Config config;
+extern cv::Mat latestFrame;
+extern std::mutex frameMutex;
+extern std::condition_variable frameCV;
+extern std::atomic<bool> shouldExit;
 
 int screenWidth = 0;
 int screenHeight = 0;
@@ -156,15 +159,13 @@ public:
     }
 };
 
-extern cv::Mat latestFrame;
-extern std::mutex frameMutex;
-extern std::condition_variable frameCV;
-extern std::atomic<bool> shouldExit;
-
 void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 {
     ScreenCapture capturer(CAPTURE_WIDTH, CAPTURE_HEIGHT);
     cv::Mat h_croppedScreenshot;
+    bool buttonPreviouslyPressed = false;
+
+    auto lastSaveTime = std::chrono::steady_clock::now();
 
     while (!shouldExit)
     {
@@ -189,6 +190,26 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
             detector.processFrame(resized);
             frameCV.notify_one();
+
+            bool buttonPressed = GetAsyncKeyState(KeyCodes::getKeyCode(config.screenshot_button)) & 0x8000;
+
+            if (buttonPressed && config.screenshot_button != "None")
+            {
+                auto now = std::chrono::steady_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count();
+
+                if (elapsed >= 250)
+                {
+                    auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                    std::string filename = std::to_string(epoch_time) + ".jpg";
+
+                    cv::imwrite("screenshots/" + filename, resized);
+
+                    lastSaveTime = now;
+                }
+            }
+
+            buttonPreviouslyPressed = buttonPressed;
         }
     }
 }

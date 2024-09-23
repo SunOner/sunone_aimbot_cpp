@@ -7,16 +7,13 @@
 #include "detector.h"
 #include "nvinf.h"
 #include "sunone_aimbot_cpp.h"
-#include "config.h"
 
 using namespace std;
 
 extern Logger logger;
-extern Config config;
 
 std::mutex frameMutex;
 std::atomic<bool> isProcessing{ false };
-extern Config config;
 extern std::atomic<bool> detectionPaused;
 
 Detector::Detector()

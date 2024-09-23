@@ -4,11 +4,8 @@
 
 #include "sunone_aimbot_cpp.h"
 #include "target.h"
-#include "config.h"
 
 using namespace std;
-
-extern Config config;
 
 Target::Target(int x, int y, int w, int h, int cls) : x(x), y(y), w(w), h(h), cls(cls) {}
 

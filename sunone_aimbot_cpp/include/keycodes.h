@@ -4,7 +4,8 @@
 #include <string>
 #include <unordered_map>
 
-class KeyCodes {
+class KeyCodes
+{
 public:
     static int getKeyCode(const std::string& key_name);
 

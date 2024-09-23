@@ -11,22 +11,19 @@
 #include "mouse.h"
 #include "target.h" 
 #include "sunone_aimbot_cpp.h"
-#include "detector.h"
-#include "config.h"
 #include "keyboard_listener.h"
 
-using namespace cv;
 using namespace std;
 
-Mat latestFrame;
+cv::Mat latestFrame;
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
 std::atomic<bool> aiming(false);
 std::atomic<bool> detectionPaused(false);
 
-Config config;
 Detector detector;
 MouseThread* globalMouseThread = nullptr;
+Config config;
 
 void mouseThreadFunction(MouseThread& mouseThread)
 {
@@ -65,6 +62,8 @@ void mouseThreadFunction(MouseThread& mouseThread)
 
 int main()
 {
+    if (CreateDirectory(L"screenshots", NULL) || GetLastError() == ERROR_ALREADY_EXISTS) { }
+
     if (!config.loadConfig("config.ini"))
     {
         std::cerr << "Error with loading config.ini" << std::endl;

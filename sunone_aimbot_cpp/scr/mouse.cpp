@@ -5,11 +5,10 @@
 #include "mouse.h"
 #include "capture.h"
 #include "SerialConnection.h"
-#include "config.h"
+#include "sunone_aimbot_cpp.h"
 
 using namespace std;
 
-extern Config config;
 extern std::atomic<bool> aiming;
 
 MouseThread::MouseThread(

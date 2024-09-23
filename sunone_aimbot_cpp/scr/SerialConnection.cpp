@@ -2,9 +2,7 @@
 #include <vector>
 
 #include "SerialConnection.h"
-#include "config.h"
-
-extern Config config;
+#include "sunone_aimbot_cpp.h"
 
 SerialConnection::SerialConnection(const std::string& port, unsigned int baud_rate)
     : serial_port_(io_service_)

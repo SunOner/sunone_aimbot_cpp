@@ -1,7 +1,8 @@
 #include "keycodes.h"
 #include <Windows.h>
 
-std::unordered_map<std::string, int> KeyCodes::key_code_map = {
+std::unordered_map<std::string, int> KeyCodes::key_code_map =
+{
     {"None", 0},
     {"LeftMouseButton", VK_LBUTTON},
     {"RightMouseButton", VK_RBUTTON},
