@@ -6,6 +6,8 @@
 #include <cmath>
 #include <algorithm>
 #include <chrono>
+#include <mutex>
+#include <atomic>
 
 #include "mouse.h"
 #include "capture.h"
@@ -45,10 +47,11 @@ MouseThread::MouseThread(
     prev_y(0),
     prev_velocity_x(0),
     prev_velocity_y(0),
-    max_distance(std::sqrt(resolution* resolution + resolution * resolution) / 2),
+    max_distance(std::sqrt(resolution * resolution + resolution * resolution) / 2),
     center_x(resolution / 2),
     center_y(resolution / 2),
-    serial(serialConnection)
+    serial(serialConnection),
+    last_target_time(std::chrono::steady_clock::now())
 {
 }
 
@@ -75,6 +78,10 @@ void MouseThread::updateConfig(int resolution, double dpi, double sensitivity, i
 std::pair<double, double> MouseThread::predict_target_position(double target_x, double target_y)
 {
     auto current_time = std::chrono::steady_clock::now();
+
+    last_target_time = current_time;
+    target_detected.store(true);
+
     if (prev_time.time_since_epoch().count() == 0)
     {
         prev_time = current_time;
@@ -85,6 +92,17 @@ std::pair<double, double> MouseThread::predict_target_position(double target_x, 
     }
 
     double delta_time = std::chrono::duration<double>(current_time - prev_time).count();
+
+    if (delta_time > 1.0)
+    {
+        prev_x = target_x;
+        prev_y = target_y;
+        prev_velocity_x = 0;
+        prev_velocity_y = 0;
+        prev_time = current_time;
+
+        return { target_x, target_y };
+    }
 
     double velocity_x = (target_x - prev_x) / delta_time;
     double velocity_y = (target_y - prev_y) / delta_time;
@@ -152,7 +170,7 @@ void MouseThread::moveMouse(const Target& target)
     auto predicted_position = predict_target_position(target.x + target.w / 2, target.y + target.h / 2);
     auto movement = calc_movement(predicted_position.first, predicted_position.second);
 
-    if (config.arduino_enable && serial)
+    if (serial && config.arduino_enable)
     {
         serial->move(static_cast<INT>(movement.first), static_cast<INT>(movement.second));
     }
@@ -170,7 +188,7 @@ void MouseThread::moveMouse(const Target& target)
 
 void MouseThread::shootMouse(const Target& target)
 {
-    auto bScope = check_target_in_scope(target.x, target.y, target.w, target.w, config.bScope_multiplier);
+    auto bScope = check_target_in_scope(target.x, target.y, target.w, target.h, config.bScope_multiplier);
     if (bScope)
     {
         if (config.arduino_enable && serial)
@@ -180,6 +198,30 @@ void MouseThread::shootMouse(const Target& target)
     }
     else
     {
-        serial->release();
+        if (serial) // nullptr
+        {
+            serial->release();
+        }
+    }
+}
+
+void MouseThread::resetPrediction()
+{
+    prev_time = std::chrono::steady_clock::time_point();
+    prev_x = 0;
+    prev_y = 0;
+    prev_velocity_x = 0;
+    prev_velocity_y = 0;
+    target_detected.store(false);
+}
+
+void MouseThread::checkAndResetPredictions()
+{
+    auto current_time = std::chrono::steady_clock::now();
+    double elapsed = std::chrono::duration<double>(current_time - last_target_time).count();
+
+    if (elapsed > 1.0 && target_detected.load())
+    {
+        resetPrediction();
     }
 }

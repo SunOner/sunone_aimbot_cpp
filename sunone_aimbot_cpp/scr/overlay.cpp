@@ -271,14 +271,14 @@ void OverlayThread()
             {
                 std::lock_guard<std::mutex> lock(configMutex);
 
-                ImGui::SliderInt("DPI", &config.dpi, 100, 16000);
+                ImGui::SliderInt("DPI", &config.dpi, 800, 5000);
                 ImGui::SliderFloat("Sensitivity", &config.sensitivity, 0.1f, 10.0f, "%.1f");
                 ImGui::Checkbox("Disable headshot", &config.disable_headshot);
                 ImGui::SliderFloat("Body Y offset", &config.body_y_offset, -2.0f, 2.0f, "%.1f");
                 ImGui::SliderInt("FOV X", &config.fovX, 60, 120);
                 ImGui::SliderInt("FOV Y", &config.fovY, 40, 100);
-                ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 10.0f, "%.1f");
-                ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 10.0f, "%.1f");
+                ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 5.0f, "%.1f");
+                ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 5.0f, "%.1f");
                 ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.1f, 3.0f, "%.1f");
                 ImGui::Checkbox("Auto shoot", &config.auto_shoot);
                 ImGui::SliderFloat("bScope Multiplier", &config.bScope_multiplier, 0.5f, 2.0f, "%.1f");

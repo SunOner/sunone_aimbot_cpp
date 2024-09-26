@@ -67,6 +67,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
                 delete target;
             }
         }
+        mouseThread.checkAndResetPredictions();
     }
 }
 

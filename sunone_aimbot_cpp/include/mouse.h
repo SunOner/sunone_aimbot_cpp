@@ -32,6 +32,9 @@ private:
     bool auto_shoot;
     float bScope_multiplier;
 
+    std::chrono::steady_clock::time_point last_target_time;
+    std::atomic<bool> target_detected{ false };
+
 public:
     MouseThread(int resolution, int dpi, double sensitivity, int fovX, int fovY,
         double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval,
@@ -47,6 +50,8 @@ public:
     bool check_target_in_scope(double target_x, double target_y, double target_w, double target_h, double reduction_factor);
     void moveMouse(const Target& target);
     void shootMouse(const Target& target);
+    void resetPrediction();
+    void checkAndResetPredictions();
 };
 
 #endif // MOUSE_H
