@@ -19,7 +19,7 @@ TensorRT-10.3.0.26/bin/trtexec.exe --onnx=sunxds_0.5.6.onnx --saveEngine=sunxds_
 
 ## Build a Project from Source
 1. Download and install Visual Studio 2019 Community.
-2. Install the Windows SDK.
+2. Install the Windows SDK (10.0.22000.194).
 3. Install CUDA 12.4 and cuDNN 9.1.
 4. Create a folder named `modules` in the directory `sunone_aimbot_cpp\sunone_aimbot_cpp\modules`.
 5. Download the libraries:
