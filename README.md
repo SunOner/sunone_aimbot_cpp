@@ -2,17 +2,20 @@
 
 - This is a developer version, and it is currently under development!
 
-## Current Dependencies
-- Boost 1.82.0
-- OpenCV
-- TensorRT 10.3.0.26
-- CUDA 12.4
-- cuDNN 9.1
-
-## Model Export Command
+## How to use
+1. Download last release from [here](https://github.com/SunOner/sunone_aimbot_cpp/releases).
+2. Download TensorRT from [here](https://disk.yandex.ru/d/2W-CgOvLQy7OTw).
+3. Unpack TensorRT and Aimbot.
+4. Copy `TensorRT-10.3.0.26/lib/nvinfer_10.dll` to `sunone_aimbot_cpp/`.
+5. Copy all files from `TensorRT-10.3.0.26/lib/nvinfer_10.dll` to `TensorRT-10.3.0.26/bin/`
+6. Copy `sunone_aimbot_cpp/models/sunxds_0_5_6.onnx` to `TensorRT-10.3.0.26/bin/`
+7. Open cmd in `TensorRT-10.3.0.26/bin/` and execute:
 ```bash
-TensorRT-10.3.0.26/bin/trtexec.exe --onnx=sunxds_0.5.6.onnx --saveEngine=sunxds_0.5.6.engine --fp16
+trtexec.exe --onnx=sunxds_0.5.6.onnx --saveEngine=sunxds_0.5.6.engine --fp16
 ```
+8. After export (~1-5 minutes), copy `TensorRT-10.3.0.26/bin/sunxds_0.5.6.engine` to `sunone_aimbot_cpp/models/`.
+9. Run `sunone_aimbot_cpp.exe`.
+
 > **WARNING:** TensorRT version 10 does not support the Pascal architecture (10 series graphics card). Use only on video cards of at least 20 series.
 
 > **NOTE:** This guide for building the application is intended for advanced users. If you encounter errors while building the modules, please report them on the [Discord server](https://discord.gg/sunone).
