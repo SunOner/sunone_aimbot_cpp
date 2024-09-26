@@ -1,3 +1,8 @@
+#define WIN32_LEAN_AND_MEAN
+#define _WINSOCKAPI_
+#include <winsock2.h>
+#include <Windows.h>
+
 #include <cmath>
 #include <limits>
 #include <opencv2/opencv.hpp>
@@ -23,7 +28,7 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
     bool headFound = false;
     int targetY = 0;
 
-    for (size_t i = 0; i < boxes.size(); ++i)
+    for (size_t i = 0; i < boxes.size(); i++)
     {
         if (classes[i] == 7)
         {
@@ -43,7 +48,7 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
     if (!headFound)
     {
         minDistance = std::numeric_limits<double>::max();
-        for (size_t i = 0; i < boxes.size(); ++i)
+        for (size_t i = 0; i < boxes.size(); i++)
         {
             if (classes[i] == 0 || classes[i] == 1 || classes[i] == 5 || classes[i] == 6)
             {

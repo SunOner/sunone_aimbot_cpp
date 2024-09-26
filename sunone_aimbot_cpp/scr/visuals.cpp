@@ -1,3 +1,8 @@
+#define WIN32_LEAN_AND_MEAN
+#define _WINSOCKAPI_
+#include <winsock2.h>
+#include <Windows.h>
+
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <atomic>
@@ -37,9 +42,12 @@ void displayThread()
         startTime = std::chrono::high_resolution_clock::now();
     }
 
-    
     namedWindow(config.window_name);
-    
+    if (config.always_on_top)
+    {
+        setWindowProperty(config.window_name, WND_PROP_TOPMOST, 1);
+    }
+
     while (!shouldExit)
     {
         cv::Mat frame;
@@ -96,12 +104,26 @@ void displayThread()
             Mat resized;
             cv::resize(frame, resized, cv::Size(size, size));
 
-            resizeWindow(config.window_name, size, size);
-            imshow(config.window_name, resized);
+            try
+            {
+                resizeWindow(config.window_name, size, size);
+                imshow(config.window_name, resized);
+            }
+            catch(Exception) // window closed by user
+            {
+                break;
+            }
         }
         else
         {
-            imshow(config.window_name, frame);
+            try
+            {
+                imshow(config.window_name, frame);
+            }
+            catch (Exception) // window closed by user
+            {
+                break;
+            }
         }
 
         if (waitKey(1) == 27) shouldExit = true;

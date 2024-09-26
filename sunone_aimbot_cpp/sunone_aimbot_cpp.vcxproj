@@ -19,6 +19,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="imgui.cpp" />
+    <ClCompile Include="imgui_draw.cpp" />
+    <ClCompile Include="imgui_impl_dx11.cpp" />
+    <ClCompile Include="imgui_impl_win32.cpp" />
+    <ClCompile Include="imgui_tables.cpp" />
+    <ClCompile Include="imgui_widgets.cpp" />
     <ClCompile Include="scr\capture.cpp" />
     <ClCompile Include="scr\config.cpp" />
     <ClCompile Include="scr\detector.cpp" />
@@ -26,12 +32,21 @@
     <ClCompile Include="scr\keycodes.cpp" />
     <ClCompile Include="scr\mouse.cpp" />
     <ClCompile Include="scr\nvinf.cpp" />
+    <ClCompile Include="scr\overlay.cpp" />
     <ClCompile Include="scr\SerialConnection.cpp" />
     <ClCompile Include="scr\sunone_aimbot_cpp.cpp" />
     <ClCompile Include="scr\target.cpp" />
     <ClCompile Include="scr\visuals.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="imconfig.h" />
+    <ClInclude Include="imgui.h" />
+    <ClInclude Include="imgui_impl_dx11.h" />
+    <ClInclude Include="imgui_impl_win32.h" />
+    <ClInclude Include="imgui_internal.h" />
+    <ClInclude Include="imstb_rectpack.h" />
+    <ClInclude Include="imstb_textedit.h" />
+    <ClInclude Include="imstb_truetype.h" />
     <ClInclude Include="include\capture.h" />
     <ClInclude Include="include\config.h" />
     <ClInclude Include="include\detector.h" />
@@ -39,6 +54,8 @@
     <ClInclude Include="include\keycodes.h" />
     <ClInclude Include="include\mouse.h" />
     <ClInclude Include="include\nvinf.h" />
+    <ClInclude Include="include\overlay.h" />
+    <ClInclude Include="pch.h" />
     <ClInclude Include="include\SerialConnection.h" />
     <ClInclude Include="include\sunone_aimbot_cpp.h" />
     <ClInclude Include="include\target.h" />
@@ -168,8 +185,10 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\modules\boost_1_82_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\modules\imgui-1.91.2\backends;$(MSBuildProjectDirectory)\modules\imgui-1.91.2;$(MSBuildProjectDirectory)\modules\boost_1_82_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

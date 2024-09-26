@@ -1,3 +1,8 @@
+#define WIN32_LEAN_AND_MEAN
+#define _WINSOCKAPI_
+#include <winsock2.h>
+#include <Windows.h>
+
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <thread>
@@ -9,9 +14,13 @@
 #include "visuals.h"
 #include "detector.h"
 #include "mouse.h"
-#include "target.h" 
+#include "target.h"
 #include "sunone_aimbot_cpp.h"
 #include "keyboard_listener.h"
+#include "overlay.h"
+
+#include "imgui.h"
+#include "imgui_impl_dx11.h"
 
 using namespace std;
 
@@ -20,6 +29,7 @@ std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
 std::atomic<bool> aiming(false);
 std::atomic<bool> detectionPaused(false);
+std::mutex configMutex;
 
 Detector detector;
 MouseThread* globalMouseThread = nullptr;
@@ -62,7 +72,10 @@ void mouseThreadFunction(MouseThread& mouseThread)
 
 int main()
 {
-    if (CreateDirectory(L"screenshots", NULL) || GetLastError() == ERROR_ALREADY_EXISTS) { }
+    if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+    {
+        return -1;
+    }
 
     if (!config.loadConfig("config.ini"))
     {
@@ -81,7 +94,9 @@ int main()
         config.minSpeedMultiplier,
         config.maxSpeedMultiplier,
         config.predictionInterval,
-        &serial
+        config.auto_shoot,
+        config.bScope_multiplier,
+        config.arduino_enable ? &serial : nullptr
     );
 
     globalMouseThread = &mouseThread;
@@ -93,12 +108,14 @@ int main()
     std::thread detThread(&Detector::inferenceThread, &detector);
     std::thread dispThread(displayThread);
     std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
+    std::thread overlayThread(OverlayThread);
 
     keyThread.join();
     capThread.join();
     detThread.join();
     dispThread.join();
     mouseMovThread.join();
+    overlayThread.join();
 
     return 0;
 }

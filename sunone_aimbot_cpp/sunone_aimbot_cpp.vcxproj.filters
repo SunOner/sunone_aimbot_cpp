@@ -34,6 +34,15 @@
     <ClCompile Include="scr\visuals.cpp">
       <Filter>scr</Filter>
     </ClCompile>
+    <ClCompile Include="scr\overlay.cpp">
+      <Filter>scr</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui.cpp" />
+    <ClCompile Include="imgui_draw.cpp" />
+    <ClCompile Include="imgui_impl_dx11.cpp" />
+    <ClCompile Include="imgui_impl_win32.cpp" />
+    <ClCompile Include="imgui_tables.cpp" />
+    <ClCompile Include="imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -77,5 +86,17 @@
     <ClInclude Include="include\visuals.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="include\overlay.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="imconfig.h" />
+    <ClInclude Include="imgui.h" />
+    <ClInclude Include="imgui_impl_dx11.h" />
+    <ClInclude Include="imgui_impl_win32.h" />
+    <ClInclude Include="imgui_internal.h" />
+    <ClInclude Include="imstb_rectpack.h" />
+    <ClInclude Include="imstb_textedit.h" />
+    <ClInclude Include="imstb_truetype.h" />
+    <ClInclude Include="pch.h" />
   </ItemGroup>
 </Project>

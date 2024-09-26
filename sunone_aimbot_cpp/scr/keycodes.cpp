@@ -1,5 +1,12 @@
-#include "keycodes.h"
+#define WIN32_LEAN_AND_MEAN
+#define _WINSOCKAPI_
+#include <winsock2.h>
 #include <Windows.h>
+
+#include "keycodes.h"
+
+#include <string>
+#include <unordered_map>
 
 std::unordered_map<std::string, int> KeyCodes::key_code_map =
 {

@@ -1,3 +1,8 @@
+#define WIN32_LEAN_AND_MEAN
+#define _WINSOCKAPI_
+#include <winsock2.h>
+#include <Windows.h>
+
 #include <cmath>
 #include <algorithm>
 #include <chrono>
@@ -10,6 +15,7 @@
 using namespace std;
 
 extern std::atomic<bool> aiming;
+extern std::mutex configMutex;
 
 MouseThread::MouseThread(
     int resolution,
@@ -20,6 +26,8 @@ MouseThread::MouseThread(
     double minSpeedMultiplier,
     double maxSpeedMultiplier,
     double predictionInterval,
+    bool auto_shoot,
+    float bScope_multiplier,
     SerialConnection* serialConnection)
     :
     screen_width(resolution),
@@ -31,6 +39,8 @@ MouseThread::MouseThread(
     min_speed_multiplier(minSpeedMultiplier),
     max_speed_multiplier(maxSpeedMultiplier),
     prediction_interval(predictionInterval),
+    auto_shoot(auto_shoot),
+    bScope_multiplier(bScope_multiplier),
     prev_x(0),
     prev_y(0),
     prev_velocity_x(0),
@@ -42,8 +52,9 @@ MouseThread::MouseThread(
 {
 }
 
-void MouseThread::updateConfig(int resolution, double dpi, double sensitivity, double fovX, double fovY,
-    double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval, bool auto_shoot, float bScope_multiplier)
+void MouseThread::updateConfig(int resolution, double dpi, double sensitivity, int fovX, int fovY,
+    double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval,
+    bool auto_shoot, float bScope_multiplier)
 {
     this->screen_width = resolution;
     this->screen_height = resolution;
@@ -54,6 +65,8 @@ void MouseThread::updateConfig(int resolution, double dpi, double sensitivity, d
     this->min_speed_multiplier = minSpeedMultiplier;
     this->max_speed_multiplier = maxSpeedMultiplier;
     this->prediction_interval = predictionInterval;
+    this->auto_shoot = auto_shoot;
+    this->bScope_multiplier = bScope_multiplier;
     this->center_x = resolution / 2;
     this->center_y = resolution / 2;
     this->max_distance = std::sqrt(resolution * resolution + resolution * resolution) / 2;

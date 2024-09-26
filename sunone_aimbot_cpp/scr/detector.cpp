@@ -1,3 +1,8 @@
+#define WIN32_LEAN_AND_MEAN
+#define _WINSOCKAPI_
+#include <winsock2.h>
+#include <Windows.h>
+
 #include <fstream>
 #include <iostream>
 #include <opencv2/opencv.hpp>

@@ -32,9 +32,7 @@
 *.app
 
 # modules filders
-sunone_aimbot_cpp/modules/boost_1_82_0
-sunone_aimbot_cpp/modules/opencv
-sunone_aimbot_cpp/modules/TensorRT-10.3.0.26
+sunone_aimbot_cpp/modules/
 
 # some models (temp)
 sunone_aimbot_cpp/models/sunxds_0.6.3.engine
@@ -43,3 +41,20 @@ sunone_aimbot_cpp/models/sunxds_0.6.3.engine
 .vs
 sunone_aimbot_cpp/x64
 x64
+
+# imgui
+sunone_aimbot_cpp/imconfig.h
+sunone_aimbot_cpp/imgui.cpp
+sunone_aimbot_cpp/imgui.h
+sunone_aimbot_cpp/imgui.ini
+sunone_aimbot_cpp/imgui_draw.cpp
+sunone_aimbot_cpp/imgui_impl_dx11.cpp
+sunone_aimbot_cpp/imgui_impl_dx11.h
+sunone_aimbot_cpp/imgui_impl_win32.cpp
+sunone_aimbot_cpp/imgui_impl_win32.h
+sunone_aimbot_cpp/imgui_internal.h
+sunone_aimbot_cpp/imgui_tables.cpp
+sunone_aimbot_cpp/imgui_widgets.cpp
+sunone_aimbot_cpp/imstb_rectpack.h
+sunone_aimbot_cpp/imstb_textedit.h
+sunone_aimbot_cpp/imstb_truetype.h

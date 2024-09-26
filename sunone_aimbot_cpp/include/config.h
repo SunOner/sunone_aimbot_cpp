@@ -43,14 +43,19 @@ public:
     std::string button_pause;
     std::string button_reload_config;
 
+    // overlay
+    std::string button_open_overlay;
+
     // Debug window
     bool show_window;
     bool show_fps;
     std::string window_name;
     int window_size;
     std::string screenshot_button;
+    bool always_on_top;
 
     bool loadConfig(const std::string& filename);
+    bool saveConfig(const std::string& filename);
 };
 
 #endif // CONFIG_H

@@ -1,4 +1,12 @@
+#define WIN32_LEAN_AND_MEAN
+#define _WINSOCKAPI_
+#include <winsock2.h>
+#include <Windows.h>
+
 #include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <string>
 #include <boost/filesystem.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -55,12 +63,16 @@ bool Config::loadConfig(const std::string& filename)
         button_pause = pt.get<std::string>("button_pause", "F3");
         button_reload_config = pt.get<std::string>("button_reload_config", "F4");
 
+        // overlay
+        button_open_overlay = pt.get<std::string>("button_open_overlay", "Home");
+
         // Debug window
         show_window = pt.get<bool>("show_window", true);
         show_fps = pt.get<bool>("show_fps", true);
         window_name = pt.get<std::string>("window_name", "Debug");
         window_size = pt.get<int>("window_size", 100);
         screenshot_button = pt.get<std::string>("screenshot_button", "RightMouseButton");
+        always_on_top = pt.get<bool>("always_on_top", true);
     }
     catch (boost::property_tree::ini_parser_error& e)
     {
@@ -78,5 +90,65 @@ bool Config::loadConfig(const std::string& filename)
         return false;
     }
 
+    return true;
+}
+
+bool Config::saveConfig(const std::string& filename)
+{
+    // TODO: sex
+    std::ofstream file(filename);
+    if (!file.is_open())
+    {
+        std::cerr << "Error opening config.ini for writing: " << filename << std::endl;
+        return false;
+    }
+
+    file << "# Detection window\n";
+    file << "detection_resolution = " << detection_resolution << "\n\n";
+
+    file << "# Target\n";
+    file << "disable_headshot = " << (disable_headshot ? "true" : "false") << "\n";
+    file << "body_y_offset = " << std::fixed << std::setprecision(2) << body_y_offset << "\n\n";
+
+    file << "# Mouse move\n";
+    file << "dpi = " << dpi << "\n";
+    file << "sensitivity = " << std::fixed << std::setprecision(1) << sensitivity << "\n";
+    file << "fovX = " << fovX << "\n";
+    file << "fovY = " << fovY << "\n";
+    file << "minSpeedMultiplier = " << std::fixed << std::setprecision(1) << minSpeedMultiplier << "\n";
+    file << "maxSpeedMultiplier = " << std::fixed << std::setprecision(1) << maxSpeedMultiplier << "\n";
+    file << "predictionInterval = " << std::fixed << std::setprecision(1) << predictionInterval << "\n\n";
+
+    file << "# Mouse shooting\n";
+    file << "auto_shoot = " << (auto_shoot ? "true" : "false") << "\n";
+    file << "bScope_multiplier = " << std::fixed << std::setprecision(1) << bScope_multiplier << "\n\n";
+
+    file << "# arduino\n";
+    file << "arduino_enable = " << (arduino_enable ? "true" : "false") << "\n";
+    file << "arduino_baudrate = " << arduino_baudrate << "\n";
+    file << "arduino_port = " << arduino_port << "\n";
+    file << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n\n";
+
+    file << "# AI\n";
+    file << "ai_model = " << ai_model << "\n";
+    file << "engine_image_size = " << engine_image_size << "\n";
+    file << "confidence_threshold = " << std::fixed << std::setprecision(1) << confidence_threshold << "\n\n";
+
+    file << "# Buttons\n";
+    file << "button_targeting = " << button_targeting << "\n";
+    file << "button_exit = " << button_exit << "\n";
+    file << "button_pause = " << button_pause << "\n";
+    file << "button_reload_config = " << button_reload_config << "\n";
+    file << "button_open_overlay = " << button_open_overlay << "\n\n";
+
+    file << "# debug window\n";
+    file << "show_window = " << (show_window ? "true" : "false") << "\n";
+    file << "show_fps = " << (show_fps ? "true" : "false") << "\n";
+    file << "window_name = " << window_name << "\n";
+    file << "window_size = " << window_size << "\n";
+    file << "screenshot_button = " << screenshot_button << "\n";
+    file << "always_on_top = " << (always_on_top ? "true" : "false") << "\n";
+
+    file.close();
     return true;
 }
