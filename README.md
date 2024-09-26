@@ -1,50 +1,119 @@
 # sunone_aimbot_cpp
 
-- This is a developer version, and it is currently under development!
+[![C++](https://img.shields.io/badge/C%2B%2B-17-blue)](https://github.com/SunOner/sunone_aimbot_cpp)
+[![License MIT](https://badgen.net/github/license/SunOner/sunone_aimbot_cpp)](https://github.com/SunOner/sunone_aimbot_cpp/blob/main/LICENSE)
+[![Github stars](https://img.shields.io/github/stars/SunOner/sunone_aimbot_cpp?color=ffb500)](https://github.com/SunOner/sunone_aimbot_cpp)
+[![Discord server](https://badgen.net/discord/online-members/sunone)](https://discord.gg/sunone)
 
-## How to use
-1. Download last release from [here](https://github.com/SunOner/sunone_aimbot_cpp/releases).
-2. Download TensorRT from [here](https://disk.yandex.ru/d/2W-CgOvLQy7OTw).
-3. Unpack TensorRT and Aimbot.
-4. Copy `TensorRT-10.3.0.26/lib/nvinfer_10.dll` to `sunone_aimbot_cpp/`.
-5. Copy all files from `TensorRT-10.3.0.26/lib/nvinfer_10.dll` to `TensorRT-10.3.0.26/bin/`
-6. Copy `sunone_aimbot_cpp/models/sunxds_0_5_6.onnx` to `TensorRT-10.3.0.26/bin/`
-7. Open cmd in `TensorRT-10.3.0.26/bin/` and execute:
-```bash
-trtexec.exe --onnx=sunxds_0.5.6.onnx --saveEngine=sunxds_0.5.6.engine --fp16
-```
-8. After export (~1-5 minutes), copy `TensorRT-10.3.0.26/bin/sunxds_0.5.6.engine` to `sunone_aimbot_cpp/models/`.
-9. Run `sunone_aimbot_cpp.exe`.
+<p align="center">
+  <a href="https://github.com/SunOner/sunone_aimbot_cpp/releases" target="_blank">
+    <img width="75%" src="https://github.com/SunOner/sunone_aimbot/blob/main/media/one.gif" alt="Aimbot Banner">
+  </a>
+</p>
 
-> **WARNING:** TensorRT version 10 does not support the Pascal architecture (10 series graphics card). Use only on video cards of at least 20 series.
+- **This is a developer version, and it is currently under development!**
 
-> **NOTE:** This guide for building the application is intended for advanced users. If you encounter errors while building the modules, please report them on the [Discord server](https://discord.gg/sunone).
+## How to Use
 
-## Build a Project from Source
-1. Download and install Visual Studio 2019 Community.
-2. Install the Windows SDK (10.0.22000.194).
-3. Install CUDA 12.4 and cuDNN 9.1.
-4. Create a folder named `modules` in the directory `sunone_aimbot_cpp\sunone_aimbot_cpp\modules`.
-5. Download the libraries:
-	- [Boost](https://disk.yandex.ru/d/O8XkcKeQ3vNDFg)
-	- [OpenCV](https://github.com/opencv/opencv/releases/tag/4.10.0) (Windows)
-	- [TensorRT](https://disk.yandex.ru/d/2W-CgOvLQy7OTw).
-	- [ImGui-1.91.2](https://github.com/ocornut/imgui/releases/tag/v1.91.2)
-6. Extract the files into the directories:
-	- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\boost_1_82_0`
-	- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\opencv` (Rename `opencv-4.10.0` to `opencv`)
-	- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\TensorRT-10.3.0.26`
-	- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\imgui-1.91.2`
-	- Copy all `.h` and `.cpp` files from `imgui-1.91.2` and paste to `sunone_aimbot_cpp\sunone_aimbot_cpp\`
-7. Compile the Boost libraries:
-	- Navigate to the folder `cd /sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0`
-	- Run `bootstrap.bat vc142`
-	- Once everything completes without errors, run `b2.exe --build-type=complete link=static runtime-link=static threading=multi variant=release`
-8. Check the project for correct library imports in the project settings (Project->Properties).
-9. Verify the presence of CUDA customization files (Right-click on the project -> Build Dependencies -> Build Customizations). CUDA 12.4 (.targets, .props) should be included in the project.
-10. Switch the build to Release and build the project.
+1. **Download the Latest Release**  
+   Download the latest release from [here](https://github.com/SunOner/sunone_aimbot_cpp/releases).
 
-## References
+2. **Download TensorRT**  
+   Get TensorRT from [this link](https://disk.yandex.ru/d/2W-CgOvLQy7OTw).
+
+3. **Unpack TensorRT and Aimbot**  
+   Extract the contents of both TensorRT and the Aimbot.
+
+4. **Copy DLL Files**  
+   - Copy `TensorRT-10.3.0.26/lib/nvinfer_10.dll` to `sunone_aimbot_cpp/`.
+   - Copy all files from `TensorRT-10.3.0.26/lib/` to `TensorRT-10.3.0.26/bin/`.
+
+5. **Transfer the ONNX Model**  
+   Copy `sunone_aimbot_cpp/models/sunxds_0_5_6.onnx` to `TensorRT-10.3.0.26/bin/`.
+
+6. **Generate Engine File**  
+   Open Command Prompt in `TensorRT-10.3.0.26/bin/` and execute:
+   ```bash
+   trtexec.exe --onnx=sunxds_0.5.6.onnx --saveEngine=sunxds_0.5.6.engine --fp16
+   ```
+
+7. **Finalize Setup**  
+   After the export (~1-5 minutes), copy `TensorRT-10.3.0.26/bin/sunxds_0.5.6.engine` to `sunone_aimbot_cpp/models/`.
+
+8. **Run the Application**  
+   Execute `sunone_aimbot_cpp.exe`.
+
+> **⚠️ WARNING:** TensorRT version 10 does not support the Pascal architecture (10 series graphics cards). Use only with GPUs of at least the 20 series.
+
+> **ℹ️ NOTE:** This guide is intended for advanced users. If you encounter errors while building the modules, please report them on the [Discord server](https://discord.gg/sunone).
+
+## 📺 Installation Video
+
+[![Watch the Installation Tutorial](https://img.youtube.com/vi/EyPtfXLhiuo/0.jpg)](https://www.youtube.com/watch?v=EyPtfXLhiuo)
+
+Click the image above to watch the installation tutorial video.
+
+## 🛠 Build the Project from Source
+
+1. **Install Visual Studio 2019 Community**  
+   Download and install from the [official website](https://visualstudio.microsoft.com/vs/community/).
+
+2. **Install Windows SDK**  
+   Ensure you have Windows SDK version **10.0.22000.194** installed.
+
+3. **Install CUDA and cuDNN**  
+   - **CUDA 12.4**  
+     Download from [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit).
+   - **cuDNN 9.1**  
+     Available on the [NVIDIA cuDNN](https://developer.nvidia.com/cudnn) website.
+
+4. **Set Up Project Structure**  
+   Create a folder named `modules` in the directory `sunone_aimbot_cpp\sunone_aimbot_cpp\modules`.
+
+5. **Download Required Libraries**  
+   - [Boost](https://disk.yandex.ru/d/O8XkcKeQ3vNDFg)
+   - [OpenCV](https://github.com/opencv/opencv/releases/tag/4.10.0) (Windows)
+   - [TensorRT](https://disk.yandex.ru/d/2W-CgOvLQy7OTw)
+   - [ImGui-1.91.2](https://github.com/ocornut/imgui/releases/tag/v1.91.2)
+
+6. **Extract Libraries**  
+   Extract the downloaded libraries into the respective directories:
+   - `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\boost_1_82_0`
+   - `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\opencv` *(Rename `opencv-4.10.0` to `opencv`)*
+   - `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\TensorRT-10.3.0.26`
+   - `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\imgui-1.91.2`
+
+   Additionally, copy all `.h` and `.cpp` files from `imgui-1.91.2` to `sunone_aimbot_cpp\sunone_aimbot_cpp\`.
+
+7. **Compile Boost Libraries**  
+   - Navigate to the Boost directory:
+     ```bash
+     cd sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0
+     ```
+   - Run the bootstrap script:
+     ```bash
+     bootstrap.bat vc142
+     ```
+   - After successful bootstrapping, build Boost:
+     ```bash
+     b2.exe --build-type=complete link=static runtime-link=static threading=multi variant=release
+     ```
+
+8. **Configure Project Settings**  
+   - Open the project in Visual Studio.
+   - Ensure all library paths are correctly set in **Project Properties** under **Library Directories**.
+
+9. **Verify CUDA Integration**  
+   - Right-click on the project in Visual Studio.
+   - Navigate to **Build Dependencies** > **Build Customizations**.
+   - Ensure that **CUDA 12.4** (.targets, .props) is included.
+
+10. **Build the Project**  
+    - Switch the build configuration to **Release**.
+    - Build the project by selecting **Build** > **Build Solution**.
+
+## 📚 References
+
 - [TensorRT Documentation](https://docs.nvidia.com/deeplearning/tensorrt/)
 - [OpenCV Documentation](https://docs.opencv.org/4.x/d1/dfb/intro.html)
 - [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/)
@@ -53,12 +122,13 @@ trtexec.exe --onnx=sunxds_0.5.6.onnx --saveEngine=sunxds_0.5.6.engine --fp16
 - [Desktop Duplication API](https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/desktop-dup-api)
 - [Python AI AIMBOT](https://github.com/SunOner/sunone_aimbot)
 
-## Licenses
+## 📄 Licenses
+
 ### Boost
-- License: [Boost Software License 1.0](https://www.boost.org/LICENSE_1_0.txt)
+- **License:** [Boost Software License 1.0](https://www.boost.org/LICENSE_1_0.txt)
 
 ### OpenCV
-- License: [Apache License 2.0](https://opencv.org/license.html)
+- **License:** [Apache License 2.0](https://opencv.org/license.html)
 
 ### ImGui
-- License: [MIT License](https://github.com/ocornut/imgui/blob/master/LICENSE)
+- **License:** [MIT License](https://github.com/ocornut/imgui/blob/master/LICENSE)
