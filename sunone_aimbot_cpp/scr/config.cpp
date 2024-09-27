@@ -58,20 +58,20 @@ bool Config::loadConfig(const std::string& filename)
         confidence_threshold = pt.get<float>("confidence_threshold", 0.0f);
 
         // Buttons
-        button_targeting = pt.get<std::string>("button_targeting", "RightMouseButton");
-        button_exit = pt.get<std::string>("button_exit", "F2");
-        button_pause = pt.get<std::string>("button_pause", "F3");
-        button_reload_config = pt.get<std::string>("button_reload_config", "F4");
+        button_targeting = splitString(pt.get<std::string>("button_targeting", "RightMouseButton"));
+        button_exit = splitString(pt.get<std::string>("button_exit", "F2"));
+        button_pause = splitString(pt.get<std::string>("button_pause", "F3"));
+        button_reload_config = splitString(pt.get<std::string>("button_reload_config", "F4"));
 
         // overlay
-        button_open_overlay = pt.get<std::string>("button_open_overlay", "Home");
+        button_open_overlay = splitString(pt.get<std::string>("button_open_overlay", "Home"));
 
         // Debug window
         show_window = pt.get<bool>("show_window", true);
         show_fps = pt.get<bool>("show_fps", true);
         window_name = pt.get<std::string>("window_name", "Debug");
         window_size = pt.get<int>("window_size", 100);
-        screenshot_button = pt.get<std::string>("screenshot_button", "RightMouseButton");
+        screenshot_button = splitString(pt.get<std::string>("screenshot_button", "RightMouseButton"));
         always_on_top = pt.get<bool>("always_on_top", true);
     }
     catch (boost::property_tree::ini_parser_error& e)
@@ -123,7 +123,7 @@ bool Config::saveConfig(const std::string& filename)
     file << "auto_shoot = " << (auto_shoot ? "true" : "false") << "\n";
     file << "bScope_multiplier = " << std::fixed << std::setprecision(1) << bScope_multiplier << "\n\n";
 
-    file << "# arduino\n";
+    file << "# Arduino\n";
     file << "arduino_enable = " << (arduino_enable ? "true" : "false") << "\n";
     file << "arduino_baudrate = " << arduino_baudrate << "\n";
     file << "arduino_port = " << arduino_port << "\n";
@@ -135,20 +135,45 @@ bool Config::saveConfig(const std::string& filename)
     file << "confidence_threshold = " << std::fixed << std::setprecision(1) << confidence_threshold << "\n\n";
 
     file << "# Buttons\n";
-    file << "button_targeting = " << button_targeting << "\n";
-    file << "button_exit = " << button_exit << "\n";
-    file << "button_pause = " << button_pause << "\n";
-    file << "button_reload_config = " << button_reload_config << "\n";
-    file << "button_open_overlay = " << button_open_overlay << "\n\n";
+    file << "button_targeting = " << joinStrings(button_targeting) << "\n";
+    file << "button_exit = " << joinStrings(button_exit) << "\n";
+    file << "button_pause = " << joinStrings(button_pause) << "\n";
+    file << "button_reload_config = " << joinStrings(button_reload_config) << "\n";
+    file << "button_open_overlay = " << joinStrings(button_open_overlay) << "\n\n";
 
-    file << "# debug window\n";
+    file << "# Debug window\n";
     file << "show_window = " << (show_window ? "true" : "false") << "\n";
     file << "show_fps = " << (show_fps ? "true" : "false") << "\n";
     file << "window_name = " << window_name << "\n";
     file << "window_size = " << window_size << "\n";
-    file << "screenshot_button = " << screenshot_button << "\n";
+    file << "screenshot_button = " << joinStrings(screenshot_button) << "\n";
     file << "always_on_top = " << (always_on_top ? "true" : "false") << "\n";
 
     file.close();
     return true;
+}
+
+std::vector<std::string> Config::splitString(const std::string& str, char delimiter)
+{
+    std::vector<std::string> tokens;
+    std::stringstream ss(str);
+    std::string item;
+    while (std::getline(ss, item, delimiter))
+    {
+        item.erase(0, item.find_first_not_of(" \t\n\r\f\v"));
+        item.erase(item.find_last_not_of(" \t\n\r\f\v") + 1);
+        tokens.push_back(item);
+    }
+    return tokens;
+}
+
+std::string Config::joinStrings(const std::vector<std::string>& vec, const std::string& delimiter)
+{
+    std::ostringstream oss;
+    for (size_t i = 0; i < vec.size(); ++i)
+    {
+        if (i != 0) oss << delimiter;
+        oss << vec[i];
+    }
+    return oss.str();
 }

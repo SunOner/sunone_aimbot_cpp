@@ -19,54 +19,77 @@ extern std::atomic<bool> detectionPaused;
 
 extern MouseThread* globalMouseThread;
 
+bool isAnyKeyPressed(const std::vector<std::string>& keys)
+{
+    for (const auto& key_name : keys)
+    {
+        int key_code = KeyCodes::getKeyCode(key_name);
+        if (key_code != -1 && (GetAsyncKeyState(key_code) & 0x8000))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 void keyboardListener()
 {
     while (!shouldExit)
     {
-        if (GetAsyncKeyState(KeyCodes::getKeyCode(config.button_targeting)) & 0x8000)
-        {
-            aiming = true;
-        }
-        else
-        {
-            aiming = false;
-        }
+        // Aiming
+        aiming = isAnyKeyPressed(config.button_targeting);
 
-        if (GetAsyncKeyState(KeyCodes::getKeyCode(config.button_exit)) & 0x8000)
+        // Exit
+        if (isAnyKeyPressed(config.button_exit))
         {
             shouldExit = true;
             quick_exit(0);
         }
 
-        if (GetAsyncKeyState(KeyCodes::getKeyCode(config.button_pause)) & 0x8000)
+        // Pause detection
+        static bool pausePressed = false;
+        if (isAnyKeyPressed(config.button_pause))
         {
-            detectionPaused = !detectionPaused;
-            std::this_thread::sleep_for(std::chrono::milliseconds(300));
+            if (!pausePressed)
+            {
+                detectionPaused = !detectionPaused;
+                pausePressed = true;
+            }
+        }
+        else
+        {
+            pausePressed = false;
         }
 
-        if (GetAsyncKeyState(KeyCodes::getKeyCode(config.button_reload_config)) & 0x8000)
+        // Reload config
+        static bool reloadPressed = false;
+        if (isAnyKeyPressed(config.button_reload_config))
         {
-            config.loadConfig("config.ini");
-
-            if (globalMouseThread)
+            if (!reloadPressed)
             {
-                globalMouseThread->updateConfig(
-                    config.detection_resolution,
+                config.loadConfig("config.ini");
 
-                    config.dpi,
-                    config.sensitivity,
-                    config.fovX,
-                    config.fovY,
-                    config.minSpeedMultiplier,
-                    config.maxSpeedMultiplier,
-                    config.predictionInterval,
-
-                    config.auto_shoot,
-                    config.bScope_multiplier
-                );
+                if (globalMouseThread)
+                {
+                    globalMouseThread->updateConfig(
+                        config.detection_resolution,
+                        config.dpi,
+                        config.sensitivity,
+                        config.fovX,
+                        config.fovY,
+                        config.minSpeedMultiplier,
+                        config.maxSpeedMultiplier,
+                        config.predictionInterval,
+                        config.auto_shoot,
+                        config.bScope_multiplier
+                    );
+                }
+                reloadPressed = true;
             }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        }
+        else
+        {
+            reloadPressed = false;
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));

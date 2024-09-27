@@ -170,7 +170,7 @@ void MouseThread::moveMouse(const Target& target)
     auto predicted_position = predict_target_position(target.x + target.w / 2, target.y + target.h / 2);
     auto movement = calc_movement(predicted_position.first, predicted_position.second);
 
-    if (serial && config.arduino_enable)
+    if (serial)
     {
         serial->move(static_cast<INT>(movement.first), static_cast<INT>(movement.second));
     }
@@ -189,16 +189,17 @@ void MouseThread::moveMouse(const Target& target)
 void MouseThread::shootMouse(const Target& target)
 {
     auto bScope = check_target_in_scope(target.x, target.y, target.w, target.h, config.bScope_multiplier);
+    
     if (bScope)
     {
-        if (config.arduino_enable && serial)
+        if (serial)
         {
             serial->press();
         }
     }
     else
     {
-        if (serial) // nullptr
+        if (serial)
         {
             serial->release();
         }

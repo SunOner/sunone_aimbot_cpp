@@ -242,7 +242,7 @@ void OverlayThread()
             }
         }
 
-        if (GetAsyncKeyState(KeyCodes::getKeyCode(config.button_open_overlay)) & 0x1)
+        if (isAnyKeyPressed(config.button_open_overlay) & 0x1)
         {
             show_overlay = !show_overlay;
 

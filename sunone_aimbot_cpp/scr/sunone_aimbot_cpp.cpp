@@ -18,7 +18,7 @@
 #include "sunone_aimbot_cpp.h"
 #include "keyboard_listener.h"
 #include "overlay.h"
-
+#include "SerialConnection.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 
@@ -84,7 +84,11 @@ int main()
         return -1;
     }
 
-    SerialConnection serial(config.arduino_port, config.arduino_baudrate);
+    SerialConnection* serial = nullptr;
+    if (config.arduino_enable)
+    {
+        serial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
+    }
 
     MouseThread mouseThread(
         config.detection_resolution,
@@ -97,7 +101,7 @@ int main()
         config.predictionInterval,
         config.auto_shoot,
         config.bScope_multiplier,
-        config.arduino_enable ? &serial : nullptr
+        serial
     );
 
     globalMouseThread = &mouseThread;
@@ -117,6 +121,11 @@ int main()
     dispThread.join();
     mouseMovThread.join();
     overlayThread.join();
+
+    if (serial)
+    {
+        delete serial;
+    }
 
     return 0;
 }

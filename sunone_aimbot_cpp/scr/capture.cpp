@@ -17,6 +17,7 @@
 #include "detector.h"
 #include "sunone_aimbot_cpp.h"
 #include "keycodes.h"
+#include "keyboard_listener.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -195,9 +196,9 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             detector.processFrame(resized);
             frameCV.notify_one();
 
-            bool buttonPressed = GetAsyncKeyState(KeyCodes::getKeyCode(config.screenshot_button)) & 0x8000;
+            bool buttonPressed = isAnyKeyPressed(config.screenshot_button) & 0x8000;
 
-            if (buttonPressed && config.screenshot_button != "None")
+            if (buttonPressed)
             {
                 auto now = std::chrono::steady_clock::now();
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count();

@@ -10,6 +10,9 @@ public:
     SerialConnection(const std::string& port, unsigned int baud_rate);
     ~SerialConnection();
 
+    bool is_open_;
+    bool isOpen() const;
+
     void write(const std::string& data);
     std::string read();
 

@@ -10,12 +10,13 @@
 #include "sunone_aimbot_cpp.h"
 
 SerialConnection::SerialConnection(const std::string& port, unsigned int baud_rate)
-    : serial_port_(io_service_)
+    : serial_port_(io_service_), is_open_(false)
 {
     try
     {
         serial_port_.open(port);
         serial_port_.set_option(boost::asio::serial_port_base::baud_rate(baud_rate));
+        is_open_ = true;
     }
     catch (boost::system::system_error& e)
     {
@@ -23,6 +24,10 @@ SerialConnection::SerialConnection(const std::string& port, unsigned int baud_ra
     }
 }
 
+bool SerialConnection::isOpen() const
+{
+    return is_open_;
+}
 SerialConnection::~SerialConnection()
 {
     if (serial_port_.is_open())
@@ -33,7 +38,10 @@ SerialConnection::~SerialConnection()
 
 void SerialConnection::write(const std::string& data)
 {
-    boost::asio::write(serial_port_, boost::asio::buffer(data));
+    if (is_open_)
+    {
+        boost::asio::write(serial_port_, boost::asio::buffer(data));
+    }
 }
 
 std::string SerialConnection::read()
@@ -65,6 +73,8 @@ void SerialConnection::release()
 
 void SerialConnection::move(int x, int y)
 {
+    if (!is_open_) return;
+
     if (x < std::numeric_limits<int>::min() || x > std::numeric_limits<int>::max() ||
         y < std::numeric_limits<int>::min() || y > std::numeric_limits<int>::max())
     {
