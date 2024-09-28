@@ -41,6 +41,7 @@ sunone_aimbot_cpp/models/sunxds_0.6.3.engine
 .vs
 sunone_aimbot_cpp/x64
 x64
+packages
 
 # imgui
 sunone_aimbot_cpp/imconfig.h

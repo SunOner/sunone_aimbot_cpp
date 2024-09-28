@@ -59,16 +59,16 @@ Click the image above to watch the installation tutorial video.
    Download and install from the [official website](https://visualstudio.microsoft.com/vs/community/).
 
 2. **Install Windows SDK**  
-   Ensure you have Windows SDK version **10.0.22000.194** installed.
+   Ensure you have Windows SDK version **10.0.26100.0** installed.
 
 3. **Install CUDA and cuDNN**  
-   - **CUDA 12.4**  
-     Download from [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit).
-   - **cuDNN 9.1**  
-     Available on the [NVIDIA cuDNN](https://developer.nvidia.com/cudnn) website.
+	- **CUDA 12.4**  
+		Download from [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit).
+	- **cuDNN 9.1**  
+		Available on the [NVIDIA cuDNN](https://developer.nvidia.com/cudnn) website.
 
 4. **Set Up Project Structure**  
-   Create a folder named `modules` in the directory `sunone_aimbot_cpp\sunone_aimbot_cpp\modules`.
+	Create a folder named `modules` in the directory `sunone_aimbot_cpp\sunone_aimbot_cpp\modules`.
 
 5. **Download Required Libraries**  
    - [Boost](https://disk.yandex.ru/d/O8XkcKeQ3vNDFg)
@@ -77,40 +77,41 @@ Click the image above to watch the installation tutorial video.
    - [ImGui-1.91.2](https://github.com/ocornut/imgui/releases/tag/v1.91.2)
 
 6. **Extract Libraries**  
-   Extract the downloaded libraries into the respective directories:
-   - `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\boost_1_82_0`
-   - `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\opencv` *(Rename `opencv-4.10.0` to `opencv`)*
-   - `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\TensorRT-10.3.0.26`
-   - `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\imgui-1.91.2`
+	Extract the downloaded libraries into the respective directories:
+		- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\boost_1_82_0`
+		- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\opencv` *(Rename `opencv-4.10.0` to `opencv`)*
+		- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\TensorRT-10.3.0.26`
+		- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\imgui-1.91.2`
 
    Additionally, copy all `.h` and `.cpp` files from `imgui-1.91.2` to `sunone_aimbot_cpp\sunone_aimbot_cpp\`.
 
 7. **Compile Boost Libraries**  
-   - Navigate to the Boost directory:
-     ```bash
-     cd sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0
-     ```
-   - Run the bootstrap script:
-     ```bash
-     bootstrap.bat vc142
-     ```
-   - After successful bootstrapping, build Boost:
-     ```bash
-     b2.exe --build-type=complete link=static runtime-link=static threading=multi variant=release
-     ```
-
+	- Navigate to the Boost directory:
+	```bash
+	cd sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0
+	```
+	- Run the bootstrap script:
+	```bash
+	bootstrap.bat vc142
+	```
+	- After successful bootstrapping, build Boost:
+	```bash
+	b2.exe --build-type=complete link=static runtime-link=static threading=multi variant=release
+	```
+	
 8. **Configure Project Settings**  
-   - Open the project in Visual Studio.
-   - Ensure all library paths are correctly set in **Project Properties** under **Library Directories**.
-
+	- Open the project in Visual Studio.
+	- Ensure all library paths are correctly set in **Project Properties** under **Library Directories**.
+	- Go to Nuget packages and install `Microsoft.Windows.CppWinRT`.
+	
 9. **Verify CUDA Integration**  
-   - Right-click on the project in Visual Studio.
-   - Navigate to **Build Dependencies** > **Build Customizations**.
-   - Ensure that **CUDA 12.4** (.targets, .props) is included.
-
+	- Right-click on the project in Visual Studio.
+	- Navigate to **Build Dependencies** > **Build Customizations**.
+	- Ensure that **CUDA 12.4** (.targets, .props) is included.
+	
 10. **Build the Project**  
-    - Switch the build configuration to **Release**.
-    - Build the project by selecting **Build** > **Build Solution**.
+	- Switch the build configuration to **Release**.
+	- Build the project by selecting **Build** > **Build Solution**.
 
 ## 📚 References
 
@@ -119,7 +120,7 @@ Click the image above to watch the installation tutorial video.
 - [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/)
 - [Boost](https://www.boost.org/)
 - [ImGui](https://github.com/ocornut/imgui)
-- [Desktop Duplication API](https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/desktop-dup-api)
+- [CppWinRT](https://github.com/microsoft/cppwinrt)
 - [Python AI AIMBOT](https://github.com/SunOner/sunone_aimbot)
 
 ## 📄 Licenses

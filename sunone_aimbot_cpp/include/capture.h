@@ -7,5 +7,6 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT);
 
 extern int screenWidth;
 extern int screenHeight;
+void CloseCapture();
 
 #endif // CAPTURE_H

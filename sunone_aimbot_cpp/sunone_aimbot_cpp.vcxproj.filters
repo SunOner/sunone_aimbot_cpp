@@ -99,4 +99,7 @@
     <ClInclude Include="imstb_truetype.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
 </Project>

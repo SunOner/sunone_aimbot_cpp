@@ -12,6 +12,7 @@
 #include "mouse.h"
 #include "keycodes.h"
 #include "sunone_aimbot_cpp.h"
+#include "capture.h"
 
 extern std::atomic<bool> shouldExit;
 extern std::atomic<bool> aiming;
@@ -43,6 +44,7 @@ void keyboardListener()
         if (isAnyKeyPressed(config.button_exit))
         {
             shouldExit = true;
+            CloseCapture();
             quick_exit(0);
         }
 
