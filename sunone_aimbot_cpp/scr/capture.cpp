@@ -117,6 +117,7 @@ public:
         );
 
         session = framePool.CreateCaptureSession(captureItem);
+        session.IsBorderRequired(false);        
         session.StartCapture();
     }
 
