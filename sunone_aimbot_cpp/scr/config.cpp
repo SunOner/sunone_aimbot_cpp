@@ -110,7 +110,7 @@ bool Config::saveConfig(const std::string& filename)
     file << "# Target\n";
     file << "disable_headshot = " << (disable_headshot ? "true" : "false") << "\n";
     file << "body_y_offset = " << std::fixed << std::setprecision(2) << body_y_offset << "\n\n";
-    file << "ignore_third_person" << (ignore_third_person ? "true" : "false") << "\n";
+    file << "ignore_third_person = " << (ignore_third_person ? "true" : "false") << "\n";
 
     file << "# Mouse move\n";
     file << "dpi = " << dpi << "\n";
