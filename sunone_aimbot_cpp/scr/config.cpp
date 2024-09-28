@@ -32,7 +32,8 @@ bool Config::loadConfig(const std::string& filename)
         // Target
         disable_headshot = pt.get<bool>("disable_headshot", false);
         body_y_offset = pt.get<float>("body_y_offset", 0.0f);
-        
+        ignore_third_person = pt.get<bool>("ignore_third_person", false);
+
         // Mouse
         dpi = pt.get<int>("dpi", 0);
         sensitivity = pt.get<float>("sensitivity", 0.0f);
@@ -109,6 +110,7 @@ bool Config::saveConfig(const std::string& filename)
     file << "# Target\n";
     file << "disable_headshot = " << (disable_headshot ? "true" : "false") << "\n";
     file << "body_y_offset = " << std::fixed << std::setprecision(2) << body_y_offset << "\n\n";
+    file << "ignore_third_person" << (ignore_third_person ? "true" : "false") << "\n";
 
     file << "# Mouse move\n";
     file << "dpi = " << dpi << "\n";

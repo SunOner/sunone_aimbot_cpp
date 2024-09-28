@@ -50,7 +50,11 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
         minDistance = std::numeric_limits<double>::max();
         for (size_t i = 0; i < boxes.size(); i++)
         {
-            if (classes[i] == 0 || classes[i] == 1 || classes[i] == 5 || classes[i] == 6)
+            if (classes[i] == 0 ||
+                classes[i] == 1 ||
+                classes[i] == 5 ||
+                classes[i] == 6 ||
+                classes[i] == 10 and config.ignore_third_person == false)
             {
                 int offsetY = static_cast<int>(boxes[i].height * config.body_y_offset);
                 cv::Point targetPoint(boxes[i].x + boxes[i].width / 2, boxes[i].y + offsetY);

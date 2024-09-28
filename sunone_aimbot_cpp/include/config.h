@@ -13,7 +13,8 @@ public:
     // Target
     bool disable_headshot;
     float body_y_offset;
-    
+    bool ignore_third_person;
+
     // Mouse
     int dpi;
     float sensitivity;
