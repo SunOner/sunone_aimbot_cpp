@@ -20,7 +20,7 @@ SerialConnection::SerialConnection(const std::string& port, unsigned int baud_ra
     }
     catch (boost::system::system_error& e)
     {
-        std::cerr << "Error opening serial port: " << e.what() << std::endl;
+        std::cerr << "Arduino: Unable to connect to the port." << std::endl;
     }
 }
 

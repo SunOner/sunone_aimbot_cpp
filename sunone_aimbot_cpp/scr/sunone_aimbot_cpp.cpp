@@ -62,9 +62,16 @@ void mouseThreadFunction(MouseThread& mouseThread)
                 mouseThread.moveMouse(*target);
                 if (config.auto_shoot)
                 {
-                    mouseThread.shootMouse(*target);
+                    mouseThread.pressMouse(*target);
                 }
                 delete target;
+            }
+            else
+            {
+                if (config.auto_shoot)
+                {
+                    mouseThread.releaseMouse();
+                }
             }
         }
         mouseThread.checkAndResetPredictions();

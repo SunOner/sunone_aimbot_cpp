@@ -186,18 +186,29 @@ void MouseThread::moveMouse(const Target& target)
     }
 }
 
-void MouseThread::shootMouse(const Target& target)
+void MouseThread::pressMouse(const Target& target)
 {
     auto bScope = check_target_in_scope(target.x, target.y, target.w, target.h, config.bScope_multiplier);
     
-    if (bScope)
+    if (bScope and config.arduino_enable)
     {
         if (serial)
         {
             serial->press();
         }
     }
-    else
+    if (!bScope and config.arduino_enable)
+    {
+        if (serial)
+        {
+            serial->release();
+        }
+    }
+}
+
+void MouseThread::releaseMouse()
+{
+    if (config.arduino_enable)
     {
         if (serial)
         {

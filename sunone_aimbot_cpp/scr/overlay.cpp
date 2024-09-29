@@ -9,6 +9,7 @@
 #include <atomic>
 #include <d3d11.h>
 #include <dxgi.h>
+
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -33,8 +34,35 @@ bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
+
+ID3D11BlendState* g_pBlendState = nullptr;
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+bool InitializeBlendState()
+{
+    D3D11_BLEND_DESC blendDesc;
+    ZeroMemory(&blendDesc, sizeof(blendDesc));
+
+    blendDesc.AlphaToCoverageEnable = FALSE;
+    blendDesc.RenderTarget[0].BlendEnable = TRUE;
+    blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+    blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+    blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+    blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+    blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+    HRESULT hr = g_pd3dDevice->CreateBlendState(&blendDesc, &g_pBlendState);
+    if (FAILED(hr))
+        return false;
+
+    float blendFactor[4] = { 0.f, 0.f, 0.f, 0.f };
+    g_pd3dDeviceContext->OMSetBlendState(g_pBlendState, blendFactor, 0xffffffff);
+
+    return true;
+}
 
 void SetOverlayClickable(HWND hwnd, bool clickable)
 {
@@ -60,8 +88,8 @@ bool CreateDeviceD3D(HWND hWnd)
     sd.BufferDesc.Width = screenWidth;
     sd.BufferDesc.Height = screenHeight;
     sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    sd.BufferDesc.RefreshRate.Numerator = 144;
-    sd.BufferDesc.RefreshRate.Denominator = 1;
+    sd.BufferDesc.RefreshRate.Numerator = 0;
+    sd.BufferDesc.RefreshRate.Denominator = 0;
     sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     sd.OutputWindow = hWnd;
     sd.SampleDesc.Count = 1;
@@ -97,6 +125,9 @@ bool CreateDeviceD3D(HWND hWnd)
     if (res != S_OK)
         return false;
 
+    if (!InitializeBlendState())
+        return false;
+
     CreateRenderTarget();
     return true;
 }
@@ -120,6 +151,7 @@ void CleanupDeviceD3D()
     if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = NULL; }
     if (g_pd3dDeviceContext) { g_pd3dDeviceContext->Release(); g_pd3dDeviceContext = NULL; }
     if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = NULL; }
+    if (g_pBlendState) { g_pBlendState->Release(); g_pBlendState = nullptr; }
 }
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -187,32 +219,6 @@ bool CreateOverlayWindow()
     }
 
     return true;
-}
-
-void CreateAlphaBlendState()
-{
-    D3D11_BLEND_DESC blendDesc;
-    ZeroMemory(&blendDesc, sizeof(blendDesc));
-
-    blendDesc.AlphaToCoverageEnable = FALSE;
-    blendDesc.RenderTarget[0].BlendEnable = TRUE;
-    blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-    blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-    blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-    blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-    blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-    blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-
-    ID3D11BlendState* blendState = nullptr;
-    HRESULT hr = g_pd3dDevice->CreateBlendState(&blendDesc, &blendState);
-
-    if (SUCCEEDED(hr))
-    {
-        float blendFactor[4] = { 0.f, 0.f, 0.f, 0.f };
-        g_pd3dDeviceContext->OMSetBlendState(blendState, blendFactor, 0xffffffff);
-        blendState->Release();
-    }
 }
 
 void OverlayThread()
@@ -327,9 +333,8 @@ void OverlayThread()
             }
 
             ImGui::End();
-
-            CreateAlphaBlendState();
             ImGui::Render();
+
             const float clear_color_with_alpha[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
             g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
             g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);

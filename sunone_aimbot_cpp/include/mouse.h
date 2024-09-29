@@ -49,7 +49,8 @@ public:
     double calculate_speed_multiplier(double distance);
     bool check_target_in_scope(double target_x, double target_y, double target_w, double target_h, double reduction_factor);
     void moveMouse(const Target& target);
-    void shootMouse(const Target& target);
+    void pressMouse(const Target& target);
+    void releaseMouse();
     void resetPrediction();
     void checkAndResetPredictions();
 };
