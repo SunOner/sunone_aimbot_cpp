@@ -44,16 +44,15 @@ void mouseThreadFunction(MouseThread& mouseThread)
         std::vector<cv::Rect> boxes;
         std::vector<int> classes;
 
-        {
-            std::unique_lock<std::mutex> lock(detector.detectionMutex);
-            detector.detectionCV.wait(lock, [&]() { return detector.detectionVersion > lastDetectionVersion || shouldExit; });
-            if (shouldExit) break;
+        std::unique_lock<std::mutex> lock(detector.detectionMutex);
+        detector.detectionCV.wait(lock, [&]() { return detector.detectionVersion > lastDetectionVersion || shouldExit; });
+        if (shouldExit) break;
 
-            lastDetectionVersion = detector.detectionVersion;
+        lastDetectionVersion = detector.detectionVersion;
 
-            boxes = detector.detectedBoxes;
-            classes = detector.detectedClasses;
-        }
+        boxes = detector.detectedBoxes;
+        classes = detector.detectedClasses;
+    
         if (aiming)
         {
             Target* target = sortTargets(boxes, classes, config.detection_resolution, config.detection_resolution, config.disable_headshot);

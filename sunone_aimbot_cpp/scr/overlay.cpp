@@ -39,6 +39,9 @@ ID3D11BlendState* g_pBlendState = nullptr;
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+int overlayWidth = 500;
+int overlayHeight = 320;
+
 bool InitializeBlendState()
 {
     D3D11_BLEND_DESC blendDesc;
@@ -64,29 +67,13 @@ bool InitializeBlendState()
     return true;
 }
 
-void SetOverlayClickable(HWND hwnd, bool clickable)
-{
-    LONG exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-    if (clickable)
-    {
-        exStyle &= ~WS_EX_TRANSPARENT;
-    }
-    else
-    {
-        exStyle |= WS_EX_TRANSPARENT;
-    }
-    SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
-    SetWindowPos(hwnd, NULL, 0, 0, 0, 0,
-        SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-}
-
 bool CreateDeviceD3D(HWND hWnd)
 {
     DXGI_SWAP_CHAIN_DESC sd;
     ZeroMemory(&sd, sizeof(sd));
     sd.BufferCount = 2;
-    sd.BufferDesc.Width = screenWidth;
-    sd.BufferDesc.Height = screenHeight;
+    sd.BufferDesc.Width = overlayWidth;
+    sd.BufferDesc.Height = overlayHeight;
     sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     sd.BufferDesc.RefreshRate.Numerator = 0;
     sd.BufferDesc.RefreshRate.Denominator = 0;
@@ -164,9 +151,16 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_SIZE:
         if (g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED)
         {
-            CleanupRenderTarget();
-            g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
-            CreateRenderTarget();
+            RECT rect;
+            if (GetClientRect(hWnd, &rect))
+            {
+                UINT width = rect.right - rect.left;
+                UINT height = rect.bottom - rect.top;
+
+                CleanupRenderTarget();
+                g_pSwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
+                CreateRenderTarget();
+            }
         }
         return 0;
     case WM_DESTROY:
@@ -197,13 +191,10 @@ bool CreateOverlayWindow()
                       _T("ImGui Overlay"), NULL };
     ::RegisterClassEx(&wc);
 
-    screenWidth = GetSystemMetrics(SM_CXSCREEN);
-    screenHeight = GetSystemMetrics(SM_CYSCREEN);
-
     g_hwnd = ::CreateWindowEx(
-        WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE,
+        WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_NOACTIVATE,
         wc.lpszClassName, _T("Overlay"),
-        WS_POPUP, 0, 0, screenWidth, screenHeight,
+        WS_POPUP, 0, 0, overlayWidth, overlayHeight,
         NULL, NULL, wc.hInstance, NULL);
 
     if (g_hwnd == NULL)
@@ -255,12 +246,10 @@ void OverlayThread()
             if (show_overlay)
             {
                 ShowWindow(g_hwnd, SW_SHOW);
-                SetOverlayClickable(g_hwnd, true);
             }
             else
             {
                 ShowWindow(g_hwnd, SW_HIDE);
-                SetOverlayClickable(g_hwnd, false);
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -272,7 +261,10 @@ void OverlayThread()
             ImGui_ImplWin32_NewFrame();
             ImGui::NewFrame();
 
-            ImGui::Begin("Options", &show_overlay, ImGuiWindowFlags_AlwaysAutoResize);
+            ImGui::SetNextWindowPos(ImVec2(0, 0));
+            ImGui::SetNextWindowSize(ImVec2((float)overlayWidth, (float)overlayHeight));
+
+            ImGui::Begin("Options", &show_overlay, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
             {
                 std::lock_guard<std::mutex> lock(configMutex);
