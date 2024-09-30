@@ -26,8 +26,10 @@ bool Config::loadConfig(const std::string& filename)
     {
         boost::property_tree::ini_parser::read_ini(filename, pt);
 
-        // Detection window
+        // Capture
         detection_resolution = pt.get<int>("detection_resolution", 0);
+        capture_borders = pt.get<bool>("capture_borders", true);
+        capture_cursor = pt.get<bool>("capture_cursor", true);
 
         // Target
         disable_headshot = pt.get<bool>("disable_headshot", false);

@@ -7,9 +7,10 @@
 class Config
 {
 public:
-    // Detection window
+    // Capture
     int detection_resolution;
-
+    bool capture_borders;
+    bool capture_cursor;
     // Target
     bool disable_headshot;
     float body_y_offset;

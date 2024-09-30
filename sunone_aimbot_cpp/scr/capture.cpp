@@ -117,8 +117,17 @@ public:
         );
 
         session = framePool.CreateCaptureSession(captureItem);
-        session.IsBorderRequired(false);
-        session.IsCursorCaptureEnabled(false);
+        
+        if (!config.capture_borders)
+        {
+            session.IsBorderRequired(false);
+        }
+        
+        if (!config.capture_cursor)
+        {
+            session.IsCursorCaptureEnabled(false);
+        }
+
         session.StartCapture();
     }
 
