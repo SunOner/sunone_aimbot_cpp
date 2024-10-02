@@ -109,8 +109,8 @@ bool Config::saveConfig(const std::string& filename)
 
     file << "# Detection window\n";
     file << "detection_resolution = " << detection_resolution << "\n";
-    file << "capture_borders = " << capture_borders << "\n";
-    file << "capture_cursor = " << capture_cursor << "\n\n";
+    file << "capture_borders = " << (capture_borders ? "true" : "false") << "\n";
+    file << "capture_cursor = " << (capture_cursor ? "true" : "false") << "\n\n";
 
     file << "# Target\n";
     file << "disable_headshot = " << (disable_headshot ? "true" : "false") << "\n";
