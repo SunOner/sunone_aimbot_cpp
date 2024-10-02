@@ -35,7 +35,8 @@
 sunone_aimbot_cpp/modules/
 
 # some models (temp)
-sunone_aimbot_cpp/models/sunxds_0.6.3.engine
+sunone_aimbot_cpp/models/sunxds_0.6.5.onnx
+sunone_aimbot_cpp/models/sunxds_0.6.5.engine
 
 # others
 .vs

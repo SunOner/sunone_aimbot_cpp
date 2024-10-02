@@ -11,6 +11,7 @@ public:
     int detection_resolution;
     bool capture_borders;
     bool capture_cursor;
+
     // Target
     bool disable_headshot;
     float body_y_offset;
@@ -39,6 +40,7 @@ public:
     std::string ai_model;
     int engine_image_size;
     float confidence_threshold;
+    float nms_threshold;
 
     // Buttons
     std::vector<std::string> button_targeting;

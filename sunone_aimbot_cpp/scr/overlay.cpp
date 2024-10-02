@@ -269,7 +269,7 @@ void OverlayThread()
             {
                 std::lock_guard<std::mutex> lock(configMutex);
 
-                ImGui::SliderInt("DPI", &config.dpi, 800, 5000);
+                ImGui::SliderInt("DPI", &config.dpi, 800, 5000, "%d");
                 ImGui::SliderFloat("Sensitivity", &config.sensitivity, 0.1f, 10.0f, "%.1f");
                 ImGui::Checkbox("Disable headshot", &config.disable_headshot);
                 ImGui::SliderFloat("Body Y offset", &config.body_y_offset, -2.0f, 2.0f, "%.1f");

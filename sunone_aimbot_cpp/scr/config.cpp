@@ -59,6 +59,7 @@ bool Config::loadConfig(const std::string& filename)
         ai_model = pt.get<std::string>("ai_model", "sunxds_0.5.6.engine");
         engine_image_size = pt.get<int>("engine_image_size", 0);
         confidence_threshold = pt.get<float>("confidence_threshold", 0.0f);
+        nms_threshold = pt.get<float>("nms_threshold", 0.5);
 
         // Buttons
         button_targeting = splitString(pt.get<std::string>("button_targeting", "RightMouseButton"));
@@ -107,12 +108,14 @@ bool Config::saveConfig(const std::string& filename)
     }
 
     file << "# Detection window\n";
-    file << "detection_resolution = " << detection_resolution << "\n\n";
+    file << "detection_resolution = " << detection_resolution << "\n";
+    file << "capture_borders = " << capture_borders << "\n";
+    file << "capture_cursor = " << capture_cursor << "\n\n";
 
     file << "# Target\n";
     file << "disable_headshot = " << (disable_headshot ? "true" : "false") << "\n";
-    file << "body_y_offset = " << std::fixed << std::setprecision(2) << body_y_offset << "\n\n";
-    file << "ignore_third_person = " << (ignore_third_person ? "true" : "false") << "\n";
+    file << "body_y_offset = " << std::fixed << std::setprecision(2) << body_y_offset << "\n";
+    file << "ignore_third_person = " << (ignore_third_person ? "true" : "false") << "\n\n";
 
     file << "# Mouse move\n";
     file << "dpi = " << dpi << "\n";
@@ -131,12 +134,13 @@ bool Config::saveConfig(const std::string& filename)
     file << "arduino_enable = " << (arduino_enable ? "true" : "false") << "\n";
     file << "arduino_baudrate = " << arduino_baudrate << "\n";
     file << "arduino_port = " << arduino_port << "\n";
-    file << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n\n";
+    file << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n";
 
     file << "# AI\n";
     file << "ai_model = " << ai_model << "\n";
     file << "engine_image_size = " << engine_image_size << "\n";
-    file << "confidence_threshold = " << std::fixed << std::setprecision(1) << confidence_threshold << "\n\n";
+    file << "confidence_threshold = " << std::fixed << std::setprecision(1) << confidence_threshold << "\n";
+    file << "nms_threshold = " << std::fixed << std::setprecision(1) << nms_threshold << "\n\n";
 
     file << "# Buttons\n";
     file << "button_targeting = " << joinStrings(button_targeting) << "\n";

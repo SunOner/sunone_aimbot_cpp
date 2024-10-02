@@ -29,11 +29,14 @@ void displayThread()
 
     std::vector<cv::Rect> boxes;
     std::vector<int> classes;
-
+    std::vector<std::string> cv_classes{ "player", "bot", "weapon", "outline",
+                                         "dead_body", "hideout_target_human",
+                                         "hideout_target_balls", "head", "smoke", "fire",
+                                         "third_person" };
     int frameCount = 0;
     double fps = 0.0;
 
-    std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+    auto startTime = std::chrono::high_resolution_clock::now();
 
     if (config.show_fps)
     {
@@ -42,10 +45,19 @@ void displayThread()
         startTime = std::chrono::high_resolution_clock::now();
     }
 
-    namedWindow(config.window_name);
+    namedWindow(config.window_name, WINDOW_NORMAL);
     if (config.always_on_top)
     {
         setWindowProperty(config.window_name, WND_PROP_TOPMOST, 1);
+    }
+
+    int currentSize = config.window_size != 100 ?
+        static_cast<int>((config.detection_resolution * config.window_size) / 100)
+        : config.detection_resolution;
+
+    if (config.window_size != 100)
+    {
+        resizeWindow(config.window_name, currentSize, currentSize);
     }
 
     while (!shouldExit)
@@ -77,7 +89,14 @@ void displayThread()
                 adjustedBox.height = std::min(frame.rows - adjustedBox.y, adjustedBox.height);
 
                 rectangle(frame, adjustedBox, cv::Scalar(0, 255, 0), 2);
-                putText(frame, std::to_string(classes[i]), adjustedBox.tl(), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+
+                std::string className = cv_classes[classes[i]];
+
+                int baseline = 0;
+                cv::Size textSize = cv::getTextSize(className, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
+                cv::Point textOrg(adjustedBox.x, adjustedBox.y - 5);
+
+                putText(frame, className, textOrg, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
             }
         }
 
@@ -97,33 +116,31 @@ void displayThread()
             putText(frame, "FPS: " + std::to_string(static_cast<int>(fps)), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 2);
         }
 
+        cv::Mat displayFrame;
+
         if (config.window_size != 100)
         {
-            int size = static_cast<int>((config.detection_resolution * config.window_size) / 100);
-
-            Mat resized;
-            cv::resize(frame, resized, cv::Size(size, size));
-
-            try
+            int desiredSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
+            if (desiredSize != currentSize)
             {
-                resizeWindow(config.window_name, size, size);
-                imshow(config.window_name, resized);
+                resizeWindow(config.window_name, desiredSize, desiredSize);
+                currentSize = desiredSize;
             }
-            catch(Exception) // window closed by user
-            {
-                break;
-            }
+
+            cv::resize(frame, displayFrame, cv::Size(currentSize, currentSize));
         }
         else
         {
-            try
-            {
-                imshow(config.window_name, frame);
-            }
-            catch (Exception) // window closed by user
-            {
-                break;
-            }
+            displayFrame = frame;
+        }
+
+        try
+        {
+            imshow(config.window_name, displayFrame);
+        }
+        catch (cv::Exception&)
+        {
+            break;
         }
 
         if (waitKey(1) == 27) shouldExit = true;

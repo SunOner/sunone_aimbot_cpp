@@ -33,9 +33,17 @@ Detector::~Detector()
     if (context) delete context;
     if (engine) delete engine;
     if (runtime) delete runtime;
-    cudaFree(d_input);
-    cudaFree(d_output);
     cudaStreamDestroy(stream);
+
+    for (auto& binding : inputBindings)
+    {
+        cudaFree(binding.second);
+    }
+
+    for (auto& binding : outputBindings)
+    {
+        cudaFree(binding.second);
+    }
 }
 
 void Detector::initialize(const std::string& modelFile)
@@ -44,29 +52,112 @@ void Detector::initialize(const std::string& modelFile)
     loadEngine(modelFile);
     context = engine->createExecutionContext();
 
-    auto inputDims = engine->getTensorShape("images");
-    auto outputDims = engine->getTensorShape("output0");
+    getInputNames();
+    getOutputNames();
+    getBindings();
+    getNumberOfClasses();
 
-    if (inputDims.d[0] == -1)
+    if (!inputNames.empty())
     {
-        inputDims.d[0] = 1;
-        context->setInputShape("images", inputDims);
+        const std::string& inputName = inputNames[0];
+        inputDims = engine->getTensorShape(inputName.c_str());
     }
-
-    inputSize = 1;
-    for (int i = 0; i < inputDims.nbDims; ++i)
+    else
     {
-        inputSize *= inputDims.d[i];
+        // TODO: (no input tensors found)
     }
+}
 
-    outputSize = 1;
-    for (int i = 0; i < outputDims.nbDims; ++i)
+size_t Detector::getSizeByDim(const nvinfer1::Dims& dims)
+{
+    size_t size = 1;
+    for (int i = 0; i < dims.nbDims; ++i)
     {
-        outputSize *= outputDims.d[i];
+        size *= dims.d[i];
     }
+    return size;
+}
 
-    cudaMalloc(&d_input, inputSize * sizeof(float));
-    cudaMalloc(&d_output, outputSize * sizeof(float));
+size_t Detector::getElementSize(nvinfer1::DataType dtype)
+{
+    switch (dtype)
+    {
+    case nvinfer1::DataType::kFLOAT: return 4;
+    case nvinfer1::DataType::kHALF:  return 2;
+    case nvinfer1::DataType::kINT8:  return 1;
+    case nvinfer1::DataType::kINT32: return 4;
+    default: return 0;
+    }
+}
+
+void Detector::getInputNames()
+{
+    for (int i = 0; i < engine->getNbIOTensors(); ++i)
+    {
+        const char* name = engine->getIOTensorName(i);
+        if (engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT)
+        {
+            inputNames.emplace_back(name);
+            nvinfer1::Dims dims = engine->getTensorShape(name);
+            nvinfer1::DataType dtype = engine->getTensorDataType(name);
+            size_t size = getSizeByDim(dims) * getElementSize(dtype);
+            inputSizes[name] = size;
+        }
+    }
+}
+
+void Detector::getOutputNames()
+{
+    for (int i = 0; i < engine->getNbIOTensors(); ++i)
+    {
+        const char* name = engine->getIOTensorName(i);
+        if (engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT)
+        {
+            outputNames.emplace_back(name);
+            nvinfer1::Dims dims = engine->getTensorShape(name);
+            nvinfer1::DataType dtype = engine->getTensorDataType(name);
+            size_t size = getSizeByDim(dims) * getElementSize(dtype);
+            outputSizes[name] = size;
+
+            std::vector<int> dim;
+            for (int j = 0; j < dims.nbDims; ++j)
+            {
+                dim.push_back(dims.d[j]);
+            }
+            outputShapes[name] = dim;
+        }
+    }
+}
+
+void Detector::getBindings()
+{
+    for (const auto& name : inputNames)
+    {
+        size_t size = inputSizes[name];
+        void* ptr;
+        cudaMalloc(&ptr, size);
+        inputBindings[name] = ptr;
+    }
+    for (const auto& name : outputNames)
+    {
+        size_t size = outputSizes[name];
+        void* ptr;
+        cudaMalloc(&ptr, size);
+        outputBindings[name] = ptr;
+    }
+}
+
+void Detector::getNumberOfClasses()
+{
+    if (outputNames.size() > 0)
+    {
+        const std::string& outputName = outputNames[0];
+        const std::vector<int>& dims = outputShapes[outputName];
+        if (dims.size() > 0)
+        {
+            numClasses = dims.back() - 5;
+        }
+    }
 }
 
 void Detector::loadEngine(const std::string& engineFile)
@@ -120,21 +211,30 @@ void Detector::inferenceThread()
             frameReady = false;
         }
 
-        std::vector<float> inputData(inputSize);
-        preProcess(frame, inputData.data());
+        const std::string& inputName = inputNames[0];
+        nvinfer1::Dims inputDims = engine->getTensorShape(inputName.c_str());
 
-        cudaMemcpyAsync(d_input, inputData.data(), inputSize * sizeof(float), cudaMemcpyHostToDevice, stream);
+        std::vector<float> inputBuffer(getSizeByDim(inputDims));
+        preProcess(frame, inputBuffer.data());
+        cudaMemcpyAsync(inputBindings[inputName], inputBuffer.data(), inputSizes[inputName], cudaMemcpyHostToDevice, stream);
+        context->setTensorAddress(inputName.c_str(), inputBindings[inputName]);
 
-        context->setTensorAddress("images", d_input);
-        context->setTensorAddress("output0", d_output);
+        for (const auto& name : outputNames)
+        {
+            context->setTensorAddress(name.c_str(), outputBindings[name]);
+        }
 
         context->enqueueV3(stream);
 
-        std::vector<float> outputData(outputSize);
-        cudaMemcpyAsync(outputData.data(), d_output, outputSize * sizeof(float), cudaMemcpyDeviceToHost, stream);
-        cudaStreamSynchronize(stream);
+        for (const auto& name : outputNames)
+        {
+            size_t size = outputSizes[name];
+            std::vector<float> outputData(size / sizeof(float));
+            cudaMemcpyAsync(outputData.data(), outputBindings[name], size, cudaMemcpyDeviceToHost, stream);
+            cudaStreamSynchronize(stream);
 
-        postProcess(outputData.data(), outputSize);
+            postProcess(outputData.data(), outputData.size());
+        }
     }
 }
 
@@ -159,14 +259,19 @@ bool Detector::getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int
 
 void Detector::preProcess(const cv::Mat& frame, float* inputBuffer)
 {
+    int inputH = inputDims.d[2];
+    int inputW = inputDims.d[3];
+
+    cv::Mat resized;
+    cv::resize(frame, resized, cv::Size(inputW, inputH));
     cv::Mat floatMat;
-    frame.convertTo(floatMat, CV_32F, 1.0 / 255.0);
+    resized.convertTo(floatMat, CV_32F, 1.0 / 255.0);
 
     cv::cvtColor(floatMat, floatMat, cv::COLOR_BGR2RGB);
     std::vector<cv::Mat> channels(3);
     cv::split(floatMat, channels);
 
-    int channelSize = frame.cols * frame.rows;
+    int channelSize = inputH * inputW;
     for (int i = 0; i < 3; ++i)
     {
         memcpy(inputBuffer + i * channelSize, channels[i].data, channelSize * sizeof(float));
@@ -176,22 +281,22 @@ void Detector::preProcess(const cv::Mat& frame, float* inputBuffer)
 void Detector::postProcess(float* output, int outputSize)
 {
     std::vector<cv::Rect> boxes;
+    std::vector<float> confidences;
     std::vector<int> classes;
 
-    int num_boxes = outputSize / 6;
+    int numDetections = outputSize / 6;
 
-    for (int i = 0; i < num_boxes; i++)
+    for (int i = 0; i < numDetections; ++i)
     {
-        float* box = output + i * 6;
-        float confidence = box[4];
-        int class_id = static_cast<int>(box[5]);
-
+        float* det = output + i * 6;
+        float confidence = det[4];
         if (confidence > config.confidence_threshold)
         {
-            float x = box[0];
-            float y = box[1];
-            float w = box[2];
-            float h = box[3];
+            int classId = static_cast<int>(det[5]);
+            float x = det[0];
+            float y = det[1];
+            float w = det[2];
+            float h = det[3];
 
             float scale = static_cast<float>(config.detection_resolution) / config.engine_image_size;
 
@@ -201,14 +306,27 @@ void Detector::postProcess(float* output, int outputSize)
             int height = static_cast<int>((h - y) * scale);
 
             boxes.emplace_back(x1, y1, width, height);
-            classes.push_back(class_id);
+            confidences.push_back(confidence);
+            classes.push_back(classId);
         }
+    }
+
+    std::vector<int> nmsIndices;
+    cv::dnn::NMSBoxes(boxes, confidences, config.confidence_threshold, config.nms_threshold, nmsIndices);
+
+    std::vector<cv::Rect> nmsBoxes;
+    std::vector<int> nmsClasses;
+
+    for (int idx : nmsIndices)
+    {
+        nmsBoxes.push_back(boxes[idx]);
+        nmsClasses.push_back(classes[idx]);
     }
 
     {
         std::lock_guard<std::mutex> lock(detectionMutex);
-        detectedBoxes = std::move(boxes);
-        detectedClasses = std::move(classes);
+        detectedBoxes = std::move(nmsBoxes);
+        detectedClasses = std::move(nmsClasses);
         detectionVersion++;
     }
 

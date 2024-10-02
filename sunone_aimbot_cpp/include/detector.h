@@ -7,6 +7,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <vector>
+#include <unordered_map>
 
 struct DetResult
 {
@@ -38,6 +39,7 @@ private:
     nvinfer1::IRuntime* runtime;
     nvinfer1::ICudaEngine* engine;
     nvinfer1::IExecutionContext* context;
+    nvinfer1::Dims inputDims;
     cudaStream_t stream;
 
     std::mutex inferenceMutex;
@@ -53,10 +55,21 @@ private:
     void preProcess(const cv::Mat& frame, float* inputBuffer);
     void postProcess(float* output, int outputSize);
 
-    void* d_input = nullptr;
-    void* d_output = nullptr;
-    size_t inputSize = 0;
-    size_t outputSize = 0;
+    std::vector<std::string> inputNames;
+    std::vector<std::string> outputNames;
+    std::unordered_map<std::string, size_t> inputSizes;
+    std::unordered_map<std::string, size_t> outputSizes;
+    std::unordered_map<std::string, void*> inputBindings;
+    std::unordered_map<std::string, void*> outputBindings;
+    std::unordered_map<std::string, std::vector<int>> outputShapes;
+    int numClasses;
+
+    size_t getSizeByDim(const nvinfer1::Dims& dims);
+    size_t getElementSize(nvinfer1::DataType dtype);
+    void getInputNames();
+    void getOutputNames();
+    void getBindings();
+    void getNumberOfClasses();
 };
 
 #endif // DETECTOR_H
