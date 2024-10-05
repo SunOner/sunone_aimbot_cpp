@@ -18,12 +18,11 @@ using namespace std;
 extern Logger logger;
 
 std::mutex frameMutex;
-std::atomic<bool> isProcessing{ false };
 extern std::atomic<bool> detectionPaused;
 
 Detector::Detector()
     : runtime(nullptr), engine(nullptr), context(nullptr),
-    frameReady(false), shouldExit(false), newDetectionAvailable(false), detectionVersion(0)
+    frameReady(false), shouldExit(false), detectionVersion(0)
 {
     cudaStreamCreate(&stream);
 }
@@ -61,11 +60,22 @@ void Detector::initialize(const std::string& modelFile)
     {
         const std::string& inputName = inputNames[0];
         inputDims = engine->getTensorShape(inputName.c_str());
+        size_t inputSize = getSizeByDim(inputDims);
+        inputBuffer.resize(inputSize);
     }
     else
     {
         // TODO: (no input tensors found)
     }
+
+    for (const auto& name : outputNames)
+    {
+        size_t size = outputSizes[name];
+        outputDataBuffers[name].resize(size / sizeof(float));
+    }
+
+    channels.resize(3);
+    scale = static_cast<float>(config.detection_resolution) / config.engine_image_size;
 }
 
 size_t Detector::getSizeByDim(const nvinfer1::Dims& dims)
@@ -187,13 +197,11 @@ void Detector::processFrame(const cv::Mat& frame)
             detectedBoxes.clear();
             detectedClasses.clear();
         }
-
         return;
     }
 
     std::unique_lock<std::mutex> lock(inferenceMutex);
     currentFrame = frame.clone();
-    latestFrame = frame.clone();
     frameReady = true;
     inferenceCV.notify_one();
 }
@@ -212,11 +220,11 @@ void Detector::inferenceThread()
         }
 
         const std::string& inputName = inputNames[0];
-        nvinfer1::Dims inputDims = engine->getTensorShape(inputName.c_str());
 
-        std::vector<float> inputBuffer(getSizeByDim(inputDims));
         preProcess(frame, inputBuffer.data());
+
         cudaMemcpyAsync(inputBindings[inputName], inputBuffer.data(), inputSizes[inputName], cudaMemcpyHostToDevice, stream);
+
         context->setTensorAddress(inputName.c_str(), inputBindings[inputName]);
 
         for (const auto& name : outputNames)
@@ -229,10 +237,14 @@ void Detector::inferenceThread()
         for (const auto& name : outputNames)
         {
             size_t size = outputSizes[name];
-            std::vector<float> outputData(size / sizeof(float));
+            std::vector<float>& outputData = outputDataBuffers[name];
             cudaMemcpyAsync(outputData.data(), outputBindings[name], size, cudaMemcpyDeviceToHost, stream);
-            cudaStreamSynchronize(stream);
+        }
+        cudaStreamSynchronize(stream);
 
+        for (const auto& name : outputNames)
+        {
+            const std::vector<float>& outputData = outputDataBuffers[name];
             postProcess(outputData.data(), outputData.size());
         }
     }
@@ -268,7 +280,6 @@ void Detector::preProcess(const cv::Mat& frame, float* inputBuffer)
     resized.convertTo(floatMat, CV_32F, 1.0 / 255.0);
 
     cv::cvtColor(floatMat, floatMat, cv::COLOR_BGR2RGB);
-    std::vector<cv::Mat> channels(3);
     cv::split(floatMat, channels);
 
     int channelSize = inputH * inputW;
@@ -278,27 +289,25 @@ void Detector::preProcess(const cv::Mat& frame, float* inputBuffer)
     }
 }
 
-void Detector::postProcess(float* output, int outputSize)
+void Detector::postProcess(const float* output, int outputSize)
 {
-    std::vector<cv::Rect> boxes;
-    std::vector<float> confidences;
-    std::vector<int> classes;
+    boxes.clear();
+    confidences.clear();
+    classes.clear();
 
     int numDetections = outputSize / 6;
-
     for (int i = 0; i < numDetections; ++i)
     {
-        float* det = output + i * 6;
+        const float* det = output + i * 6;
         float confidence = det[4];
         if (confidence > config.confidence_threshold)
         {
             int classId = static_cast<int>(det[5]);
+
             float x = det[0];
             float y = det[1];
             float w = det[2];
             float h = det[3];
-
-            float scale = static_cast<float>(config.detection_resolution) / config.engine_image_size;
 
             int x1 = static_cast<int>(x * scale);
             int y1 = static_cast<int>(y * scale);

@@ -48,12 +48,9 @@ private:
     cv::Mat currentFrame;
     bool frameReady;
 
-    bool newDetectionAvailable;
-    cv::Mat latestFrame;
-
     void loadEngine(const std::string& engineFile);
     void preProcess(const cv::Mat& frame, float* inputBuffer);
-    void postProcess(float* output, int outputSize);
+    void postProcess(const float* output, int outputSize);
 
     std::vector<std::string> inputNames;
     std::vector<std::string> outputNames;
@@ -70,6 +67,14 @@ private:
     void getOutputNames();
     void getBindings();
     void getNumberOfClasses();
+
+    std::vector<float> inputBuffer;
+    std::unordered_map<std::string, std::vector<float>> outputDataBuffers;
+    std::vector<cv::Rect> boxes;
+    std::vector<float> confidences;
+    std::vector<int> classes;
+    float scale;
+    std::vector<cv::Mat> channels;
 };
 
 #endif // DETECTOR_H

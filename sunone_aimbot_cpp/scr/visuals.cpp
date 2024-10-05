@@ -36,6 +36,7 @@ void displayThread()
     int frameCount = 0;
     double fps = 0.0;
 
+    // TODO: Move FPS calculations in capture.cpp
     auto startTime = std::chrono::high_resolution_clock::now();
 
     if (config.show_fps)

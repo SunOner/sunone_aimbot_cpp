@@ -55,6 +55,8 @@ MouseThread::MouseThread(
 {
 }
 
+double reset_prediction_time = 1.0;
+
 void MouseThread::updateConfig(int resolution, double dpi, double sensitivity, int fovX, int fovY,
     double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval,
     bool auto_shoot, float bScope_multiplier)
@@ -93,7 +95,7 @@ std::pair<double, double> MouseThread::predict_target_position(double target_x, 
 
     double delta_time = std::chrono::duration<double>(current_time - prev_time).count();
 
-    if (delta_time > 1.0)
+    if (delta_time > reset_prediction_time)
     {
         prev_x = target_x;
         prev_y = target_y;
@@ -137,7 +139,8 @@ std::pair<double, double> MouseThread::calc_movement(double target_x, double tar
     double offset_y = target_y - center_y;
 
     double distance = std::sqrt(offset_x * offset_x + offset_y * offset_y);
-
+    
+    
     double speed_multiplier = calculate_speed_multiplier(distance);
     
     double degrees_per_pixel_x = fov_x / screen_width;
@@ -232,7 +235,7 @@ void MouseThread::checkAndResetPredictions()
     auto current_time = std::chrono::steady_clock::now();
     double elapsed = std::chrono::duration<double>(current_time - last_target_time).count();
 
-    if (elapsed > 1.0 && target_detected.load())
+    if (elapsed > reset_prediction_time && target_detected.load())
     {
         resetPrediction();
     }

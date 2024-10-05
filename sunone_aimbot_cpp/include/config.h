@@ -9,6 +9,7 @@ class Config
 public:
     // Capture
     int detection_resolution;
+    double capture_fps;
     bool capture_borders;
     bool capture_cursor;
 

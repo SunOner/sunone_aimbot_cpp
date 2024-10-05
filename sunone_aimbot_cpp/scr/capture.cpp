@@ -112,7 +112,7 @@ public:
         framePool = winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool::CreateFreeThreaded(
             device,
             winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized,
-            2,
+            1,
             captureItem.Size()
         );
 
@@ -150,7 +150,15 @@ public:
 
     cv::Mat GetNextFrame()
     {
-        auto frame = framePool.TryGetNextFrame();
+        winrt::Windows::Graphics::Capture::Direct3D11CaptureFrame frame = nullptr;
+        while (true)
+        {
+            auto tempFrame = framePool.TryGetNextFrame();
+            if (!tempFrame)
+                break;
+            frame = tempFrame;
+        }
+
         if (!frame)
             return cv::Mat();
 
@@ -252,14 +260,21 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
     winrt::init_apartment(winrt::apartment_type::multi_threaded);
 
     ScreenCapture capturer(CAPTURE_WIDTH, CAPTURE_HEIGHT);
-    
+
     cv::Mat h_croppedScreenshot;
     bool buttonPreviouslyPressed = false;
 
     auto lastSaveTime = std::chrono::steady_clock::now();
 
+    std::optional<std::chrono::duration<double, std::milli>> frame_duration;
+    if (config.capture_fps > 0.0) {
+        frame_duration = std::chrono::duration<double, std::milli>(1000.0 / config.capture_fps);
+    }
+
     while (!shouldExit)
     {
+        auto start_time = std::chrono::high_resolution_clock::now();
+
         cv::Mat screenshot = capturer.GetNextFrame();
 
         if (!screenshot.empty())
@@ -304,6 +319,19 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             }
 
             buttonPreviouslyPressed = buttonPressed;
+        }
+
+        if (frame_duration.has_value())
+        {
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto work_duration = end_time - start_time;
+
+            auto sleep_duration = frame_duration.value() - work_duration;
+
+            if (sleep_duration > std::chrono::duration<double, std::milli>(0))
+            {
+                std::this_thread::sleep_for(sleep_duration);
+            }
         }
     }
 }

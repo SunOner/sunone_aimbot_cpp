@@ -28,6 +28,7 @@ bool Config::loadConfig(const std::string& filename)
 
         // Capture
         detection_resolution = pt.get<int>("detection_resolution", 0);
+        capture_fps = pt.get<double>("capture_fps", 100);
         capture_borders = pt.get<bool>("capture_borders", true);
         capture_cursor = pt.get<bool>("capture_cursor", true);
 
@@ -99,7 +100,6 @@ bool Config::loadConfig(const std::string& filename)
 
 bool Config::saveConfig(const std::string& filename)
 {
-    // TODO: sex
     std::ofstream file(filename);
     if (!file.is_open())
     {
@@ -107,8 +107,9 @@ bool Config::saveConfig(const std::string& filename)
         return false;
     }
 
-    file << "# Detection window\n";
+    file << "# Capture\n";
     file << "detection_resolution = " << detection_resolution << "\n";
+    file << "capture_fps = " << std::fixed << std::setprecision(1) << capture_fps << "\n";
     file << "capture_borders = " << (capture_borders ? "true" : "false") << "\n";
     file << "capture_cursor = " << (capture_cursor ? "true" : "false") << "\n\n";
 
@@ -134,7 +135,7 @@ bool Config::saveConfig(const std::string& filename)
     file << "arduino_enable = " << (arduino_enable ? "true" : "false") << "\n";
     file << "arduino_baudrate = " << arduino_baudrate << "\n";
     file << "arduino_port = " << arduino_port << "\n";
-    file << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n";
+    file << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n\n";
 
     file << "# AI\n";
     file << "ai_model = " << ai_model << "\n";
@@ -155,7 +156,7 @@ bool Config::saveConfig(const std::string& filename)
     file << "window_name = " << window_name << "\n";
     file << "window_size = " << window_size << "\n";
     file << "screenshot_button = " << joinStrings(screenshot_button) << "\n";
-    file << "always_on_top = " << (always_on_top ? "true" : "false") << "\n";
+    file << "always_on_top = " << (always_on_top ? "true" : "false");
 
     file.close();
     return true;
