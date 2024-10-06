@@ -90,13 +90,13 @@ void displayThread()
                 adjustedBox.height = std::min(frame.rows - adjustedBox.y, adjustedBox.height);
 
                 rectangle(frame, adjustedBox, cv::Scalar(0, 255, 0), 2);
-
+                
                 std::string className = cv_classes[classes[i]];
-
+                
                 int baseline = 0;
                 cv::Size textSize = cv::getTextSize(className, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
                 cv::Point textOrg(adjustedBox.x, adjustedBox.y - 5);
-
+                
                 putText(frame, className, textOrg, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
             }
         }

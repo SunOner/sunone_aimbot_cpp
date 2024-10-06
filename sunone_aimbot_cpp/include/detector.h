@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <vector>
 #include <unordered_map>
+#include <cuda_fp16.h>
 
 struct DetResult
 {
@@ -59,17 +60,17 @@ private:
     std::unordered_map<std::string, void*> inputBindings;
     std::unordered_map<std::string, void*> outputBindings;
     std::unordered_map<std::string, std::vector<int>> outputShapes;
-    int numClasses;
 
     size_t getSizeByDim(const nvinfer1::Dims& dims);
     size_t getElementSize(nvinfer1::DataType dtype);
     void getInputNames();
     void getOutputNames();
     void getBindings();
-    void getNumberOfClasses();
 
     std::vector<float> inputBuffer;
     std::unordered_map<std::string, std::vector<float>> outputDataBuffers;
+    std::unordered_map<std::string, std::vector<__half>> outputDataBuffersHalf;
+    std::unordered_map<std::string, nvinfer1::DataType> outputTypes;
     std::vector<cv::Rect> boxes;
     std::vector<float> confidences;
     std::vector<int> classes;

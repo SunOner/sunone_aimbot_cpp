@@ -8,6 +8,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
 #include <algorithm>
+#include <cuda_fp16.h>
 
 #include "detector.h"
 #include "nvinf.h"
@@ -19,6 +20,8 @@ extern Logger logger;
 
 std::mutex frameMutex;
 extern std::atomic<bool> detectionPaused;
+int model_quant;
+std::vector<float> outputData;
 
 Detector::Detector()
     : runtime(nullptr), engine(nullptr), context(nullptr),
@@ -45,61 +48,6 @@ Detector::~Detector()
     }
 }
 
-void Detector::initialize(const std::string& modelFile)
-{
-    runtime = nvinfer1::createInferRuntime(gLogger);
-    loadEngine(modelFile);
-    context = engine->createExecutionContext();
-
-    getInputNames();
-    getOutputNames();
-    getBindings();
-    getNumberOfClasses();
-
-    if (!inputNames.empty())
-    {
-        const std::string& inputName = inputNames[0];
-        inputDims = engine->getTensorShape(inputName.c_str());
-        size_t inputSize = getSizeByDim(inputDims);
-        inputBuffer.resize(inputSize);
-    }
-    else
-    {
-        // TODO: (no input tensors found)
-    }
-
-    for (const auto& name : outputNames)
-    {
-        size_t size = outputSizes[name];
-        outputDataBuffers[name].resize(size / sizeof(float));
-    }
-
-    channels.resize(3);
-    scale = static_cast<float>(config.detection_resolution) / config.engine_image_size;
-}
-
-size_t Detector::getSizeByDim(const nvinfer1::Dims& dims)
-{
-    size_t size = 1;
-    for (int i = 0; i < dims.nbDims; ++i)
-    {
-        size *= dims.d[i];
-    }
-    return size;
-}
-
-size_t Detector::getElementSize(nvinfer1::DataType dtype)
-{
-    switch (dtype)
-    {
-    case nvinfer1::DataType::kFLOAT: return 4;
-    case nvinfer1::DataType::kHALF:  return 2;
-    case nvinfer1::DataType::kINT8:  return 1;
-    case nvinfer1::DataType::kINT32: return 4;
-    default: return 0;
-    }
-}
-
 void Detector::getInputNames()
 {
     for (int i = 0; i < engine->getNbIOTensors(); ++i)
@@ -121,13 +69,18 @@ void Detector::getOutputNames()
     for (int i = 0; i < engine->getNbIOTensors(); ++i)
     {
         const char* name = engine->getIOTensorName(i);
+
         if (engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT)
         {
             outputNames.emplace_back(name);
+
             nvinfer1::Dims dims = engine->getTensorShape(name);
             nvinfer1::DataType dtype = engine->getTensorDataType(name);
+
             size_t size = getSizeByDim(dims) * getElementSize(dtype);
+
             outputSizes[name] = size;
+            outputTypes[name] = dtype;
 
             std::vector<int> dim;
             for (int j = 0; j < dims.nbDims; ++j)
@@ -157,16 +110,70 @@ void Detector::getBindings()
     }
 }
 
-void Detector::getNumberOfClasses()
+void Detector::initialize(const std::string& modelFile)
 {
-    if (outputNames.size() > 0)
+    runtime = nvinfer1::createInferRuntime(gLogger);
+    loadEngine(modelFile);
+    context = engine->createExecutionContext();
+
+    getInputNames();
+    getOutputNames();
+    getBindings();
+
+    if (!inputNames.empty())
     {
-        const std::string& outputName = outputNames[0];
-        const std::vector<int>& dims = outputShapes[outputName];
-        if (dims.size() > 0)
+        const std::string& inputName = inputNames[0];
+        inputDims = engine->getTensorShape(inputName.c_str());
+        size_t inputSize = getSizeByDim(inputDims);
+        inputBuffer.resize(inputSize);
+    }
+    else
+    {
+        // TODO: (no input tensors found)
+    }
+
+    for (const auto& name : outputNames)
+    {
+        size_t size = outputSizes[name];
+        nvinfer1::DataType dtype = outputTypes[name];
+
+        if (dtype == nvinfer1::DataType::kHALF)
         {
-            numClasses = dims.back() - 5;
+            outputDataBuffersHalf[name].resize(size / sizeof(__half));
         }
+        else if (dtype == nvinfer1::DataType::kFLOAT)
+        {
+            outputDataBuffers[name].resize(size / sizeof(float));
+        }
+        else
+        {
+            std::cerr << "Unsupported output data type during initialization" << std::endl;
+        }
+    }
+
+    channels.resize(3);
+    scale = static_cast<float>(config.detection_resolution) / config.engine_image_size;
+}
+
+size_t Detector::getSizeByDim(const nvinfer1::Dims& dims)
+{
+    size_t size = 1;
+    for (int i = 0; i < dims.nbDims; ++i)
+    {
+        size *= dims.d[i];
+    }
+    return size;
+}
+
+size_t Detector::getElementSize(nvinfer1::DataType dtype)
+{
+    switch (dtype)
+    {
+        case nvinfer1::DataType::kFLOAT: return 4;
+        case nvinfer1::DataType::kHALF:  return 2;
+        case nvinfer1::DataType::kINT8:  return 1;
+        case nvinfer1::DataType::kINT32: return 4;
+        default: return 0;
     }
 }
 
@@ -237,15 +244,51 @@ void Detector::inferenceThread()
         for (const auto& name : outputNames)
         {
             size_t size = outputSizes[name];
-            std::vector<float>& outputData = outputDataBuffers[name];
-            cudaMemcpyAsync(outputData.data(), outputBindings[name], size, cudaMemcpyDeviceToHost, stream);
+            nvinfer1::DataType dtype = outputTypes[name];
+
+            if (dtype == nvinfer1::DataType::kHALF)
+            {
+                std::vector<__half>& outputDataHalf = outputDataBuffersHalf[name];
+                cudaMemcpyAsync(outputDataHalf.data(), outputBindings[name], size, cudaMemcpyDeviceToHost, stream);
+            }
+            else if (dtype == nvinfer1::DataType::kFLOAT)
+            {
+                std::vector<float>& outputData = outputDataBuffers[name];
+                cudaMemcpyAsync(outputData.data(), outputBindings[name], size, cudaMemcpyDeviceToHost, stream);
+            }
+            else
+            {
+                std::cerr << "Unsupported output data type" << std::endl;
+                return;
+            }
         }
         cudaStreamSynchronize(stream);
 
         for (const auto& name : outputNames)
         {
-            const std::vector<float>& outputData = outputDataBuffers[name];
-            postProcess(outputData.data(), outputData.size());
+            nvinfer1::DataType dtype = outputTypes[name];
+            if (dtype == nvinfer1::DataType::kHALF)
+            {
+                const std::vector<__half>& outputDataHalf = outputDataBuffersHalf[name];
+                std::vector<float> outputData(outputDataHalf.size());
+
+                for (size_t i = 0; i < outputDataHalf.size(); ++i)
+                {
+                    outputData[i] = __half2float(outputDataHalf[i]);
+                }
+
+                postProcess(outputData.data(), static_cast<int>(outputData.size()));
+            }
+            else if (dtype == nvinfer1::DataType::kFLOAT)
+            {
+                const std::vector<float>& outputData = outputDataBuffers[name];
+                postProcess(outputData.data(), static_cast<int>(outputData.size()));
+            }
+            else
+            {
+                std::cerr << "Unsupported output data type in inferenceThread" << std::endl;
+                return;
+            }
         }
     }
 }
@@ -295,29 +338,97 @@ void Detector::postProcess(const float* output, int outputSize)
     confidences.clear();
     classes.clear();
 
-    int numDetections = outputSize / 6;
-    for (int i = 0; i < numDetections; ++i)
+    const auto& shape = outputShapes[outputNames[0]];
+
+    if (shape.size() != 3)
     {
-        const float* det = output + i * 6;
-        float confidence = det[4];
-        if (confidence > config.confidence_threshold)
+        std::cerr << "Unsupported output shape" << std::endl;
+        return;
+    }
+
+    int batch_size = shape[0];
+    int dim1 = shape[1];
+    int dim2 = shape[2];
+    
+    if (batch_size != 1)
+    {
+        std::cerr << "Batch size > 1 is not supported" << std::endl;
+        return;
+    }
+
+    if (dim2 == 6) // [1, 300, 6]
+    {
+        int numDetections = dim1;
+
+        for (int i = 0; i < numDetections; ++i)
         {
-            int classId = static_cast<int>(det[5]);
+            const float* det = output + i * dim2;
+            float confidence = det[4];
 
-            float x = det[0];
-            float y = det[1];
-            float w = det[2];
-            float h = det[3];
+            if (confidence > config.confidence_threshold)
+            {
+                int classId = static_cast<int>(det[5]);
 
-            int x1 = static_cast<int>(x * scale);
-            int y1 = static_cast<int>(y * scale);
-            int width = static_cast<int>((w - x) * scale);
-            int height = static_cast<int>((h - y) * scale);
+                float x_min = det[0];
+                float y_min = det[1];
+                float x_max = det[2];
+                float y_max = det[3];
 
-            boxes.emplace_back(x1, y1, width, height);
-            confidences.push_back(confidence);
-            classes.push_back(classId);
+                int x1 = static_cast<int>(x_min * scale);
+                int y1 = static_cast<int>(y_min * scale);
+                int width = static_cast<int>((x_max - x_min) * scale);
+                int height = static_cast<int>((y_max - y_min) * scale);
+
+                boxes.emplace_back(cv::Rect(x1, y1, width, height));
+                confidences.push_back(confidence);
+                classes.push_back(classId);
+            }
         }
+    }
+    else if (dim1 == 15) // [1, 15, 8400]
+    {
+        int channels = dim1;
+        int cols = dim2;
+
+        std::vector<std::vector<float>> detections;
+        for (int i = 0; i < cols; ++i)
+        {
+            std::vector<float> detection;
+            for (int j = 0; j < channels; ++j)
+            {
+                detection.push_back(output[j * cols + i]);
+            }
+            detections.push_back(detection);
+        }
+
+        for (const auto& detection : detections)
+        {
+            float confidence = *std::max_element(detection.begin() + 4, detection.end());
+
+            if (confidence > config.confidence_threshold)
+            {
+                int classId = std::distance(detection.begin() + 4, std::max_element(detection.begin() + 4, detection.end()));
+
+                float x = detection[0];
+                float y = detection[1];
+                float w = detection[2];
+                float h = detection[3];
+
+                int x1 = static_cast<int>((x - w / 2) * scale);
+                int y1 = static_cast<int>((y - h / 2) * scale);
+                int width = static_cast<int>(w * scale);
+                int height = static_cast<int>(h * scale);
+
+                boxes.emplace_back(x1, y1, width, height);
+                confidences.push_back(confidence);
+                classes.push_back(classId);
+            }
+        }
+    }
+    else
+    {
+        std::cerr << "Unknown output shape" << std::endl;
+        return;
     }
 
     std::vector<int> nmsIndices;
