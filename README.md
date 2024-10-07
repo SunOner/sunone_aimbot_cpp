@@ -1,17 +1,17 @@
-# sunone_aimbot_cpp
+<div align="center">
 
+# Sunone Aimbot C++
 [![C++](https://img.shields.io/badge/C%2B%2B-17-blue)](https://github.com/SunOner/sunone_aimbot_cpp)
 [![License MIT](https://badgen.net/github/license/SunOner/sunone_aimbot_cpp)](https://github.com/SunOner/sunone_aimbot_cpp/blob/main/LICENSE)
 [![Github stars](https://img.shields.io/github/stars/SunOner/sunone_aimbot_cpp?color=ffb500)](https://github.com/SunOner/sunone_aimbot_cpp)
 [![Discord server](https://badgen.net/discord/online-members/sunone)](https://discord.gg/sunone)
+  <p>
+    <a href="https://github.com/SunOner/sunone_aimbot_cpp/releases" target="_blank">
+      <img width="75%" src="https://github.com/SunOner/sunone_aimbot/blob/main/media/one.gif"></a>
+  </p>
+</div>
 
-<p align="center">
-  <a href="https://github.com/SunOner/sunone_aimbot_cpp/releases" target="_blank">
-    <img width="75%" src="https://github.com/SunOner/sunone_aimbot/blob/main/media/one.gif" alt="Aimbot Banner">
-  </a>
-</p>
-
-- **This is a developer version, and it is currently under development!**
+- **This project is actively being developed thanks to the people who support on [Boosty](https://boosty.to/sunone) and [Patreon](https://www.patreon.com/sunone). By providing active support, you receive enhanced AI models.**
 
 ## How to Use
 
