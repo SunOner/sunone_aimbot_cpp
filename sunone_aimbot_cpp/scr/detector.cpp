@@ -385,7 +385,7 @@ void Detector::postProcess(const float* output, int outputSize)
             }
         }
     }
-    else if (dim1 == 15) // [1, 15, 8400]
+    else if (dim1 == 15 && dim2 == 8400) // [1, 15, 8400]
     {
         int channels = dim1;
         int cols = dim2;
@@ -425,9 +425,37 @@ void Detector::postProcess(const float* output, int outputSize)
             }
         }
     }
+    else if (dim1 == 5 && dim2 == 8400) // [1, 5, 8400] with one class output
+    {
+        int channels = dim1;
+        int cols = dim2;
+
+        for (int i = 0; i < cols; ++i)
+        {
+            float x = output[i];
+            float y = output[cols + i];
+            float w = output[2 * cols + i];
+            float h = output[3 * cols + i];
+            float confidence = output[4 * cols + i];
+
+            if (confidence > config.confidence_threshold)
+            {
+                int classId = 0;
+
+                int x1 = static_cast<int>((x - w / 2) * scale);
+                int y1 = static_cast<int>((y - h / 2) * scale);
+                int width = static_cast<int>(w * scale);
+                int height = static_cast<int>(h * scale);
+
+                boxes.emplace_back(x1, y1, width, height);
+                confidences.push_back(confidence);
+                classes.push_back(classId);
+            }
+        }
+    }
     else
     {
-        std::cerr << "Unknown output shape" << std::endl;
+        std::cerr << "Unknown output shape(" << shape[0] << "," << shape[1] << "," << shape[2] << ")" << std::endl;
         return;
     }
 
