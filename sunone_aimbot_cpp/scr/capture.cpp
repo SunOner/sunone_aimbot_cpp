@@ -298,7 +298,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             detector.processFrame(resized);
             frameCV.notify_one();
 
-            bool buttonPressed = isAnyKeyPressed(config.screenshot_button) & 0x8000;
+            bool buttonPressed = isAnyKeyPressed(config.screenshot_button);
 
             if (buttonPressed)
             {
