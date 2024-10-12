@@ -10,6 +10,7 @@
 #include <condition_variable>
 #include <opencv2/opencv.hpp>
 #include <chrono>
+#include "timeapi.h"
 
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.System.h>
@@ -41,6 +42,10 @@ extern std::atomic<bool> shouldExit;
 
 int screenWidth = 0;
 int screenHeight = 0;
+
+std::atomic<int> captureFrameCount(0);
+std::atomic<double> captureFps(0.0);
+std::chrono::time_point<std::chrono::high_resolution_clock> captureFpsStartTime;
 
 class ScreenCapture
 {
@@ -258,7 +263,7 @@ private:
 void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 {
     winrt::init_apartment(winrt::apartment_type::multi_threaded);
-
+    
     ScreenCapture capturer(CAPTURE_WIDTH, CAPTURE_HEIGHT);
 
     cv::Mat h_croppedScreenshot;
@@ -267,9 +272,14 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
     auto lastSaveTime = std::chrono::steady_clock::now();
 
     std::optional<std::chrono::duration<double, std::milli>> frame_duration;
-    if (config.capture_fps > 0.0) {
+    if (config.capture_fps > 0.0)
+    {
+        timeBeginPeriod(1);
         frame_duration = std::chrono::duration<double, std::milli>(1000.0 / config.capture_fps);
+    
     }
+
+    captureFpsStartTime = std::chrono::high_resolution_clock::now();
 
     while (!shouldExit)
     {
@@ -319,6 +329,18 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             }
 
             buttonPreviouslyPressed = buttonPressed;
+
+            captureFrameCount++;
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = currentTime - captureFpsStartTime;
+
+            if (elapsed.count() >= 1.0)
+            {
+                captureFps = static_cast<double>(captureFrameCount) / elapsed.count();
+                captureFrameCount = 0;
+                captureFpsStartTime = currentTime;
+            }
+
         }
 
         if (frame_duration.has_value())
@@ -333,6 +355,10 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 std::this_thread::sleep_for(sleep_duration);
             }
         }
+    }
+    if (config.capture_fps > 0.0)
+    {
+        timeEndPeriod(1);
     }
 }
 

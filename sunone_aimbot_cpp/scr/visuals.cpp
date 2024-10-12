@@ -14,6 +14,7 @@
 #include "visuals.h"
 #include "config.h"
 #include "sunone_aimbot_cpp.h"
+#include "capture.h"
 
 using namespace cv;
 using namespace std;
@@ -33,18 +34,6 @@ void displayThread()
                                          "dead_body", "hideout_target_human",
                                          "hideout_target_balls", "head", "smoke", "fire",
                                          "third_person" };
-    int frameCount = 0;
-    double fps = 0.0;
-
-    // TODO: Move FPS calculations in capture.cpp
-    auto startTime = std::chrono::high_resolution_clock::now();
-
-    if (config.show_fps)
-    {
-        frameCount = 0;
-        fps = 0.0;
-        startTime = std::chrono::high_resolution_clock::now();
-    }
 
     namedWindow(config.window_name, WINDOW_NORMAL);
     if (config.always_on_top)
@@ -103,18 +92,7 @@ void displayThread()
 
         if (config.show_fps)
         {
-            frameCount++;
-            auto currentTime = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> elapsed = currentTime - startTime;
-
-            if (elapsed.count() >= 1.0)
-            {
-                fps = static_cast<double>(frameCount) / elapsed.count();
-                frameCount = 0;
-                startTime = currentTime;
-            }
-
-            putText(frame, "FPS: " + std::to_string(static_cast<int>(fps)), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 2);
+            putText(frame, "FPS: " + std::to_string(static_cast<int>(captureFps)), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 2);
         }
 
         cv::Mat displayFrame;

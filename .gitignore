@@ -31,14 +31,12 @@
 *.out
 *.app
 
-# modules filders
-sunone_aimbot_cpp/modules/
-
-# some models (temp)
-sunone_aimbot_cpp/models/sunxds_0.6.5.onnx
-sunone_aimbot_cpp/models/sunxds_0.6.5.engine
-
 # others
+sunone_aimbot_cpp/modules/
+sunone_aimbot_cpp/screenshots/
+sunone_aimbot_cpp/models/sunxds_0.6.8.onnx
+sunone_aimbot_cpp/models/sunxds_0.6.8.engine
+sunone_aimbot_cpp/_export.bat
 .vs
 sunone_aimbot_cpp/x64
 x64
