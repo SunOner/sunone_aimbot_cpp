@@ -453,6 +453,36 @@ void Detector::postProcess(const float* output, int outputSize)
             }
         }
     }
+    else if (dim1 == 7 && dim2 == 8400) // [1, 7, 8400] Yolov9
+    {
+        int channels = dim1;
+        int cols = dim2;
+
+        for (int i = 0; i < cols; ++i)
+        {
+            float x_center = output[i];
+            float y_center = output[cols + i];
+            float width = output[2 * cols + i];
+            float height = output[3 * cols + i];
+            float objectness = output[4 * cols + i];
+            float class_confidence = output[5 * cols + i];
+            int classId = static_cast<int>(output[6 * cols + i]);
+
+            float confidence = objectness * class_confidence;
+
+            if (confidence > config.confidence_threshold)
+            {
+                int x1 = static_cast<int>((x_center - width / 2) * scale);
+                int y1 = static_cast<int>((y_center - height / 2) * scale);
+                int w = static_cast<int>(width * scale);
+                int h = static_cast<int>(height * scale);
+
+                boxes.emplace_back(x1, y1, w, h);
+                confidences.push_back(confidence);
+                classes.push_back(classId);
+            }
+        }
+    }
     else
     {
         std::cerr << "Unknown output shape(" << shape[0] << "," << shape[1] << "," << shape[2] << ")" << std::endl;
