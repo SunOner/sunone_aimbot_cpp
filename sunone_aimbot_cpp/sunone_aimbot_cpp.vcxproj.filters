@@ -43,6 +43,7 @@
     <ClCompile Include="imgui_impl_win32.cpp" />
     <ClCompile Include="imgui_tables.cpp" />
     <ClCompile Include="imgui_widgets.cpp" />
+    <ClCompile Include="scr\ghub.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -98,6 +99,7 @@
     <ClInclude Include="imstb_textedit.h" />
     <ClInclude Include="imstb_truetype.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="include\ghub.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

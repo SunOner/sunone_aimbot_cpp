@@ -13,6 +13,7 @@
 #include "capture.h"
 #include "SerialConnection.h"
 #include "sunone_aimbot_cpp.h"
+#include "ghub.h"
 
 using namespace std;
 
@@ -30,7 +31,8 @@ MouseThread::MouseThread(
     double predictionInterval,
     bool auto_shoot,
     float bScope_multiplier,
-    SerialConnection* serialConnection)
+    SerialConnection* serialConnection,
+    GhubMouse* ghubMouse)
     :
     screen_width(resolution),
     screen_height(resolution),
@@ -47,10 +49,11 @@ MouseThread::MouseThread(
     prev_y(0),
     prev_velocity_x(0),
     prev_velocity_y(0),
-    max_distance(std::sqrt(resolution * resolution + resolution * resolution) / 2),
+    max_distance(std::sqrt(resolution* resolution + resolution * resolution) / 2),
     center_x(resolution / 2),
     center_y(resolution / 2),
     serial(serialConnection),
+    gHub(ghubMouse),
     last_target_time(std::chrono::steady_clock::now())
 {
 }
@@ -173,16 +176,27 @@ void MouseThread::moveMouse(const Target& target)
     auto predicted_position = predict_target_position(target.x + target.w / 2, target.y + target.h / 2);
     auto movement = calc_movement(predicted_position.first, predicted_position.second);
 
+    int move_x = static_cast<INT>(movement.first);
+    int move_y = static_cast<INT>(movement.second);
+
+    // Arduino
     if (serial)
     {
-        serial->move(static_cast<INT>(movement.first), static_cast<INT>(movement.second));
+        serial->move(move_x, move_y);
     }
+
+    // Ghub
+    else if (gHub)
+    {
+        gHub->mouse_xy(move_x, move_y);
+    }
+    // Win32
     else
     {
         INPUT input = { 0 };
         input.type = INPUT_MOUSE;
-        input.mi.dx = static_cast<INT>(movement.first);
-        input.mi.dy = static_cast<INT>(movement.second);
+        input.mi.dx = move_x;
+        input.mi.dy = move_y;
         input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
 
         SendInput(1, &input, sizeof(INPUT));
@@ -191,32 +205,41 @@ void MouseThread::moveMouse(const Target& target)
 
 void MouseThread::pressMouse(const Target& target)
 {
-    auto bScope = check_target_in_scope(target.x, target.y, target.w, target.h, config.bScope_multiplier);
-    
-    if (bScope and config.arduino_enable)
+    auto bScope = check_target_in_scope(target.x, target.y, target.w, target.h, bScope_multiplier);
+
+    if (bScope)
     {
         if (serial)
         {
             serial->press();
         }
+        else if (gHub)
+        {
+            gHub->mouse_down();
+        }
     }
-    if (!bScope and config.arduino_enable)
+    else
     {
         if (serial)
         {
             serial->release();
+        }
+        else if (gHub)
+        {
+            gHub->mouse_up();
         }
     }
 }
 
 void MouseThread::releaseMouse()
 {
-    if (config.arduino_enable)
+    if (serial)
     {
-        if (serial)
-        {
-            serial->release();
-        }
+        serial->release();
+    }
+    else if (gHub)
+    {
+        gHub->mouse_up();
     }
 }
 

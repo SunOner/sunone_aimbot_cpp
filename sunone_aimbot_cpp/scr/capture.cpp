@@ -11,7 +11,6 @@
 #include <opencv2/opencv.hpp>
 #include <chrono>
 #include "timeapi.h"
-
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.System.h>
 #include <winrt/Windows.System.Threading.h>
@@ -47,8 +46,14 @@ std::atomic<int> captureFrameCount(0);
 std::atomic<double> captureFps(0.0);
 std::chrono::time_point<std::chrono::high_resolution_clock> captureFpsStartTime;
 
-class ScreenCapture
+// WinRT
+class WinRTScreenCapture : public IScreenCapture
 {
+public:
+    WinRTScreenCapture(int desiredWidth, int desiredHeight);
+    ~WinRTScreenCapture();
+    cv::Mat GetNextFrame();
+
 private:
     winrt::com_ptr<ID3D11Device> d3dDevice;
     winrt::com_ptr<ID3D11DeviceContext> d3dContext;
@@ -66,205 +71,353 @@ private:
     int regionX = 0;
     int regionY = 0;
 
-public:
-    ScreenCapture(int desiredWidth, int desiredHeight)
-    {
-        regionWidth = desiredWidth;
-        regionHeight = desiredHeight;
-
-        D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
-        winrt::check_hresult(D3D11CreateDevice(
-            nullptr,
-            D3D_DRIVER_TYPE_HARDWARE,
-            0,
-            D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-            featureLevels,
-            ARRAYSIZE(featureLevels),
-            D3D11_SDK_VERSION,
-            d3dDevice.put(),
-            nullptr,
-            d3dContext.put()
-        ));
-
-        winrt::com_ptr<IDXGIDevice> dxgiDevice;
-        winrt::check_hresult(d3dDevice->QueryInterface(IID_PPV_ARGS(dxgiDevice.put())));
-
-        device = CreateDirect3DDevice(dxgiDevice.get());
-
-        if (!device)
-        {
-            std::cerr << "Can't create Direct3DDevice!" << std::endl;
-            return;
-        }
-
-        POINT pt = { 0, 0 };
-        HMONITOR hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTOPRIMARY);
-
-        captureItem = CreateCaptureItemForMonitor(hMonitor);
-        
-        if (!captureItem)
-        {
-            std::cerr << "GraphicsCaptureItem not created!" << std::endl;
-            return;
-        }
-
-        screenWidth = captureItem.Size().Width;
-        screenHeight = captureItem.Size().Height;
-
-        regionX = (screenWidth - regionWidth) / 2;
-        regionY = (screenHeight - regionHeight) / 2;
-
-        framePool = winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool::CreateFreeThreaded(
-            device,
-            winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized,
-            1,
-            captureItem.Size()
-        );
-
-        session = framePool.CreateCaptureSession(captureItem);
-        
-        if (!config.capture_borders)
-        {
-            session.IsBorderRequired(false);
-        }
-        
-        if (!config.capture_cursor)
-        {
-            session.IsCursorCaptureEnabled(false);
-        }
-
-        session.StartCapture();
-    }
-
-    ~ScreenCapture()
-    {
-        if (session)
-        {
-            session.Close();
-            session = nullptr;
-        }
-        if (framePool)
-        {
-            framePool.Close();
-            framePool = nullptr;
-        }
-        stagingTexture = nullptr;
-        d3dContext = nullptr;
-        d3dDevice = nullptr;
-    }
-
-    cv::Mat GetNextFrame()
-    {
-        winrt::Windows::Graphics::Capture::Direct3D11CaptureFrame frame = nullptr;
-        while (true)
-        {
-            auto tempFrame = framePool.TryGetNextFrame();
-            if (!tempFrame)
-                break;
-            frame = tempFrame;
-        }
-
-        if (!frame)
-            return cv::Mat();
-
-        auto surface = frame.Surface();
-
-        winrt::com_ptr<ID3D11Texture2D> frameTexture = GetDXGIInterfaceFromObject<ID3D11Texture2D>(surface);
-
-        D3D11_TEXTURE2D_DESC desc;
-        frameTexture->GetDesc(&desc);
-
-        if (!stagingTexture)
-        {
-            D3D11_TEXTURE2D_DESC stagingDesc = {};
-            stagingDesc.Width = regionWidth;
-            stagingDesc.Height = regionHeight;
-            stagingDesc.MipLevels = 1;
-            stagingDesc.ArraySize = 1;
-            stagingDesc.Format = desc.Format;
-            stagingDesc.SampleDesc.Count = 1;
-            stagingDesc.SampleDesc.Quality = 0;
-            stagingDesc.Usage = D3D11_USAGE_STAGING;
-            stagingDesc.BindFlags = 0;
-            stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-            stagingDesc.MiscFlags = 0;
-
-            winrt::check_hresult(d3dDevice->CreateTexture2D(&stagingDesc, nullptr, stagingTexture.put()));
-        }
-
-        D3D11_BOX sourceRegion;
-        sourceRegion.left = regionX;
-        sourceRegion.top = regionY;
-        sourceRegion.front = 0;
-        sourceRegion.right = regionX + regionWidth;
-        sourceRegion.bottom = regionY + regionHeight;
-        sourceRegion.back = 1;
-
-        d3dContext->CopySubresourceRegion(
-            stagingTexture.get(),
-            0,
-            0,
-            0,
-            0,
-            frameTexture.get(),
-            0,
-            &sourceRegion
-        );
-
-        D3D11_MAPPED_SUBRESOURCE mappedResource;
-        winrt::check_hresult(d3dContext->Map(
-            stagingTexture.get(),
-            0,
-            D3D11_MAP_READ,
-            0,
-            &mappedResource
-        ));
-
-        cv::Mat screenshot(regionHeight, regionWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
-        cv::Mat result;
-        screenshot.copyTo(result);
-
-        d3dContext->Unmap(stagingTexture.get(), 0);
-
-        return result;
-    }
-
-private:
-    winrt::Windows::Graphics::Capture::GraphicsCaptureItem CreateCaptureItemForMonitor(HMONITOR hMonitor)
-    {
-        auto interopFactory = winrt::get_activation_factory<winrt::Windows::Graphics::Capture::GraphicsCaptureItem, IGraphicsCaptureItemInterop>();
-        winrt::Windows::Graphics::Capture::GraphicsCaptureItem item{ nullptr };
-        HRESULT hr = interopFactory->CreateForMonitor(hMonitor, winrt::guid_of<winrt::Windows::Graphics::Capture::GraphicsCaptureItem>(), winrt::put_abi(item));
-        if (FAILED(hr))
-        {
-            std::cerr << "Can't create GraphicsCaptureItem for monitor. HRESULT: " << std::hex << hr << std::endl;
-            return nullptr;
-        }
-        return item;
-    }
-
-    winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice CreateDirect3DDevice(IDXGIDevice* dxgiDevice)
-    {
-        winrt::com_ptr<::IInspectable> inspectable;
-        winrt::check_hresult(CreateDirect3D11DeviceFromDXGIDevice(dxgiDevice, inspectable.put()));
-        return inspectable.as<winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice>();
-    }
+    winrt::Windows::Graphics::Capture::GraphicsCaptureItem CreateCaptureItemForMonitor(HMONITOR hMonitor);
+    winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice CreateDirect3DDevice(IDXGIDevice* dxgiDevice);
 
     template<typename T>
-    winrt::com_ptr<T> GetDXGIInterfaceFromObject(winrt::Windows::Foundation::IInspectable const& object)
-    {
-        auto access = object.as<Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();
-        winrt::com_ptr<T> result;
-        winrt::check_hresult(access->GetInterface(winrt::guid_of<T>(), result.put_void()));
-        return result;
-    }
+    winrt::com_ptr<T> GetDXGIInterfaceFromObject(winrt::Windows::Foundation::IInspectable const& object);
 };
+
+class DuplicationAPIScreenCapture : public IScreenCapture
+{
+public:
+    DuplicationAPIScreenCapture(int desiredWidth, int desiredHeight);
+    ~DuplicationAPIScreenCapture();
+    cv::Mat GetNextFrame() override;
+
+private:
+    ID3D11Device* d3dDevice = nullptr;
+    ID3D11DeviceContext* d3dContext = nullptr;
+    IDXGIOutputDuplication* deskDupl = nullptr;
+    ID3D11Texture2D* stagingTexture = nullptr;
+    IDXGIOutput1* output1 = nullptr;
+
+    int screenWidth = 0;
+    int screenHeight = 0;
+    int regionWidth = 0;
+    int regionHeight = 0;
+};
+
+WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
+{
+    regionWidth = desiredWidth;
+    regionHeight = desiredHeight;
+
+    D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
+    winrt::check_hresult(D3D11CreateDevice(
+        nullptr,
+        D3D_DRIVER_TYPE_HARDWARE,
+        0,
+        D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+        featureLevels,
+        ARRAYSIZE(featureLevels),
+        D3D11_SDK_VERSION,
+        d3dDevice.put(),
+        nullptr,
+        d3dContext.put()
+    ));
+
+    winrt::com_ptr<IDXGIDevice> dxgiDevice;
+    winrt::check_hresult(d3dDevice->QueryInterface(IID_PPV_ARGS(dxgiDevice.put())));
+
+    device = CreateDirect3DDevice(dxgiDevice.get());
+
+    if (!device)
+    {
+        std::cerr << "Can't create Direct3DDevice!" << std::endl;
+        return;
+    }
+
+    POINT pt = { 0, 0 };
+    HMONITOR hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTOPRIMARY);
+
+    captureItem = CreateCaptureItemForMonitor(hMonitor);
+
+    if (!captureItem)
+    {
+        std::cerr << "GraphicsCaptureItem not created!" << std::endl;
+        return;
+    }
+
+    screenWidth = captureItem.Size().Width;
+    screenHeight = captureItem.Size().Height;
+
+    regionX = (screenWidth - regionWidth) / 2;
+    regionY = (screenHeight - regionHeight) / 2;
+
+    framePool = winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool::CreateFreeThreaded(
+        device,
+        winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized,
+        1,
+        captureItem.Size()
+    );
+
+    session = framePool.CreateCaptureSession(captureItem);
+
+    if (!config.capture_borders)
+    {
+        session.IsBorderRequired(false);
+    }
+
+    if (!config.capture_cursor)
+    {
+        session.IsCursorCaptureEnabled(false);
+    }
+
+    session.StartCapture();
+}
+
+WinRTScreenCapture::~WinRTScreenCapture()
+{
+    if (session)
+    {
+        session.Close();
+        session = nullptr;
+    }
+
+    if (framePool)
+    {
+        framePool.Close();
+        framePool = nullptr;
+    }
+
+    stagingTexture = nullptr;
+    d3dContext = nullptr;
+    d3dDevice = nullptr;
+}
+
+cv::Mat WinRTScreenCapture::GetNextFrame()
+{
+    winrt::Windows::Graphics::Capture::Direct3D11CaptureFrame frame = nullptr;
+
+    while (true)
+    {
+        auto tempFrame = framePool.TryGetNextFrame();
+        if (!tempFrame)
+            break;
+        frame = tempFrame;
+    }
+
+    if (!frame)
+    {
+        return cv::Mat();
+    }
+
+    auto surface = frame.Surface();
+
+    winrt::com_ptr<ID3D11Texture2D> frameTexture = GetDXGIInterfaceFromObject<ID3D11Texture2D>(surface);
+
+    D3D11_TEXTURE2D_DESC desc;
+    frameTexture->GetDesc(&desc);
+
+    if (!stagingTexture)
+    {
+        D3D11_TEXTURE2D_DESC stagingDesc = {};
+        stagingDesc.Width = regionWidth;
+        stagingDesc.Height = regionHeight;
+        stagingDesc.MipLevels = 1;
+        stagingDesc.ArraySize = 1;
+        stagingDesc.Format = desc.Format;
+        stagingDesc.SampleDesc.Count = 1;
+        stagingDesc.SampleDesc.Quality = 0;
+        stagingDesc.Usage = D3D11_USAGE_STAGING;
+        stagingDesc.BindFlags = 0;
+        stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        stagingDesc.MiscFlags = 0;
+
+        winrt::check_hresult(d3dDevice->CreateTexture2D(&stagingDesc, nullptr, stagingTexture.put()));
+    }
+
+    D3D11_BOX sourceRegion;
+    sourceRegion.left = regionX;
+    sourceRegion.top = regionY;
+    sourceRegion.front = 0;
+    sourceRegion.right = regionX + regionWidth;
+    sourceRegion.bottom = regionY + regionHeight;
+    sourceRegion.back = 1;
+
+    d3dContext->CopySubresourceRegion(
+        stagingTexture.get(),
+        0,
+        0,
+        0,
+        0,
+        frameTexture.get(),
+        0,
+        &sourceRegion
+    );
+
+    D3D11_MAPPED_SUBRESOURCE mappedResource;
+    winrt::check_hresult(d3dContext->Map(
+        stagingTexture.get(),
+        0,
+        D3D11_MAP_READ,
+        0,
+        &mappedResource
+    ));
+
+    cv::Mat screenshot(regionHeight, regionWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
+    cv::Mat result;
+    screenshot.copyTo(result);
+
+    d3dContext->Unmap(stagingTexture.get(), 0);
+
+    return result;
+}
+
+winrt::Windows::Graphics::Capture::GraphicsCaptureItem WinRTScreenCapture::CreateCaptureItemForMonitor(HMONITOR hMonitor)
+{
+    auto interopFactory = winrt::get_activation_factory<winrt::Windows::Graphics::Capture::GraphicsCaptureItem, IGraphicsCaptureItemInterop>();
+    winrt::Windows::Graphics::Capture::GraphicsCaptureItem item{ nullptr };
+    HRESULT hr = interopFactory->CreateForMonitor(hMonitor, winrt::guid_of<winrt::Windows::Graphics::Capture::GraphicsCaptureItem>(), winrt::put_abi(item));
+    if (FAILED(hr))
+    {
+        std::cerr << "Can't create GraphicsCaptureItem for monitor. HRESULT: " << std::hex << hr << std::endl;
+        return nullptr;
+    }
+    return item;
+}
+
+winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice WinRTScreenCapture::CreateDirect3DDevice(IDXGIDevice* dxgiDevice)
+{
+    winrt::com_ptr<::IInspectable> inspectable;
+    winrt::check_hresult(CreateDirect3D11DeviceFromDXGIDevice(dxgiDevice, inspectable.put()));
+    return inspectable.as<winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice>();
+}
+
+template<typename T>
+winrt::com_ptr<T> WinRTScreenCapture::GetDXGIInterfaceFromObject(winrt::Windows::Foundation::IInspectable const& object)
+{
+    auto access = object.as<Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();
+    winrt::com_ptr<T> result;
+    winrt::check_hresult(access->GetInterface(winrt::guid_of<T>(), result.put_void()));
+    return result;
+}
+
+DuplicationAPIScreenCapture::DuplicationAPIScreenCapture(int desiredWidth, int desiredHeight)
+{
+    regionWidth = desiredWidth;
+    regionHeight = desiredHeight;
+
+    IDXGIFactory1* factory = nullptr;
+    IDXGIAdapter* adapter = nullptr;
+    IDXGIOutput* output = nullptr;
+
+    CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)(&factory));
+    factory->EnumAdapters(0, &adapter);
+    adapter->EnumOutputs(0, &output);
+    output->QueryInterface(__uuidof(IDXGIOutput1), (void**)(&output1));
+
+    D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
+    D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, featureLevels, 1,
+        D3D11_SDK_VERSION, &d3dDevice, nullptr, &d3dContext);
+    output1->DuplicateOutput(d3dDevice, &deskDupl);
+    DXGI_OUTPUT_DESC outputDesc;
+    output->GetDesc(&outputDesc);
+    screenWidth = outputDesc.DesktopCoordinates.right - outputDesc.DesktopCoordinates.left;
+    screenHeight = outputDesc.DesktopCoordinates.bottom - outputDesc.DesktopCoordinates.top;
+    D3D11_TEXTURE2D_DESC textureDesc = {};
+    textureDesc.Width = regionWidth;
+    textureDesc.Height = regionHeight;
+    textureDesc.MipLevels = 1;
+    textureDesc.ArraySize = 1;
+    textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    textureDesc.SampleDesc.Count = 1;
+    textureDesc.Usage = D3D11_USAGE_STAGING;
+    textureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    d3dDevice->CreateTexture2D(&textureDesc, nullptr, &stagingTexture);
+    output->Release();
+    adapter->Release();
+    factory->Release();
+}
+
+DuplicationAPIScreenCapture::~DuplicationAPIScreenCapture()
+{
+    if (stagingTexture) stagingTexture->Release();
+    if (deskDupl) deskDupl->Release();
+    if (output1) output1->Release();
+    if (d3dContext) d3dContext->Release();
+    if (d3dDevice) d3dDevice->Release();
+}
+
+cv::Mat DuplicationAPIScreenCapture::GetNextFrame()
+{
+    IDXGIResource* desktopResource = nullptr;
+    DXGI_OUTDUPL_FRAME_INFO frameInfo;
+    HRESULT hr = deskDupl->AcquireNextFrame(100, &frameInfo, &desktopResource);
+    if (hr == DXGI_ERROR_WAIT_TIMEOUT)
+    {
+        return cv::Mat();
+    }
+    if (FAILED(hr)) return cv::Mat();
+
+    ID3D11Texture2D* desktopTexture = nullptr;
+    hr = desktopResource->QueryInterface(__uuidof(ID3D11Texture2D), (void**)(&desktopTexture));
+    if (FAILED(hr))
+    {
+        desktopResource->Release();
+        deskDupl->ReleaseFrame();
+        return cv::Mat();
+    }
+
+    int regionX = (screenWidth - regionWidth) / 2;
+    int regionY = (screenHeight - regionHeight) / 2;
+    D3D11_BOX sourceRegion;
+    sourceRegion.left = regionX;
+    sourceRegion.top = regionY;
+    sourceRegion.front = 0;
+    sourceRegion.right = regionX + regionWidth;
+    sourceRegion.bottom = regionY + regionHeight;
+    sourceRegion.back = 1;
+
+    d3dContext->CopySubresourceRegion(
+        stagingTexture,
+        0,
+        0,
+        0,
+        0,
+        desktopTexture,
+        0,
+        &sourceRegion
+    );
+
+    D3D11_MAPPED_SUBRESOURCE mappedResource;
+    hr = d3dContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &mappedResource);
+    if (FAILED(hr))
+    {
+        desktopTexture->Release();
+        desktopResource->Release();
+        deskDupl->ReleaseFrame();
+        return cv::Mat();
+    }
+
+    cv::Mat screenshot(regionHeight, regionWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
+    cv::Mat result;
+    screenshot.copyTo(result);
+
+    d3dContext->Unmap(stagingTexture, 0);
+    desktopTexture->Release();
+    desktopResource->Release();
+    deskDupl->ReleaseFrame();
+
+    return result;
+}
 
 void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 {
-    winrt::init_apartment(winrt::apartment_type::multi_threaded);
-    
-    ScreenCapture capturer(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+    IScreenCapture* capturer = nullptr;
+
+    if (config.duplication_api)
+    {
+        capturer = new DuplicationAPIScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+        cout << "[Capture] Using Duplication API." << endl;
+    }
+    else
+    {
+        winrt::init_apartment(winrt::apartment_type::multi_threaded);
+        capturer = new WinRTScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+        cout << "[Capture] Using WinRT." << endl;
+    }
 
     cv::Mat h_croppedScreenshot;
     bool buttonPreviouslyPressed = false;
@@ -276,7 +429,6 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
     {
         timeBeginPeriod(1);
         frame_duration = std::chrono::duration<double, std::milli>(1000.0 / config.capture_fps);
-    
     }
 
     captureFpsStartTime = std::chrono::high_resolution_clock::now();
@@ -285,7 +437,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
     {
         auto start_time = std::chrono::high_resolution_clock::now();
 
-        cv::Mat screenshot = capturer.GetNextFrame();
+        cv::Mat screenshot = capturer->GetNextFrame();
 
         if (!screenshot.empty())
         {
@@ -360,9 +512,11 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
     {
         timeEndPeriod(1);
     }
-}
 
-void CloseCapture()
-{
-    winrt::uninit_apartment();
+    delete capturer;
+
+    if (!config.duplication_api)
+    {
+        winrt::uninit_apartment();
+    }
 }

@@ -12,6 +12,7 @@ public:
     double capture_fps;
     bool capture_borders;
     bool capture_cursor;
+    bool duplication_api;
 
     // Target
     bool disable_headshot;
@@ -27,7 +28,10 @@ public:
     float maxSpeedMultiplier;
     float predictionInterval;
     
-    // arduino
+    // Ghub
+    bool ghub;
+
+    // Arduino
     bool arduino_enable;
     int arduino_baudrate;
     std::string arduino_port;

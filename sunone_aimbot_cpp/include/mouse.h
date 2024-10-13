@@ -8,6 +8,7 @@
 
 #include "target.h"
 #include "SerialConnection.h"
+#include "ghub.h"
 
 class MouseThread
 {
@@ -16,6 +17,7 @@ private:
     std::chrono::time_point<std::chrono::steady_clock> prev_time;
 
     SerialConnection* serial;
+    GhubMouse* gHub;
 
     double screen_width;
     double screen_height;
@@ -38,7 +40,9 @@ private:
 public:
     MouseThread(int resolution, int dpi, double sensitivity, int fovX, int fovY,
         double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval,
-        bool auto_shoot, float bScope_multiplier, SerialConnection* serialConnection = nullptr);
+        bool auto_shoot, float bScope_multiplier,
+        SerialConnection* serialConnection = nullptr,
+        GhubMouse* gHub = nullptr);
 
     void updateConfig(int resolution, double dpi, double sensitivity, int fovX, int fovY,
         double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval,

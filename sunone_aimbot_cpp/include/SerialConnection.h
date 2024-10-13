@@ -5,7 +5,8 @@
 #include <boost/asio.hpp>
 #include "target.h"
 
-class SerialConnection {
+class SerialConnection
+{
 public:
     SerialConnection(const std::string& port, unsigned int baud_rate);
     ~SerialConnection();

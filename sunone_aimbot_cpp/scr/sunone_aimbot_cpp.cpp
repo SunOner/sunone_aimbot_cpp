@@ -14,13 +14,11 @@
 #include "visuals.h"
 #include "detector.h"
 #include "mouse.h"
-#include "target.h"
 #include "sunone_aimbot_cpp.h"
 #include "keyboard_listener.h"
 #include "overlay.h"
 #include "SerialConnection.h"
-#include "imgui.h"
-#include "imgui_impl_dx11.h"
+#include "ghub.h"
 
 using namespace std;
 
@@ -34,6 +32,9 @@ std::mutex configMutex;
 Detector detector;
 MouseThread* globalMouseThread = nullptr;
 Config config;
+
+GhubMouse* gHub = nullptr;
+SerialConnection* serial = nullptr;
 
 void mouseThreadFunction(MouseThread& mouseThread)
 {
@@ -67,6 +68,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
             }
             else
             {
+                // If no detections release mouse
                 if (config.auto_shoot)
                 {
                     mouseThread.releaseMouse();
@@ -86,14 +88,34 @@ int main()
 
     if (!config.loadConfig("config.ini"))
     {
-        std::cerr << "Error with loading config.ini" << std::endl;
+        std::cerr << "[Config] Error with loading config.ini" << std::endl;
+        cin.get();
         return -1;
     }
 
-    SerialConnection* serial = nullptr;
     if (config.arduino_enable)
     {
+        cout << "[Mouse] Using Arduino method input." << endl;
         serial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
+    }
+
+    if (config.arduino_enable == false && config.ghub)
+    {
+        cout << "[Mouse] Using Ghub method input." << endl;
+        gHub = new GhubMouse();
+        if (!gHub->mouse_xy(0, 0))
+        {
+            cerr << "[Ghub] Error with opening mouse." << endl;
+            delete gHub;
+            gHub = nullptr;
+        }
+    }
+
+    if (config.arduino_enable && config.ghub)
+    {
+        cerr << "[Mouse] You use more than one mouse input method." << endl;
+        cin.get();
+        return -1;
     }
 
     MouseThread mouseThread(
@@ -107,7 +129,8 @@ int main()
         config.predictionInterval,
         config.auto_shoot,
         config.bScope_multiplier,
-        serial
+        serial,
+        gHub
     );
 
     globalMouseThread = &mouseThread;
@@ -131,6 +154,11 @@ int main()
     if (serial)
     {
         delete serial;
+    }
+
+    if (gHub)
+    {
+        delete gHub;
     }
 
     return 0;

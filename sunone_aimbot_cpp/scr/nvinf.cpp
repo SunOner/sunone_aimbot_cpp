@@ -2,14 +2,13 @@
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
-
 #include <iostream>
 
 #include "nvinf.h"
 
 void Logger::log(nvinfer1::ILogger::Severity severity, const char* msg) noexcept
 {
-    if (severity <= nvinfer1::ILogger::Severity::kVERBOSE)
+    if (severity <= nvinfer1::ILogger::Severity::kINTERNAL_ERROR)
     {
         std::cout << "[TensorRT] " << severityLevelName(severity) << ": " << msg << std::endl;
     }

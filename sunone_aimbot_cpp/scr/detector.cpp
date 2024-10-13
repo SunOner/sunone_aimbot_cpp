@@ -16,8 +16,6 @@
 
 using namespace std;
 
-extern Logger logger;
-
 std::mutex frameMutex;
 extern std::atomic<bool> detectionPaused;
 int model_quant;
@@ -129,7 +127,7 @@ void Detector::initialize(const std::string& modelFile)
     }
     else
     {
-        // TODO: (no input tensors found)
+        cerr << "[Detector] No input tensors found" << endl;
     }
 
     for (const auto& name : outputNames)
@@ -385,7 +383,7 @@ void Detector::postProcess(const float* output, int outputSize)
             }
         }
     }
-    else if (dim1 == 15 && dim2 == 8400) // [1, 15, 8400]
+    else if (dim1 == 15 && dim2 == 8400) // [1, 15, 8400] Yolov11
     {
         int channels = dim1;
         int cols = dim2;

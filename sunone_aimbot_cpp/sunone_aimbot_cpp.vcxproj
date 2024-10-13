@@ -29,6 +29,7 @@
     <ClCompile Include="scr\capture.cpp" />
     <ClCompile Include="scr\config.cpp" />
     <ClCompile Include="scr\detector.cpp" />
+    <ClCompile Include="scr\ghub.cpp" />
     <ClCompile Include="scr\keyboard_listener.cpp" />
     <ClCompile Include="scr\keycodes.cpp" />
     <ClCompile Include="scr\mouse.cpp" />
@@ -51,6 +52,7 @@
     <ClInclude Include="include\capture.h" />
     <ClInclude Include="include\config.h" />
     <ClInclude Include="include\detector.h" />
+    <ClInclude Include="include\ghub.h" />
     <ClInclude Include="include\keyboard_listener.h" />
     <ClInclude Include="include\keycodes.h" />
     <ClInclude Include="include\mouse.h" />

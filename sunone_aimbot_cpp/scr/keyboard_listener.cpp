@@ -44,7 +44,6 @@ void keyboardListener()
         if (isAnyKeyPressed(config.button_exit))
         {
             shouldExit = true;
-            CloseCapture();
             quick_exit(0);
         }
 

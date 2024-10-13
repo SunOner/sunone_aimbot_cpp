@@ -31,6 +31,7 @@ bool Config::loadConfig(const std::string& filename)
         capture_fps = pt.get<double>("capture_fps", 100);
         capture_borders = pt.get<bool>("capture_borders", true);
         capture_cursor = pt.get<bool>("capture_cursor", true);
+        duplication_api = pt.get<bool>("duplication_api", true);
 
         // Target
         disable_headshot = pt.get<bool>("disable_headshot", false);
@@ -46,15 +47,18 @@ bool Config::loadConfig(const std::string& filename)
         maxSpeedMultiplier = pt.get<float>("maxSpeedMultiplier", 0.0f);
         predictionInterval = pt.get<float>("predictionInterval", 0.0f);
         
-        // Mouse shooting
-        auto_shoot = pt.get<bool>("auto_shoot", false);
-        bScope_multiplier = pt.get<float>("bScope_multiplier", 1.0);
+        // Ghub
+        ghub = pt.get<bool>("ghub", false);
 
-        // arduino
+        // Arduino
         arduino_enable = pt.get<bool>("arduino_enable", "false");
         arduino_baudrate = pt.get<int>("arduino_baudrate", 9600);
         arduino_port = pt.get<std::string>("arduino_port", "COM0");
         arduino_16_bit_mouse = pt.get<bool>("arduino_16_bit_mouse", false);
+
+        // Mouse shooting
+        auto_shoot = pt.get<bool>("auto_shoot", false);
+        bScope_multiplier = pt.get<float>("bScope_multiplier", 1.0);
 
         // AI
         ai_model = pt.get<std::string>("ai_model", "sunxds_0.5.6.engine");
@@ -111,7 +115,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "detection_resolution = " << detection_resolution << "\n";
     file << "capture_fps = " << std::fixed << std::setprecision(1) << capture_fps << "\n";
     file << "capture_borders = " << (capture_borders ? "true" : "false") << "\n";
-    file << "capture_cursor = " << (capture_cursor ? "true" : "false") << "\n\n";
+    file << "capture_cursor = " << (capture_cursor ? "true" : "false") << "\n";
+    file << "duplication_api = " << (duplication_api ? "true" : "false") << "\n\n";
 
     file << "# Target\n";
     file << "disable_headshot = " << (disable_headshot ? "true" : "false") << "\n";
@@ -127,15 +132,18 @@ bool Config::saveConfig(const std::string& filename)
     file << "maxSpeedMultiplier = " << std::fixed << std::setprecision(1) << maxSpeedMultiplier << "\n";
     file << "predictionInterval = " << std::fixed << std::setprecision(1) << predictionInterval << "\n\n";
 
-    file << "# Mouse shooting\n";
-    file << "auto_shoot = " << (auto_shoot ? "true" : "false") << "\n";
-    file << "bScope_multiplier = " << std::fixed << std::setprecision(1) << bScope_multiplier << "\n\n";
+    file << "# Ghub\n";
+    file << "ghub = " << (ghub ? "true" : "false") << "\n\n";
 
     file << "# Arduino\n";
     file << "arduino_enable = " << (arduino_enable ? "true" : "false") << "\n";
     file << "arduino_baudrate = " << arduino_baudrate << "\n";
     file << "arduino_port = " << arduino_port << "\n";
     file << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n\n";
+
+    file << "# Mouse shooting\n";
+    file << "auto_shoot = " << (auto_shoot ? "true" : "false") << "\n";
+    file << "bScope_multiplier = " << std::fixed << std::setprecision(1) << bScope_multiplier << "\n\n";
 
     file << "# AI\n";
     file << "ai_model = " << ai_model << "\n";
