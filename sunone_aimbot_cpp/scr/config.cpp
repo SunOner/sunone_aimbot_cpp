@@ -81,6 +81,7 @@ bool Config::loadConfig(const std::string& filename)
         window_name = pt.get<std::string>("window_name", "Debug");
         window_size = pt.get<int>("window_size", 100);
         screenshot_button = splitString(pt.get<std::string>("screenshot_button", "RightMouseButton"));
+        screenshot_delay = pt.get<int>("screenshot_delay", 250);
         always_on_top = pt.get<bool>("always_on_top", true);
     }
     catch (boost::property_tree::ini_parser_error& e)
@@ -164,6 +165,7 @@ bool Config::saveConfig(const std::string& filename)
     file << "window_name = " << window_name << "\n";
     file << "window_size = " << window_size << "\n";
     file << "screenshot_button = " << joinStrings(screenshot_button) << "\n";
+    file << "screenshot_delay = " << screenshot_delay << "\n";
     file << "always_on_top = " << (always_on_top ? "true" : "false");
 
     file.close();

@@ -467,7 +467,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 auto now = std::chrono::steady_clock::now();
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count();
 
-                if (elapsed >= 250)
+                if (elapsed >= config.screenshot_delay)
                 {
                     auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::system_clock::now().time_since_epoch()
