@@ -29,6 +29,7 @@ bool SerialConnection::isOpen() const
 {
     return is_open_;
 }
+
 SerialConnection::~SerialConnection()
 {
     if (serial_port_.is_open())
@@ -41,7 +42,14 @@ void SerialConnection::write(const std::string& data)
 {
     if (is_open_)
     {
-        boost::asio::write(serial_port_, boost::asio::buffer(data));
+        try
+        {
+            boost::asio::write(serial_port_, boost::asio::buffer(data));
+        }
+        catch (const boost::system::system_error&)
+        {
+            is_open_ = false;
+        }
     }
 }
 
@@ -49,10 +57,17 @@ std::string SerialConnection::read()
 {
     char c;
     std::string result;
-    while (boost::asio::read(serial_port_, boost::asio::buffer(&c, 1)))
+    try
     {
-        if (c == '\n') break;
-        result += c;
+        while (boost::asio::read(serial_port_, boost::asio::buffer(&c, 1)))
+        {
+            if (c == '\n') break;
+            result += c;
+        }
+    }
+    catch (const boost::system::system_error&)
+    {
+        is_open_ = false;
     }
     return result;
 }
@@ -76,51 +91,27 @@ void SerialConnection::move(int x, int y)
 {
     if (!is_open_) return;
 
-    if (x < std::numeric_limits<int>::min() || x > std::numeric_limits<int>::max() ||
-        y < std::numeric_limits<int>::min() || y > std::numeric_limits<int>::max())
-    {
-        x = y = 0;
-    }
-
     if (config.arduino_16_bit_mouse)
     {
         std::string data = "m" + std::to_string(x) + "," + std::to_string(y) + "\n";
-        try
-        {
-            write(data);
-        }
-        catch (const std::exception& e)
-        {
-        }
+        write(data);
     }
     else
     {
         std::vector<int> x_parts = splitValue(x);
         std::vector<int> y_parts = splitValue(y);
 
-        if (x_parts.size() != y_parts.size() || x_parts.empty() || y_parts.empty())
-        {
-            x_parts.clear();
-            y_parts.clear();
-        }
+        size_t max_splits = std::max(x_parts.size(), y_parts.size());
 
-        for (size_t i = 0; i < x_parts.size(); ++i)
-        {
-            if (x_parts[i] < std::numeric_limits<int>::min() || x_parts[i] > std::numeric_limits<int>::max() ||
-                y_parts[i] < std::numeric_limits<int>::min() || y_parts[i] > std::numeric_limits<int>::max())
-            {
-                x_parts[i] = y_parts[i] = 0;
-            }
+        while (x_parts.size() < max_splits)
+            x_parts.push_back(0);
+        while (y_parts.size() < max_splits)
+            y_parts.push_back(0);
 
+        for (size_t i = 0; i < max_splits; ++i)
+        {
             std::string data = "m" + std::to_string(x_parts[i]) + "," + std::to_string(y_parts[i]) + "\n";
-            try
-            {
-                write(data);
-            }
-            catch (const std::exception& e)
-            {
-                
-            }
+            write(data);
         }
     }
 }
@@ -135,12 +126,22 @@ std::vector<int> SerialConnection::splitValue(int value)
     std::vector<int> values;
     int sign = (value < 0) ? -1 : 1;
 
+    if (value == 0)
+    {
+        values.push_back(0);
+        return values;
+    }
+
     while (abs(value) > 127)
     {
         values.push_back(sign * 127);
         value -= sign * 127;
     }
 
-    values.push_back(value);
+    if (value != 0)
+    {
+        values.push_back(value);
+    }
+
     return values;
 }
