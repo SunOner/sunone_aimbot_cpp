@@ -141,6 +141,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(WindowsSDK_IncludePath);$(WindowsSDK_IncludePath)\cppwinrt;$(MSBuildProjectDirectory)\modules\opencv\build\include;$(MSBuildProjectDirectory)\modules\TensorRT-10.3.0.26\include;include;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v12.4\include;$(ProgramW6432)\NVIDIA\CUDNN\v9.1\include\12.4;$(IncludePath)</IncludePath>
     <LibraryPath>$(MSBuildProjectDirectory)\modules\opencv\build\x64\vc16\lib;$(MSBuildProjectDirectory)\modules\TensorRT-10.3.0.26\lib;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v12.4\lib\x64;$(ProgramW6432)\NVIDIA\CUDNN\v9.1\lib\12.4;$(MSBuildProjectDirectory)\modules\boost_1_82_0\stage\lib;$(LibraryPath)</LibraryPath>
+    <TargetName>ai</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
