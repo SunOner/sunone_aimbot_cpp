@@ -383,7 +383,7 @@ void Detector::postProcess(const float* output, int outputSize)
             }
         }
     }
-    else if (dim1 == 15 && dim2 == 8400) // [1, 15, 8400] Yolov11
+    else if (dim1 == 15 && dim2 == 8400 or dim1 == 15 && dim2 == 8400 / 4) // [1, 15, 8400] or [1, 15, 2100] Yolov11
     {
         int channels = dim1;
         int cols = dim2;
