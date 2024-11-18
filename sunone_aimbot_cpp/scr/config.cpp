@@ -51,10 +51,11 @@ bool Config::loadConfig(const std::string& filename)
         ghub = pt.get<bool>("ghub", false);
 
         // Arduino
-        arduino_enable = pt.get<bool>("arduino_enable", "false");
+        arduino_enable = pt.get<bool>("arduino_enable", false);
         arduino_baudrate = pt.get<int>("arduino_baudrate", 9600);
         arduino_port = pt.get<std::string>("arduino_port", "COM0");
         arduino_16_bit_mouse = pt.get<bool>("arduino_16_bit_mouse", false);
+        arduino_enable_keys = pt.get<bool>("arduino_enable_keys", false);
 
         // Mouse shooting
         auto_shoot = pt.get<bool>("auto_shoot", false);
@@ -71,9 +72,23 @@ bool Config::loadConfig(const std::string& filename)
         button_exit = splitString(pt.get<std::string>("button_exit", "F2"));
         button_pause = splitString(pt.get<std::string>("button_pause", "F3"));
         button_reload_config = splitString(pt.get<std::string>("button_reload_config", "F4"));
-
-        // overlay
         button_open_overlay = splitString(pt.get<std::string>("button_open_overlay", "Home"));
+
+        // Overlay
+        overlay_opacity = pt.get<int>("overlay_opacity", 255);
+
+        // Custom Classes
+        class_player = pt.get<int>("class_player", 0);
+        class_bot = pt.get<int>("class_bot", 1);
+        class_weapon = pt.get<int>("class_weapon", 2);
+        class_outline = pt.get<int>("class_outline", 3);
+        class_dead_body = pt.get<int>("class_dead_body", 4);
+        class_hideout_target_human = pt.get<int>("class_hideout_target_human", 5);
+        class_hideout_target_balls = pt.get<int>("class_hideout_target_balls", 6);
+        class_head = pt.get<int>("class_head", 7);
+        class_smoke = pt.get<int>("class_smoke", 8);
+        class_fire = pt.get<int>("class_fire", 9);
+        class_third_person = pt.get<int>("class_third_person", 10);
 
         // Debug window
         show_window = pt.get<bool>("show_window", true);
@@ -140,7 +155,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "arduino_enable = " << (arduino_enable ? "true" : "false") << "\n";
     file << "arduino_baudrate = " << arduino_baudrate << "\n";
     file << "arduino_port = " << arduino_port << "\n";
-    file << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n\n";
+    file << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n";
+    file << "arduino_enable_keys = " << (arduino_enable_keys ? "true" : "false") << "\n\n";
 
     file << "# Mouse shooting\n";
     file << "auto_shoot = " << (auto_shoot ? "true" : "false") << "\n";
@@ -158,6 +174,22 @@ bool Config::saveConfig(const std::string& filename)
     file << "button_pause = " << joinStrings(button_pause) << "\n";
     file << "button_reload_config = " << joinStrings(button_reload_config) << "\n";
     file << "button_open_overlay = " << joinStrings(button_open_overlay) << "\n\n";
+
+    file << "# Overlay\n";
+    file << "overlay_opacity = " << overlay_opacity << "\n\n";
+
+    file << "# Custom Classes\n";
+    file << "class_player = " << class_player << "\n";
+    file << "class_bot = " << class_bot << "\n";
+    file << "class_weapon = " << class_weapon << "\n";
+    file << "class_outline = " << class_outline << "\n";
+    file << "class_dead_body = " << class_dead_body << "\n";
+    file << "class_hideout_target_human = " << class_hideout_target_human << "\n";
+    file << "class_hideout_target_balls = " << class_hideout_target_balls << "\n";
+    file << "class_head = " << class_head << "\n";
+    file << "class_smoke = " << class_smoke << "\n";
+    file << "class_fire = " << class_fire << "\n";
+    file << "class_third_person = " << class_third_person << "\n\n";
 
     file << "# Debug window\n";
     file << "show_window = " << (show_window ? "true" : "false") << "\n";

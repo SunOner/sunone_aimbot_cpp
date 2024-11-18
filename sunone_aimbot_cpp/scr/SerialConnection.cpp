@@ -8,20 +8,33 @@
 
 #include "SerialConnection.h"
 #include "sunone_aimbot_cpp.h"
+#include "mouse.h"
 
 SerialConnection::SerialConnection(const std::string& port, unsigned int baud_rate)
-    : serial_port_(io_service_), is_open_(false)
+    : io_context_(),
+    work_guard_(boost::asio::make_work_guard(io_context_)),
+    serial_port_(io_context_),
+    is_open_(false)
 {
     try
     {
         serial_port_.open(port);
         serial_port_.set_option(boost::asio::serial_port_base::baud_rate(baud_rate));
+        serial_port_.set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::hardware));
+
         is_open_ = true;
         std::cout << "[Arduino] Connected!" << std::endl;
+
+        startListening();
+
+        io_thread_ = std::thread([this]()
+            {
+                io_context_.run();
+            });
     }
     catch (boost::system::system_error& e)
     {
-        std::cerr << "[Arduino] Unable to connect to the port." << std::endl;
+        std::cerr << "[Arduino] Unable to connect to the port: " << e.what() << std::endl;
     }
 }
 
@@ -32,9 +45,18 @@ bool SerialConnection::isOpen() const
 
 SerialConnection::~SerialConnection()
 {
+    work_guard_.reset();
+
     if (serial_port_.is_open())
     {
         serial_port_.close();
+    }
+
+    io_context_.stop();
+
+    if (io_thread_.joinable())
+    {
+        io_thread_.join();
     }
 }
 
@@ -144,4 +166,59 @@ std::vector<int> SerialConnection::splitValue(int value)
     }
 
     return values;
+}
+
+void SerialConnection::startListening()
+{
+    try
+    {
+        boost::asio::async_read_until(serial_port_, buffer_, '\n',
+            [this](const boost::system::error_code& ec, size_t bytes_transferred)
+            {
+                if (!ec)
+                {
+                    std::istream is(&buffer_);
+                    std::string line;
+                    std::getline(is, line);
+
+                    processIncomingLine(line);
+
+                    startListening();
+                }
+                else
+                {
+                    std::cerr << "[Arduino] Error on receive: " << ec.message() << "\n";
+                }
+            });
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "[Arduino] Exception in listener: " << ex.what() << std::endl;
+    }
+}
+
+void SerialConnection::processIncomingLine(const std::string& line)
+{
+    if (line.find("BD:") == 0)
+    {
+        uint16_t buttonId = std::stoi(line.substr(3));
+
+        switch (buttonId)
+        {
+            case 2:
+                aiming_active = true;
+                break;
+        }
+    }
+    else if (line.find("BU:") == 0)
+    {
+        uint16_t buttonId = std::stoi(line.substr(3));
+
+        switch (buttonId)
+        {
+            case 2:
+                aiming_active = false;
+                break;
+        }
+    }
 }

@@ -38,7 +38,8 @@ void keyboardListener()
     while (!shouldExit)
     {
         // Aiming
-        aiming = isAnyKeyPressed(config.button_targeting);
+        aiming = isAnyKeyPressed(config.button_targeting) ||
+            (config.arduino_enable_keys && serial && serial->isOpen() && serial->aiming_active);
 
         // Exit
         if (isAnyKeyPressed(config.button_exit))

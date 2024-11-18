@@ -30,10 +30,19 @@ void displayThread()
 
     std::vector<cv::Rect> boxes;
     std::vector<int> classes;
-    std::vector<std::string> cv_classes{ "player", "bot", "weapon", "outline",
-                                         "dead_body", "hideout_target_human",
-                                         "hideout_target_balls", "head", "smoke", "fire",
-                                         "third_person" };
+    std::vector<int> cv_classes {
+        config.class_player,
+        config.class_bot,
+        config.class_weapon,
+        config.class_outline,
+        config.class_dead_body,
+        config.class_hideout_target_human,
+        config.class_hideout_target_balls,
+        config.class_head,
+        config.class_smoke,
+        config.class_fire,
+        config.class_third_person
+    };
 
     namedWindow(config.window_name, WINDOW_NORMAL);
     if (config.always_on_top)
@@ -80,7 +89,7 @@ void displayThread()
 
                 rectangle(frame, adjustedBox, cv::Scalar(0, 255, 0), 2);
                 
-                std::string className = cv_classes[classes[i]];
+                std::string className = std::to_string(cv_classes[classes[i]]);
                 
                 int baseline = 0;
                 cv::Size textSize = cv::getTextSize(className, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);

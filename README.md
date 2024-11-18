@@ -41,7 +41,7 @@
    After the export (~1-5 minutes), copy `TensorRT-10.3.0.26/bin/sunxds_0.5.6.engine` to `sunone_aimbot_cpp/models/`.
 
 8. **Run the Application**  
-   Execute `sunone_aimbot_cpp.exe`.
+   Execute `ai.exe`.
 
 > **⚠️ WARNING:** TensorRT version 10 does not support the Pascal architecture (10 series graphics cards). Use only with GPUs of at least the 20 series.
 
@@ -112,6 +112,9 @@ Click the image above to watch the installation tutorial video.
 10. **Build the Project**  
 	- Switch the build configuration to **Release**.
 	- Build the project by selecting **Build** > **Build Solution**.
+
+## 📋 Config docs
+- The config documentation is available in a separate [repository](https://github.com/SunOner/sunone_aimbot_docs/blob/main/config/config_cpp.md).
 
 ## 📚 References
 

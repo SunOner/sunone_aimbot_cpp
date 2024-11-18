@@ -192,15 +192,32 @@ bool CreateOverlayWindow()
     ::RegisterClassEx(&wc);
 
     g_hwnd = ::CreateWindowEx(
-        WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_NOACTIVATE,
-        wc.lpszClassName, _T("Overlay"),
+        WS_EX_TOPMOST | WS_EX_LAYERED,
+        wc.lpszClassName, _T("BY ISPUGALSA"),
         WS_POPUP, 0, 0, overlayWidth, overlayHeight,
         NULL, NULL, wc.hInstance, NULL);
 
     if (g_hwnd == NULL)
         return false;
+    
+    // Opacity
+    if (config.overlay_opacity <= 0)
+    {
+        std::cout << "[Overlay] The transparency value of the overlay is set to less than one, this value is unacceptable." << std::endl;
+        std::cin.get();
+        return -1;
+    }
 
-    SetLayeredWindowAttributes(g_hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
+    if (config.overlay_opacity >= 256)
+    {
+        std::cout << "[Overlay] The transparency value of the overlay is set to more than 255, this value is unacceptable." << std::endl;
+        std::cin.get();
+        return -1;
+    }
+
+    BYTE opacity = config.overlay_opacity;
+
+    SetLayeredWindowAttributes(g_hwnd, 0, opacity, LWA_ALPHA);
 
     if (!CreateDeviceD3D(g_hwnd))
     {
@@ -246,6 +263,7 @@ void OverlayThread()
             if (show_overlay)
             {
                 ShowWindow(g_hwnd, SW_SHOW);
+                SetForegroundWindow(g_hwnd);
             }
             else
             {

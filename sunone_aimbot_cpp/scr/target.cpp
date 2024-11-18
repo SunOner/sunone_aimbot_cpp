@@ -9,6 +9,7 @@
 
 #include "sunone_aimbot_cpp.h"
 #include "target.h"
+#include "config.h"
 
 using namespace std;
 
@@ -31,7 +32,7 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
     {
         for (size_t i = 0; i < boxes.size(); i++)
         {
-            if (classes[i] == 7)
+            if (classes[i] == config.class_head)
             {
                 cv::Point targetPoint(boxes[i].x + boxes[i].width / 2, boxes[i].y + boxes[i].height / 2);
                 double distance = std::pow(targetPoint.x - center.x, 2) + std::pow(targetPoint.y - center.y, 2);
@@ -51,16 +52,16 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
         minDistance = std::numeric_limits<double>::max();
         for (size_t i = 0; i < boxes.size(); i++)
         {
-            if (disableHeadshot && classes[i] == 7)
+            if (disableHeadshot && classes[i] == config.class_head)
             {
                 continue;
             }
 
-            if (classes[i] == 0 ||
-                classes[i] == 1 ||
-                classes[i] == 5 ||
-                classes[i] == 6 ||
-                (classes[i] == 10 && !config.ignore_third_person))
+            if (classes[i] == config.class_player ||
+                classes[i] == config.class_bot ||
+                classes[i] == config.class_hideout_target_human ||
+                classes[i] == config.class_hideout_target_balls ||
+                (classes[i] == config.class_third_person && !config.ignore_third_person))
             {
                 int offsetY = static_cast<int>(boxes[i].height * config.body_y_offset);
                 cv::Point targetPoint(boxes[i].x + boxes[i].width / 2, boxes[i].y + offsetY);
@@ -82,7 +83,7 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
     }
 
     int y;
-    if (classes[nearestIdx] == 7)
+    if (classes[nearestIdx] == config.class_head)
     {
         y = boxes[nearestIdx].y;
     }
