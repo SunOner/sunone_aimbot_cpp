@@ -179,18 +179,14 @@ void MouseThread::moveMouse(const Target& target)
     int move_x = static_cast<INT>(movement.first);
     int move_y = static_cast<INT>(movement.second);
 
-    // Arduino
     if (serial)
     {
         serial->move(move_x, move_y);
     }
-
-    // Ghub
     else if (gHub)
     {
         gHub->mouse_xy(move_x, move_y);
     }
-    // Win32
     else
     {
         INPUT input = { 0 };
@@ -198,7 +194,6 @@ void MouseThread::moveMouse(const Target& target)
         input.mi.dx = move_x;
         input.mi.dy = move_y;
         input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
-
         SendInput(1, &input, sizeof(INPUT));
     }
 }
@@ -217,6 +212,13 @@ void MouseThread::pressMouse(const Target& target)
         {
             gHub->mouse_down();
         }
+        else
+        {
+            INPUT input = { 0 };
+            input.type = INPUT_MOUSE;
+            input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+            SendInput(1, &input, sizeof(INPUT));
+        }
     }
     else
     {
@@ -227,6 +229,13 @@ void MouseThread::pressMouse(const Target& target)
         else if (gHub)
         {
             gHub->mouse_up();
+        }
+        else
+        {
+            INPUT input = { 0 };
+            input.type = INPUT_MOUSE;
+            input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+            SendInput(1, &input, sizeof(INPUT));
         }
     }
 }
@@ -240,6 +249,13 @@ void MouseThread::releaseMouse()
     else if (gHub)
     {
         gHub->mouse_up();
+    }
+    else
+    {
+        INPUT input = { 0 };
+        input.type = INPUT_MOUSE;
+        input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+        SendInput(1, &input, sizeof(INPUT));
     }
 }
 

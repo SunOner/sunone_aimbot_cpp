@@ -36,6 +36,14 @@ Config config;
 GhubMouse* gHub = nullptr;
 SerialConnection* serial = nullptr;
 
+std::atomic<bool> detection_resolution_changed(false);
+std::atomic<bool> capture_method_changed(false);
+std::atomic<bool> capture_cursor_changed(false);
+std::atomic<bool> capture_borders_changed(false);
+std::atomic<bool> capture_fps_changed(false);
+std::atomic<bool> detector_model_changed(false);
+std::atomic<bool> show_window_changed(false);
+
 void mouseThreadFunction(MouseThread& mouseThread)
 {
     int lastDetectionVersion = -1;
@@ -68,7 +76,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
             }
             else
             {
-                // If no detections release mouse
+                // no detections, release mouse
                 if (config.auto_shoot)
                 {
                     mouseThread.releaseMouse();
@@ -93,13 +101,23 @@ int main()
         return -1;
     }
 
+    int numMethods = 0;
+    if (config.arduino_enable) numMethods++;
+    if (config.ghub) numMethods++;
+
+    if (numMethods > 1)
+    {
+        cerr << "[Mouse] You have enabled more than one mouse input method." << endl;
+        cin.get();
+        return -1;
+    }
+
     if (config.arduino_enable)
     {
         cout << "[Mouse] Using Arduino method input." << endl;
         serial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
     }
-
-    if (config.arduino_enable == false && config.ghub)
+    else if (config.ghub)
     {
         cout << "[Mouse] Using Ghub method input." << endl;
         gHub = new GhubMouse();
@@ -110,12 +128,9 @@ int main()
             gHub = nullptr;
         }
     }
-
-    if (config.arduino_enable && config.ghub)
+    else
     {
-        cerr << "[Mouse] You use more than one mouse input method." << endl;
-        cin.get();
-        return -1;
+        cout << "[Mouse] Using default Win32 method input." << endl;
     }
 
     MouseThread mouseThread(
@@ -158,6 +173,7 @@ int main()
 
     if (gHub)
     {
+        gHub->mouse_close();
         delete gHub;
     }
 

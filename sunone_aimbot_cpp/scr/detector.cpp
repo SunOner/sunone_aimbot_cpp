@@ -9,45 +9,47 @@
 #include <opencv2/dnn.hpp>
 #include <algorithm>
 #include <cuda_fp16.h>
+#include <atomic>
 
 #include "detector.h"
 #include "nvinf.h"
 #include "sunone_aimbot_cpp.h"
-
-using namespace std;
 
 std::mutex frameMutex;
 extern std::atomic<bool> detectionPaused;
 int model_quant;
 std::vector<float> outputData;
 
+extern std::atomic<bool> detector_model_changed;
+
 Detector::Detector()
-    : runtime(nullptr), engine(nullptr), context(nullptr),
-    frameReady(false), shouldExit(false), detectionVersion(0)
+    : frameReady(false), shouldExit(false), detectionVersion(0)
 {
     cudaStreamCreate(&stream);
 }
 
 Detector::~Detector()
 {
-    if (context) delete context;
-    if (engine) delete engine;
-    if (runtime) delete runtime;
     cudaStreamDestroy(stream);
 
     for (auto& binding : inputBindings)
     {
         cudaFree(binding.second);
     }
+    inputBindings.clear();
 
     for (auto& binding : outputBindings)
     {
         cudaFree(binding.second);
     }
+    outputBindings.clear();
 }
 
 void Detector::getInputNames()
 {
+    inputNames.clear();
+    inputSizes.clear();
+
     for (int i = 0; i < engine->getNbIOTensors(); ++i)
     {
         const char* name = engine->getIOTensorName(i);
@@ -64,6 +66,11 @@ void Detector::getInputNames()
 
 void Detector::getOutputNames()
 {
+    outputNames.clear();
+    outputSizes.clear();
+    outputTypes.clear();
+    outputShapes.clear();
+
     for (int i = 0; i < engine->getNbIOTensors(); ++i)
     {
         const char* name = engine->getIOTensorName(i);
@@ -92,6 +99,18 @@ void Detector::getOutputNames()
 
 void Detector::getBindings()
 {
+    for (auto& binding : inputBindings)
+    {
+        cudaFree(binding.second);
+    }
+    inputBindings.clear();
+
+    for (auto& binding : outputBindings)
+    {
+        cudaFree(binding.second);
+    }
+    outputBindings.clear();
+
     for (const auto& name : inputNames)
     {
         size_t size = inputSizes[name];
@@ -110,12 +129,27 @@ void Detector::getBindings()
 
 void Detector::initialize(const std::string& modelFile)
 {
-    runtime = nvinfer1::createInferRuntime(gLogger);
+    runtime.reset(nvinfer1::createInferRuntime(gLogger));
+
     loadEngine(modelFile);
-    context = engine->createExecutionContext();
+
+    if (!engine)
+    {
+        std::cerr << "[Detector] Error loading the engine from a file " << modelFile << std::endl;
+        return;
+    }
+
+    context.reset(engine->createExecutionContext());
+
+    if (!context)
+    {
+        std::cerr << "[Detector] Error creating the execution context" << std::endl;
+        return;
+    }
 
     getInputNames();
     getOutputNames();
+
     getBindings();
 
     if (!inputNames.empty())
@@ -127,7 +161,7 @@ void Detector::initialize(const std::string& modelFile)
     }
     else
     {
-        cerr << "[Detector] No input tensors found" << endl;
+        std::cerr << "[Detector] No input tensors found" << std::endl;
     }
 
     for (const auto& name : outputNames)
@@ -145,7 +179,7 @@ void Detector::initialize(const std::string& modelFile)
         }
         else
         {
-            std::cerr << "Unsupported output data type during initialization" << std::endl;
+            std::cerr << "[Detector] Unsupported output tensor data type during initialization" << std::endl;
         }
     }
 
@@ -180,17 +214,26 @@ void Detector::loadEngine(const std::string& engineFile)
     std::ifstream file(engineFile, std::ios::binary);
     if (!file.good())
     {
-        std::cerr << "Error opening engine file" << std::endl;
-        std::cin.get();
+        std::cerr << "[Detector] Error opening the engine file: " << engineFile << std::endl;
         return;
     }
 
-    file.seekg(0, file.end);
+    file.seekg(0, std::ios::end);
     size_t size = file.tellg();
-    file.seekg(0, file.beg);
+    file.seekg(0, std::ios::beg);
     std::vector<char> engineData(size);
     file.read(engineData.data(), size);
-    engine = runtime->deserializeCudaEngine(engineData.data(), size);
+    file.close();
+
+    engine.reset(runtime->deserializeCudaEngine(engineData.data(), size));
+
+    if (!engine)
+    {
+        std::cerr << "[Detector] Engine deserialization error from file: " << engineFile << std::endl;
+        return;
+    }
+
+    std::cout << "[Detector] The engine was successfully loaded from the file: " << engineFile << std::endl;
 }
 
 void Detector::processFrame(const cv::Mat& frame)
@@ -215,6 +258,35 @@ void Detector::inferenceThread()
 {
     while (!shouldExit)
     {
+        if (detector_model_changed.load())
+        {
+            {
+                std::unique_lock<std::mutex> lock(inferenceMutex);
+
+                context.reset();
+                engine.reset();
+                runtime.reset();
+
+                for (auto& binding : inputBindings)
+                {
+                    cudaFree(binding.second);
+                }
+                inputBindings.clear();
+
+                for (auto& binding : outputBindings)
+                {
+                    cudaFree(binding.second);
+                }
+                outputBindings.clear();
+
+                cudaStreamDestroy(stream);
+                cudaStreamCreate(&stream);
+
+                initialize("models/" + config.ai_model);
+            }
+            detector_model_changed.store(false);
+        }
+
         cv::Mat frame;
         {
             std::unique_lock<std::mutex> lock(inferenceMutex);
@@ -222,6 +294,12 @@ void Detector::inferenceThread()
             if (shouldExit) break;
             frame = std::move(currentFrame);
             frameReady = false;
+        }
+
+        if (!context)
+        {
+            std::cerr << "[Detector] The context is not initialized" << std::endl;
+            continue;
         }
 
         const std::string& inputName = inputNames[0];
@@ -256,7 +334,7 @@ void Detector::inferenceThread()
             }
             else
             {
-                std::cerr << "Unsupported output data type" << std::endl;
+                std::cerr << "[Detector] Unsupported output tensor data type" << std::endl;
                 return;
             }
         }
@@ -284,7 +362,7 @@ void Detector::inferenceThread()
             }
             else
             {
-                std::cerr << "Unsupported output data type in inferenceThread" << std::endl;
+                std::cerr << "[Detector] Unsupported output tensor data type in inferenceThread" << std::endl;
                 return;
             }
         }

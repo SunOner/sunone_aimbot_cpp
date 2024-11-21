@@ -3,6 +3,12 @@
 #include <winsock2.h>
 #include <Windows.h>
 
+// for ai models search
+#include <string>
+#include <iostream>
+#include <filesystem>
+#include <algorithm>
+
 #include <tchar.h>
 #include <thread>
 #include <mutex>
@@ -40,7 +46,67 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 int overlayWidth = 500;
-int overlayHeight = 320;
+int overlayHeight = 300;
+
+// init vars
+std::vector<std::string> engine_models;
+int prev_ai_model_index;
+int current_ai_model_index;
+int prev_imgsz_index;
+int selected_imgsz;
+
+// Realtime config vars
+extern std::atomic<bool> detection_resolution_changed;
+extern std::atomic<bool> capture_method_changed;
+extern std::atomic<bool> capture_cursor_changed;
+extern std::atomic<bool> capture_borders_changed;
+extern std::atomic<bool> capture_fps_changed;
+extern std::atomic<bool> detector_model_changed;
+extern std::atomic<bool> show_window_changed;
+
+std::vector<std::string> getEngineFiles()
+{
+    std::vector<std::string> engineFiles;
+
+    for (const auto& entry : std::filesystem::directory_iterator("models/"))
+    {
+        if (entry.is_regular_file() && entry.path().extension() == ".engine")
+        {
+            engineFiles.push_back(entry.path().filename().string());
+        }
+    }
+    return engineFiles;
+}
+
+int getModelIndex(std::vector<std::string> engine_models)
+{
+    auto it = std::find(engine_models.begin(), engine_models.end(), config.ai_model);
+
+    if (it != engine_models.end())
+    {
+        return std::distance(engine_models.begin(), it);
+    }
+    else
+    {
+        return 0; // not found
+    }
+}
+
+std::string intToString(int value) {
+    return std::to_string(value);
+}
+
+int getImageSizeIndex(int engine_image_size, const int* model_sizes, int model_sizes_count)
+{
+    for (int i = 0; i < model_sizes_count; ++i)
+    {
+        if (model_sizes[i] == engine_image_size)
+        {
+            return i;
+        }
+    }
+    return 0; // not found
+}
 
 bool InitializeBlendState()
 {
@@ -182,18 +248,29 @@ void SetupImGui()
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
     ImGui::StyleColorsDark();
+
+    // other setups
+    engine_models = getEngineFiles();
+    prev_ai_model_index = getModelIndex(engine_models);
+    current_ai_model_index = prev_ai_model_index;
+
+    int model_sizes[] = { 320, 480, 640 };
+    const int model_sizes_count = sizeof(model_sizes) / sizeof(model_sizes[0]);
+
+    selected_imgsz = getImageSizeIndex(config.engine_image_size, model_sizes, model_sizes_count);
+    prev_imgsz_index = selected_imgsz;
 }
 
 bool CreateOverlayWindow()
 {
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L,
                       GetModuleHandle(NULL), NULL, NULL, NULL, NULL,
-                      _T("ImGui Overlay"), NULL };
+                      _T("Edge"), NULL };
     ::RegisterClassEx(&wc);
 
     g_hwnd = ::CreateWindowEx(
         WS_EX_TOPMOST | WS_EX_LAYERED,
-        wc.lpszClassName, _T("BY ISPUGALSA"),
+        wc.lpszClassName, _T("Chrome"),
         WS_POPUP, 0, 0, overlayWidth, overlayHeight,
         NULL, NULL, wc.hInstance, NULL);
 
@@ -241,6 +318,41 @@ void OverlayThread()
 
     bool show_overlay = false;
 
+    // Real time settings vars
+    static int prev_detection_resolution = config.detection_resolution;
+    
+    bool prev_capture_method = config.duplication_api;
+    bool prev_capture_cursor = config.capture_cursor;
+    bool prev_capture_borders = config.capture_borders;
+    float prev_capture_fps = config.capture_fps;
+
+    bool prev_show_window = config.show_window;
+    int prev_opacity = config.overlay_opacity;
+
+    int current_ai_model_index = prev_ai_model_index;
+    float prev_confidence_threshold = config.confidence_threshold;
+    float prev_nms_threshold = config.nms_threshold;
+
+    bool prev_disable_headshot = config.disable_headshot;
+    float prev_body_y_offset = config.body_y_offset;
+    bool prev_ignore_third_person = config.ignore_third_person;
+
+    int prev_dpi = config.dpi;
+    float prev_sensitivity = config.sensitivity;
+    int prev_fovX = config.fovX;
+    int prev_fovY = config.fovY;
+    float prev_minSpeedMultiplier = config.minSpeedMultiplier;
+    float prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
+    float prev_predictionInterval = config.predictionInterval;
+
+    bool prev_auto_shoot = config.auto_shoot;
+    float prev_bScope_multiplier = config.bScope_multiplier;
+
+    bool prev_show_fps = config.show_fps;
+    int prev_window_size = config.window_size;
+    int prev_screenshot_delay = config.screenshot_delay;
+    bool prev_always_on_top = config.always_on_top;
+
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
     while (!shouldExit)
@@ -283,62 +395,252 @@ void OverlayThread()
             ImGui::SetNextWindowSize(ImVec2((float)overlayWidth, (float)overlayHeight));
 
             ImGui::Begin("Options", &show_overlay, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-
             {
                 std::lock_guard<std::mutex> lock(configMutex);
-
-                ImGui::SliderInt("DPI", &config.dpi, 800, 5000, "%d");
-                ImGui::SliderFloat("Sensitivity", &config.sensitivity, 0.1f, 10.0f, "%.1f");
-                ImGui::Checkbox("Disable headshot", &config.disable_headshot);
-                ImGui::SliderFloat("Body Y offset", &config.body_y_offset, -2.0f, 2.0f, "%.1f");
-                ImGui::SliderInt("FOV X", &config.fovX, 60, 120);
-                ImGui::SliderInt("FOV Y", &config.fovY, 40, 100);
-                ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 5.0f, "%.1f");
-                ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 5.0f, "%.1f");
-                ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.1f, 3.0f, "%.1f");
-                ImGui::Checkbox("Auto shoot", &config.auto_shoot);
-                ImGui::SliderFloat("bScope Multiplier", &config.bScope_multiplier, 0.5f, 2.0f, "%.1f");
-
-                if (ImGui::Button("Save Config"))
+                if (ImGui::BeginTabBar("Options tab bar"))
                 {
-                    if (config.saveConfig("config.ini"))
+                    if (ImGui::BeginTabItem("Capture"))
                     {
-                        ImGui::TextColored(ImVec4(0, 1, 0, 1), "Config saved successfully.");
-                    }
-                    else
-                    {
-                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Failed to save config.");
-                    }
-                }
+                        ImGui::SliderInt("Detection Resolution", &config.detection_resolution, 50, 720);
+                        ImGui::SliderInt("Lock FPS", &config.capture_fps, 0, 240);
+                        ImGui::Checkbox("Duplication API", &config.duplication_api);
+                        if (config.duplication_api == false)
+                        {
+                            ImGui::Checkbox("Capture Borders", &config.capture_borders);
+                            ImGui::Checkbox("Capture Cursor", &config.capture_cursor);
+                        }
 
-                ImGui::SameLine();
-
-                if (ImGui::Button("Apply Changes"))
-                {
-                    if (config.saveConfig("config.ini"))
-                    {
-                        ImGui::TextColored(ImVec4(0, 1, 0, 1), "Config saved successfully.");
-                    }
-                    else
-                    {
-                        ImGui::TextColored(ImVec4(1, 0, 0, 1), "Failed to save config.");
+                        ImGui::EndTabItem();
                     }
 
-                    if (globalMouseThread)
+                    if (ImGui::BeginTabItem("Target"))
                     {
-                        globalMouseThread->updateConfig(
-                            config.detection_resolution,
-                            config.dpi,
-                            config.sensitivity,
-                            config.fovX,
-                            config.fovY,
-                            config.minSpeedMultiplier,
-                            config.maxSpeedMultiplier,
-                            config.predictionInterval,
-                            config.auto_shoot,
-                            config.bScope_multiplier
-                        );
+                        ImGui::Checkbox("Disable Headshot", &config.disable_headshot);
+                        ImGui::SliderFloat("Body Y Offset", &config.body_y_offset, -2.0f, 2.0f, "%.2f");
+                        ImGui::Checkbox("Ignore Third Person", &config.ignore_third_person);
+
+                        ImGui::EndTabItem();
                     }
+
+                    if (ImGui::BeginTabItem("Mouse"))
+                    {
+                        ImGui::SliderInt("DPI", &config.dpi, 800, 5000);
+                        ImGui::SliderFloat("Sensitivity", &config.sensitivity, 0.1f, 10.0f, "%.1f");
+                        ImGui::SliderInt("FOV X", &config.fovX, 60, 120);
+                        ImGui::SliderInt("FOV Y", &config.fovY, 40, 100);
+                        ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 5.0f, "%.1f");
+                        ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 5.0f, "%.1f");
+                        ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.1f, 3.0f, "%.1f");
+
+                        ImGui::Checkbox("Auto Shoot", &config.auto_shoot);
+                        ImGui::SliderFloat("bScope Multiplier", &config.bScope_multiplier, 0.5f, 2.0f, "%.1f");
+
+                        ImGui::EndTabItem();
+                    }
+
+                    if (ImGui::BeginTabItem("AI"))
+                    {
+                        // ai models
+                        std::vector<const char*> models_items;
+                        models_items.reserve(engine_models.size());
+                        for (const auto& item : engine_models)
+                        {
+                            models_items.push_back(item.c_str());
+                        }
+
+                        if (ImGui::ListBox("Model", &current_ai_model_index, models_items.data(), static_cast<int>(models_items.size())))
+                        {
+                            if (current_ai_model_index != prev_ai_model_index)
+                            {
+                                config.ai_model = engine_models[current_ai_model_index];
+                                detector_model_changed.store(true);
+                                prev_ai_model_index = current_ai_model_index;
+                                config.saveConfig("config.ini");
+                            }
+                        }
+
+                        // selected model text
+                        const std::string msg_text_model = "Selected model: ";
+                        const std::string msg_text_current_selected_model = engine_models[current_ai_model_index];
+                        const std::string msg_used_model = msg_text_model + msg_text_current_selected_model;
+                        ImGui::Text("%s", msg_used_model.c_str());
+
+                        // model size
+                        int model_sizes[] = { 320, 480, 640 };
+                        const int model_sizes_count = sizeof(model_sizes) / sizeof(model_sizes[0]);
+
+                        const char* model_sizes_str[model_sizes_count];
+                        std::string model_sizes_buffer[model_sizes_count];
+
+                        for (int i = 0; i < model_sizes_count; ++i)
+                        {
+                            model_sizes_buffer[i] = intToString(model_sizes[i]);
+                            model_sizes_str[i] = model_sizes_buffer[i].c_str();
+                        }
+
+                        if (ImGui::ListBox("Engine Image Size", &selected_imgsz, model_sizes_str, model_sizes_count))
+                        {
+                            if (selected_imgsz != prev_imgsz_index)
+                            {
+                                std::cout << "Image size changed to: " << model_sizes[selected_imgsz] << std::endl;
+
+                                config.engine_image_size = model_sizes[selected_imgsz];
+                                detector_model_changed.store(true);
+                                prev_imgsz_index = selected_imgsz;
+
+                                config.saveConfig("config.ini");
+                            }
+                        }
+
+                        ImGui::SliderFloat("Confidence Threshold", &config.confidence_threshold, 0.0f, 1.0f);
+                        ImGui::SliderFloat("NMS Threshold", &config.nms_threshold, 0.0f, 1.0f);
+
+                        ImGui::EndTabItem();
+                    }
+
+                    if (ImGui::BeginTabItem("Overlay"))
+                    {
+                        ImGui::SliderInt("Overlay Opacity", &config.overlay_opacity, 40, 255);
+
+                        ImGui::EndTabItem();
+                    }
+                    
+                    // TODO CUSTOM CLASSES
+
+                    if (ImGui::BeginTabItem("Debug"))
+                    {
+                        ImGui::Checkbox("Show Window", &config.show_window);
+                        ImGui::Checkbox("Show FPS", &config.show_fps);
+                        //ImGui::InputText("Window Name", &config.window_name[0], config.window_name.capacity() + 1); // TODO
+                        ImGui::InputInt("Window Size", &config.window_size);
+                        ImGui::Checkbox("Always On Top", &config.always_on_top);
+
+                        ImGui::EndTabItem();
+                    }
+
+                    // DETECTION RESOLUTION
+                    if (prev_detection_resolution != config.detection_resolution)
+                    {
+                        detection_resolution_changed.store(true);
+                        detector_model_changed.store(true); // reboot vars for visuals
+                        prev_detection_resolution = config.detection_resolution;
+                        config.saveConfig("config.ini");
+                    }
+
+                    // CAPTURE METHOD
+                    if (prev_capture_method != config.duplication_api)
+                    {
+                        capture_method_changed.store(true);
+                        prev_capture_method = config.duplication_api;
+                        config.saveConfig("config.ini");
+                    }
+
+                    // CAPTURE CURSOR
+                    if (prev_capture_cursor != config.capture_cursor && config.duplication_api == false)
+                    {
+                        capture_cursor_changed.store(true);
+                        prev_capture_cursor = config.capture_cursor;
+                        config.saveConfig("config.ini");
+                    }
+
+                    // CAPTURE BORDERS
+                    if (prev_capture_borders != config.capture_borders && config.duplication_api == false)
+                    {
+                        capture_borders_changed.store(true);
+                        prev_capture_borders = config.capture_borders;
+                        config.saveConfig("config.ini");
+                    }
+
+                    // CAPTURE_FPS
+                    if (prev_capture_fps != config.capture_fps)
+                    {
+                        capture_fps_changed.store(true);
+                        prev_capture_fps = config.capture_fps;
+                        config.saveConfig("config.ini");
+                    }
+
+                    // DISABLE_HEADSHOT / BODY_Y_OFFSET / IGNORE_THIRD_PERSON
+                    if (prev_disable_headshot != config.disable_headshot ||
+                        prev_body_y_offset != config.body_y_offset ||
+                        prev_ignore_third_person != config.ignore_third_person)
+                    {
+                        prev_disable_headshot = config.disable_headshot;
+                        prev_body_y_offset = config.body_y_offset;
+                        prev_ignore_third_person = config.ignore_third_person;
+                        config.saveConfig("config.ini");
+                    }
+
+                    // DPI / SENSITIVITY / FOVX / FOVY / MINSPEEDMULTIPLIER / MAXSPEEDMULTIPLIER / PREDICTIONINTERVAL
+                    if (prev_dpi != config.dpi ||
+                        prev_sensitivity != config.sensitivity ||
+                        prev_fovX != config.fovX ||
+                        prev_fovY != config.fovY ||
+                        prev_minSpeedMultiplier != config.minSpeedMultiplier ||
+                        prev_maxSpeedMultiplier != config.maxSpeedMultiplier ||
+                        prev_predictionInterval != config.predictionInterval)
+                    {
+                        prev_dpi = config.dpi;
+                        prev_sensitivity = config.sensitivity;
+                        prev_fovX = config.fovX;
+                        prev_fovY = config.fovY;
+                        prev_minSpeedMultiplier = config.minSpeedMultiplier;
+                        prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
+                        prev_predictionInterval = config.predictionInterval;
+                        config.saveConfig("config.ini");
+                    }
+
+                    // AUTO_SHOOT / BSCOPE_MULTIPLIER
+                    if (prev_auto_shoot != config.auto_shoot ||
+                        prev_bScope_multiplier != config.bScope_multiplier)
+                    {
+                        prev_auto_shoot = config.auto_shoot;
+                        prev_bScope_multiplier = config.bScope_multiplier;
+                        config.saveConfig("config.ini");
+                    }
+
+                    // OVERLAY OPACITY
+                    if (prev_opacity != config.overlay_opacity)
+                    {
+                        BYTE opacity = config.overlay_opacity;
+                        SetLayeredWindowAttributes(g_hwnd, 0, opacity, LWA_ALPHA);
+                        config.saveConfig("config.ini");
+                    }
+
+                    // CONFIDENCE THERSHOLD / NMS THRESHOLD
+                    if (prev_confidence_threshold != config.confidence_threshold ||
+                        prev_nms_threshold != config.nms_threshold)
+                    {
+                        prev_nms_threshold = config.nms_threshold;
+                        prev_confidence_threshold = config.confidence_threshold;
+                        config.saveConfig("config.ini");
+                    }
+
+                    // SHOW WINDOW
+                    if (prev_show_window != config.show_window)
+                    {
+                        show_window_changed.store(true);
+                        prev_show_window = config.show_window;
+                        config.saveConfig("config.ini");
+                    }
+                    
+                    // ALWAYS_ON_TOP
+                    if (prev_always_on_top != config.always_on_top)
+                    {
+                        // TODO: update window property
+                        prev_always_on_top = config.always_on_top;
+                    }
+
+                    // SHOW_FPS / WINDOW_SIZE / SCREENSHOT_DELAY
+                    if (prev_show_fps != config.show_fps ||
+                        prev_window_size != config.window_size ||
+                        prev_screenshot_delay != config.screenshot_delay)
+                    {
+                        prev_show_fps = config.show_fps;
+                        prev_window_size = config.window_size;
+                        prev_screenshot_delay = config.screenshot_delay;
+                        config.saveConfig("config.ini");
+                    }
+                ImGui::EndTabBar();
                 }
             }
 
@@ -369,7 +671,7 @@ void OverlayThread()
 
     CleanupDeviceD3D();
     ::DestroyWindow(g_hwnd);
-    ::UnregisterClass(_T("ImGui Overlay"), GetModuleHandle(NULL));
+    ::UnregisterClass(_T("Edge"), GetModuleHandle(NULL));
 }
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,

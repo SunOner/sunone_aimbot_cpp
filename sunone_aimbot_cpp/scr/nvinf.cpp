@@ -8,9 +8,19 @@
 
 void Logger::log(nvinfer1::ILogger::Severity severity, const char* msg) noexcept
 {
-    if (severity <= nvinfer1::ILogger::Severity::kINTERNAL_ERROR)
+    if (severity <= nvinfer1::ILogger::Severity::kWARNING)
     {
-        std::cout << "[TensorRT] " << severityLevelName(severity) << ": " << msg << std::endl;
+        std::string devMsg = msg;
+
+        std::string magicTag = "Serialization assertion plan->header.magicTag == rt::kPLAN_MAGIC_TAG failed.";
+        if (devMsg.find(magicTag) != std::string::npos)
+        {
+            std::cout << "[TensorRT] ERROR: Please make sure that the engine was created using the correct version of TensorRT!" << std::endl;
+        }
+        else
+        {
+            std::cout << "[TensorRT] " << severityLevelName(severity) << ": " << msg << std::endl;
+        }
     }
 }
 

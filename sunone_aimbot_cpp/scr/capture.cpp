@@ -46,6 +46,13 @@ std::atomic<int> captureFrameCount(0);
 std::atomic<double> captureFps(0.0);
 std::chrono::time_point<std::chrono::high_resolution_clock> captureFpsStartTime;
 
+// Realtime config vars
+extern std::atomic<bool> detection_resolution_changed;
+extern std::atomic<bool> capture_method_changed;
+extern std::atomic<bool> capture_cursor_changed;
+extern std::atomic<bool> capture_borders_changed;
+extern std::atomic<bool> capture_fps_changed;
+
 // WinRT
 class WinRTScreenCapture : public IScreenCapture
 {
@@ -326,6 +333,7 @@ DuplicationAPIScreenCapture::DuplicationAPIScreenCapture(int desiredWidth, int d
     textureDesc.Usage = D3D11_USAGE_STAGING;
     textureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
     d3dDevice->CreateTexture2D(&textureDesc, nullptr, &stagingTexture);
+
     output->Release();
     adapter->Release();
     factory->Release();
@@ -425,16 +433,73 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
     auto lastSaveTime = std::chrono::steady_clock::now();
 
     std::optional<std::chrono::duration<double, std::milli>> frame_duration;
+    bool frameLimitingEnabled = false;
+
     if (config.capture_fps > 0.0)
     {
         timeBeginPeriod(1);
         frame_duration = std::chrono::duration<double, std::milli>(1000.0 / config.capture_fps);
+        frameLimitingEnabled = true;
     }
 
     captureFpsStartTime = std::chrono::high_resolution_clock::now();
 
     while (!shouldExit)
     {
+        // Realtime config, update settings
+        if (capture_fps_changed.load())
+        {
+            if (config.capture_fps > 0.0)
+            {
+                if (!frameLimitingEnabled)
+                {
+                    timeBeginPeriod(1);
+                    frameLimitingEnabled = true;
+                }
+                frame_duration = std::chrono::duration<double, std::milli>(1000.0 / config.capture_fps);
+            }
+            else
+            {
+                if (frameLimitingEnabled)
+                {
+                    timeEndPeriod(1);
+                    frameLimitingEnabled = false;
+                }
+                frame_duration = std::nullopt;
+            }
+            capture_fps_changed.store(false);
+        }
+
+        if (detection_resolution_changed.load()
+            || capture_method_changed.load()
+            || capture_cursor_changed.load()
+            || capture_borders_changed.load())
+        {
+            delete capturer;
+
+            int new_CAPTURE_WIDTH = config.detection_resolution;
+            int new_CAPTURE_HEIGHT = config.detection_resolution;
+
+            if (config.duplication_api)
+            {
+                capturer = new DuplicationAPIScreenCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
+                cout << "[Capture] Using Duplication API." << endl;
+            }
+            else
+            {
+                capturer = new WinRTScreenCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
+                cout << "[Capture] Using WinRT." << endl;
+            }
+
+            screenWidth = new_CAPTURE_WIDTH;
+            screenHeight = new_CAPTURE_HEIGHT;
+
+            detection_resolution_changed.store(false);
+            capture_method_changed.store(false);
+            capture_cursor_changed.store(false);
+            capture_borders_changed.store(false);
+        }
+
         auto start_time = std::chrono::high_resolution_clock::now();
 
         cv::Mat screenshot = capturer->GetNextFrame();
@@ -508,7 +573,8 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             }
         }
     }
-    if (config.capture_fps > 0.0)
+
+    if (frameLimitingEnabled)
     {
         timeEndPeriod(1);
     }

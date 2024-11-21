@@ -24,13 +24,15 @@ extern std::mutex frameMutex;
 extern std::condition_variable frameCV;
 extern std::atomic<bool> shouldExit;
 
+extern std::atomic<bool> show_window_changed;
+
 void displayThread()
 {
     if (!config.show_window) { return; }
 
     std::vector<cv::Rect> boxes;
     std::vector<int> classes;
-    std::vector<int> cv_classes {
+    std::vector<int> cv_classes{
         config.class_player,
         config.class_bot,
         config.class_weapon,
@@ -45,92 +47,121 @@ void displayThread()
     };
 
     namedWindow(config.window_name, WINDOW_NORMAL);
+
     if (config.always_on_top)
     {
         setWindowProperty(config.window_name, WND_PROP_TOPMOST, 1);
     }
-
-    int currentSize = config.window_size != 100 ?
-        static_cast<int>((config.detection_resolution * config.window_size) / 100)
-        : config.detection_resolution;
-
-    if (config.window_size != 100)
+    else
     {
-        resizeWindow(config.window_name, currentSize, currentSize);
+        setWindowProperty(config.window_name, WND_PROP_TOPMOST, 0);
     }
+
+    int currentSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
+
+    resizeWindow(config.window_name, currentSize, currentSize);
 
     while (!shouldExit)
     {
-        cv::Mat frame;
+        if (show_window_changed.load())
         {
-            std::unique_lock<std::mutex> lock(frameMutex);
-            frameCV.wait(lock, [] { return !latestFrame.empty() || shouldExit; });
-            if (shouldExit) break;
-            frame = latestFrame.clone();
-        }
-
-        if (detector.getLatestDetections(boxes, classes))
-        {
-            float scale = static_cast<float>(config.detection_resolution) / config.engine_image_size;
-
-            for (size_t i = 0; i < boxes.size(); ++i)
+            if (config.show_window)
             {
-                cv::Rect adjustedBox = boxes[i];
+                namedWindow(config.window_name, WINDOW_NORMAL);
+                if (config.always_on_top)
+                {
+                    setWindowProperty(config.window_name, WND_PROP_TOPMOST, 1);
+                }
+                else
+                {
+                    setWindowProperty(config.window_name, WND_PROP_TOPMOST, 0);
+                }
 
-                adjustedBox.x = static_cast<int>(adjustedBox.x / scale);
-                adjustedBox.y = static_cast<int>(adjustedBox.y / scale);
-                adjustedBox.width = static_cast<int>(adjustedBox.width / scale);
-                adjustedBox.height = static_cast<int>(adjustedBox.height / scale);
+                int currentSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
 
-                adjustedBox.x = std::max(0, adjustedBox.x);
-                adjustedBox.y = std::max(0, adjustedBox.y);
-                adjustedBox.width = std::min(frame.cols - adjustedBox.x, adjustedBox.width);
-                adjustedBox.height = std::min(frame.rows - adjustedBox.y, adjustedBox.height);
-
-                rectangle(frame, adjustedBox, cv::Scalar(0, 255, 0), 2);
+                resizeWindow(config.window_name, currentSize, currentSize);
                 
-                std::string className = std::to_string(cv_classes[classes[i]]);
-                
-                int baseline = 0;
-                cv::Size textSize = cv::getTextSize(className, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
-                cv::Point textOrg(adjustedBox.x, adjustedBox.y - 5);
-                
-                putText(frame, className, textOrg, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
             }
-        }
-
-        if (config.show_fps)
-        {
-            putText(frame, "FPS: " + std::to_string(static_cast<int>(captureFps)), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 2);
-        }
-
-        cv::Mat displayFrame;
-
-        if (config.window_size != 100)
-        {
-            int desiredSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
-            if (desiredSize != currentSize)
+            else
             {
-                resizeWindow(config.window_name, desiredSize, desiredSize);
-                currentSize = desiredSize;
+                destroyWindow(config.window_name);
+            }
+            show_window_changed.store(false);
+        }
+
+        if (config.show_window)
+        {
+            cv::Mat frame;
+            {
+                std::unique_lock<std::mutex> lock(frameMutex);
+                frameCV.wait(lock, [] { return !latestFrame.empty() || shouldExit; });
+                if (shouldExit) break;
+                frame = latestFrame.clone();
             }
 
-            cv::resize(frame, displayFrame, cv::Size(currentSize, currentSize));
-        }
-        else
-        {
-            displayFrame = frame;
-        }
+            if (detector.getLatestDetections(boxes, classes))
+            {
+                float scale = static_cast<float>(config.detection_resolution) / config.engine_image_size;
 
-        try
-        {
-            imshow(config.window_name, displayFrame);
-        }
-        catch (cv::Exception&)
-        {
-            break;
-        }
+                for (size_t i = 0; i < boxes.size(); ++i)
+                {
+                    cv::Rect box = boxes[i];
 
-        if (waitKey(1) == 27) shouldExit = true;
+                    box.x = static_cast<int>(box.x / scale);
+                    box.y = static_cast<int>(box.y / scale);
+                    box.width = static_cast<int>(box.width / scale);
+                    box.height = static_cast<int>(box.height / scale);
+
+                    box.x = std::max(0, box.x);
+                    box.y = std::max(0, box.y);
+                    box.width = std::min(frame.cols - box.x, box.width);
+                    box.height = std::min(frame.rows - box.y, box.height);
+
+                    rectangle(frame, box, cv::Scalar(0, 255, 0), 2);
+
+                    std::string className = std::to_string(cv_classes[classes[i]]);
+
+                    int baseline = 0;
+                    cv::Size textSize = cv::getTextSize(className, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
+                    cv::Point textOrg(box.x, box.y - 5);
+
+                    putText(frame, className, textOrg, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+                }
+            }
+
+            if (config.show_fps)
+            {
+                putText(frame, "FPS: " + std::to_string(static_cast<int>(captureFps)), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 2);
+            }
+
+            cv::Mat displayFrame;
+
+            if (config.window_size != 100)
+            {
+                int desiredSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
+                if (desiredSize != currentSize)
+                {
+                    resizeWindow(config.window_name, desiredSize, desiredSize);
+                    currentSize = desiredSize;
+                }
+
+                cv::resize(frame, displayFrame, cv::Size(currentSize, currentSize));
+            }
+            else
+            {
+                displayFrame = frame;
+            }
+
+            try
+            {
+                imshow(config.window_name, displayFrame);
+            }
+            catch (cv::Exception&)
+            {
+                break;
+            }
+
+            if (waitKey(1) == 27) shouldExit = true;
+        }
+        }
     }
-}

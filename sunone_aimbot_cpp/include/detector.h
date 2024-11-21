@@ -9,6 +9,7 @@
 #include <vector>
 #include <unordered_map>
 #include <cuda_fp16.h>
+#include <memory>
 
 struct DetResult
 {
@@ -37,9 +38,9 @@ public:
     std::vector<int> detectedClasses;
 
 private:
-    nvinfer1::IRuntime* runtime;
-    nvinfer1::ICudaEngine* engine;
-    nvinfer1::IExecutionContext* context;
+    std::unique_ptr<nvinfer1::IRuntime> runtime;
+    std::unique_ptr<nvinfer1::ICudaEngine> engine;
+    std::unique_ptr<nvinfer1::IExecutionContext> context;
     nvinfer1::Dims inputDims;
     cudaStream_t stream;
 

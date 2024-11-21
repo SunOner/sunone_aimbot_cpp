@@ -28,7 +28,7 @@ bool Config::loadConfig(const std::string& filename)
 
         // Capture
         detection_resolution = pt.get<int>("detection_resolution", 0);
-        capture_fps = pt.get<double>("capture_fps", 100);
+        capture_fps = pt.get<int>("capture_fps", 144);
         capture_borders = pt.get<bool>("capture_borders", true);
         capture_cursor = pt.get<bool>("capture_cursor", true);
         duplication_api = pt.get<bool>("duplication_api", true);
@@ -129,7 +129,7 @@ bool Config::saveConfig(const std::string& filename)
 
     file << "# Capture\n";
     file << "detection_resolution = " << detection_resolution << "\n";
-    file << "capture_fps = " << std::fixed << std::setprecision(1) << capture_fps << "\n";
+    file << "capture_fps = " << capture_fps << "\n";
     file << "capture_borders = " << (capture_borders ? "true" : "false") << "\n";
     file << "capture_cursor = " << (capture_cursor ? "true" : "false") << "\n";
     file << "duplication_api = " << (duplication_api ? "true" : "false") << "\n\n";
