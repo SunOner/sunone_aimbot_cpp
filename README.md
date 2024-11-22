@@ -19,26 +19,26 @@
    Download the latest release from [here](https://github.com/SunOner/sunone_aimbot_cpp/releases).
 
 2. **Download TensorRT**  
-   Get TensorRT from [this link](https://disk.yandex.ru/d/2W-CgOvLQy7OTw).
+   Get TensorRT from [Yandex](https://disk.yandex.ru/d/S16C9oDSuF1_EQ) or [Developer Nvidia](https://developer.nvidia.com/tensorrt/download/10x).
 
 3. **Unpack TensorRT and Aimbot**  
    Extract the contents of both TensorRT and the Aimbot.
 
 4. **Copy DLL Files**  
-   - Copy `TensorRT-10.3.0.26/lib/nvinfer_10.dll` to `sunone_aimbot_cpp/`.
-   - Copy all files from `TensorRT-10.3.0.26/lib/` to `TensorRT-10.3.0.26/bin/`.
+   - Copy `TensorRT-10.6.0.26/lib/nvinfer_10.dll` to `sunone_aimbot_cpp/`.
+   - Copy all files from `TensorRT-10.6.0.26/lib/` to `TensorRT-10.6.0.26/bin/`.
 
 5. **Transfer the ONNX Model**  
-   Copy `sunone_aimbot_cpp/models/sunxds_0_5_6.onnx` to `TensorRT-10.3.0.26/bin/`.
+   Copy `sunone_aimbot_cpp/models/sunxds_0_5_6.onnx` to `TensorRT-10.6.0.26/bin/`.
 
 6. **Generate Engine File**  
-   Open Command Prompt in `TensorRT-10.3.0.26/bin/` and execute:
+   Open Command Prompt in `TensorRT-10.6.0.26/bin/` and execute:
    ```bash
    trtexec.exe --onnx=sunxds_0.5.6.onnx --saveEngine=sunxds_0.5.6.engine --fp16
    ```
 
 7. **Finalize Setup**  
-   After the export (~1-5 minutes), copy `TensorRT-10.3.0.26/bin/sunxds_0.5.6.engine` to `sunone_aimbot_cpp/models/`.
+   After the export (~1-5 minutes), copy `TensorRT-10.6.0.26/bin/sunxds_0.5.6.engine` to `sunone_aimbot_cpp/models/`.
 
 8. **Run the Application**  
    Execute `ai.exe`.
@@ -73,17 +73,13 @@ Click the image above to watch the installation tutorial video.
 5. **Download Required Libraries**  
    - [Boost](https://disk.yandex.ru/d/O8XkcKeQ3vNDFg)
    - [OpenCV](https://github.com/opencv/opencv/releases/tag/4.10.0) (Windows)
-   - [TensorRT](https://disk.yandex.ru/d/2W-CgOvLQy7OTw)
-   - [ImGui-1.91.2](https://github.com/ocornut/imgui/releases/tag/v1.91.2)
+   - TensorRT from [Yandex](https://disk.yandex.ru/d/S16C9oDSuF1_EQ) or [Developer Nvidia](https://developer.nvidia.com/tensorrt/download/10x)
 
 6. **Extract Libraries**  
 	Extract the downloaded libraries into the respective directories:
 		- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\boost_1_82_0`
 		- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\opencv` *(Rename `opencv-4.10.0` to `opencv`)*
-		- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\TensorRT-10.3.0.26`
-		- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\imgui-1.91.2`
-
-   Additionally, copy all `.h` and `.cpp` files from `imgui-1.91.2` to `sunone_aimbot_cpp\sunone_aimbot_cpp\`.
+		- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\TensorRT-10.6.0.26`
 
 7. **Compile Boost Libraries**  
 	- Navigate to the Boost directory:

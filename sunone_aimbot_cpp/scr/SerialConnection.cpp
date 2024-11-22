@@ -187,7 +187,7 @@ void SerialConnection::startListening()
                 }
                 else
                 {
-                    std::cerr << "[Arduino] Error on receive: " << ec.message() << "\n";
+                    //std::cerr << "[Arduino] Error on receive: " << ec.message() << "\n"; // TODO
                 }
             });
     }

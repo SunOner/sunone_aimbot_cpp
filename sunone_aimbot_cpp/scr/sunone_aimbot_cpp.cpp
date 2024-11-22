@@ -43,6 +43,51 @@ std::atomic<bool> capture_borders_changed(false);
 std::atomic<bool> capture_fps_changed(false);
 std::atomic<bool> detector_model_changed(false);
 std::atomic<bool> show_window_changed(false);
+std::atomic<bool> input_method_changed(false);
+
+void initializeInputMethod()
+{
+    {
+        std::lock_guard<std::mutex> lock(globalMouseThread->input_method_mutex);
+
+        if (serial)
+        {
+            delete serial;
+            serial = nullptr;
+        }
+
+        if (gHub)
+        {
+            gHub->mouse_close();
+            delete gHub;
+            gHub = nullptr;
+        }
+    }
+
+    if (config.input_method == "ARDUINO")
+    {
+        cout << "[Mouse] Using Arduino method input." << endl;
+        serial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
+    }
+    else if (config.input_method == "GHUB")
+    {
+        cout << "[Mouse] Using Ghub method input." << endl;
+        gHub = new GhubMouse();
+        if (!gHub->mouse_xy(0, 0))
+        {
+            cerr << "[Ghub] Error with opening mouse." << endl;
+            delete gHub;
+            gHub = nullptr;
+        }
+    }
+    else
+    {
+        cout << "[Mouse] Using default Win32 method input." << endl;
+    }
+
+    globalMouseThread->setSerialConnection(serial);
+    globalMouseThread->setGHubMouse(gHub);
+}
 
 void mouseThreadFunction(MouseThread& mouseThread)
 {
@@ -61,7 +106,13 @@ void mouseThreadFunction(MouseThread& mouseThread)
 
         boxes = detector.detectedBoxes;
         classes = detector.detectedClasses;
-    
+        
+        if (input_method_changed.load())
+        {
+            initializeInputMethod();
+            input_method_changed.store(false);
+        }
+
         if (aiming)
         {
             Target* target = sortTargets(boxes, classes, config.detection_resolution, config.detection_resolution, config.disable_headshot);
@@ -101,25 +152,12 @@ int main()
         return -1;
     }
 
-    int numMethods = 0;
-    if (config.arduino_enable) numMethods++;
-    if (config.ghub) numMethods++;
-
-    if (numMethods > 1)
+    if (config.input_method == "ARDUINO")
     {
-        cerr << "[Mouse] You have enabled more than one mouse input method." << endl;
-        cin.get();
-        return -1;
-    }
-
-    if (config.arduino_enable)
-    {
-        cout << "[Mouse] Using Arduino method input." << endl;
         serial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
     }
-    else if (config.ghub)
+    else if (config.input_method == "GHUB")
     {
-        cout << "[Mouse] Using Ghub method input." << endl;
         gHub = new GhubMouse();
         if (!gHub->mouse_xy(0, 0))
         {
@@ -127,10 +165,6 @@ int main()
             delete gHub;
             gHub = nullptr;
         }
-    }
-    else
-    {
-        cout << "[Mouse] Using default Win32 method input." << endl;
     }
 
     MouseThread mouseThread(
@@ -151,6 +185,8 @@ int main()
     globalMouseThread = &mouseThread;
 
     detector.initialize("models/" + config.ai_model);
+
+    initializeInputMethod();
 
     std::thread keyThread(keyboardListener);
     std::thread capThread(captureThread, config.detection_resolution, config.detection_resolution);

@@ -28,8 +28,6 @@ extern std::atomic<bool> show_window_changed;
 
 void displayThread()
 {
-    if (!config.show_window) { return; }
-
     std::vector<cv::Rect> boxes;
     std::vector<int> classes;
     std::vector<int> cv_classes{
@@ -46,23 +44,23 @@ void displayThread()
         config.class_third_person
     };
 
-    namedWindow(config.window_name, WINDOW_NORMAL);
-
-    if (config.always_on_top)
+    if (config.show_window)
     {
-        setWindowProperty(config.window_name, WND_PROP_TOPMOST, 1);
-    }
-    else
-    {
-        setWindowProperty(config.window_name, WND_PROP_TOPMOST, 0);
-    }
+        namedWindow(config.window_name, WINDOW_NORMAL);
 
-    int currentSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
-
-    resizeWindow(config.window_name, currentSize, currentSize);
+        if (config.always_on_top)
+        {
+            setWindowProperty(config.window_name, WND_PROP_TOPMOST, 1);
+        }
+        else
+        {
+            setWindowProperty(config.window_name, WND_PROP_TOPMOST, 0);
+        }
+    }
 
     while (!shouldExit)
     {
+        int currentSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
         if (show_window_changed.load())
         {
             if (config.show_window)
@@ -77,10 +75,7 @@ void displayThread()
                     setWindowProperty(config.window_name, WND_PROP_TOPMOST, 0);
                 }
 
-                int currentSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
-
                 resizeWindow(config.window_name, currentSize, currentSize);
-                
             }
             else
             {

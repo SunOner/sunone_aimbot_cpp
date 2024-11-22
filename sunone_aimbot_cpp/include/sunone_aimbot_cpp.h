@@ -10,5 +10,6 @@ extern Config config;
 extern Detector detector;
 extern MouseThread* globalMouseThread;
 extern SerialConnection* serial;
+extern std::atomic<bool> input_method_changed;
 
 #endif // SUNONE_AIMBOT_CPP_H

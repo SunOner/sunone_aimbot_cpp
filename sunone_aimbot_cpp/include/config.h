@@ -27,12 +27,9 @@ public:
     float minSpeedMultiplier;
     float maxSpeedMultiplier;
     float predictionInterval;
+    std::string input_method;   // "WIN32", "GHUB", "ARDUINO"
     
-    // Ghub
-    bool ghub;
-
     // Arduino
-    bool arduino_enable;
     int arduino_baudrate;
     std::string arduino_port;
     bool arduino_16_bit_mouse;

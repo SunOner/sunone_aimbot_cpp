@@ -46,12 +46,9 @@ bool Config::loadConfig(const std::string& filename)
         minSpeedMultiplier = pt.get<float>("minSpeedMultiplier", 0.0f);
         maxSpeedMultiplier = pt.get<float>("maxSpeedMultiplier", 0.0f);
         predictionInterval = pt.get<float>("predictionInterval", 0.0f);
-        
-        // Ghub
-        ghub = pt.get<bool>("ghub", false);
+        input_method = pt.get<std::string>("input_method", "WIN32");
 
         // Arduino
-        arduino_enable = pt.get<bool>("arduino_enable", false);
         arduino_baudrate = pt.get<int>("arduino_baudrate", 9600);
         arduino_port = pt.get<std::string>("arduino_port", "COM0");
         arduino_16_bit_mouse = pt.get<bool>("arduino_16_bit_mouse", false);
@@ -146,13 +143,11 @@ bool Config::saveConfig(const std::string& filename)
     file << "fovY = " << fovY << "\n";
     file << "minSpeedMultiplier = " << std::fixed << std::setprecision(1) << minSpeedMultiplier << "\n";
     file << "maxSpeedMultiplier = " << std::fixed << std::setprecision(1) << maxSpeedMultiplier << "\n";
-    file << "predictionInterval = " << std::fixed << std::setprecision(1) << predictionInterval << "\n\n";
-
-    file << "# Ghub\n";
-    file << "ghub = " << (ghub ? "true" : "false") << "\n\n";
+    file << "predictionInterval = " << std::fixed << std::setprecision(1) << predictionInterval << "\n";
+    file << "# WIN32, GHUB, ARDUINO\n";
+    file << "input_method = " << input_method << "\n\n";
 
     file << "# Arduino\n";
-    file << "arduino_enable = " << (arduino_enable ? "true" : "false") << "\n";
     file << "arduino_baudrate = " << arduino_baudrate << "\n";
     file << "arduino_port = " << arduino_port << "\n";
     file << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n";

@@ -44,6 +44,7 @@
     <ClCompile Include="imgui_tables.cpp" />
     <ClCompile Include="imgui_widgets.cpp" />
     <ClCompile Include="scr\ghub.cpp" />
+    <ClCompile Include="scr\other_tools.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -98,8 +99,9 @@
     <ClInclude Include="imstb_rectpack.h" />
     <ClInclude Include="imstb_textedit.h" />
     <ClInclude Include="imstb_truetype.h" />
-    <ClInclude Include="pch.h" />
     <ClInclude Include="include\ghub.h" />
+    <ClInclude Include="include\other_tools.h" />
+    <ClInclude Include="include\memory_images.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -299,6 +299,8 @@ void Detector::inferenceThread()
         if (!context)
         {
             std::cerr << "[Detector] The context is not initialized" << std::endl;
+            std::cerr << "[Detector] Please select the working AI model and press Enter." << std::endl;
+            std::cin.get();
             continue;
         }
 

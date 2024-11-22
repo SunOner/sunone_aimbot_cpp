@@ -80,6 +80,18 @@ void MouseThread::updateConfig(int resolution, double dpi, double sensitivity, i
     this->max_distance = std::sqrt(resolution * resolution + resolution * resolution) / 2;
 }
 
+void MouseThread::setSerialConnection(SerialConnection* newSerial)
+{
+    std::lock_guard<std::mutex> lock(input_method_mutex);
+    serial = newSerial;
+}
+
+void MouseThread::setGHubMouse(GhubMouse* newGHub)
+{
+    std::lock_guard<std::mutex> lock(input_method_mutex);
+    gHub = newGHub;
+}
+
 std::pair<double, double> MouseThread::predict_target_position(double target_x, double target_y)
 {
     auto current_time = std::chrono::steady_clock::now();
@@ -173,6 +185,8 @@ bool MouseThread::check_target_in_scope(double target_x, double target_y, double
 
 void MouseThread::moveMouse(const Target& target)
 {
+    std::lock_guard<std::mutex> lock(input_method_mutex);
+
     auto predicted_position = predict_target_position(target.x + target.w / 2, target.y + target.h / 2);
     auto movement = calc_movement(predicted_position.first, predicted_position.second);
 
@@ -200,6 +214,8 @@ void MouseThread::moveMouse(const Target& target)
 
 void MouseThread::pressMouse(const Target& target)
 {
+    std::lock_guard<std::mutex> lock(input_method_mutex);
+
     auto bScope = check_target_in_scope(target.x, target.y, target.w, target.h, bScope_multiplier);
 
     if (bScope)
@@ -242,6 +258,8 @@ void MouseThread::pressMouse(const Target& target)
 
 void MouseThread::releaseMouse()
 {
+    std::lock_guard<std::mutex> lock(input_method_mutex);
+
     if (serial)
     {
         serial->release();

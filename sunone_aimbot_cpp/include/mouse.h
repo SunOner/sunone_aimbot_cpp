@@ -35,7 +35,7 @@ private:
     float bScope_multiplier;
 
     std::chrono::steady_clock::time_point last_target_time;
-    std::atomic<bool> target_detected{ false };
+    std::atomic<bool> target_detected { false };
 
 public:
     MouseThread(int resolution, int dpi, double sensitivity, int fovX, int fovY,
@@ -57,6 +57,9 @@ public:
     void releaseMouse();
     void resetPrediction();
     void checkAndResetPredictions();
+    std::mutex input_method_mutex;
+    void setSerialConnection(SerialConnection* newSerial);
+    void setGHubMouse(GhubMouse* newGHub);
 };
 
 #endif // MOUSE_H
