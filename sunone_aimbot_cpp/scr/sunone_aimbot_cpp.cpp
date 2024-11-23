@@ -127,8 +127,8 @@ void mouseThreadFunction(MouseThread& mouseThread)
             }
             else
             {
-                // no detections, release mouse
-                if (config.auto_shoot)
+                // release mouse button
+                if (!aiming && config.auto_shoot)
                 {
                     mouseThread.releaseMouse();
                 }

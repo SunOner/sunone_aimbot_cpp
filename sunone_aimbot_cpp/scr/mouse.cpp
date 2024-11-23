@@ -220,23 +220,55 @@ void MouseThread::pressMouse(const Target& target)
 
     if (bScope)
     {
-        if (serial)
+        if (!mouse_pressed)
         {
-            serial->press();
-        }
-        else if (gHub)
-        {
-            gHub->mouse_down();
-        }
-        else
-        {
-            INPUT input = { 0 };
-            input.type = INPUT_MOUSE;
-            input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-            SendInput(1, &input, sizeof(INPUT));
+            if (serial)
+            {
+                serial->press();
+            }
+            else if (gHub)
+            {
+                gHub->mouse_down();
+            }
+            else
+            {
+                INPUT input = { 0 };
+                input.type = INPUT_MOUSE;
+                input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+                SendInput(1, &input, sizeof(INPUT));
+            }
+            mouse_pressed = true;
         }
     }
     else
+    {
+        if (mouse_pressed)
+        {
+            if (serial)
+            {
+                serial->release();
+            }
+            else if (gHub)
+            {
+                gHub->mouse_up();
+            }
+            else
+            {
+                INPUT input = { 0 };
+                input.type = INPUT_MOUSE;
+                input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+                SendInput(1, &input, sizeof(INPUT));
+            }
+            mouse_pressed = false;
+        }
+    }
+}
+
+void MouseThread::releaseMouse()
+{
+    std::lock_guard<std::mutex> lock(input_method_mutex);
+
+    if (mouse_pressed)
     {
         if (serial)
         {
@@ -253,27 +285,7 @@ void MouseThread::pressMouse(const Target& target)
             input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
             SendInput(1, &input, sizeof(INPUT));
         }
-    }
-}
-
-void MouseThread::releaseMouse()
-{
-    std::lock_guard<std::mutex> lock(input_method_mutex);
-
-    if (serial)
-    {
-        serial->release();
-    }
-    else if (gHub)
-    {
-        gHub->mouse_up();
-    }
-    else
-    {
-        INPUT input = { 0 };
-        input.type = INPUT_MOUSE;
-        input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-        SendInput(1, &input, sizeof(INPUT));
+        mouse_pressed = false;
     }
 }
 
