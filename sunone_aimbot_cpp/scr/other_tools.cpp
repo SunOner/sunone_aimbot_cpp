@@ -149,7 +149,7 @@ std::vector<std::string> getOnnxFiles()
     return onnxFiles;
 }
 
-int getModelIndex(std::vector<std::string> engine_models)
+std::vector<std::string>::difference_type getModelIndex(std::vector<std::string> engine_models)
 {
     auto it = std::find(engine_models.begin(), engine_models.end(), config.ai_model);
 

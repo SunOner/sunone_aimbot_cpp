@@ -60,7 +60,7 @@ private:
     std::unordered_map<std::string, size_t> outputSizes;
     std::unordered_map<std::string, void*> inputBindings;
     std::unordered_map<std::string, void*> outputBindings;
-    std::unordered_map<std::string, std::vector<int>> outputShapes;
+    std::unordered_map<std::string, std::vector<int64_t>> outputShapes;
 
     size_t getSizeByDim(const nvinfer1::Dims& dims);
     size_t getElementSize(nvinfer1::DataType dtype);

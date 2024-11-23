@@ -42,3 +42,5 @@ sunone_aimbot_cpp/_export.bat
 sunone_aimbot_cpp/x64
 x64
 packages
+sunone_aimbot_cpp/models/sunxds_0.7.1.engine
+sunone_aimbot_cpp/models/sunxds_0.7.1.onnx

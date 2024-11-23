@@ -56,7 +56,7 @@ bool Config::loadConfig(const std::string& filename)
 
         // Mouse shooting
         auto_shoot = pt.get<bool>("auto_shoot", false);
-        bScope_multiplier = pt.get<float>("bScope_multiplier", 1.2);
+        bScope_multiplier = pt.get<float>("bScope_multiplier", 1.2f);
 
         // AI
         ai_model = pt.get<std::string>("ai_model", "sunxds_0.5.6.engine");

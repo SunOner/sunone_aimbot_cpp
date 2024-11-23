@@ -9,7 +9,7 @@ bool fileExists(const std::string& path);
 std::string replace_extension(const std::string& filename, const std::string& new_extension);
 std::vector<std::string> getEngineFiles();
 std::vector<std::string> getOnnxFiles();
-int getModelIndex(std::vector<std::string> engine_models);
+std::vector<std::string>::difference_type getModelIndex(std::vector<std::string> engine_models);
 int getImageSizeIndex(int engine_image_size, const int* model_sizes, int model_sizes_count);
 void HideConsole();
 void ShowConsole();

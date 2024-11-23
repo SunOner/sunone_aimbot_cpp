@@ -50,8 +50,8 @@ int overlayHeight = 480;
 
 // init vars
 std::vector<std::string> engine_models;
-int prev_ai_model_index;
-int current_ai_model_index;
+__int64 prev_ai_model_index;
+__int64 current_ai_model_index;
 int prev_imgsz_index;
 int selected_imgsz;
 
@@ -273,14 +273,14 @@ bool CreateOverlayWindow()
     {
         std::cout << "[Overlay] The transparency value of the overlay is set to less than one, this value is unacceptable." << std::endl;
         std::cin.get();
-        return -1;
+        return false;
     }
 
     if (config.overlay_opacity >= 256)
     {
         std::cout << "[Overlay] The transparency value of the overlay is set to more than 255, this value is unacceptable." << std::endl;
         std::cin.get();
-        return -1;
+        return false;
     }
 
     BYTE opacity = config.overlay_opacity;
@@ -315,7 +315,7 @@ void OverlayThread()
     bool prev_capture_method = config.duplication_api;
     bool prev_capture_cursor = config.capture_cursor;
     bool prev_capture_borders = config.capture_borders;
-    float prev_capture_fps = config.capture_fps;
+    int prev_capture_fps = config.capture_fps;
 
     bool prev_show_window = config.show_window;
     int prev_opacity = config.overlay_opacity;

@@ -87,7 +87,7 @@ void Detector::getOutputNames()
             outputSizes[name] = size;
             outputTypes[name] = dtype;
 
-            std::vector<int> dim;
+            std::vector<int64_t> dim;
             for (int j = 0; j < dims.nbDims; ++j)
             {
                 dim.push_back(dims.d[j]);
@@ -392,18 +392,18 @@ bool Detector::getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int
 
 void Detector::preProcess(const cv::Mat& frame, float* inputBuffer)
 {
-    int inputH = inputDims.d[2];
-    int inputW = inputDims.d[3];
+    int64_t inputH = inputDims.d[2];
+    int64_t inputW = inputDims.d[3];
 
     cv::Mat resized;
-    cv::resize(frame, resized, cv::Size(inputW, inputH));
+    cv::resize(frame, resized, cv::Size(static_cast<int>(inputW), static_cast<int>(inputH)));
     cv::Mat floatMat;
     resized.convertTo(floatMat, CV_32F, 1.0 / 255.0);
 
     cv::cvtColor(floatMat, floatMat, cv::COLOR_BGR2RGB);
     cv::split(floatMat, channels);
 
-    int channelSize = inputH * inputW;
+    int64_t channelSize = inputH * inputW;
     for (int i = 0; i < 3; ++i)
     {
         memcpy(inputBuffer + i * channelSize, channels[i].data, channelSize * sizeof(float));
@@ -424,9 +424,9 @@ void Detector::postProcess(const float* output, int outputSize)
         return;
     }
 
-    int batch_size = shape[0];
-    int dim1 = shape[1];
-    int dim2 = shape[2];
+    int64_t batch_size = shape[0];
+    int64_t dim1 = shape[1];
+    int64_t dim2 = shape[2];
     
     if (batch_size != 1)
     {
@@ -436,7 +436,7 @@ void Detector::postProcess(const float* output, int outputSize)
 
     if (dim2 == 6) // [1, 300, 6]
     {
-        int numDetections = dim1;
+        int64_t numDetections = dim1;
 
         for (int i = 0; i < numDetections; ++i)
         {
@@ -465,8 +465,8 @@ void Detector::postProcess(const float* output, int outputSize)
     }
     else if (dim1 == 15 && dim2 == 8400 or dim1 == 15 && dim2 == 8400 / 4) // [1, 15, 8400] or [1, 15, 2100] Yolov11
     {
-        int channels = dim1;
-        int cols = dim2;
+        int64_t channels = dim1;
+        int64_t cols = dim2;
 
         std::vector<std::vector<float>> detections;
         for (int i = 0; i < cols; ++i)
@@ -485,7 +485,7 @@ void Detector::postProcess(const float* output, int outputSize)
 
             if (confidence > config.confidence_threshold)
             {
-                int classId = std::distance(detection.begin() + 4, std::max_element(detection.begin() + 4, detection.end()));
+                int64_t classId = std::distance(detection.begin() + 4, std::max_element(detection.begin() + 4, detection.end()));
 
                 float x = detection[0];
                 float y = detection[1];
@@ -499,14 +499,14 @@ void Detector::postProcess(const float* output, int outputSize)
 
                 boxes.emplace_back(x1, y1, width, height);
                 confidences.push_back(confidence);
-                classes.push_back(classId);
+                classes.push_back(static_cast<int>(classId));
             }
         }
     }
     else if (dim1 == 5 && dim2 == 8400) // [1, 5, 8400] with one class output
     {
-        int channels = dim1;
-        int cols = dim2;
+        int64_t channels = dim1;
+        int64_t cols = dim2;
 
         for (int i = 0; i < cols; ++i)
         {
@@ -533,8 +533,8 @@ void Detector::postProcess(const float* output, int outputSize)
     }
     else if (dim1 == 7 && dim2 == 8400) // [1, 7, 8400] Yolov9
     {
-        int channels = dim1;
-        int cols = dim2;
+        int64_t channels = dim1;
+        int64_t cols = dim2;
 
         for (int i = 0; i < cols; ++i)
         {
