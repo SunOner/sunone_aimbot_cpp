@@ -155,7 +155,6 @@ std::pair<double, double> MouseThread::calc_movement(double target_x, double tar
 
     double distance = std::sqrt(offset_x * offset_x + offset_y * offset_y);
     
-    
     double speed_multiplier = calculate_speed_multiplier(distance);
     
     double degrees_per_pixel_x = fov_x / screen_width;

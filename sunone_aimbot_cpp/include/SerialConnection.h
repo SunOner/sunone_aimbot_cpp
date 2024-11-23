@@ -31,8 +31,12 @@ private:
     std::thread io_thread_;
     bool is_open_;
 
+    boost::asio::deadline_timer timer_;
+    bool listening_;
+
     void startListening();
     void processIncomingLine(const std::string& line);
+    void startTimer();
 
     void sendCommand(const std::string& command);
     std::vector<int> splitValue(int value);

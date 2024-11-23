@@ -44,6 +44,7 @@ public:
     int engine_image_size;
     float confidence_threshold;
     float nms_threshold;
+    int max_detections;
 
     // Buttons
     std::vector<std::string> button_targeting;

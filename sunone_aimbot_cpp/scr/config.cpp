@@ -63,6 +63,7 @@ bool Config::loadConfig(const std::string& filename)
         engine_image_size = pt.get<int>("engine_image_size", 640);
         confidence_threshold = pt.get<float>("confidence_threshold", 0.15f);
         nms_threshold = pt.get<float>("nms_threshold", 0.50);
+        max_detections = pt.get<int>("max_detections", 20);
 
         // Buttons
         button_targeting = splitString(pt.get<std::string>("button_targeting", "RightMouseButton"));
@@ -161,7 +162,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "ai_model = " << ai_model << "\n";
     file << "engine_image_size = " << engine_image_size << "\n";
     file << "confidence_threshold = " << std::fixed << std::setprecision(2) << confidence_threshold << "\n";
-    file << "nms_threshold = " << std::fixed << std::setprecision(2) << nms_threshold << "\n\n";
+    file << "nms_threshold = " << std::fixed << std::setprecision(2) << nms_threshold << "\n";
+    file << "max_detections = " << max_detections << "\n\n";
 
     file << "# Buttons\n";
     file << "button_targeting = " << joinStrings(button_targeting) << "\n";

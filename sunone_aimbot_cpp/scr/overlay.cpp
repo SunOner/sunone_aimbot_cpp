@@ -323,6 +323,7 @@ void OverlayThread()
     int current_ai_model_index = prev_ai_model_index;
     float prev_confidence_threshold = config.confidence_threshold;
     float prev_nms_threshold = config.nms_threshold;
+    int prev_max_detections = config.max_detections;
 
     bool prev_disable_headshot = config.disable_headshot;
     float prev_body_y_offset = config.body_y_offset;
@@ -677,6 +678,7 @@ void OverlayThread()
                         ImGui::Separator();
                         ImGui::SliderFloat("Confidence Threshold", &config.confidence_threshold, 0.01f, 1.00f, "%.2f");
                         ImGui::SliderFloat("NMS Threshold", &config.nms_threshold, 0.01f, 1.00f, "%.2f");
+                        ImGui::SliderInt("Max detections", &config.max_detections, 1, 100);
 
                         // Export
                         ImGui::Separator();
@@ -1217,12 +1219,14 @@ void OverlayThread()
                         config.saveConfig("config.ini");
                     }
 
-                    // CONFIDENCE THERSHOLD / NMS THRESHOLD
+                    // CONFIDENCE THERSHOLD / NMS THRESHOLD / MAX DETECTIONS
                     if (prev_confidence_threshold != config.confidence_threshold ||
-                        prev_nms_threshold != config.nms_threshold)
+                        prev_nms_threshold != config.nms_threshold ||
+                        prev_max_detections != config.max_detections)
                     {
                         prev_nms_threshold = config.nms_threshold;
                         prev_confidence_threshold = config.confidence_threshold;
+                        prev_max_detections = config.max_detections;
                         config.saveConfig("config.ini");
                     }
 

@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <vector>
+#include <boost/asio/deadline_timer.hpp>
 
 #include "SerialConnection.h"
 #include "sunone_aimbot_cpp.h"
@@ -14,7 +15,9 @@ SerialConnection::SerialConnection(const std::string& port, unsigned int baud_ra
     : io_context_(),
     work_guard_(boost::asio::make_work_guard(io_context_)),
     serial_port_(io_context_),
-    is_open_(false)
+    timer_(io_context_),
+    is_open_(false),
+    listening_(false)
 {
     try
     {
@@ -25,7 +28,7 @@ SerialConnection::SerialConnection(const std::string& port, unsigned int baud_ra
         is_open_ = true;
         std::cout << "[Arduino] Connected!" << std::endl;
 
-        startListening();
+        startTimer();
 
         io_thread_ = std::thread([this]()
             {
@@ -49,8 +52,11 @@ SerialConnection::~SerialConnection()
 
     if (serial_port_.is_open())
     {
+        serial_port_.cancel();
         serial_port_.close();
     }
+
+    timer_.cancel();
 
     io_context_.stop();
 
@@ -168,8 +174,48 @@ std::vector<int> SerialConnection::splitValue(int value)
     return values;
 }
 
+void SerialConnection::startTimer()
+{
+    timer_.expires_from_now(boost::posix_time::milliseconds(100));
+    timer_.async_wait([this](const boost::system::error_code& ec)
+        {
+            if (!ec)
+            {
+                if (config.arduino_enable_keys)
+                {
+                    if (!listening_)
+                    {
+                        listening_ = true;
+                        startListening();
+                    }
+                }
+                else
+                {
+                    if (listening_)
+                    {
+                        listening_ = false;
+                        serial_port_.cancel();
+                    }
+                }
+
+                startTimer(); // restart timer
+            }
+        });
+}
+
 void SerialConnection::startListening()
 {
+    // You can send various commands from arduino, parse them and perform functions in the program.
+    // See "onButtonDown" and "onButtonUp" functions in repository
+    // https://github.com/SunOner/usb-host-shield-mouse_for_ai_aimbot/blob/main/hidmousereport/hidmousereport.ino
+    // Use Serial.println() to send commands
+
+    if (!listening_ || !config.arduino_enable_keys)
+    {
+        listening_ = false;
+        return;
+    }
+
     try
     {
         boost::asio::async_read_until(serial_port_, buffer_, '\n',
@@ -187,7 +233,11 @@ void SerialConnection::startListening()
                 }
                 else
                 {
-                    //std::cerr << "[Arduino] Error on receive: " << ec.message() << "\n"; // TODO
+                    if (ec != boost::asio::error::operation_aborted)
+                    {
+                        std::cerr << "[Arduino] Error on receive: " << ec.message() << "\n";
+                    }
+                    listening_ = false;
                 }
             });
     }
@@ -199,6 +249,8 @@ void SerialConnection::startListening()
 
 void SerialConnection::processIncomingLine(const std::string& line)
 {
+    // In this example, we parse mouse button clicks and tell the program that the button
+    // has been pressed and the automatic hover function needs to be activated.
     if (line.find("BD:") == 0)
     {
         uint16_t buttonId = std::stoi(line.substr(3));

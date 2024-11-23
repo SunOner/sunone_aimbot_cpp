@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cuda_fp16.h>
 #include <atomic>
+#include <numeric>
 
 #include "detector.h"
 #include "nvinf.h"
@@ -567,22 +568,45 @@ void Detector::postProcess(const float* output, int outputSize)
         return;
     }
 
-    std::vector<int> nmsIndices;
-    cv::dnn::NMSBoxes(boxes, confidences, config.confidence_threshold, config.nms_threshold, nmsIndices);
+    std::vector<int> indices(boxes.size());
+    std::iota(indices.begin(), indices.end(), 0);
 
-    std::vector<cv::Rect> nmsBoxes;
-    std::vector<int> nmsClasses;
+    std::sort(indices.begin(), indices.end(), [&](int i1, int i2) {
+        return confidences[i1] > confidences[i2];
+        });
+
+    if (indices.size() > config.max_detections)
+    {
+        indices.resize(config.max_detections);
+    }
+
+    std::vector<cv::Rect> selectedBoxes;
+    std::vector<float> selectedConfidences;
+    std::vector<int> selectedClasses;
+
+    for (int idx : indices)
+    {
+        selectedBoxes.push_back(boxes[idx]);
+        selectedConfidences.push_back(confidences[idx]);
+        selectedClasses.push_back(classes[idx]);
+    }
+
+    std::vector<int> nmsIndices;
+    cv::dnn::NMSBoxes(selectedBoxes, selectedConfidences, config.confidence_threshold, config.nms_threshold, nmsIndices);
+
+    std::vector<cv::Rect> finalBoxes;
+    std::vector<int> finalClasses;
 
     for (int idx : nmsIndices)
     {
-        nmsBoxes.push_back(boxes[idx]);
-        nmsClasses.push_back(classes[idx]);
+        finalBoxes.push_back(selectedBoxes[idx]);
+        finalClasses.push_back(selectedClasses[idx]);
     }
 
     {
         std::lock_guard<std::mutex> lock(detectionMutex);
-        detectedBoxes = std::move(nmsBoxes);
-        detectedClasses = std::move(nmsClasses);
+        detectedBoxes = std::move(finalBoxes);
+        detectedClasses = std::move(finalClasses);
         detectionVersion++;
     }
 
