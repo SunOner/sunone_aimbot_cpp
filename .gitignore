@@ -37,7 +37,6 @@ sunone_aimbot_cpp/modules/TensorRT-10.6.0.26
 
 # others
 sunone_aimbot_cpp/screenshots/
-sunone_aimbot_cpp/_export.bat
 .vs
 sunone_aimbot_cpp/x64
 x64
