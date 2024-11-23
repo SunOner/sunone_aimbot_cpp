@@ -27,7 +27,7 @@ bool Config::loadConfig(const std::string& filename)
         boost::property_tree::ini_parser::read_ini(filename, pt);
 
         // Capture
-        detection_resolution = pt.get<int>("detection_resolution", 0);
+        detection_resolution = pt.get<int>("detection_resolution", 320);
         capture_fps = pt.get<int>("capture_fps", 144);
         capture_borders = pt.get<bool>("capture_borders", true);
         capture_cursor = pt.get<bool>("capture_cursor", true);
@@ -35,34 +35,34 @@ bool Config::loadConfig(const std::string& filename)
 
         // Target
         disable_headshot = pt.get<bool>("disable_headshot", false);
-        body_y_offset = pt.get<float>("body_y_offset", 0.0f);
+        body_y_offset = pt.get<float>("body_y_offset", 0.15f);
         ignore_third_person = pt.get<bool>("ignore_third_person", false);
 
         // Mouse
-        dpi = pt.get<int>("dpi", 0);
-        sensitivity = pt.get<float>("sensitivity", 0.0f);
-        fovX = pt.get<int>("fovX", 0);
-        fovY = pt.get<int>("fovY", 0);
-        minSpeedMultiplier = pt.get<float>("minSpeedMultiplier", 0.0f);
-        maxSpeedMultiplier = pt.get<float>("maxSpeedMultiplier", 0.0f);
-        predictionInterval = pt.get<float>("predictionInterval", 0.0f);
+        dpi = pt.get<int>("dpi", 1000);
+        sensitivity = pt.get<float>("sensitivity", 4.0f);
+        fovX = pt.get<int>("fovX", 50);
+        fovY = pt.get<int>("fovY", 50);
+        minSpeedMultiplier = pt.get<float>("minSpeedMultiplier", 1.0f);
+        maxSpeedMultiplier = pt.get<float>("maxSpeedMultiplier", 4.0f);
+        predictionInterval = pt.get<float>("predictionInterval", 0.5f);
         input_method = pt.get<std::string>("input_method", "WIN32");
 
         // Arduino
-        arduino_baudrate = pt.get<int>("arduino_baudrate", 9600);
+        arduino_baudrate = pt.get<int>("arduino_baudrate", 115200);
         arduino_port = pt.get<std::string>("arduino_port", "COM0");
         arduino_16_bit_mouse = pt.get<bool>("arduino_16_bit_mouse", false);
         arduino_enable_keys = pt.get<bool>("arduino_enable_keys", false);
 
         // Mouse shooting
         auto_shoot = pt.get<bool>("auto_shoot", false);
-        bScope_multiplier = pt.get<float>("bScope_multiplier", 1.0);
+        bScope_multiplier = pt.get<float>("bScope_multiplier", 1.2);
 
         // AI
         ai_model = pt.get<std::string>("ai_model", "sunxds_0.5.6.engine");
-        engine_image_size = pt.get<int>("engine_image_size", 0);
-        confidence_threshold = pt.get<float>("confidence_threshold", 0.0f);
-        nms_threshold = pt.get<float>("nms_threshold", 0.5);
+        engine_image_size = pt.get<int>("engine_image_size", 640);
+        confidence_threshold = pt.get<float>("confidence_threshold", 0.15f);
+        nms_threshold = pt.get<float>("nms_threshold", 0.50);
 
         // Buttons
         button_targeting = splitString(pt.get<std::string>("button_targeting", "RightMouseButton"));
@@ -72,7 +72,7 @@ bool Config::loadConfig(const std::string& filename)
         button_open_overlay = splitString(pt.get<std::string>("button_open_overlay", "Home"));
 
         // Overlay
-        overlay_opacity = pt.get<int>("overlay_opacity", 255);
+        overlay_opacity = pt.get<int>("overlay_opacity", 225);
 
         // Custom Classes
         class_player = pt.get<int>("class_player", 0);
@@ -91,9 +91,9 @@ bool Config::loadConfig(const std::string& filename)
         show_window = pt.get<bool>("show_window", true);
         show_fps = pt.get<bool>("show_fps", true);
         window_name = pt.get<std::string>("window_name", "Debug");
-        window_size = pt.get<int>("window_size", 100);
+        window_size = pt.get<int>("window_size", 80);
         screenshot_button = splitString(pt.get<std::string>("screenshot_button", "RightMouseButton"));
-        screenshot_delay = pt.get<int>("screenshot_delay", 250);
+        screenshot_delay = pt.get<int>("screenshot_delay", 500);
         always_on_top = pt.get<bool>("always_on_top", true);
     }
     catch (boost::property_tree::ini_parser_error& e)
@@ -143,7 +143,7 @@ bool Config::saveConfig(const std::string& filename)
     file << "fovY = " << fovY << "\n";
     file << "minSpeedMultiplier = " << std::fixed << std::setprecision(1) << minSpeedMultiplier << "\n";
     file << "maxSpeedMultiplier = " << std::fixed << std::setprecision(1) << maxSpeedMultiplier << "\n";
-    file << "predictionInterval = " << std::fixed << std::setprecision(1) << predictionInterval << "\n";
+    file << "predictionInterval = " << std::fixed << std::setprecision(2) << predictionInterval << "\n";
     file << "# WIN32, GHUB, ARDUINO\n";
     file << "input_method = " << input_method << "\n\n";
 
@@ -160,8 +160,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "# AI\n";
     file << "ai_model = " << ai_model << "\n";
     file << "engine_image_size = " << engine_image_size << "\n";
-    file << "confidence_threshold = " << std::fixed << std::setprecision(1) << confidence_threshold << "\n";
-    file << "nms_threshold = " << std::fixed << std::setprecision(1) << nms_threshold << "\n\n";
+    file << "confidence_threshold = " << std::fixed << std::setprecision(2) << confidence_threshold << "\n";
+    file << "nms_threshold = " << std::fixed << std::setprecision(2) << nms_threshold << "\n\n";
 
     file << "# Buttons\n";
     file << "button_targeting = " << joinStrings(button_targeting) << "\n";
