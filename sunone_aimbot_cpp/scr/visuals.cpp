@@ -4,6 +4,7 @@
 #include <Windows.h>
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/cudaarithm.hpp>
 #include <iostream>
 #include <atomic>
 #include <thread>
@@ -15,14 +16,6 @@
 #include "config.h"
 #include "sunone_aimbot_cpp.h"
 #include "capture.h"
-
-using namespace cv;
-using namespace std;
-
-extern Mat latestFrame;
-extern std::mutex frameMutex;
-extern std::condition_variable frameCV;
-extern std::atomic<bool> shouldExit;
 
 extern std::atomic<bool> show_window_changed;
 
@@ -46,40 +39,41 @@ void displayThread()
 
     if (config.show_window)
     {
-        namedWindow(config.window_name, WINDOW_NORMAL);
+        cv::namedWindow(config.window_name, cv::WINDOW_NORMAL);
 
         if (config.always_on_top)
         {
-            setWindowProperty(config.window_name, WND_PROP_TOPMOST, 1);
+            cv::setWindowProperty(config.window_name, cv::WND_PROP_TOPMOST, 1);
         }
         else
         {
-            setWindowProperty(config.window_name, WND_PROP_TOPMOST, 0);
+            cv::setWindowProperty(config.window_name, cv::WND_PROP_TOPMOST, 0);
         }
     }
 
+    int currentSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
+
     while (!shouldExit)
     {
-        int currentSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
         if (show_window_changed.load())
         {
             if (config.show_window)
             {
-                namedWindow(config.window_name, WINDOW_NORMAL);
+                cv::namedWindow(config.window_name, cv::WINDOW_NORMAL);
                 if (config.always_on_top)
                 {
-                    setWindowProperty(config.window_name, WND_PROP_TOPMOST, 1);
+                    cv::setWindowProperty(config.window_name, cv::WND_PROP_TOPMOST, 1);
                 }
                 else
                 {
-                    setWindowProperty(config.window_name, WND_PROP_TOPMOST, 0);
+                    cv::setWindowProperty(config.window_name, cv::WND_PROP_TOPMOST, 0);
                 }
 
-                resizeWindow(config.window_name, currentSize, currentSize);
+                cv::resizeWindow(config.window_name, currentSize, currentSize);
             }
             else
             {
-                destroyWindow(config.window_name);
+                cv::destroyWindow(config.window_name);
             }
             show_window_changed.store(false);
         }
@@ -89,9 +83,9 @@ void displayThread()
             cv::Mat frame;
             {
                 std::unique_lock<std::mutex> lock(frameMutex);
-                frameCV.wait(lock, [] { return !latestFrame.empty() || shouldExit; });
+                frameCV.wait(lock, [] { return !latestFrameCpu.empty() || shouldExit; });
                 if (shouldExit) break;
-                frame = latestFrame.clone();
+                frame = latestFrameCpu.clone();
             }
 
             if (detector.getLatestDetections(boxes, classes))
@@ -112,7 +106,7 @@ void displayThread()
                     box.width = std::min(frame.cols - box.x, box.width);
                     box.height = std::min(frame.rows - box.y, box.height);
 
-                    rectangle(frame, box, cv::Scalar(0, 255, 0), 2);
+                    cv::rectangle(frame, box, cv::Scalar(0, 255, 0), 2);
 
                     std::string className = std::to_string(cv_classes[classes[i]]);
 
@@ -120,13 +114,13 @@ void displayThread()
                     cv::Size textSize = cv::getTextSize(className, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
                     cv::Point textOrg(box.x, box.y - 5);
 
-                    putText(frame, className, textOrg, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+                    cv::putText(frame, className, textOrg, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
                 }
             }
 
             if (config.show_fps)
             {
-                putText(frame, "FPS: " + std::to_string(static_cast<int>(captureFps)), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 2);
+                cv::putText(frame, "FPS: " + std::to_string(static_cast<int>(captureFps)), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 2);
             }
 
             cv::Mat displayFrame;
@@ -136,7 +130,7 @@ void displayThread()
                 int desiredSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
                 if (desiredSize != currentSize)
                 {
-                    resizeWindow(config.window_name, desiredSize, desiredSize);
+                    cv::resizeWindow(config.window_name, desiredSize, desiredSize);
                     currentSize = desiredSize;
                 }
 
@@ -149,14 +143,19 @@ void displayThread()
 
             try
             {
-                imshow(config.window_name, displayFrame);
+                cv::imshow(config.window_name, displayFrame);
             }
-            catch (cv::Exception&)
+            catch (cv::Exception& e)
             {
+                std::cerr << "[Visuals]: " << e.what() << std::endl;
                 break;
             }
 
-            if (waitKey(1) == 27) shouldExit = true;
+            if (cv::waitKey(1) == 27) shouldExit = true;
         }
+        else
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
         }
     }
+}

@@ -20,4 +20,6 @@ bool LoadTextureFromMemory(const std::string& imageBase64, ID3D11Device* device,
 std::string get_ghub_version();
 std::string get_environment_vars();
 std::string get_tensorrt_path();
+int get_active_monitors();
+HMONITOR GetMonitorHandleByIndex(int monitorIndex);
 #endif // OTHER_TOOLS_H

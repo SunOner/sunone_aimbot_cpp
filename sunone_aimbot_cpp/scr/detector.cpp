@@ -5,8 +5,13 @@
 
 #include <fstream>
 #include <iostream>
+
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
+#include <opencv2/cudawarping.hpp>
+#include <opencv2/cudacodec.hpp>
+#include <opencv2/cudaimgproc.hpp>
+
 #include <algorithm>
 #include <cuda_fp16.h>
 #include <atomic>
@@ -16,7 +21,6 @@
 #include "nvinf.h"
 #include "sunone_aimbot_cpp.h"
 
-std::mutex frameMutex;
 extern std::atomic<bool> detectionPaused;
 int model_quant;
 std::vector<float> outputData;
@@ -237,7 +241,7 @@ void Detector::loadEngine(const std::string& engineFile)
     std::cout << "[Detector] The engine was successfully loaded from the file: " << engineFile << std::endl;
 }
 
-void Detector::processFrame(const cv::Mat& frame)
+void Detector::processFrame(const cv::cuda::GpuMat& frame)
 {
     if (detectionPaused)
     {
@@ -288,7 +292,7 @@ void Detector::inferenceThread()
             detector_model_changed.store(false);
         }
 
-        cv::Mat frame;
+        cv::cuda::GpuMat frame;
         {
             std::unique_lock<std::mutex> lock(inferenceMutex);
             inferenceCV.wait(lock, [this] { return frameReady || shouldExit; });
@@ -391,18 +395,22 @@ bool Detector::getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int
     return false;
 }
 
-void Detector::preProcess(const cv::Mat& frame, float* inputBuffer)
+void Detector::preProcess(const cv::cuda::GpuMat& frame, float* inputBuffer)
 {
     int64_t inputH = inputDims.d[2];
     int64_t inputW = inputDims.d[3];
 
-    cv::Mat resized;
-    cv::resize(frame, resized, cv::Size(static_cast<int>(inputW), static_cast<int>(inputH)));
-    cv::Mat floatMat;
+    cv::cuda::GpuMat resized;
+    cv::cuda::resize(frame, resized, cv::Size(static_cast<int>(inputW), static_cast<int>(inputH)), 0, 0, cv::INTER_LINEAR);
+
+    cv::cuda::GpuMat floatMat;
     resized.convertTo(floatMat, CV_32F, 1.0 / 255.0);
 
-    cv::cvtColor(floatMat, floatMat, cv::COLOR_BGR2RGB);
-    cv::split(floatMat, channels);
+    cv::Mat floatMatCpu;
+    floatMat.download(floatMatCpu);
+
+    std::vector<cv::Mat> channels(3);
+    cv::split(floatMatCpu, channels);
 
     int64_t channelSize = inputH * inputW;
     for (int i = 0; i < 3; ++i)

@@ -29,6 +29,8 @@ bool Config::loadConfig(const std::string& filename)
         // Capture
         detection_resolution = pt.get<int>("detection_resolution", 320);
         capture_fps = pt.get<int>("capture_fps", 144);
+        monitor_idx = pt.get<int>("monitor_idx", 0);
+        circle_mask = pt.get<bool>("circle_mask", true);
         capture_borders = pt.get<bool>("capture_borders", true);
         capture_cursor = pt.get<bool>("capture_cursor", true);
         duplication_api = pt.get<bool>("duplication_api", true);
@@ -37,6 +39,7 @@ bool Config::loadConfig(const std::string& filename)
         disable_headshot = pt.get<bool>("disable_headshot", false);
         body_y_offset = pt.get<float>("body_y_offset", 0.15f);
         ignore_third_person = pt.get<bool>("ignore_third_person", false);
+        shooting_range_targets = pt.get<bool>("shooting_range_targets", false);
 
         // Mouse
         dpi = pt.get<int>("dpi", 1000);
@@ -96,6 +99,7 @@ bool Config::loadConfig(const std::string& filename)
         screenshot_button = splitString(pt.get<std::string>("screenshot_button", "RightMouseButton"));
         screenshot_delay = pt.get<int>("screenshot_delay", 500);
         always_on_top = pt.get<bool>("always_on_top", true);
+        verbose = pt.get<bool>("verbose", false);
     }
     catch (boost::property_tree::ini_parser_error& e)
     {
@@ -125,9 +129,13 @@ bool Config::saveConfig(const std::string& filename)
         return false;
     }
 
+    file << "# An explanation of the options can be found at the link\n";
+    file << "# https://github.com/SunOner/sunone_aimbot_docs/blob/main/config/config_cpp.md\n\n";
     file << "# Capture\n";
     file << "detection_resolution = " << detection_resolution << "\n";
     file << "capture_fps = " << capture_fps << "\n";
+    file << "monitor_idx = " << monitor_idx << "\n";
+    file << "circle_mask = " << (circle_mask ? "true" : "false") << "\n";
     file << "capture_borders = " << (capture_borders ? "true" : "false") << "\n";
     file << "capture_cursor = " << (capture_cursor ? "true" : "false") << "\n";
     file << "duplication_api = " << (duplication_api ? "true" : "false") << "\n\n";
@@ -135,7 +143,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "# Target\n";
     file << "disable_headshot = " << (disable_headshot ? "true" : "false") << "\n";
     file << "body_y_offset = " << std::fixed << std::setprecision(2) << body_y_offset << "\n";
-    file << "ignore_third_person = " << (ignore_third_person ? "true" : "false") << "\n\n";
+    file << "ignore_third_person = " << (ignore_third_person ? "true" : "false") << "\n";
+    file << "shooting_range_targets = " << (shooting_range_targets ? "true" : "false") << "\n\n";
 
     file << "# Mouse move\n";
     file << "dpi = " << dpi << "\n";
@@ -195,7 +204,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "window_size = " << window_size << "\n";
     file << "screenshot_button = " << joinStrings(screenshot_button) << "\n";
     file << "screenshot_delay = " << screenshot_delay << "\n";
-    file << "always_on_top = " << (always_on_top ? "true" : "false");
+    file << "always_on_top = " << (always_on_top ? "true" : "false") << "\n";
+    file << "verbose = " << (verbose ? "true" : "false");
 
     file.close();
     return true;

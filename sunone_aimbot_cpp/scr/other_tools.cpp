@@ -344,3 +344,59 @@ std::string get_tensorrt_path()
 
     return "";
 }
+
+int get_active_monitors()
+{
+    // Function to get the number of monitors
+    IDXGIFactory1* factory = nullptr;
+    if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory)))
+    {
+        return -1;
+    }
+
+    int monitors = -1;
+
+    IDXGIAdapter1* adapter = nullptr;
+    for (UINT i = 0; factory->EnumAdapters1(i, &adapter) != DXGI_ERROR_NOT_FOUND; ++i)
+    {
+        IDXGIOutput* output = nullptr;
+        for (UINT j = 0; adapter->EnumOutputs(j, &output) != DXGI_ERROR_NOT_FOUND; ++j)
+        {
+            monitors++;
+            output->Release();
+        }
+        adapter->Release();
+    }
+
+    factory->Release();
+    return monitors;
+}
+
+HMONITOR GetMonitorHandleByIndex(int monitorIndex)
+{
+    // Function for parsing and returning the monitor for the WINRT capture method
+    struct MonitorSearch
+    {
+        int targetIndex;
+        int currentIndex;
+        HMONITOR targetMonitor;
+    };
+
+    MonitorSearch search = { monitorIndex, 0, nullptr };
+
+    EnumDisplayMonitors(nullptr, nullptr,
+        [](HMONITOR hMonitor, HDC, LPRECT, LPARAM lParam) -> BOOL
+        {
+            MonitorSearch* search = reinterpret_cast<MonitorSearch*>(lParam);
+            if (search->currentIndex == search->targetIndex)
+            {
+                search->targetMonitor = hMonitor;
+                return FALSE;
+            }
+            search->currentIndex++;
+            return TRUE;
+        },
+        reinterpret_cast<LPARAM>(&search));
+
+    return search.targetMonitor;
+}

@@ -59,8 +59,8 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
 
             if (classes[i] == config.class_player ||
                 classes[i] == config.class_bot ||
-                classes[i] == config.class_hideout_target_human ||
-                classes[i] == config.class_hideout_target_balls ||
+                classes[i] == config.class_hideout_target_human && config.shooting_range_targets ||
+                classes[i] == config.class_hideout_target_balls && config.shooting_range_targets ||
                 (classes[i] == config.class_third_person && !config.ignore_third_person))
             {
                 int offsetY = static_cast<int>(boxes[i].height * config.body_y_offset);

@@ -43,3 +43,16 @@ x64
 packages
 sunone_aimbot_cpp/models/sunxds_0.7.1.engine
 sunone_aimbot_cpp/models/sunxds_0.7.1.onnx
+/sunone_aimbot_cpp/modules/Video_Codec_SDK_12.2.72
+sunone_aimbot_cpp/opencv_core4100.dll
+sunone_aimbot_cpp/opencv_cudaarithm4100.dll
+sunone_aimbot_cpp/opencv_cudafilters4100.dll
+sunone_aimbot_cpp/opencv_cudaimgproc4100.dll
+sunone_aimbot_cpp/opencv_cudawarping4100.dll
+sunone_aimbot_cpp/opencv_dnn4100.dll
+sunone_aimbot_cpp/opencv_highgui4100.dll
+sunone_aimbot_cpp/opencv_imgcodecs4100.dll
+sunone_aimbot_cpp/opencv_imgproc4100.dll
+sunone_aimbot_cpp/opencv_video4100.dll
+sunone_aimbot_cpp/opencv_videoio4100.dll
+sunone_aimbot_cpp/cudnn64_9.dll

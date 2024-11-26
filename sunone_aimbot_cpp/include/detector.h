@@ -26,7 +26,7 @@ public:
     Detector();
     ~Detector();
     void initialize(const std::string& modelFile);
-    void processFrame(const cv::Mat& frame);
+    void processFrame(const cv::cuda::GpuMat& frame);
     void inferenceThread();
     void releaseDetections();
     bool getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int>& classes);
@@ -47,11 +47,11 @@ private:
     std::mutex inferenceMutex;
     std::condition_variable inferenceCV;
     std::atomic<bool> shouldExit;
-    cv::Mat currentFrame;
+    cv::cuda::GpuMat currentFrame;
     bool frameReady;
 
     void loadEngine(const std::string& engineFile);
-    void preProcess(const cv::Mat& frame, float* inputBuffer);
+    void preProcess(const cv::cuda::GpuMat& frame, float* inputBuffer);
     void postProcess(const float* output, int outputSize);
 
     std::vector<std::string> inputNames;

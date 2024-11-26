@@ -310,12 +310,14 @@ void OverlayThread()
     bool show_overlay = false;
 
     // Real time settings vars
-    static int prev_detection_resolution = config.detection_resolution;
-    
-    bool prev_capture_method = config.duplication_api;
-    bool prev_capture_cursor = config.capture_cursor;
-    bool prev_capture_borders = config.capture_borders;
+    int prev_detection_resolution = config.detection_resolution;
     int prev_capture_fps = config.capture_fps;
+    int prev_monitor_idx = config.monitor_idx;
+    bool prev_circle_mask = config.circle_mask;
+    bool prev_capture_borders = config.capture_borders;
+    bool prev_capture_cursor = config.capture_cursor;
+    bool prev_capture_method = config.duplication_api;
+    int monitors = get_active_monitors();
 
     bool prev_show_window = config.show_window;
     int prev_opacity = config.overlay_opacity;
@@ -328,6 +330,7 @@ void OverlayThread()
     bool prev_disable_headshot = config.disable_headshot;
     float prev_body_y_offset = config.body_y_offset;
     bool prev_ignore_third_person = config.ignore_third_person;
+    bool prev_shooting_range_targets = config.shooting_range_targets;
 
     int prev_dpi = config.dpi;
     float prev_sensitivity = config.sensitivity;
@@ -372,7 +375,7 @@ void OverlayThread()
         input_method_index = 0;
 
     std::string ghub_version = get_ghub_version();
-
+    
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
     while (!shouldExit)
@@ -424,6 +427,37 @@ void OverlayThread()
                     {
                         ImGui::SliderInt("Detection Resolution", &config.detection_resolution, 50, 720);
                         ImGui::SliderInt("Lock FPS", &config.capture_fps, 0, 240);
+                        if (ImGui::Checkbox("Circle mask", &config.circle_mask))
+                        {
+                            capture_method_changed.store(true);
+                            config.saveConfig("config.ini");
+                        }
+
+                        std::vector<std::string> monitorNames;
+                        if (monitors == -1)
+                        {
+                            monitorNames.push_back("Monitor 1");
+                        }
+                        else
+                        {
+                            for (int i = -1; i < monitors; ++i)
+                            {
+                                monitorNames.push_back("Monitor " + std::to_string(i + 1));
+                            }
+                        }
+
+                        std::vector<const char*> monitorItems;
+                        for (const auto& name : monitorNames)
+                        {
+                            monitorItems.push_back(name.c_str());
+                        }
+
+                        if (ImGui::Combo("Capture monitor", &config.monitor_idx, monitorItems.data(), static_cast<int>(monitorItems.size())))
+                        {
+                            config.saveConfig("config.ini");
+                            capture_method_changed.store(true);
+                        }
+
                         ImGui::Checkbox("Duplication API", &config.duplication_api);
                         if (config.duplication_api == false)
                         {
@@ -467,6 +501,7 @@ void OverlayThread()
                         ImGui::Text("Note: There is a different value for each game, as the sizes of the player models may vary.");
                         ImGui::Separator();
                         ImGui::Checkbox("Ignore Third Person", &config.ignore_third_person);
+                        ImGui::Checkbox("Shooting range targets", &config.shooting_range_targets);
 
                         ImGui::EndTabItem();
                     }
@@ -1114,6 +1149,11 @@ void OverlayThread()
                             ShowConsole();
                         }
 
+                        if (ImGui::Button("Print cuda device info"))
+                        {
+                            cv::cuda::printCudaDeviceInfo(0);
+                        }
+
                         ImGui::EndTabItem();
                     }
 
@@ -1152,9 +1192,11 @@ void OverlayThread()
                     }
 
                     // CAPTURE_FPS
-                    if (prev_capture_fps != config.capture_fps)
+                    if (prev_capture_fps != config.capture_fps ||
+                        prev_monitor_idx != config.monitor_idx)
                     {
                         capture_fps_changed.store(true);
+                        prev_monitor_idx = config.monitor_idx;
                         prev_capture_fps = config.capture_fps;
                         config.saveConfig("config.ini");
                     }
@@ -1162,11 +1204,13 @@ void OverlayThread()
                     // DISABLE_HEADSHOT / BODY_Y_OFFSET / IGNORE_THIRD_PERSON
                     if (prev_disable_headshot != config.disable_headshot ||
                         prev_body_y_offset != config.body_y_offset ||
-                        prev_ignore_third_person != config.ignore_third_person)
+                        prev_ignore_third_person != config.ignore_third_person ||
+                        prev_shooting_range_targets != config.shooting_range_targets)
                     {
                         prev_disable_headshot = config.disable_headshot;
                         prev_body_y_offset = config.body_y_offset;
                         prev_ignore_third_person = config.ignore_third_person;
+                        prev_shooting_range_targets = config.shooting_range_targets;
                         config.saveConfig("config.ini");
                     }
 
@@ -1259,7 +1303,7 @@ void OverlayThread()
                 ImGui::EndTabBar();
                 }
             }
-
+            ImGui::Text("Do not test shooting and aiming with the overlay open.");
             ImGui::End();
             ImGui::Render();
 
@@ -1274,10 +1318,11 @@ void OverlayThread()
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
         else
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
     }
 

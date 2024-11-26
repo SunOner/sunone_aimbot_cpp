@@ -10,6 +10,8 @@ public:
     // Capture
     int detection_resolution;
     int capture_fps;
+    int monitor_idx;
+    bool circle_mask;
     bool capture_borders;
     bool capture_cursor;
     bool duplication_api;
@@ -18,6 +20,7 @@ public:
     bool disable_headshot;
     float body_y_offset;
     bool ignore_third_person;
+    bool shooting_range_targets;
 
     // Mouse
     int dpi;
@@ -69,7 +72,7 @@ public:
     int class_fire;                    // 9
     int class_third_person;            // 10
     
-    // Debug window
+    // Debug
     bool show_window;
     bool show_fps;
     std::string window_name;
@@ -77,6 +80,7 @@ public:
     std::vector<std::string> screenshot_button;
     int screenshot_delay;
     bool always_on_top;
+    bool verbose;
 
     bool loadConfig(const std::string& filename);
     bool saveConfig(const std::string& filename);

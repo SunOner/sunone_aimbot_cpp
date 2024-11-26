@@ -141,8 +141,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(WindowsSDK_IncludePath);$(WindowsSDK_IncludePath)\cppwinrt;$(MSBuildProjectDirectory)\modules\opencv\build\include;$(MSBuildProjectDirectory)\modules\\TensorRT-10.6.0.26\include;include;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v12.4\include;$(ProgramW6432)\NVIDIA\CUDNN\v9.1\include\12.4;$(IncludePath)</IncludePath>
-    <LibraryPath>$(MSBuildProjectDirectory)\modules\opencv\build\x64\vc16\lib;$(MSBuildProjectDirectory)\modules\\TensorRT-10.6.0.26\lib;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v12.4\lib\x64;$(ProgramW6432)\NVIDIA\CUDNN\v9.1\lib\12.4;$(MSBuildProjectDirectory)\modules\boost_1_82_0\stage\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(MSBuildProjectDirectory)\modules\opencv\build\install\include;$(WindowsSDK_IncludePath);$(WindowsSDK_IncludePath)\cppwinrt;$(MSBuildProjectDirectory)\modules\TensorRT-10.6.0.26\include;include;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v12.4\include;$(ProgramW6432)\NVIDIA\CUDNN\v9.1\include\12.4;$(IncludePath)</IncludePath>
+    <LibraryPath>$(MSBuildProjectDirectory)\modules\opencv\build\install\x64\vc16\lib;$(MSBuildProjectDirectory)\modules\\TensorRT-10.6.0.26\lib;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v12.4\lib\x64;$(ProgramW6432)\NVIDIA\CUDNN\v9.1\lib\12.4;$(MSBuildProjectDirectory)\modules\boost_1_82_0\stage\lib;$(LibraryPath)</LibraryPath>
     <TargetName>ai</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -208,7 +208,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opencv_world4100.lib;nvinfer_10.lib;WindowsApp.lib;d3d11.lib;dxgi.lib;d2d1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_aruco4100.lib;opencv_bgsegm4100.lib;opencv_bioinspired4100.lib;opencv_calib3d4100.lib;opencv_ccalib4100.lib;opencv_core4100.lib;opencv_cudaarithm4100.lib;opencv_cudabgsegm4100.lib;opencv_cudacodec4100.lib;opencv_cudafeatures2d4100.lib;opencv_cudafilters4100.lib;opencv_cudaimgproc4100.lib;opencv_cudalegacy4100.lib;opencv_cudaobjdetect4100.lib;opencv_cudaoptflow4100.lib;opencv_cudastereo4100.lib;opencv_cudawarping4100.lib;opencv_cudev4100.lib;opencv_datasets4100.lib;opencv_dnn4100.lib;opencv_dnn_objdetect4100.lib;opencv_dnn_superres4100.lib;opencv_dpm4100.lib;opencv_face4100.lib;opencv_features2d4100.lib;opencv_flann4100.lib;opencv_fuzzy4100.lib;opencv_gapi4100.lib;opencv_hfs4100.lib;opencv_highgui4100.lib;opencv_imgcodecs4100.lib;opencv_imgproc4100.lib;opencv_img_hash4100.lib;opencv_intensity_transform4100.lib;opencv_line_descriptor4100.lib;opencv_mcc4100.lib;opencv_ml4100.lib;opencv_objdetect4100.lib;opencv_optflow4100.lib;opencv_phase_unwrapping4100.lib;opencv_photo4100.lib;opencv_plot4100.lib;opencv_quality4100.lib;opencv_rapid4100.lib;opencv_reg4100.lib;opencv_rgbd4100.lib;opencv_saliency4100.lib;opencv_shape4100.lib;opencv_signal4100.lib;opencv_stereo4100.lib;opencv_stitching4100.lib;opencv_structured_light4100.lib;opencv_superres4100.lib;opencv_surface_matching4100.lib;opencv_text4100.lib;opencv_tracking4100.lib;opencv_video4100.lib;opencv_videoio4100.lib;opencv_videostab4100.lib;opencv_wechat_qrcode4100.lib;opencv_world4100.lib;opencv_xfeatures2d4100.lib;opencv_ximgproc4100.lib;opencv_xobjdetect4100.lib;opencv_xphoto4100.lib;nvinfer_10.lib;WindowsApp.lib;d3d11.lib;dxgi.lib;d2d1.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <GenerateCatalogFiles>false</GenerateCatalogFiles>

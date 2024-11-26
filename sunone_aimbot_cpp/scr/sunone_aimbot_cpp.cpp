@@ -22,7 +22,6 @@
 
 using namespace std;
 
-cv::Mat latestFrame;
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
 std::atomic<bool> aiming(false);
@@ -93,20 +92,26 @@ void mouseThreadFunction(MouseThread& mouseThread)
 {
     int lastDetectionVersion = -1;
 
+    std::chrono::milliseconds timeout(100);
+
     while (!shouldExit)
     {
         std::vector<cv::Rect> boxes;
         std::vector<int> classes;
 
         std::unique_lock<std::mutex> lock(detector.detectionMutex);
-        detector.detectionCV.wait(lock, [&]() { return detector.detectionVersion > lastDetectionVersion || shouldExit; });
+
+        detector.detectionCV.wait_for(lock, timeout, [&]() { return detector.detectionVersion > lastDetectionVersion || shouldExit; });
+
         if (shouldExit) break;
+
+        if (detector.detectionVersion <= lastDetectionVersion) continue;
 
         lastDetectionVersion = detector.detectionVersion;
 
         boxes = detector.detectedBoxes;
         classes = detector.detectedClasses;
-        
+
         if (input_method_changed.load())
         {
             initializeInputMethod();
@@ -134,6 +139,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
                 }
             }
         }
+
         mouseThread.checkAndResetPredictions();
     }
 }
@@ -191,14 +197,14 @@ int main()
     std::thread keyThread(keyboardListener);
     std::thread capThread(captureThread, config.detection_resolution, config.detection_resolution);
     std::thread detThread(&Detector::inferenceThread, &detector);
-    std::thread dispThread(displayThread);
     std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
     std::thread overlayThread(OverlayThread);
+
+    displayThread();
 
     keyThread.join();
     capThread.join();
     detThread.join();
-    dispThread.join();
     mouseMovThread.join();
     overlayThread.join();
 
