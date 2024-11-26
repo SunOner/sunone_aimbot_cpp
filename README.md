@@ -132,28 +132,30 @@ Click the image above to watch the installation tutorial video.
 
 9. **Check the correct folders location**
 	This is roughly what the project hierarchy should look like
-	sunone_aimbot_cpp/
-	├── .gitattributes
-	├── .gitignore
-	├── LICENSE
-	├── README.md
-	├── sunone_aimbot_cpp.sln
-	├── include/
-	├── models/
-	├── modules/
-	│   ├── boost_1_82_0/
-	│   ├── imgui-1.91.2/
-	│   ├── opencv/
-	│   │   ├── build/
-	│   │   ├── opencv_contrib-4.10.0/
-	│   │   └── opencv-4.10.0/
-	│   ├── stb/
-	│   ├── TensorRT-10.6.0.26/
-	│   └── tools/
-	├── scr/
-	├── screenshots/
-	├── config.ini
-	└── ghub_mouse.dll
+```
+   sunone_aimbot_cpp/
+   ├── .gitattributes
+   ├── .gitignore
+   ├── LICENSE
+   ├── README.md
+   ├── sunone_aimbot_cpp.sln
+   ├── include/
+   ├── models/
+   ├── modules/
+   │   ├── boost_1_82_0/
+   │   ├── imgui-1.91.2/
+   │   ├── opencv/
+   │   │   ├── build/
+   │   │   ├── opencv_contrib-4.10.0/
+   │   │   └── opencv-4.10.0/
+   │   ├── stb/
+   │   ├── TensorRT-10.6.0.26/
+   │   └── tools/
+   ├── scr/
+   ├── screenshots/
+   ├── config.ini
+   └── ghub_mouse.dll
+   ```
 
 10. **Configure Project Settings**  
 	- Open the project in Visual Studio.
