@@ -79,7 +79,7 @@ Click the image above to watch the installation tutorial video.
 	- Unpack opencv-4.10.0 to `sunone_aimbot_cpp/modules/opencv/opencv-4.10.0` and opencv_contrib-4.10.0 to `sunone_aimbot_cpp/modules/opencv/opencv_contrib-4.10.0`.
 	- Unpack cuDNN to `sunone_aimbot_cpp/modules/cudnn`.
 	- Open cmake, configure where the opencv source code is located `sunone_aimbot_cpp/modules/opencv/opencv-4.10.0`.
-	- Configure where the built code will be located `sunone_aimbot_cpp/modules/opencv/build'.
+	- Configure where the built code will be located `sunone_aimbot_cpp/modules/opencv/build`.
 	- Hit configure.
 	- Uncheck:
 		- `WITH_NVCUVENC`
@@ -87,6 +87,7 @@ Click the image above to watch the installation tutorial video.
 	- Check or configure:
 		- `WITH_CUDA`
 		- `WITH_CUBLAS`
+		- `ENABLE_FAST_MATH`
 		- `CUDA_FAST_MATH`
 		- `WITH_CUDNN`
 		- `CUDNN_LIBRARY` = `enter full path/sunone_aimbot_cpp/modules/cudnn/lib/x64/cudnn.lib`
@@ -95,7 +96,7 @@ Click the image above to watch the installation tutorial video.
 		- `OPENCV_DNN_CUDA`
 		- `OPENCV_EXTRA_MODULES_PATH` = `enter full path/sunone_aimbot_cpp/modules/opencv/opencv_contrib-4.10.0/modules`
 		- `BUILD_opencv_world`
-	- Click configure and check if the flag has been reset from the `CUDA_FAST_MATH` option.
+	- Click configure and check if the flag has been reset from the `CUDA_FAST_MATH` and `ENABLE_FAST_MATH` options.
 	- Hit Generate button to build C++ solution.
 	- Close cmake and open `sunone_aimbot_cpp/modules/opencv/build/OpenCV.sln'.
 	- Switch the build to x64 and release.
