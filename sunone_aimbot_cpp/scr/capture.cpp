@@ -206,94 +206,114 @@ WinRTScreenCapture::~WinRTScreenCapture()
 
 cv::Mat WinRTScreenCapture::GetNextFrame()
 {
-    winrt::Windows::Graphics::Capture::Direct3D11CaptureFrame frame = nullptr;
-
-    while (true)
+    try
     {
-        auto tempFrame = framePool.TryGetNextFrame();
-        if (!tempFrame)
-            break;
-        frame = tempFrame;
-    }
+        winrt::Windows::Graphics::Capture::Direct3D11CaptureFrame frame = nullptr;
 
-    if (!frame)
+        while (true)
+        {
+            auto tempFrame = framePool.TryGetNextFrame();
+            if (!tempFrame)
+                break;
+            frame = tempFrame;
+        }
+
+        if (!frame)
+        {
+            return cv::Mat();
+        }
+
+        auto surface = frame.Surface();
+
+        winrt::com_ptr<ID3D11Texture2D> frameTexture = GetDXGIInterfaceFromObject<ID3D11Texture2D>(surface);
+
+        if (!frameTexture)
+        {
+            throw std::runtime_error("Failed to get ID3D11Texture2D from frame surface.");
+        }
+
+        D3D11_TEXTURE2D_DESC desc;
+        frameTexture->GetDesc(&desc);
+
+
+        if (!stagingTexture)
+        {
+            D3D11_TEXTURE2D_DESC stagingDesc = {};
+            stagingDesc.Width = regionWidth;
+            stagingDesc.Height = regionHeight;
+            stagingDesc.MipLevels = 1;
+            stagingDesc.ArraySize = 1;
+            stagingDesc.Format = desc.Format;
+            stagingDesc.SampleDesc.Count = 1;
+            stagingDesc.SampleDesc.Quality = 0;
+            stagingDesc.Usage = D3D11_USAGE_STAGING;
+            stagingDesc.BindFlags = 0;
+            stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+            stagingDesc.MiscFlags = 0;
+
+            winrt::check_hresult(d3dDevice->CreateTexture2D(&stagingDesc, nullptr, stagingTexture.put()));
+        }
+
+        D3D11_BOX sourceRegion;
+        sourceRegion.left = regionX;
+        sourceRegion.top = regionY;
+        sourceRegion.front = 0;
+        sourceRegion.right = regionX + regionWidth;
+        sourceRegion.bottom = regionY + regionHeight;
+        sourceRegion.back = 1;
+
+        d3dContext->CopySubresourceRegion(
+            stagingTexture.get(),
+            0,
+            0,
+            0,
+            0,
+            frameTexture.get(),
+            0,
+            &sourceRegion
+        );
+
+        D3D11_MAPPED_SUBRESOURCE mappedResource;
+        winrt::check_hresult(d3dContext->Map(
+            stagingTexture.get(),
+            0,
+            D3D11_MAP_READ,
+            0,
+            &mappedResource
+        ));
+
+        cv::Mat screenshot(regionHeight, regionWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
+        cv::Mat result;
+        screenshot.copyTo(result);
+
+        d3dContext->Unmap(stagingTexture.get(), 0);
+
+        return result;
+    }
+    catch (const std::exception& e)
     {
-        return cv::Mat();
+        std::cerr << "[Capture] Error in GetNextFrame: " << e.what() << std::endl;
     }
-
-    auto surface = frame.Surface();
-
-    winrt::com_ptr<ID3D11Texture2D> frameTexture = GetDXGIInterfaceFromObject<ID3D11Texture2D>(surface);
-
-    D3D11_TEXTURE2D_DESC desc;
-    frameTexture->GetDesc(&desc);
-
-    if (!stagingTexture)
-    {
-        D3D11_TEXTURE2D_DESC stagingDesc = {};
-        stagingDesc.Width = regionWidth;
-        stagingDesc.Height = regionHeight;
-        stagingDesc.MipLevels = 1;
-        stagingDesc.ArraySize = 1;
-        stagingDesc.Format = desc.Format;
-        stagingDesc.SampleDesc.Count = 1;
-        stagingDesc.SampleDesc.Quality = 0;
-        stagingDesc.Usage = D3D11_USAGE_STAGING;
-        stagingDesc.BindFlags = 0;
-        stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-        stagingDesc.MiscFlags = 0;
-
-        winrt::check_hresult(d3dDevice->CreateTexture2D(&stagingDesc, nullptr, stagingTexture.put()));
-    }
-
-    D3D11_BOX sourceRegion;
-    sourceRegion.left = regionX;
-    sourceRegion.top = regionY;
-    sourceRegion.front = 0;
-    sourceRegion.right = regionX + regionWidth;
-    sourceRegion.bottom = regionY + regionHeight;
-    sourceRegion.back = 1;
-
-    d3dContext->CopySubresourceRegion(
-        stagingTexture.get(),
-        0,
-        0,
-        0,
-        0,
-        frameTexture.get(),
-        0,
-        &sourceRegion
-    );
-
-    D3D11_MAPPED_SUBRESOURCE mappedResource;
-    winrt::check_hresult(d3dContext->Map(
-        stagingTexture.get(),
-        0,
-        D3D11_MAP_READ,
-        0,
-        &mappedResource
-    ));
-
-    cv::Mat screenshot(regionHeight, regionWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
-    cv::Mat result;
-    screenshot.copyTo(result);
-
-    d3dContext->Unmap(stagingTexture.get(), 0);
-
-    return result;
 }
 
 winrt::Windows::Graphics::Capture::GraphicsCaptureItem WinRTScreenCapture::CreateCaptureItemForMonitor(HMONITOR hMonitor)
 {
-    auto interopFactory = winrt::get_activation_factory<winrt::Windows::Graphics::Capture::GraphicsCaptureItem, IGraphicsCaptureItemInterop>();
-    winrt::Windows::Graphics::Capture::GraphicsCaptureItem item{ nullptr };
-    HRESULT hr = interopFactory->CreateForMonitor(hMonitor, winrt::guid_of<winrt::Windows::Graphics::Capture::GraphicsCaptureItem>(), winrt::put_abi(item));
-    if (FAILED(hr))
+    try
     {
-        std::cerr << "[Capture] Can't create GraphicsCaptureItem for monitor. HRESULT: " << std::hex << hr << std::endl;
+        auto interopFactory = winrt::get_activation_factory<winrt::Windows::Graphics::Capture::GraphicsCaptureItem, IGraphicsCaptureItemInterop>();
+        winrt::Windows::Graphics::Capture::GraphicsCaptureItem item{ nullptr };
+        HRESULT hr = interopFactory->CreateForMonitor(hMonitor, winrt::guid_of<winrt::Windows::Graphics::Capture::GraphicsCaptureItem>(), winrt::put_abi(item));
+        if (FAILED(hr))
+        {
+            throw std::runtime_error("Can't create GraphicsCaptureItem for monitor. HRESULT: " + std::to_string(hr));
+        }
+        return item;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[Capture] Error in CreateCaptureItemForMonitor: " << e.what() << std::endl;
         return nullptr;
     }
-    return item;
 }
 
 winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice WinRTScreenCapture::CreateDirect3DDevice(IDXGIDevice* dxgiDevice)
@@ -392,289 +412,304 @@ DuplicationAPIScreenCapture::~DuplicationAPIScreenCapture()
 
 cv::Mat DuplicationAPIScreenCapture::GetNextFrame()
 {
-    IDXGIResource* desktopResource = nullptr;
-    DXGI_OUTDUPL_FRAME_INFO frameInfo;
-    HRESULT hr = deskDupl->AcquireNextFrame(100, &frameInfo, &desktopResource);
-    if (hr == DXGI_ERROR_WAIT_TIMEOUT)
+    try
     {
-        return cv::Mat();
-    }
-    if (FAILED(hr)) return cv::Mat();
+        IDXGIResource* desktopResource = nullptr;
+        DXGI_OUTDUPL_FRAME_INFO frameInfo;
+        HRESULT hr = deskDupl->AcquireNextFrame(100, &frameInfo, &desktopResource);
+        if (hr == DXGI_ERROR_WAIT_TIMEOUT)
+        {
+            return cv::Mat();
+        }
+        if (FAILED(hr)) return cv::Mat();
 
-    ID3D11Texture2D* desktopTexture = nullptr;
-    hr = desktopResource->QueryInterface(__uuidof(ID3D11Texture2D), (void**)(&desktopTexture));
-    if (FAILED(hr))
-    {
-        desktopResource->Release();
-        deskDupl->ReleaseFrame();
-        return cv::Mat();
-    }
+        ID3D11Texture2D* desktopTexture = nullptr;
+        hr = desktopResource->QueryInterface(__uuidof(ID3D11Texture2D), (void**)(&desktopTexture));
+        if (FAILED(hr))
+        {
+            desktopResource->Release();
+            deskDupl->ReleaseFrame();
+            return cv::Mat();
+        }
 
-    int regionX = (screenWidth - regionWidth) / 2;
-    int regionY = (screenHeight - regionHeight) / 2;
-    D3D11_BOX sourceRegion;
-    sourceRegion.left = regionX;
-    sourceRegion.top = regionY;
-    sourceRegion.front = 0;
-    sourceRegion.right = regionX + regionWidth;
-    sourceRegion.bottom = regionY + regionHeight;
-    sourceRegion.back = 1;
+        int regionX = (screenWidth - regionWidth) / 2;
+        int regionY = (screenHeight - regionHeight) / 2;
+        D3D11_BOX sourceRegion;
+        sourceRegion.left = regionX;
+        sourceRegion.top = regionY;
+        sourceRegion.front = 0;
+        sourceRegion.right = regionX + regionWidth;
+        sourceRegion.bottom = regionY + regionHeight;
+        sourceRegion.back = 1;
 
-    d3dContext->CopySubresourceRegion(
-        stagingTexture,
-        0,
-        0,
-        0,
-        0,
-        desktopTexture,
-        0,
-        &sourceRegion
-    );
+        d3dContext->CopySubresourceRegion(
+            stagingTexture,
+            0,
+            0,
+            0,
+            0,
+            desktopTexture,
+            0,
+            &sourceRegion
+        );
 
-    D3D11_MAPPED_SUBRESOURCE mappedResource;
-    hr = d3dContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &mappedResource);
-    if (FAILED(hr))
-    {
+        D3D11_MAPPED_SUBRESOURCE mappedResource;
+        hr = d3dContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &mappedResource);
+        if (FAILED(hr))
+        {
+            desktopTexture->Release();
+            desktopResource->Release();
+            deskDupl->ReleaseFrame();
+            return cv::Mat();
+        }
+
+        cv::Mat screenshot(regionHeight, regionWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
+        cv::Mat result;
+        screenshot.copyTo(result);
+
+        d3dContext->Unmap(stagingTexture, 0);
         desktopTexture->Release();
         desktopResource->Release();
         deskDupl->ReleaseFrame();
+
+        return result;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[Capture] Error in GetNextFrame: " << e.what() << std::endl;
         return cv::Mat();
     }
-
-    cv::Mat screenshot(regionHeight, regionWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
-    cv::Mat result;
-    screenshot.copyTo(result);
-
-    d3dContext->Unmap(stagingTexture, 0);
-    desktopTexture->Release();
-    desktopResource->Release();
-    deskDupl->ReleaseFrame();
-
-    return result;
 }
 
 void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 {
-    if (config.verbose)
+    try
     {
-        std::cout << "[Capture] OpenCV version: " << CV_VERSION << std::endl;
-        std::cout << "[Capture] CUDA Support: " << cv::cuda::getCudaEnabledDeviceCount() << " devices found." << std::endl;
-    }
-
-    IScreenCapture* capturer = nullptr;
-
-    if (config.duplication_api)
-    {
-        capturer = new DuplicationAPIScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
         if (config.verbose)
         {
-            cout << "[Capture] Using Duplication API." << endl;
-        }
-    }
-    else
-    {
-        winrt::init_apartment(winrt::apartment_type::multi_threaded);
-        capturer = new WinRTScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
-        if (config.verbose)
-        {
-            cout << "[Capture] Using WinRT." << endl;
-        }
-    }
-
-    cv::cuda::GpuMat latestFrameGpu;
-    bool buttonPreviouslyPressed = false;
-
-    auto lastSaveTime = std::chrono::steady_clock::now();
-
-    std::optional<std::chrono::duration<double, std::milli>> frame_duration;
-    bool frameLimitingEnabled = false;
-
-    if (config.capture_fps > 0.0)
-    {
-        timeBeginPeriod(1);
-        frame_duration = std::chrono::duration<double, std::milli>(1000.0 / config.capture_fps);
-        frameLimitingEnabled = true;
-    }
-
-    captureFpsStartTime = std::chrono::high_resolution_clock::now();
-    auto start_time = std::chrono::high_resolution_clock::now();
-
-    while (!shouldExit)
-    {
-        if (capture_fps_changed.load())
-        {
-            if (config.capture_fps > 0.0)
-            {
-                if (!frameLimitingEnabled)
-                {
-                    timeBeginPeriod(1);
-                    frameLimitingEnabled = true;
-                }
-                frame_duration = std::chrono::duration<double, std::milli>(1000.0 / config.capture_fps);
-            }
-            else
-            {
-                if (frameLimitingEnabled)
-                {
-                    timeEndPeriod(1);
-                    frameLimitingEnabled = false;
-                }
-                frame_duration = std::nullopt;
-            }
-            capture_fps_changed.store(false);
+            std::cout << "[Capture] OpenCV version: " << CV_VERSION << std::endl;
+            std::cout << "[Capture] CUDA Support: " << cv::cuda::getCudaEnabledDeviceCount() << " devices found." << std::endl;
         }
 
-        if (detection_resolution_changed.load()
-            || capture_method_changed.load()
-            || capture_cursor_changed.load()
-            || capture_borders_changed.load())
+        IScreenCapture* capturer = nullptr;
+
+        if (config.duplication_api)
         {
-            delete capturer;
-
-            int new_CAPTURE_WIDTH = config.detection_resolution;
-            int new_CAPTURE_HEIGHT = config.detection_resolution;
-
-            if (config.duplication_api)
+            capturer = new DuplicationAPIScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+            if (config.verbose)
             {
-                capturer = new DuplicationAPIScreenCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
-                if (config.verbose)
-                {
-                    cout << "[Capture] Using Duplication API." << endl;
-                }
+                cout << "[Capture] Using Duplication API." << endl;
             }
-            else
+        }
+        else
+        {
+            winrt::init_apartment(winrt::apartment_type::multi_threaded);
+            capturer = new WinRTScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+            if (config.verbose)
             {
-                capturer = new WinRTScreenCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
-                if (config.verbose)
-                {
-                    cout << "[Capture] Using WinRT." << endl;
-                }
+                cout << "[Capture] Using WinRT." << endl;
             }
-
-            screenWidth = new_CAPTURE_WIDTH;
-            screenHeight = new_CAPTURE_HEIGHT;
-
-            detection_resolution_changed.store(false);
-            capture_method_changed.store(false);
-            capture_cursor_changed.store(false);
-            capture_borders_changed.store(false);
         }
 
-        cv::Mat screenshot = capturer->GetNextFrame();
+        cv::cuda::GpuMat latestFrameGpu;
+        bool buttonPreviouslyPressed = false;
 
-        if (!screenshot.empty())
+        auto lastSaveTime = std::chrono::steady_clock::now();
+
+        std::optional<std::chrono::duration<double, std::milli>> frame_duration;
+        bool frameLimitingEnabled = false;
+
+        if (config.capture_fps > 0.0)
         {
-            cv::cuda::GpuMat screenshotGpu;
-            try
+            timeBeginPeriod(1);
+            frame_duration = std::chrono::duration<double, std::milli>(1000.0 / config.capture_fps);
+            frameLimitingEnabled = true;
+        }
+
+        captureFpsStartTime = std::chrono::high_resolution_clock::now();
+        auto start_time = std::chrono::high_resolution_clock::now();
+
+        while (!shouldExit)
+        {
+            if (capture_fps_changed.load())
             {
-                screenshotGpu.upload(screenshot);
-            }
-            catch (const cv::Exception& e)
-            {
-                std::cerr << "[Capture]: " << e.what() << std::endl;
-                continue;
-            }
-
-            cv::cuda::GpuMat resizedGpu;
-
-            if (config.circle_mask)
-            {
-                cv::Mat mask = cv::Mat::zeros(screenshot.size(), CV_8UC1);
-                cv::Point center(mask.cols / 2, mask.rows / 2);
-                int radius = std::min(mask.cols, mask.rows) / 2;
-                cv::circle(mask, center, radius, cv::Scalar(255), -1);
-
-                cv::cuda::GpuMat maskGpu;
-                maskGpu.upload(mask);
-
-                cv::cuda::GpuMat maskedImageGpu;
-                screenshotGpu.copyTo(maskedImageGpu, maskGpu);
-
-                cv::cuda::resize(maskedImageGpu, resizedGpu, cv::Size(config.engine_image_size, config.engine_image_size), 0, 0, cv::INTER_LINEAR);
-            }
-            else
-            {
-                cv::cuda::resize(screenshotGpu, resizedGpu, cv::Size(config.engine_image_size, config.engine_image_size), 0, 0, cv::INTER_LINEAR);
-            }
-
-            {
-                std::lock_guard<std::mutex> lock(frameMutex);
-                latestFrameGpu = resizedGpu.clone();
-            }
-
-            detector.processFrame(resizedGpu);
-            resizedGpu.download(latestFrameCpu);
-
-            {
-                std::lock_guard<std::mutex> lock(frameMutex);
-                latestFrameCpu = latestFrameCpu.clone();
-            }
-            frameCV.notify_one();
-
-            if (config.screenshot_button[0] != "None")
-            {
-                bool buttonPressed = isAnyKeyPressed(config.screenshot_button);
-
-                if (buttonPressed)
+                if (config.capture_fps > 0.0)
                 {
-                    auto now = std::chrono::steady_clock::now();
-                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count();
-
-                    if (elapsed >= config.screenshot_delay)
+                    if (!frameLimitingEnabled)
                     {
-                        cv::Mat resizedCpu;
-                        resizedGpu.download(resizedCpu);
+                        timeBeginPeriod(1);
+                        frameLimitingEnabled = true;
+                    }
+                    frame_duration = std::chrono::duration<double, std::milli>(1000.0 / config.capture_fps);
+                }
+                else
+                {
+                    if (frameLimitingEnabled)
+                    {
+                        timeEndPeriod(1);
+                        frameLimitingEnabled = false;
+                    }
+                    frame_duration = std::nullopt;
+                }
+                capture_fps_changed.store(false);
+            }
 
-                        auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            std::chrono::system_clock::now().time_since_epoch()).count();
-                        std::string filename = std::to_string(epoch_time) + ".jpg";
+            if (detection_resolution_changed.load()
+                || capture_method_changed.load()
+                || capture_cursor_changed.load()
+                || capture_borders_changed.load())
+            {
+                delete capturer;
 
-                        cv::imwrite("screenshots/" + filename, resizedCpu);
+                int new_CAPTURE_WIDTH = config.detection_resolution;
+                int new_CAPTURE_HEIGHT = config.detection_resolution;
 
-                        lastSaveTime = now;
+                if (config.duplication_api)
+                {
+                    capturer = new DuplicationAPIScreenCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
+                    if (config.verbose)
+                    {
+                        cout << "[Capture] Using Duplication API." << endl;
+                    }
+                }
+                else
+                {
+                    capturer = new WinRTScreenCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
+                    if (config.verbose)
+                    {
+                        cout << "[Capture] Using WinRT." << endl;
                     }
                 }
 
-                buttonPreviouslyPressed = buttonPressed;
+                screenWidth = new_CAPTURE_WIDTH;
+                screenHeight = new_CAPTURE_HEIGHT;
+
+                detection_resolution_changed.store(false);
+                capture_method_changed.store(false);
+                capture_cursor_changed.store(false);
+                capture_borders_changed.store(false);
             }
 
-            captureFrameCount++;
-            auto currentTime = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> elapsed = currentTime - captureFpsStartTime;
+            cv::Mat screenshot = capturer->GetNextFrame();
 
-            if (elapsed.count() >= 1.0)
+            if (!screenshot.empty())
             {
-                captureFps = static_cast<int>(captureFrameCount / elapsed.count());
-                captureFrameCount = 0;
-                captureFpsStartTime = currentTime;
+                cv::cuda::GpuMat screenshotGpu;
+                try
+                {
+                    screenshotGpu.upload(screenshot);
+                }
+                catch (const cv::Exception& e)
+                {
+                    std::cerr << "[Capture]: " << e.what() << std::endl;
+                    continue;
+                }
+
+                cv::cuda::GpuMat resizedGpu;
+
+                if (config.circle_mask)
+                {
+                    cv::Mat mask = cv::Mat::zeros(screenshot.size(), CV_8UC1);
+                    cv::Point center(mask.cols / 2, mask.rows / 2);
+                    int radius = std::min(mask.cols, mask.rows) / 2;
+                    cv::circle(mask, center, radius, cv::Scalar(255), -1);
+
+                    cv::cuda::GpuMat maskGpu;
+                    maskGpu.upload(mask);
+
+                    cv::cuda::GpuMat maskedImageGpu;
+                    screenshotGpu.copyTo(maskedImageGpu, maskGpu);
+
+                    cv::cuda::resize(maskedImageGpu, resizedGpu, cv::Size(config.engine_image_size, config.engine_image_size), 0, 0, cv::INTER_LINEAR);
+                }
+                else
+                {
+                    cv::cuda::resize(screenshotGpu, resizedGpu, cv::Size(config.engine_image_size, config.engine_image_size), 0, 0, cv::INTER_LINEAR);
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(frameMutex);
+                    latestFrameGpu = resizedGpu.clone();
+                }
+
+                detector.processFrame(resizedGpu);
+                resizedGpu.download(latestFrameCpu);
+
+                {
+                    std::lock_guard<std::mutex> lock(frameMutex);
+                    latestFrameCpu = latestFrameCpu.clone();
+                }
+                frameCV.notify_one();
+
+                if (config.screenshot_button[0] != "None")
+                {
+                    bool buttonPressed = isAnyKeyPressed(config.screenshot_button);
+
+                    if (buttonPressed)
+                    {
+                        auto now = std::chrono::steady_clock::now();
+                        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count();
+
+                        if (elapsed >= config.screenshot_delay)
+                        {
+                            cv::Mat resizedCpu;
+                            resizedGpu.download(resizedCpu);
+
+                            auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::system_clock::now().time_since_epoch()).count();
+                            std::string filename = std::to_string(epoch_time) + ".jpg";
+
+                            cv::imwrite("screenshots/" + filename, resizedCpu);
+
+                            lastSaveTime = now;
+                        }
+                    }
+
+                    buttonPreviouslyPressed = buttonPressed;
+                }
+
+                captureFrameCount++;
+                auto currentTime = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> elapsed = currentTime - captureFpsStartTime;
+
+                if (elapsed.count() >= 1.0)
+                {
+                    captureFps = static_cast<int>(captureFrameCount / elapsed.count());
+                    captureFrameCount = 0;
+                    captureFpsStartTime = currentTime;
+                }
+            }
+
+            if (frame_duration.has_value())
+            {
+                auto end_time = std::chrono::high_resolution_clock::now();
+                auto work_duration = end_time - start_time;
+
+                auto sleep_duration = frame_duration.value() - work_duration;
+
+                if (sleep_duration > std::chrono::duration<double, std::milli>(0))
+                {
+                    std::this_thread::sleep_for(sleep_duration);
+                }
+
+                start_time = std::chrono::high_resolution_clock::now();
             }
         }
 
-        if (frame_duration.has_value())
+        if (frameLimitingEnabled)
         {
-            auto end_time = std::chrono::high_resolution_clock::now();
-            auto work_duration = end_time - start_time;
+            timeEndPeriod(1);
+        }
 
-            auto sleep_duration = frame_duration.value() - work_duration;
+        delete capturer;
 
-            if (sleep_duration > std::chrono::duration<double, std::milli>(0))
-            {
-                std::this_thread::sleep_for(sleep_duration);
-            }
-
-            start_time = std::chrono::high_resolution_clock::now();
+        if (!config.duplication_api)
+        {
+            winrt::uninit_apartment();
         }
     }
-
-    if (frameLimitingEnabled)
+    catch (const std::exception& e)
     {
-        timeEndPeriod(1);
-    }
-
-    delete capturer;
-
-    if (!config.duplication_api)
-    {
-        winrt::uninit_apartment();
+        std::cerr << "[CaptureThread] Unhandled exception: " << e.what() << std::endl;
     }
 }
