@@ -148,6 +148,8 @@ int main()
 {
     if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
     {
+        std::cout << "[MAIN] Error with screenshoot folder" << std::endl;
+        std::cin.get();
         return -1;
     }
 
