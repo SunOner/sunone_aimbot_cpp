@@ -3,6 +3,7 @@
 
 #include "NvInfer.h"
 
+
 class Logger : public nvinfer1::ILogger
 {
 public:
@@ -16,4 +17,6 @@ inline nvinfer1::IBuilder* createInferBuilder();
 inline nvinfer1::INetworkDefinition* createNetwork(nvinfer1::IBuilder* builder);
 inline nvinfer1::IBuilderConfig* createBuilderConfig(nvinfer1::IBuilder* builder);
 
+nvinfer1::ICudaEngine* loadEngineFromFile(const std::string& engineFile, nvinfer1::IRuntime* runtime);
+nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1::ILogger& logger);
 #endif // NVINF_H

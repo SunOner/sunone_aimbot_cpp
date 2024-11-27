@@ -3,18 +3,18 @@
 #include <winsock2.h>
 #include <Windows.h>
 
-// for ai models search
 #include <string>
 #include <iostream>
 #include <filesystem>
 #include <algorithm>
 #include <fstream>
 #include <cstdlib>
-
+#include <unordered_set>
 #include <tchar.h>
 #include <thread>
 #include <mutex>
 #include <atomic>
+
 #include <d3d11.h>
 #include <dxgi.h>
 
@@ -133,6 +133,21 @@ std::vector<std::string> getEngineFiles()
         }
     }
     return engineFiles;
+}
+
+std::vector<std::string> getModelFiles()
+{
+    std::vector<std::string> modelsFiles;
+
+    for (const auto& entry : std::filesystem::directory_iterator("models/"))
+    {
+        if (entry.is_regular_file() && entry.path().extension() == ".engine" ||
+            entry.is_regular_file() && entry.path().extension() == ".onnx")
+        {
+            modelsFiles.push_back(entry.path().filename().string());
+        }
+    }
+    return modelsFiles;
 }
 
 std::vector<std::string> getOnnxFiles()

@@ -92,7 +92,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
 {
     int lastDetectionVersion = -1;
 
-    std::chrono::milliseconds timeout(100);
+    std::chrono::milliseconds timeout(30);
 
     while (!shouldExit)
     {
@@ -203,6 +203,11 @@ int main()
     std::thread overlayThread(OverlayThread);
 
     displayThread();
+
+    if (config.ai_model.empty())
+    {
+        std::cout << "[MAIN] No AI model specified in config. Please select an AI model in the overlay." << std::endl;
+    }
 
     keyThread.join();
     capThread.join();

@@ -2,12 +2,14 @@
 #define OTHER_TOOLS_H
 
 #include <string>
+#include <d3d11.h>
 
 static inline bool is_base64(unsigned char c);
 std::vector<unsigned char> Base64Decode(const std::string& encoded_string);
 bool fileExists(const std::string& path);
 std::string replace_extension(const std::string& filename, const std::string& new_extension);
 std::vector<std::string> getEngineFiles();
+std::vector<std::string> getModelFiles();
 std::vector<std::string> getOnnxFiles();
 std::vector<std::string>::difference_type getModelIndex(std::vector<std::string> engine_models);
 int getImageSizeIndex(int engine_image_size, const int* model_sizes, int model_sizes_count);

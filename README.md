@@ -1,60 +1,50 @@
 <div align="center">
 
 # Sunone Aimbot C++
+
 [![C++](https://img.shields.io/badge/C%2B%2B-17-blue)](https://github.com/SunOner/sunone_aimbot_cpp)
 [![License MIT](https://badgen.net/github/license/SunOner/sunone_aimbot_cpp)](https://github.com/SunOner/sunone_aimbot_cpp/blob/main/LICENSE)
-[![Github stars](https://img.shields.io/github/stars/SunOner/sunone_aimbot_cpp?color=ffb500)](https://github.com/SunOner/sunone_aimbot_cpp)
+[![GitHub stars](https://img.shields.io/github/stars/SunOner/sunone_aimbot_cpp?color=ffb500)](https://github.com/SunOner/sunone_aimbot_cpp)
 [![Discord server](https://badgen.net/discord/online-members/sunone)](https://discord.gg/sunone)
+
   <p>
     <a href="https://github.com/SunOner/sunone_aimbot_cpp/releases" target="_blank">
-      <img width="75%" src="https://github.com/SunOner/sunone_aimbot/blob/main/media/one.gif"></a>
+      <img width="75%" src="https://github.com/SunOner/sunone_aimbot/blob/main/media/one.gif">
+    </a>
   </p>
 </div>
 
 - **This project is actively being developed thanks to the people who support on [Boosty](https://boosty.to/sunone) and [Patreon](https://www.patreon.com/sunone). By providing active support, you receive enhanced AI models.**
 
+> **⚠️ WARNING:** TensorRT version 10 does not support the Pascal architecture (10 series graphics cards). Use only with GPUs of at least the 20 series.
+
 ## How to Use
 
 1. **Download the Latest Release**  
-	Download the latest release from [here](https://github.com/SunOner/sunone_aimbot_cpp/releases).
+   - Download the latest release from [here](https://disk.yandex.ru/d/Mpql8LBfjag2fA) (v2.4).
 
-2. **Download TensorRT**  
-	Get TensorRT from [Yandex](https://disk.yandex.ru/d/S16C9oDSuF1_EQ) or [Developer Nvidia](https://developer.nvidia.com/tensorrt/download/10x).
+2. **Unpack Aimbot**  
+   - Extract the contents of the Aimbot.
 
-3. **Unpack TensorRT and Aimbot**  
-	Extract the contents of both TensorRT and the Aimbot.
+3. **First Launch and Model Export**  
+   - Run `ai.exe` and wait until the standard `.onnx` model is exported, usually taking no more than two minutes.
+   - To export another model, simply place it in `.onnx` format in the `models` folder. Then, in the AI tab, select this model, and it will be exported automatically.
 
-4. **Copy DLL Files**  
-	- Copy `TensorRT-10.6.0.26/lib/nvinfer_10.dll` to `sunone_aimbot_cpp/`.
-	- Copy all files from `TensorRT-10.6.0.26/lib/` to `TensorRT-10.6.0.26/bin/`.
+4. **Settings**  
+   - After successfully exporting the model, you can configure the program.
+   - All settings are available in the overlay (default key is `Home`).
+   - A list of settings can be found in the [config documentation](https://github.com/SunOner/sunone_aimbot_docs/blob/main/config/config_cpp.md).
 
-5. **Transfer the ONNX Model**  
-	Copy `sunone_aimbot_cpp/models/sunxds_0_5_6.onnx` to `TensorRT-10.6.0.26/bin/`.
-
-6. **Generate Engine model File**  
-	Open Command Prompt in `TensorRT-10.6.0.26/bin/` and execute:
-	```bash
-	trtexec.exe --onnx=sunxds_0.5.6.onnx --saveEngine=sunxds_0.5.6.engine --fp16
-	```
-	Or export it .onnx model via overlay (AI).
-	
-7. **Finalize Setup**  
-	After the export (~1-5 minutes), copy `TensorRT-10.6.0.26/bin/sunxds_0.5.6.engine` to `sunone_aimbot_cpp/models/`.
-
-8. **Run the Application**  
-	Execute `ai.exe`.
-
-> **⚠️ WARNING:** TensorRT version 10 does not support the Pascal architecture (10 series graphics cards). Use only with GPUs of at least the 20 series.
-
-> **ℹ️ NOTE:** This guide is intended for advanced users. If you encounter errors while building the modules, please report them on the [Discord server](https://discord.gg/sunone).
-
-## 📺 Installation Video
-
-[![Watch the Installation Tutorial](https://img.youtube.com/vi/EyPtfXLhiuo/0.jpg)](https://www.youtube.com/watch?v=EyPtfXLhiuo)
-
-Click the image above to watch the installation tutorial video.
+5. **Controls**
+   - **Right Mouse Button:** Aim at the detected target.
+   - **F2:** Exit the program.
+   - **F3:** Activate pause for aiming.
+   - **F4:** Reload config.
+   - **Home:** Show overlay.
 
 ## 🛠 Build the Project from Source
+
+> **ℹ️ NOTE:** This guide is intended for advanced users. If you encounter errors while building the modules, please report them on the [Discord server](https://discord.gg/sunone).
 
 1. **Install Visual Studio 2019 Community**  
    Download and install from the [official website](https://visualstudio.microsoft.com/vs/community/).
@@ -63,77 +53,77 @@ Click the image above to watch the installation tutorial video.
    Ensure you have Windows SDK version **10.0.26100.0** installed.
 
 3. **Install CUDA and cuDNN**  
-	- **CUDA 12.4**
-		Download from [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit).
-	- **cuDNN 9.1**
-		Available on the [NVIDIA cuDNN archive](https://developer.nvidia.com/rdp/cudnn-archive) website.
+   - **CUDA 12.4**  
+     Download from [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit).
+   - **cuDNN 9.1**  
+     Available on the [NVIDIA cuDNN archive](https://developer.nvidia.com/rdp/cudnn-archive) website.
 
 4. **Set Up Project Structure**  
-	Create a folder named `modules` in the directory `sunone_aimbot_cpp/sunone_aimbot_cpp/modules`.
-	
-5. **Build OpenCV with CUDA support**
-	- Download and install [cmake](https://cmake.org/).
-	- Download [opencv](https://github.com/opencv/opencv).
-	- Download [opencv contrib](https://github.com/opencv/opencv_contrib/tags).
-	- Create new dirs, `sunone_aimbot_cpp/modules/opencv/` and `sunone_aimbot_cpp/modules/opencv/build'
-	- Unpack opencv-4.10.0 to `sunone_aimbot_cpp/modules/opencv/opencv-4.10.0` and opencv_contrib-4.10.0 to `sunone_aimbot_cpp/modules/opencv/opencv_contrib-4.10.0`.
-	- Unpack cuDNN to `sunone_aimbot_cpp/modules/cudnn`.
-	- Open cmake, configure where the opencv source code is located `sunone_aimbot_cpp/modules/opencv/opencv-4.10.0`.
-	- Configure where the built code will be located `sunone_aimbot_cpp/modules/opencv/build`.
-	- Hit configure.
-	- Uncheck:
-		- `WITH_NVCUVENC`
-		- `WITH_NVCUVID`.
-	- Check or configure:
-		- `WITH_CUDA`
-		- `WITH_CUBLAS`
-		- `ENABLE_FAST_MATH`
-		- `CUDA_FAST_MATH`
-		- `WITH_CUDNN`
-		- `CUDNN_LIBRARY` = `enter full path/sunone_aimbot_cpp/modules/cudnn/lib/x64/cudnn.lib`
-		- `CUDNN_INCLUDE_DIR` = `enter full path/sunone_aimbot_cpp/modules/cudnn/include`
-		- `CUDA_ARCH_BIN` = go to [cuda wiki](https://en.wikipedia.org/wiki/CUDA) and find your Nvidia GPU architecture. For me with my `rtx 3080ti` i write `8.6`
-		- `OPENCV_DNN_CUDA`
-		- `OPENCV_EXTRA_MODULES_PATH` = `enter full path/sunone_aimbot_cpp/modules/opencv/opencv_contrib-4.10.0/modules`
-		- `BUILD_opencv_world`
-	- Click configure and check if the flag has been reset from the `CUDA_FAST_MATH` and `ENABLE_FAST_MATH` options.
-	- Hit Generate button to build C++ solution.
-	- Close cmake and open `sunone_aimbot_cpp/modules/opencv/build/OpenCV.sln'.
-	- Switch the build to x64 and release.
-	- Open CMakeTargets folder in solution.
-	- Hit right click on `ALL_BUILD` and click `build`. (Building a project can take up to two hours)
-	- After building hit right click on `INSTALL` and click `build`.
-	- Now check the folders with the built files.
-		- `sunone_aimbot_cpp/modules/opencv/build/install/include/opencv2` - folders with .hpp and .h files.
-		- `sunone_aimbot_cpp/modules/opencv/build/install/x64/vc16/bin` - .dll files.
-		- `sunone_aimbot_cpp/modules/opencv/build/install/x64/vc16/lib` - .lib files.
+   Create a folder named `modules` in the directory `sunone_aimbot_cpp/sunone_aimbot_cpp/modules`.
+
+5. **Build OpenCV with CUDA Support**
+   - Download and install [CMake](https://cmake.org/).
+   - Download [OpenCV](https://github.com/opencv/opencv).
+   - Download [OpenCV Contrib](https://github.com/opencv/opencv_contrib/tags).
+   - Create new directories: `sunone_aimbot_cpp/modules/opencv/` and `sunone_aimbot_cpp/modules/opencv/build`.
+   - Extract `opencv-4.10.0` to `sunone_aimbot_cpp/modules/opencv/opencv-4.10.0` and `opencv_contrib-4.10.0` to `sunone_aimbot_cpp/modules/opencv/opencv_contrib-4.10.0`.
+   - Extract cuDNN to `sunone_aimbot_cpp/modules/cudnn`.
+   - Open CMake and set the source code location to `sunone_aimbot_cpp/modules/opencv/opencv-4.10.0`.
+   - Set the build directory to `sunone_aimbot_cpp/modules/opencv/build`.
+   - Click `Configure`.
+   - Uncheck:
+     - `WITH_NVCUVENC`
+     - `WITH_NVCUVID`
+   - Check or configure:
+     - `WITH_CUDA`
+     - `WITH_CUBLAS`
+     - `ENABLE_FAST_MATH`
+     - `CUDA_FAST_MATH`
+     - `WITH_CUDNN`
+     - `CUDNN_LIBRARY` = `<full path>/sunone_aimbot_cpp/modules/cudnn/lib/x64/cudnn.lib`
+     - `CUDNN_INCLUDE_DIR` = `<full path>/sunone_aimbot_cpp/modules/cudnn/include`
+     - `CUDA_ARCH_BIN` = Visit the [CUDA Wiki](https://en.wikipedia.org/wiki/CUDA) to find your Nvidia GPU architecture. For example, for `RTX 3080ti`, enter `8.6`.
+     - `OPENCV_DNN_CUDA`
+     - `OPENCV_EXTRA_MODULES_PATH` = `<full path>/sunone_aimbot_cpp/modules/opencv/opencv_contrib-4.10.0/modules`
+     - `BUILD_opencv_world`
+   - Click `Configure` again and ensure that the flags for `CUDA_FAST_MATH` and `ENABLE_FAST_MATH` are not reset.
+   - Click `Generate` to build the C++ solution.
+   - Close CMake and open `sunone_aimbot_cpp/modules/opencv/build/OpenCV.sln`.
+   - Switch the build configuration to `x64` and `Release`.
+   - Open the `CMakeTargets` folder in the solution.
+   - Right-click on `ALL_BUILD` and select `Build`. (Building the project can take up to two hours.)
+   - After building, right-click on `INSTALL` and select `Build`.
+   - Verify the built files exist in the following folders:
+     - `sunone_aimbot_cpp/modules/opencv/build/install/include/opencv2` - Contains `.hpp` and `.h` files.
+     - `sunone_aimbot_cpp/modules/opencv/build/install/x64/vc16/bin` - Contains `.dll` files.
+     - `sunone_aimbot_cpp/modules/opencv/build/install/x64/vc16/lib` - Contains `.lib` files.
 
 6. **Download Required Libraries**  
    - [Boost](https://disk.yandex.ru/d/O8XkcKeQ3vNDFg)
-   - TensorRT from [Yandex](https://disk.yandex.ru/d/S16C9oDSuF1_EQ) or [Developer Nvidia](https://developer.nvidia.com/tensorrt/download/10x)
+   - TensorRT from [Yandex](https://disk.yandex.ru/d/S16C9oDSuF1_EQ) or [NVIDIA Developer](https://developer.nvidia.com/tensorrt/download/10x)
 
 7. **Extract Libraries**  
-	Extract the downloaded libraries into the respective directories:
-		- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\boost_1_82_0`
-		- `sunone_aimbot_cpp\sunone_aimbot_cpp\modules\TensorRT-10.6.0.26`
+   Extract the downloaded libraries into the respective directories:
+   - `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0`
+   - `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/TensorRT-10.6.0.26`
 
-8. **Compile Boost Libraries**  
-	- Navigate to the Boost directory:
-	```bash
-	cd sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0
-	```
-	- Run the bootstrap script:
-	```bash
-	bootstrap.bat vc142
-	```
-	- After successful bootstrapping, build Boost:
-	```bash
-	b2.exe --build-type=complete link=static runtime-link=static threading=multi variant=release
-	```
+8. **Compile Boost Libraries**
+   - Navigate to the Boost directory:
+     ```bash
+     cd sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0
+     ```
+   - Run the bootstrap script (from PowerShell):
+     ```bash
+     bootstrap.bat vc142
+     ```
+   - After successful bootstrapping, build Boost:
+     ```bash
+     b2.exe --build-type=complete link=static runtime-link=static threading=multi variant=release
+     ```
 
-9. **Check the correct folders location**
-	This is roughly what the project hierarchy should look like
-```
+9. **Verify Folder Structure**  
+   Ensure your project hierarchy looks like this:
+   ```
    sunone_aimbot_cpp/
    ├── .gitattributes
    ├── .gitignore
@@ -158,21 +148,21 @@ Click the image above to watch the installation tutorial video.
    └── ghub_mouse.dll
    ```
 
-10. **Configure Project Settings**  
-	- Open the project in Visual Studio.
-	- Ensure all library paths are correctly set in **Project Properties** under **Library Directories**.
-	- Go to Nuget packages and install `Microsoft.Windows.CppWinRT`.
-	
-11. **Verify CUDA Integration**  
-	- Right-click on the project in Visual Studio.
-	- Navigate to **Build Dependencies** > **Build Customizations**.
-	- Ensure that **CUDA 12.4** (.targets, .props) is included.
-	
-12. **Build the Project**  
-	- Switch the build configuration to **Release**.
-	- Build the project by selecting **Build** > **Build Solution**.
+10. **Configure Project Settings**
+    - Open the project in Visual Studio.
+    - Ensure all library paths are correctly set in **Project Properties** under **Library Directories**.
+    - Go to NuGet packages and install `Microsoft.Windows.CppWinRT`.
 
-## 📋 Config docs
+11. **Verify CUDA Integration**
+    - Right-click on the project in Visual Studio.
+    - Navigate to **Build Dependencies** > **Build Customizations**.
+    - Ensure that **CUDA 12.4** (.targets, .props) is included.
+
+12. **Build the Project**
+    - Switch the build configuration to **Release**.
+    - Build the project by selecting **Build** > **Build Solution**.
+
+## 📋 Config Documentation
 - The config documentation is available in a separate [repository](https://github.com/SunOner/sunone_aimbot_docs/blob/main/config/config_cpp.md).
 
 ## 📚 References

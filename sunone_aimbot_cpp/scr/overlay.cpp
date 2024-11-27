@@ -12,7 +12,7 @@
 #include <atomic>
 #include <d3d11.h>
 #include <dxgi.h>
-#include <sys/stat.h>
+#include <filesystem>
 
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
@@ -49,24 +49,11 @@ int overlayWidth = 680;
 int overlayHeight = 480;
 
 // init vars
-std::vector<std::string> engine_models;
+std::vector<std::string> model_files;
 __int64 prev_ai_model_index;
 __int64 current_ai_model_index;
 int prev_imgsz_index;
 int selected_imgsz;
-
-// export model
-std::string tensorrt_path = get_tensorrt_path();
-bool tensorrt_path_found = !tensorrt_path.empty();
-std::string tensorrt_bin_path;
-std::string trtexec_path;
-std::vector<std::string> onnx_models;
-int onnx_model_index = 0;
-std::string output_engine_file;
-
-static std::atomic<bool> is_exporting(false);
-static std::mutex export_mutex;
-std::string export_status_message;
 
 // Realtime config vars
 extern std::atomic<bool> detection_resolution_changed;
@@ -223,10 +210,6 @@ void SetupImGui()
     ImGui::StyleColorsDark();
 
     // Other setups
-    // load available engine models
-    engine_models = getEngineFiles();
-    prev_ai_model_index = getModelIndex(engine_models);
-    current_ai_model_index = prev_ai_model_index;
 
     // ai model image sizes
     int model_sizes[] = { 320, 480, 640 };
@@ -376,6 +359,11 @@ void OverlayThread()
 
     std::string ghub_version = get_ghub_version();
     
+    // Load available engine models
+    model_files = getModelFiles();
+    prev_ai_model_index = getModelIndex(model_files);
+    current_ai_model_index = prev_ai_model_index;
+
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
     while (!shouldExit)
@@ -657,32 +645,50 @@ void OverlayThread()
                     // *********************************************** AI ***********************************************
                     if (ImGui::BeginTabItem("AI"))
                     {
-                        // ai models
+                        // select ai model
+                        std::set<std::string> engine_base_names;
+                        for (const auto& file : model_files)
+                        {
+                            std::filesystem::path p(file);
+                            if (p.extension() == ".engine")
+                            {
+                                engine_base_names.insert(p.stem().string());
+                            }
+                        }
+
+                        std::vector<std::string> filtered_model_files;
+                        for (const auto& file : model_files)
+                        {
+                            std::filesystem::path p(file);
+                            if (p.extension() == ".onnx")
+                            {
+                                std::string base_name = p.stem().string();
+                                if (engine_base_names.find(base_name) != engine_base_names.end())
+                                {
+                                    continue;
+                                }
+                            }
+                            filtered_model_files.push_back(file);
+                        }
+
+                        model_files = filtered_model_files;
+
                         std::vector<const char*> models_items;
-                        models_items.reserve(engine_models.size());
-                        for (const auto& item : engine_models)
+                        models_items.reserve(model_files.size());
+                        for (const auto& item : model_files)
                         {
                             models_items.push_back(item.c_str());
                         }
 
-                        if (ImGui::Combo("Model", &current_ai_model_index, models_items.data(), static_cast<int>(models_items.size())))
+                        ImGui::Combo("Model", &current_ai_model_index, models_items.data(), static_cast<int>(models_items.size()));
+
+                        // Update models button
+                        if (ImGui::Button("Update##update_models_dir"))
                         {
-                            if (current_ai_model_index != prev_ai_model_index)
-                            {
-                                config.ai_model = engine_models[current_ai_model_index];
-                                detector_model_changed.store(true);
-                                prev_ai_model_index = current_ai_model_index;
-                                config.saveConfig("config.ini");
-                            }
+                            model_files = getModelFiles();
                         }
 
-                        // update models
-                        if (ImGui::Button("Update##updare_models_dir"))
-                        {
-                            engine_models = getEngineFiles();
-                        }
-
-                        // model size
+                        // Model size
                         ImGui::Separator();
                         int model_sizes[] = { 320, 480, 640 };
                         const int model_sizes_count = sizeof(model_sizes) / sizeof(model_sizes[0]);
@@ -713,106 +719,8 @@ void OverlayThread()
                         ImGui::Separator();
                         ImGui::SliderFloat("Confidence Threshold", &config.confidence_threshold, 0.01f, 1.00f, "%.2f");
                         ImGui::SliderFloat("NMS Threshold", &config.nms_threshold, 0.01f, 1.00f, "%.2f");
-                        ImGui::SliderInt("Max detections", &config.max_detections, 1, 100);
+                        ImGui::SliderInt("Max Detections", &config.max_detections, 1, 100);
 
-                        // Export
-                        ImGui::Separator();
-
-                        ImGui::Text("Export");
-
-                        if (!tensorrt_path_found)
-                        {
-                            ImGui::Text("TensorRT path not found. Please enter the path to TensorRT:");
-
-                            static char tensorrt_path_input[260] = "";
-                            ImGui::InputText("TensorRT Path", tensorrt_path_input, sizeof(tensorrt_path_input));
-
-                            if (ImGui::Button("Set TensorRT Path"))
-                            {
-                                tensorrt_path = std::string(tensorrt_path_input);
-                                tensorrt_path_found = !tensorrt_path.empty();
-
-                                if (tensorrt_path_found)
-                                {
-                                    // TODO ?? Save path in config or something..
-                                }
-                            }
-                        }
-                        else
-                        {
-                            tensorrt_bin_path = tensorrt_path + "\\bin";
-                            trtexec_path = tensorrt_bin_path + "\\trtexec.exe";
-
-                            bool trtexec_exists = fileExists(trtexec_path);
-
-                            if (!trtexec_exists)
-                            {
-                                ImGui::Text("trtexec.exe not found in TensorRT bin directory (%s).", tensorrt_bin_path.c_str());
-                                ImGui::Text("Please check your TensorRT installation.");
-                            }
-                            else
-                            {
-                                onnx_models = getOnnxFiles();
-
-                                if (onnx_models.empty())
-                                {
-                                    ImGui::Text("No ONNX models found in the /models directory.");
-                                }
-                                else
-                                {
-                                    std::vector<const char*> onnx_models_cstrs;
-                                    onnx_models_cstrs.reserve(onnx_models.size());
-                                    for (const auto& model : onnx_models)
-                                    {
-                                        onnx_models_cstrs.push_back(model.c_str());
-                                    }
-
-                                    ImGui::Combo("ONNX Model", &onnx_model_index, onnx_models_cstrs.data(), static_cast<int>(onnx_models_cstrs.size()));
-
-                                    std::string selected_onnx_model = onnx_models[onnx_model_index];
-                                    output_engine_file = replace_extension(selected_onnx_model, ".engine");
-
-                                    ImGui::Text("Output Engine File: %s", output_engine_file.c_str());
-
-                                    if (ImGui::Button("Export"))
-                                    {
-                                        if (!is_exporting)
-                                        {
-                                            std::string command = "\"" + trtexec_path + "\" --onnx=models/" + selected_onnx_model + " --saveEngine=models/" + output_engine_file;
-
-                                            // async export
-                                            {
-                                                std::lock_guard<std::mutex> lock(export_mutex);
-                                                export_status_message = "Exporting...";
-                                            }
-
-                                            is_exporting = true;
-                                            std::thread([command]()
-                                                {
-                                                    int exit_code = system(command.c_str());
-                                                    {
-                                                        std::lock_guard<std::mutex> lock(export_mutex);
-                                                        if (exit_code == 0)
-                                                        {
-                                                            export_status_message = "Export completed successfully.";
-                                                        }
-                                                        else
-                                                        {
-                                                            export_status_message = "Export failed.";
-                                                        }
-                                                    }
-                                                    is_exporting = false;
-                                                }).detach();
-                                        }
-                                    }
-
-                                    {
-                                        std::lock_guard<std::mutex> lock(export_mutex);
-                                        ImGui::Text("%s", export_status_message.c_str());
-                                    }
-                                }
-                            }
-                        }
                         ImGui::EndTabItem();
                     }
 
@@ -1260,6 +1168,15 @@ void OverlayThread()
                     {
                         BYTE opacity = config.overlay_opacity;
                         SetLayeredWindowAttributes(g_hwnd, 0, opacity, LWA_ALPHA);
+                        config.saveConfig("config.ini");
+                    }
+
+                    // AI_MODEL
+                    if (current_ai_model_index != prev_ai_model_index)
+                    {
+                        config.ai_model = model_files[current_ai_model_index];
+                        detector_model_changed.store(true);
+                        prev_ai_model_index = current_ai_model_index;
                         config.saveConfig("config.ini");
                     }
 
