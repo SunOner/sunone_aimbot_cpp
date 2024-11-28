@@ -20,8 +20,6 @@
 #include "SerialConnection.h"
 #include "ghub.h"
 
-using namespace std;
-
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
 std::atomic<bool> aiming(false);
@@ -65,23 +63,23 @@ void initializeInputMethod()
 
     if (config.input_method == "ARDUINO")
     {
-        cout << "[Mouse] Using Arduino method input." << endl;
+        std::cout << "[Mouse] Using Arduino method input." << std::endl;
         serial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
     }
     else if (config.input_method == "GHUB")
     {
-        cout << "[Mouse] Using Ghub method input." << endl;
+        std::cout << "[Mouse] Using Ghub method input." << std::endl;
         gHub = new GhubMouse();
         if (!gHub->mouse_xy(0, 0))
         {
-            cerr << "[Ghub] Error with opening mouse." << endl;
+            std::cerr << "[Ghub] Error with opening mouse." << std::endl;
             delete gHub;
             gHub = nullptr;
         }
     }
     else
     {
-        cout << "[Mouse] Using default Win32 method input." << endl;
+        std::cout << "[Mouse] Using default Win32 method input." << std::endl;
     }
 
     globalMouseThread->setSerialConnection(serial);
@@ -156,7 +154,7 @@ int main()
     if (!config.loadConfig("config.ini"))
     {
         std::cerr << "[Config] Error with loading config.ini" << std::endl;
-        cin.get();
+        std::cin.get();
         return -1;
     }
 
@@ -169,7 +167,7 @@ int main()
         gHub = new GhubMouse();
         if (!gHub->mouse_xy(0, 0))
         {
-            cerr << "[Ghub] Error with opening mouse." << endl;
+            std::cerr << "[Ghub] Error with opening mouse." << std::endl;
             delete gHub;
             gHub = nullptr;
         }
