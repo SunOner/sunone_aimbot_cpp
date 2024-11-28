@@ -163,7 +163,7 @@
     - Build the project by selecting **Build** > **Build Solution**.
 
 ## Old releases
-	- Stored [here](https://disk.yandex.ru/d/m0jbkiLEFvnZKg)
+	- Stored [here](https://disk.yandex.ru/d/m0jbkiLEFvnZKg).
 	
 ## 📋 Config Documentation
 - The config documentation is available in a separate [repository](https://github.com/SunOner/sunone_aimbot_docs/blob/main/config/config_cpp.md).
