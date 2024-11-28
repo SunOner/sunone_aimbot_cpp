@@ -421,6 +421,12 @@ cv::Mat DuplicationAPIScreenCapture::GetNextFrame()
         {
             return cv::Mat();
         }
+
+        if (hr == DXGI_ERROR_ACCESS_LOST)
+        {
+            capture_method_changed.store(true);
+        }
+
         if (FAILED(hr)) return cv::Mat();
 
         ID3D11Texture2D* desktopTexture = nullptr;
