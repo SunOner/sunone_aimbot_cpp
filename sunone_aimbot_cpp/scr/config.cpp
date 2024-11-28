@@ -17,8 +17,73 @@ bool Config::loadConfig(const std::string& filename)
 {
     if (!boost::filesystem::exists(filename))
     {
-        std::cerr << "Error: Config file does not exist: " << filename << std::endl;
-        return false;
+        std::cerr << "Config file does not exist, creating default config: " << filename << std::endl;
+        detection_resolution = 320;
+        capture_fps = 144;
+        monitor_idx = 0;
+        circle_mask = true;
+        capture_borders = true;
+        capture_cursor = true;
+        duplication_api = true;
+
+        disable_headshot = false;
+        body_y_offset = 0.15f;
+        ignore_third_person = false;
+        shooting_range_targets = false;
+
+        dpi = 1000;
+        sensitivity = 4.0f;
+        fovX = 50;
+        fovY = 50;
+        minSpeedMultiplier = 1.0f;
+        maxSpeedMultiplier = 4.0f;
+        predictionInterval = 0.5f;
+        input_method = "WIN32";
+
+        arduino_baudrate = 115200;
+        arduino_port = "COM0";
+        arduino_16_bit_mouse = false;
+        arduino_enable_keys = false;
+
+        auto_shoot = false;
+        bScope_multiplier = 1.2f;
+
+        ai_model = "sunxds_0.5.6.engine";
+        engine_image_size = 640;
+        confidence_threshold = 0.15f;
+        nms_threshold = 0.50;
+        max_detections = 20;
+
+        button_targeting = splitString("RightMouseButton");
+        button_exit = splitString("F2");
+        button_pause = splitString("F3");
+        button_reload_config = splitString("F4");
+        button_open_overlay = splitString("Home");
+
+        overlay_opacity = 225;
+
+        class_player =  0;
+        class_bot = 1;
+        class_weapon = 2;
+        class_outline = 3;
+        class_dead_body = 4;
+        class_hideout_target_human = 5;
+        class_hideout_target_balls = 6;
+        class_head = 7;
+        class_smoke = 8;
+        class_fire = 9;
+        class_third_person = 10;
+
+        show_window = true;
+        show_fps = true;
+        window_name = "Debug";
+        window_size = 80;
+        screenshot_button = splitString("RightMouseButton");
+        screenshot_delay = 500;
+        always_on_top = true;
+        verbose = false;
+
+        saveConfig(filename);
     }
 
     boost::property_tree::ptree pt;
@@ -125,7 +190,7 @@ bool Config::saveConfig(const std::string& filename)
     std::ofstream file(filename);
     if (!file.is_open())
     {
-        std::cerr << "Error opening config.ini for writing: " << filename << std::endl;
+        std::cerr << "Error opening config for writing: " << filename << std::endl;
         return false;
     }
 
