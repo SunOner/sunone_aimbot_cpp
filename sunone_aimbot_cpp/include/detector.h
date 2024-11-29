@@ -51,7 +51,7 @@ private:
     bool frameReady;
 
     void loadEngine(const std::string& engineFile);
-    void preProcess(const cv::cuda::GpuMat& frame, float* inputBuffer);
+    void preProcess(const cv::cuda::GpuMat& frame);
     void postProcess(const float* output, int outputSize);
 
     std::vector<std::string> inputNames;
@@ -69,6 +69,8 @@ private:
     void getBindings();
 
     std::vector<float> inputBuffer;
+    std::string inputName;
+    void* inputBufferDevice;
     std::unordered_map<std::string, std::vector<float>> outputDataBuffers;
     std::unordered_map<std::string, std::vector<__half>> outputDataBuffersHalf;
     std::unordered_map<std::string, nvinfer1::DataType> outputTypes;

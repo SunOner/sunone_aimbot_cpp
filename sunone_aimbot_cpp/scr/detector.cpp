@@ -11,11 +11,14 @@
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudacodec.hpp>
 #include <opencv2/cudaimgproc.hpp>
+#include <opencv2/cudaarithm.hpp>
 
 #include <algorithm>
 #include <cuda_fp16.h>
 #include <atomic>
 #include <numeric>
+
+#include <boost/algorithm/string.hpp>
 
 #include "detector.h"
 #include "nvinf.h"
@@ -30,7 +33,7 @@ extern std::atomic<bool> detector_model_changed;
 static bool error_logged = false;
 
 Detector::Detector()
-    : frameReady(false), shouldExit(false), detectionVersion(0)
+    : frameReady(false), shouldExit(false), detectionVersion(0), inputBufferDevice(nullptr)
 {
     cudaStreamCreate(&stream);
 }
@@ -50,6 +53,12 @@ Detector::~Detector()
         cudaFree(binding.second);
     }
     outputBindings.clear();
+
+    if (inputBufferDevice)
+    {
+        cudaFree(inputBufferDevice);
+        inputBufferDevice = nullptr;
+    }
 }
 
 void Detector::getInputNames()
@@ -156,15 +165,17 @@ void Detector::initialize(const std::string& modelFile)
 
     getInputNames();
     getOutputNames();
-
     getBindings();
 
     if (!inputNames.empty())
     {
-        const std::string& inputName = inputNames[0];
+        inputName = inputNames[0];
         inputDims = engine->getTensorShape(inputName.c_str());
-        size_t inputSize = getSizeByDim(inputDims);
-        inputBuffer.resize(inputSize);
+        nvinfer1::DataType dtype = engine->getTensorDataType(inputName.c_str());
+        size_t inputSize = getSizeByDim(inputDims) * getElementSize(dtype);
+        inputSizes[inputName] = inputSize;
+
+        cudaMalloc(&inputBufferDevice, inputSize);
     }
     else
     {
@@ -258,6 +269,12 @@ void Detector::loadEngine(const std::string& modelFile)
             engineFile.close();
             delete serializedEngine;
             delete builtEngine;
+
+            // apply exported model to config
+            std::vector<std::string> strs;
+            boost::split(strs, engineFilePath, boost::is_any_of("/"));
+            config.ai_model = strs[1];
+            config.saveConfig("config.ini");
 
             std::cout << "[Detector] Engine model has been successfully built and saved in: " << engineFilePath << std::endl;
         }
@@ -384,13 +401,9 @@ void Detector::inferenceThread()
             error_logged = false;
         }
 
-        const std::string& inputName = inputNames[0];
+        preProcess(frame);
 
-        preProcess(frame, inputBuffer.data());
-
-        cudaMemcpyAsync(inputBindings[inputName], inputBuffer.data(), inputSizes[inputName], cudaMemcpyHostToDevice, stream);
-
-        context->setTensorAddress(inputName.c_str(), inputBindings[inputName]);
+        context->setTensorAddress(inputName.c_str(), inputBufferDevice);
 
         for (const auto& name : outputNames)
         {
@@ -420,11 +433,13 @@ void Detector::inferenceThread()
                 return;
             }
         }
+        
         cudaStreamSynchronize(stream);
 
         for (const auto& name : outputNames)
         {
             nvinfer1::DataType dtype = outputTypes[name];
+            
             if (dtype == nvinfer1::DataType::kHALF)
             {
                 const std::vector<__half>& outputDataHalf = outputDataBuffersHalf[name];
@@ -470,10 +485,11 @@ bool Detector::getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int
     return false;
 }
 
-void Detector::preProcess(const cv::cuda::GpuMat& frame, float* inputBuffer)
+void Detector::preProcess(const cv::cuda::GpuMat& frame)
 {
     int64_t inputH = inputDims.d[2];
     int64_t inputW = inputDims.d[3];
+    size_t channelSize = inputH * inputW * sizeof(float);
 
     cv::cuda::GpuMat resized;
     cv::cuda::resize(frame, resized, cv::Size(static_cast<int>(inputW), static_cast<int>(inputH)), 0, 0, cv::INTER_LINEAR);
@@ -481,16 +497,14 @@ void Detector::preProcess(const cv::cuda::GpuMat& frame, float* inputBuffer)
     cv::cuda::GpuMat floatMat;
     resized.convertTo(floatMat, CV_32F, 1.0 / 255.0);
 
-    cv::Mat floatMatCpu;
-    floatMat.download(floatMatCpu);
+    std::vector<cv::cuda::GpuMat> gpuChannels(3);
+    cv::cuda::split(floatMat, gpuChannels);
 
-    std::vector<cv::Mat> channels(3);
-    cv::split(floatMatCpu, channels);
-
-    int64_t channelSize = inputH * inputW;
     for (int i = 0; i < 3; ++i)
     {
-        memcpy(inputBuffer + i * channelSize, channels[i].data, channelSize * sizeof(float));
+        void* srcPtr = gpuChannels[i].data;
+        void* dstPtr = static_cast<float*>(inputBufferDevice) + i * inputH * inputW;
+        cudaMemcpyAsync(dstPtr, srcPtr, channelSize, cudaMemcpyDeviceToDevice, stream);
     }
 }
 
@@ -507,7 +521,6 @@ void Detector::postProcess(const float* output, int outputSize)
         std::cerr << "Unsupported output shape" << std::endl;
         return;
     }
-
     int64_t batch_size = shape[0];
     int64_t dim1 = shape[1];
     int64_t dim2 = shape[2];
@@ -551,11 +564,12 @@ void Detector::postProcess(const float* output, int outputSize)
     {
         int64_t channels = dim1;
         int64_t cols = dim2;
-
+        
         std::vector<std::vector<float>> detections;
         for (int i = 0; i < cols; ++i)
         {
             std::vector<float> detection;
+            
             for (int j = 0; j < channels; ++j)
             {
                 detection.push_back(output[j * cols + i]);
@@ -569,6 +583,7 @@ void Detector::postProcess(const float* output, int outputSize)
 
             if (confidence > config.confidence_threshold)
             {
+                
                 int64_t classId = std::distance(detection.begin() + 4, std::max_element(detection.begin() + 4, detection.end()));
 
                 float x = detection[0];
