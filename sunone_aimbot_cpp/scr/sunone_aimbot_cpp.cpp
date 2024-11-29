@@ -144,6 +144,16 @@ void mouseThreadFunction(MouseThread& mouseThread)
 
 int main()
 {
+    int cuda_devices = 0;
+    cudaError_t err = cudaGetDeviceCount(&cuda_devices);
+
+    if (err != cudaSuccess)
+    {
+        std::cout << "[MAIN] No GPU devices with CUDA support available." << std::endl;
+        std::cin.get();
+        return -1;
+    }
+
     if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
     {
         std::cout << "[MAIN] Error with screenshoot folder" << std::endl;
