@@ -19,28 +19,30 @@
 > **⚠️ WARNING:** TensorRT version 10 does not support the Pascal architecture (10 series graphics cards). Use only with GPUs of at least the 20 series.
 
 ## How to Use
+1. **Download CUDA**
+	- Download and install [CUDA 12.4](https://developer.nvidia.com/cuda-12-4-0-download-archive).
 
-1. **Download the Latest Release**  
-   - Download the latest release from [here](https://disk.yandex.ru/d/Mpql8LBfjag2fA) (v2.4).
+2. **Download the Latest Release**  
+	- Download the latest release from [here](https://disk.yandex.ru/d/Mpql8LBfjag2fA) (v2.4).
 
-2. **Unpack Aimbot**  
+3. **Unpack Aimbot**  
    - Extract the contents of the Aimbot.
 
-3. **First Launch and Model Export**  
-   - Run `ai.exe` and wait until the standard `.onnx` model is exported, usually taking no more than two minutes.
-   - To export another model, simply place it in `.onnx` format in the `models` folder. Then, in the AI tab, select this model, and it will be exported automatically.
+4. **First Launch and Model Export**  
+	- Run `ai.exe` and wait until the standard `.onnx` model is exported, usually taking no more than two minutes.
+	- To export another model, simply place it in `.onnx` format in the `models` folder. Then, in the AI tab, select this model, and it will be exported automatically.
 
-4. **Settings**  
-   - After successfully exporting the model, you can configure the program.
-   - All settings are available in the overlay (default key is `Home`).
-   - A list of settings can be found in the [config documentation](https://github.com/SunOner/sunone_aimbot_docs/blob/main/config/config_cpp.md).
+5. **Settings**  
+	- After successfully exporting the model, you can configure the program.
+	- All settings are available in the overlay (default key is `Home`).
+	- A list of settings can be found in the [config documentation](https://github.com/SunOner/sunone_aimbot_docs/blob/main/config/config_cpp.md).
 
-5. **Controls**
-   - **Right Mouse Button:** Aim at the detected target.
-   - **F2:** Exit the program.
-   - **F3:** Activate pause for aiming.
-   - **F4:** Reload config.
-   - **Home:** Show overlay.
+6. **Controls**
+	- **Right Mouse Button:** Aim at the detected target.
+	- **F2:** Exit the program.
+	- **F3:** Activate pause for aiming.
+	- **F4:** Reload config.
+	- **Home:** Show overlay.
 
 ## 🛠 Build the Project from Source
 
@@ -62,7 +64,7 @@
    Create a folder named `modules` in the directory `sunone_aimbot_cpp/sunone_aimbot_cpp/modules`.
 
 5. **Build OpenCV with CUDA Support**
-	- Download and install [CMake](https://cmake.org/).
+	- Download and install [CMake](https://cmake.org/) and [CUDA 12.4](https://developer.nvidia.com/cuda-12-4-0-download-archive).
 	- Download [OpenCV](https://github.com/opencv/opencv).
 	- Download [OpenCV Contrib](https://github.com/opencv/opencv_contrib/tags).
 	- Create new directories: `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/` and `sunone_aimbot_cpp/modules/opencv/build`.
@@ -101,27 +103,27 @@
      - `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc16/lib` - Contains `.lib` files.
 
 6. **Download Required Libraries**  
-   - [Boost](https://disk.yandex.ru/d/O8XkcKeQ3vNDFg)
-   - TensorRT from [Yandex](https://disk.yandex.ru/d/S16C9oDSuF1_EQ) or [NVIDIA Developer](https://developer.nvidia.com/tensorrt/download/10x)
+	- [Boost](https://disk.yandex.ru/d/O8XkcKeQ3vNDFg)
+	- TensorRT from [Yandex](https://disk.yandex.ru/d/S16C9oDSuF1_EQ) or [NVIDIA Developer](https://developer.nvidia.com/tensorrt/download/10x)
 
 7. **Extract Libraries**  
-   Extract the downloaded libraries into the respective directories:
-   - `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0`
-   - `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/TensorRT-10.6.0.26`
+	Extract the downloaded libraries into the respective directories:
+	- `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0`
+	- `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/TensorRT-10.6.0.26`
 
 8. **Compile Boost Libraries**
-   - Navigate to the Boost directory:
-     ```bash
-     cd sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0
-     ```
-   - Run the bootstrap script (from PowerShell):
-     ```bash
-     bootstrap.bat vc142
-     ```
-   - After successful bootstrapping, build Boost:
-     ```bash
-     b2.exe --build-type=complete link=static runtime-link=static threading=multi variant=release
-     ```
+	- Navigate to the Boost directory:
+		```bash
+		cd sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0
+		```
+	- Run the bootstrap script (from PowerShell):
+		```bash
+		bootstrap.bat vc142
+		```
+	- After successful bootstrapping, build Boost:
+		```bash
+		b2.exe --build-type=complete link=static runtime-link=static threading=multi variant=release
+		```
 
 9. **Verify Folder Structure**  
    Ensure your project hierarchy looks like this:
@@ -151,14 +153,14 @@
    ```
 
 10. **Configure Project Settings**
-    - Open the project in Visual Studio.
-    - Ensure all library paths are correctly set in **Project Properties** under **Library Directories**.
-    - Go to NuGet packages and install `Microsoft.Windows.CppWinRT`.
+	- Open the project in Visual Studio.
+	- Ensure all library paths are correctly set in **Project Properties** under **Library Directories**.
+	- Go to NuGet packages and install `Microsoft.Windows.CppWinRT`.
 
 11. **Verify CUDA Integration**
-    - Right-click on the project in Visual Studio.
-    - Navigate to **Build Dependencies** > **Build Customizations**.
-    - Ensure that **CUDA 12.4** (.targets, .props) is included.
+	- Right-click on the project in Visual Studio.
+	- Navigate to **Build Dependencies** > **Build Customizations**.
+	- Ensure that **CUDA 12.4** (.targets, .props) is included.
 
 12. **Build the Project**
     - Switch the build configuration to **Release**.
