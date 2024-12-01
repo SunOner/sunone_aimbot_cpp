@@ -28,6 +28,10 @@
 #include <winrt/base.h>
 #include <comdef.h>
 
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <cuda_d3d11_interop.h>
+
 #include "capture.h"
 #include "detector.h"
 #include "sunone_aimbot_cpp.h"
@@ -60,13 +64,12 @@ extern std::atomic<bool> capture_cursor_changed;
 extern std::atomic<bool> capture_borders_changed;
 extern std::atomic<bool> capture_fps_changed;
 
-// WinRT
 class WinRTScreenCapture : public IScreenCapture
 {
 public:
     WinRTScreenCapture(int desiredWidth, int desiredHeight);
     ~WinRTScreenCapture();
-    cv::Mat GetNextFrame();
+    cv::cuda::GpuMat GetNextFrame();
 
 private:
     winrt::com_ptr<ID3D11Device> d3dDevice;
@@ -76,6 +79,11 @@ private:
     winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool framePool{ nullptr };
     winrt::Windows::Graphics::Capture::GraphicsCaptureSession session{ nullptr };
     winrt::com_ptr<ID3D11Texture2D> stagingTexture;
+
+    bool interopInitialized = false;
+    winrt::com_ptr<ID3D11Texture2D> sharedTexture;
+    cudaGraphicsResource* cudaResource = nullptr;
+    cudaStream_t cudaStream = nullptr;
 
     int screenWidth = 0;
     int screenHeight = 0;
@@ -97,7 +105,7 @@ class DuplicationAPIScreenCapture : public IScreenCapture
 public:
     DuplicationAPIScreenCapture(int desiredWidth, int desiredHeight);
     ~DuplicationAPIScreenCapture();
-    cv::Mat GetNextFrame() override;
+    cv::cuda::GpuMat GetNextFrame() override;
 
 private:
     ID3D11Device* d3dDevice = nullptr;
@@ -105,6 +113,9 @@ private:
     IDXGIOutputDuplication* deskDupl = nullptr;
     ID3D11Texture2D* stagingTexture = nullptr;
     IDXGIOutput1* output1 = nullptr;
+    ID3D11Texture2D* sharedTexture = nullptr;
+    cudaGraphicsResource* cudaResource = nullptr;
+    cudaStream_t cudaStream = nullptr;
 
     int screenWidth = 0;
     int screenHeight = 0;
@@ -171,6 +182,36 @@ WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
     );
 
     session = framePool.CreateCaptureSession(captureItem);
+    
+    D3D11_TEXTURE2D_DESC sharedTexDesc = {};
+    sharedTexDesc.Width = regionWidth;
+    sharedTexDesc.Height = regionHeight;
+    sharedTexDesc.MipLevels = 1;
+    sharedTexDesc.ArraySize = 1;
+    sharedTexDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    sharedTexDesc.SampleDesc.Count = 1;
+    sharedTexDesc.Usage = D3D11_USAGE_DEFAULT;
+    sharedTexDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+    sharedTexDesc.CPUAccessFlags = 0;
+    sharedTexDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+
+    HRESULT hr = d3dDevice->CreateTexture2D(&sharedTexDesc, nullptr, sharedTexture.put());
+    if (FAILED(hr))
+    {
+        std::cerr << "[Capture] Failed to create shared texture." << std::endl;
+        return;
+    }
+
+    cudaError_t err = cudaGraphicsD3D11RegisterResource(&cudaResource, sharedTexture.get(), cudaGraphicsRegisterFlagsNone);
+    if (err != cudaSuccess)
+    {
+        std::cerr << "[Capture] Failed to register shared texture with CUDA." << std::endl;
+        return;
+    }
+
+    cudaStreamCreate(&cudaStream);
+
+    interopInitialized = false;
 
     if (!config.capture_borders)
     {
@@ -187,6 +228,18 @@ WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
 
 WinRTScreenCapture::~WinRTScreenCapture()
 {
+    if (cudaResource)
+    {
+        cudaGraphicsUnregisterResource(cudaResource);
+        cudaResource = nullptr;
+    }
+
+    if (cudaStream)
+    {
+        cudaStreamDestroy(cudaStream);
+        cudaStream = nullptr;
+    }
+
     if (session)
     {
         session.Close();
@@ -204,7 +257,7 @@ WinRTScreenCapture::~WinRTScreenCapture()
     d3dDevice = nullptr;
 }
 
-cv::Mat WinRTScreenCapture::GetNextFrame()
+cv::cuda::GpuMat WinRTScreenCapture::GetNextFrame()
 {
     try
     {
@@ -220,7 +273,7 @@ cv::Mat WinRTScreenCapture::GetNextFrame()
 
         if (!frame)
         {
-            return cv::Mat();
+            return cv::cuda::GpuMat();
         }
 
         auto surface = frame.Surface();
@@ -232,28 +285,6 @@ cv::Mat WinRTScreenCapture::GetNextFrame()
             throw std::runtime_error("Failed to get ID3D11Texture2D from frame surface.");
         }
 
-        D3D11_TEXTURE2D_DESC desc;
-        frameTexture->GetDesc(&desc);
-
-
-        if (!stagingTexture)
-        {
-            D3D11_TEXTURE2D_DESC stagingDesc = {};
-            stagingDesc.Width = regionWidth;
-            stagingDesc.Height = regionHeight;
-            stagingDesc.MipLevels = 1;
-            stagingDesc.ArraySize = 1;
-            stagingDesc.Format = desc.Format;
-            stagingDesc.SampleDesc.Count = 1;
-            stagingDesc.SampleDesc.Quality = 0;
-            stagingDesc.Usage = D3D11_USAGE_STAGING;
-            stagingDesc.BindFlags = 0;
-            stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-            stagingDesc.MiscFlags = 0;
-
-            winrt::check_hresult(d3dDevice->CreateTexture2D(&stagingDesc, nullptr, stagingTexture.put()));
-        }
-
         D3D11_BOX sourceRegion;
         sourceRegion.left = regionX;
         sourceRegion.top = regionY;
@@ -262,37 +293,29 @@ cv::Mat WinRTScreenCapture::GetNextFrame()
         sourceRegion.bottom = regionY + regionHeight;
         sourceRegion.back = 1;
 
-        d3dContext->CopySubresourceRegion(
-            stagingTexture.get(),
-            0,
-            0,
-            0,
-            0,
-            frameTexture.get(),
-            0,
-            &sourceRegion
-        );
+        d3dContext->CopySubresourceRegion(sharedTexture.get(), 0, 0, 0, 0, frameTexture.get(), 0, &sourceRegion);
 
-        D3D11_MAPPED_SUBRESOURCE mappedResource;
-        winrt::check_hresult(d3dContext->Map(
-            stagingTexture.get(),
-            0,
-            D3D11_MAP_READ,
-            0,
-            &mappedResource
-        ));
+        cudaGraphicsMapResources(1, &cudaResource, cudaStream);
 
-        cv::Mat screenshot(regionHeight, regionWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
-        cv::Mat result;
-        screenshot.copyTo(result);
+        cudaArray_t cuArray;
+        cudaGraphicsSubResourceGetMappedArray(&cuArray, cudaResource, 0, 0);
 
-        d3dContext->Unmap(stagingTexture.get(), 0);
+        int width = regionWidth;
+        int height = regionHeight;
+        cv::cuda::GpuMat frameGpu(height, width, CV_8UC4);
 
-        return result;
+        cudaMemcpy2DFromArrayAsync(frameGpu.data, frameGpu.step, cuArray, 0, 0, width * sizeof(uchar4), height, cudaMemcpyDeviceToDevice, cudaStream);
+
+        cudaGraphicsUnmapResources(1, &cudaResource, cudaStream);
+
+        cudaStreamSynchronize(cudaStream);
+
+        return frameGpu;
     }
     catch (const std::exception& e)
     {
         std::cerr << "[Capture] Error in GetNextFrame: " << e.what() << std::endl;
+        return cv::cuda::GpuMat();
     }
 }
 
@@ -385,16 +408,33 @@ DuplicationAPIScreenCapture::DuplicationAPIScreenCapture(int desiredWidth, int d
     screenWidth = outputDesc.DesktopCoordinates.right - outputDesc.DesktopCoordinates.left;
     screenHeight = outputDesc.DesktopCoordinates.bottom - outputDesc.DesktopCoordinates.top;
 
-    D3D11_TEXTURE2D_DESC textureDesc = {};
-    textureDesc.Width = regionWidth;
-    textureDesc.Height = regionHeight;
-    textureDesc.MipLevels = 1;
-    textureDesc.ArraySize = 1;
-    textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    textureDesc.SampleDesc.Count = 1;
-    textureDesc.Usage = D3D11_USAGE_STAGING;
-    textureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-    d3dDevice->CreateTexture2D(&textureDesc, nullptr, &stagingTexture);
+    D3D11_TEXTURE2D_DESC sharedTexDesc = {};
+    sharedTexDesc.Width = regionWidth;
+    sharedTexDesc.Height = regionHeight;
+    sharedTexDesc.MipLevels = 1;
+    sharedTexDesc.ArraySize = 1;
+    sharedTexDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    sharedTexDesc.SampleDesc.Count = 1;
+    sharedTexDesc.Usage = D3D11_USAGE_DEFAULT;
+    sharedTexDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+    sharedTexDesc.CPUAccessFlags = 0;
+    sharedTexDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+
+    HRESULT hr = d3dDevice->CreateTexture2D(&sharedTexDesc, nullptr, &sharedTexture);
+    if (FAILED(hr))
+    {
+        std::cerr << "Failed to create shared texture." << std::endl;
+        return;
+    }
+
+    cudaError_t err = cudaGraphicsD3D11RegisterResource(&cudaResource, sharedTexture, cudaGraphicsRegisterFlagsNone);
+    if (err != cudaSuccess)
+    {
+        std::cerr << "Failed to register shared texture with CUDA." << std::endl;
+        return;
+    }
+
+    cudaStreamCreate(&cudaStream);
 
     output->Release();
     adapter->Release();
@@ -408,9 +448,26 @@ DuplicationAPIScreenCapture::~DuplicationAPIScreenCapture()
     if (output1) output1->Release();
     if (d3dContext) d3dContext->Release();
     if (d3dDevice) d3dDevice->Release();
+    if (cudaResource)
+    {
+        cudaGraphicsUnregisterResource(cudaResource);
+        cudaResource = nullptr;
+    }
+
+    if (sharedTexture)
+    {
+        sharedTexture->Release();
+        sharedTexture = nullptr;
+    }
+
+    if (cudaStream)
+    {
+        cudaStreamDestroy(cudaStream);
+        cudaStream = nullptr;
+    }
 }
 
-cv::Mat DuplicationAPIScreenCapture::GetNextFrame()
+cv::cuda::GpuMat DuplicationAPIScreenCapture::GetNextFrame()
 {
     try
     {
@@ -419,7 +476,7 @@ cv::Mat DuplicationAPIScreenCapture::GetNextFrame()
         HRESULT hr = deskDupl->AcquireNextFrame(100, &frameInfo, &desktopResource);
         if (hr == DXGI_ERROR_WAIT_TIMEOUT)
         {
-            return cv::Mat();
+            return cv::cuda::GpuMat();
         }
 
         if (hr == DXGI_ERROR_ACCESS_LOST)
@@ -427,7 +484,7 @@ cv::Mat DuplicationAPIScreenCapture::GetNextFrame()
             capture_method_changed.store(true);
         }
 
-        if (FAILED(hr)) return cv::Mat();
+        if (FAILED(hr)) return cv::cuda::GpuMat();
 
         ID3D11Texture2D* desktopTexture = nullptr;
         hr = desktopResource->QueryInterface(__uuidof(ID3D11Texture2D), (void**)(&desktopTexture));
@@ -435,55 +492,44 @@ cv::Mat DuplicationAPIScreenCapture::GetNextFrame()
         {
             desktopResource->Release();
             deskDupl->ReleaseFrame();
-            return cv::Mat();
+            return cv::cuda::GpuMat();
         }
 
-        int regionX = (screenWidth - regionWidth) / 2;
-        int regionY = (screenHeight - regionHeight) / 2;
         D3D11_BOX sourceRegion;
-        sourceRegion.left = regionX;
-        sourceRegion.top = regionY;
+        sourceRegion.left = (screenWidth - regionWidth) / 2;
+        sourceRegion.top = (screenHeight - regionHeight) / 2;
         sourceRegion.front = 0;
-        sourceRegion.right = regionX + regionWidth;
-        sourceRegion.bottom = regionY + regionHeight;
+        sourceRegion.right = sourceRegion.left + regionWidth;
+        sourceRegion.bottom = sourceRegion.top + regionHeight;
         sourceRegion.back = 1;
 
-        d3dContext->CopySubresourceRegion(
-            stagingTexture,
-            0,
-            0,
-            0,
-            0,
-            desktopTexture,
-            0,
-            &sourceRegion
-        );
+        d3dContext->CopySubresourceRegion(sharedTexture, 0, 0, 0, 0, desktopTexture, 0, &sourceRegion);
 
-        D3D11_MAPPED_SUBRESOURCE mappedResource;
-        hr = d3dContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &mappedResource);
-        if (FAILED(hr))
-        {
-            desktopTexture->Release();
-            desktopResource->Release();
-            deskDupl->ReleaseFrame();
-            return cv::Mat();
-        }
+        cudaGraphicsMapResources(1, &cudaResource, cudaStream);
 
-        cv::Mat screenshot(regionHeight, regionWidth, CV_8UC4, mappedResource.pData, mappedResource.RowPitch);
-        cv::Mat result;
-        screenshot.copyTo(result);
+        cudaArray_t cuArray;
+        cudaGraphicsSubResourceGetMappedArray(&cuArray, cudaResource, 0, 0);
 
-        d3dContext->Unmap(stagingTexture, 0);
+        int width = regionWidth;
+        int height = regionHeight;
+        cv::cuda::GpuMat frameGpu(height, width, CV_8UC4);
+
+        cudaMemcpy2DFromArrayAsync(frameGpu.data, frameGpu.step, cuArray, 0, 0, width * sizeof(uchar4), height, cudaMemcpyDeviceToDevice, cudaStream);
+
+        cudaGraphicsUnmapResources(1, &cudaResource, cudaStream);
+
+        cudaStreamSynchronize(cudaStream);
+
         desktopTexture->Release();
         desktopResource->Release();
         deskDupl->ReleaseFrame();
 
-        return result;
+        return frameGpu;
     }
     catch (const std::exception& e)
     {
         std::cerr << "[Capture] Error in GetNextFrame: " << e.what() << std::endl;
-        return cv::Mat();
+        return cv::cuda::GpuMat();
     }
 }
 
@@ -596,26 +642,15 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 capture_borders_changed.store(false);
             }
 
-            cv::Mat screenshot = capturer->GetNextFrame();
+            cv::cuda::GpuMat screenshotGpu = capturer->GetNextFrame();
 
-            if (!screenshot.empty())
+            if (!screenshotGpu.empty())
             {
-                cv::cuda::GpuMat screenshotGpu;
-                try
-                {
-                    screenshotGpu.upload(screenshot);
-                }
-                catch (const cv::Exception& e)
-                {
-                    std::cerr << "[Capture]: " << e.what() << std::endl;
-                    continue;
-                }
-
                 cv::cuda::GpuMat resizedGpu;
 
                 if (config.circle_mask)
                 {
-                    cv::Mat mask = cv::Mat::zeros(screenshot.size(), CV_8UC1);
+                    cv::Mat mask = cv::Mat::zeros(screenshotGpu.size(), CV_8UC1);
                     cv::Point center(mask.cols / 2, mask.rows / 2);
                     int radius = std::min(mask.cols, mask.rows) / 2;
                     cv::circle(mask, center, radius, cv::Scalar(255), -1);

@@ -14,9 +14,9 @@
 #include <dxgi.h>
 #include <filesystem>
 
-#include "imgui.h"
-#include "imgui_impl_dx11.h"
-#include "imgui_impl_win32.h"
+#include "../imgui.h"
+#include "../imgui_impl_dx11.h"
+#include "../imgui_impl_win32.h"
 
 #include "config.h"
 #include "keycodes.h"
@@ -25,6 +25,9 @@
 #include "keyboard_listener.h"
 #include "other_tools.h"
 #include "memory_images.h"
+
+// snow theme
+#include "../Snowflake.hpp"
 
 static ID3D11Device* g_pd3dDevice = NULL;
 static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
@@ -364,6 +367,22 @@ void OverlayThread()
     prev_ai_model_index = getModelIndex(model_files);
     current_ai_model_index = prev_ai_model_index;
 
+    // SNOW THEME VARS
+    std::vector<Snowflake::Snowflake> snow;
+    POINT mouse;
+
+    Snowflake::CreateSnowFlakes(
+        snow,
+        300,
+        2.f,
+        10.f,
+        0,
+        0,
+        680,
+        480,
+        Snowflake::vec3(0.f, 0.002f),
+        IM_COL32(255, 255, 255, 100));
+
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
     while (!shouldExit)
@@ -408,13 +427,35 @@ void OverlayThread()
             ImGui::Begin("Options", &show_overlay, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
             {
                 std::lock_guard<std::mutex> lock(configMutex);
+
+                GetCursorPos(&mouse);
+                Snowflake::Update(snow,
+                    Snowflake::vec3(mouse.x, mouse.y),
+                    Snowflake::vec3(0, 0));
+
                 if (ImGui::BeginTabBar("Options tab bar"))
                 {
                     // ********************************************* CAPTURE ********************************************
                     if (ImGui::BeginTabItem("Capture"))
                     {
                         ImGui::SliderInt("Detection Resolution", &config.detection_resolution, 50, 1280);
+                        if (config.detection_resolution >= 400)
+                        {
+                            ImGui::TextColored(ImVec4(255, 255, 0, 255), "WARNING: A large screen capture size can negatively affect performance.");
+                        }
+
                         ImGui::SliderInt("Lock FPS", &config.capture_fps, 0, 240);
+                        if (config.capture_fps == 0)
+                        {
+                            ImGui::SameLine();
+                            ImGui::TextColored(ImVec4(255, 0, 0, 255), "-> Disabled");
+                        }
+
+                        if (config.capture_fps == 0 || config.capture_fps >= 61)
+                        {
+                            ImGui::TextColored(ImVec4(255, 255, 0, 255), "WARNING: A large number of FPS can negatively affect performance.");
+                        }
+
                         if (ImGui::Checkbox("Circle mask", &config.circle_mask))
                         {
                             capture_method_changed.store(true);
@@ -440,7 +481,7 @@ void OverlayThread()
                             monitorItems.push_back(name.c_str());
                         }
 
-                        if (ImGui::Combo("Capture monitor", &config.monitor_idx, monitorItems.data(), static_cast<int>(monitorItems.size())))
+                        if (ImGui::Combo("Capture monitor (CUDA)", &config.monitor_idx, monitorItems.data(), static_cast<int>(monitorItems.size())))
                         {
                             config.saveConfig("config.ini");
                             capture_method_changed.store(true);
@@ -504,6 +545,11 @@ void OverlayThread()
                         ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 5.0f, "%.1f");
                         ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 5.0f, "%.1f");
                         ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.00f, 3.00f, "%.2f");
+                        if (config.predictionInterval == 0.00f)
+                        {
+                            ImGui::SameLine();
+                            ImGui::TextColored(ImVec4(255, 0, 0, 255), "-> Disabled");
+                        }
 
                         ImGui::Checkbox("Auto Shoot", &config.auto_shoot);
                         ImGui::SliderFloat("bScope Multiplier", &config.bScope_multiplier, 0.5f, 2.0f, "%.1f");
@@ -637,6 +683,12 @@ void OverlayThread()
                                     ShellExecute(0, 0, L"https://github.com/SunOner/sunone_aimbot_docs/blob/main/tips/ghub.md", 0, 0, SW_SHOW);
                                 }
                             }
+                            ImGui::TextColored(ImVec4(255, 0, 0, 255), "Use at your own risk, the method is detected in some games.");
+                        }
+                        else if (config.input_method == "WIN32")
+                        {
+                            ImGui::TextColored(ImVec4(255, 255, 255, 255), "This is a standard mouse input method, it may not work in most games. Use GHUB or ARDUINO.");
+                            ImGui::TextColored(ImVec4(255, 0, 0, 255), "Use at your own risk, the method is detected in some games.");
                         }
 
                         ImGui::EndTabItem();
@@ -1264,7 +1316,10 @@ void OverlayThread()
                 ImGui::EndTabBar();
                 }
             }
-            ImGui::Text("Do not test shooting and aiming with the overlay open.");
+
+            ImGui::Separator();
+            ImGui::TextColored(ImVec4(255, 255, 255, 100), "Do not test shooting and aiming with the overlay open.");
+
             ImGui::End();
             ImGui::Render();
 

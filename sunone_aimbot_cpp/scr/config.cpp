@@ -19,7 +19,7 @@ bool Config::loadConfig(const std::string& filename)
     {
         std::cerr << "Config file does not exist, creating default config: " << filename << std::endl;
         detection_resolution = 320;
-        capture_fps = 144;
+        capture_fps = 60;
         monitor_idx = 0;
         circle_mask = true;
         capture_borders = true;
@@ -93,7 +93,7 @@ bool Config::loadConfig(const std::string& filename)
 
         // Capture
         detection_resolution = pt.get<int>("detection_resolution", 320);
-        capture_fps = pt.get<int>("capture_fps", 144);
+        capture_fps = pt.get<int>("capture_fps", 60);
         monitor_idx = pt.get<int>("monitor_idx", 0);
         circle_mask = pt.get<bool>("circle_mask", true);
         capture_borders = pt.get<bool>("capture_borders", true);

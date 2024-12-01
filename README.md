@@ -181,6 +181,7 @@
 - [ImGui](https://github.com/ocornut/imgui)
 - [CppWinRT](https://github.com/microsoft/cppwinrt)
 - [Python AI AIMBOT](https://github.com/SunOner/sunone_aimbot)
+- [Snowflake.cpp](https://github.com/BaconToaster/Snowflake.cpp)
 
 ## 📄 Licenses
 

@@ -45,6 +45,7 @@
     <ClCompile Include="imgui_widgets.cpp" />
     <ClCompile Include="scr\ghub.cpp" />
     <ClCompile Include="scr\other_tools.cpp" />
+    <ClCompile Include="Snowflake.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -102,6 +103,7 @@
     <ClInclude Include="include\ghub.h" />
     <ClInclude Include="include\other_tools.h" />
     <ClInclude Include="include\memory_images.h" />
+    <ClInclude Include="Snowflake.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

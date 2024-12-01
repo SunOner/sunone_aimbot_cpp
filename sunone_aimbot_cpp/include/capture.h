@@ -27,7 +27,7 @@ class IScreenCapture
 {
 public:
     virtual ~IScreenCapture() {}
-    virtual cv::Mat GetNextFrame() = 0;
+    virtual cv::cuda::GpuMat GetNextFrame() = 0;
 };
 
 #endif // CAPTURE_H

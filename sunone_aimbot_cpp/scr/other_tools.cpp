@@ -17,6 +17,9 @@
 
 #include <d3d11.h>
 #include <dxgi.h>
+#include <dxgi1_2.h>
+#include <cuda.h>
+#include <cuda_runtime.h>
 
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
@@ -362,34 +365,57 @@ std::string get_tensorrt_path()
 
 int get_active_monitors()
 {
-    // Function to get the number of monitors
     IDXGIFactory1* factory = nullptr;
     if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory)))
     {
         return -1;
     }
 
-    int monitors = -1;
+    int monitorsWithCudaSupport = 0;
 
     IDXGIAdapter1* adapter = nullptr;
     for (UINT i = 0; factory->EnumAdapters1(i, &adapter) != DXGI_ERROR_NOT_FOUND; ++i)
     {
-        IDXGIOutput* output = nullptr;
-        for (UINT j = 0; adapter->EnumOutputs(j, &output) != DXGI_ERROR_NOT_FOUND; ++j)
+        DXGI_ADAPTER_DESC1 desc;
+        adapter->GetDesc1(&desc);
+
+        int deviceCount = 0;
+        if (cudaGetDeviceCount(&deviceCount) == cudaSuccess && deviceCount > 0)
         {
-            monitors++;
-            output->Release();
+            CUdevice cuDevice;
+            for (int dev = 0; dev < deviceCount; ++dev)
+            {
+                CUresult cuRes = cuDeviceGet(&cuDevice, dev);
+                if (cuRes == CUDA_SUCCESS)
+                {
+                    int supportsCuda = 0;
+                    CUuuid uuid;
+                    cuRes = cuDeviceGetUuid(&uuid, cuDevice);
+                    if (cuRes == CUDA_SUCCESS && memcmp(&uuid, &desc.AdapterLuid, sizeof(uuid)) == 0)
+                    {
+                        supportsCuda = 1;
+                    }
+                    if (supportsCuda)
+                    {
+                        IDXGIOutput* output = nullptr;
+                        for (UINT j = 0; adapter->EnumOutputs(j, &output) != DXGI_ERROR_NOT_FOUND; ++j)
+                        {
+                            monitorsWithCudaSupport++;
+                            output->Release();
+                        }
+                    }
+                }
+            }
         }
         adapter->Release();
     }
 
     factory->Release();
-    return monitors;
+    return monitorsWithCudaSupport;
 }
 
 HMONITOR GetMonitorHandleByIndex(int monitorIndex)
 {
-    // Function for parsing and returning the monitor for the WINRT capture method
     struct MonitorSearch
     {
         int targetIndex;
