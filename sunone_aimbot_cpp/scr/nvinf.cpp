@@ -110,6 +110,8 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
         return nullptr;
     }
 
+    config->setFlag(nvinfer1::BuilderFlag::kFP16);
+
     nvinfer1::ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
     if (!engine)
     {

@@ -15,8 +15,6 @@
 #include "sunone_aimbot_cpp.h"
 #include "ghub.h"
 
-using namespace std;
-
 extern std::atomic<bool> aiming;
 extern std::mutex configMutex;
 
@@ -58,7 +56,7 @@ MouseThread::MouseThread(
 {
 }
 
-double reset_prediction_time = 1.0;
+double reset_prediction_time = 0.5;
 
 void MouseThread::updateConfig(int resolution, double dpi, double sensitivity, int fovX, int fovY,
     double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval,

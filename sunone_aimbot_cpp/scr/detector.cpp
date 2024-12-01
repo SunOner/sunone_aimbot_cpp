@@ -81,6 +81,10 @@ void Detector::getInputNames()
         const char* name = engine->getIOTensorName(i);
         if (engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT)
         {
+            if (config.verbose)
+            {
+                std::cout << "[Detector] Detected model input name: " << name << std::endl;
+            }
             inputNames.emplace_back(name);
             nvinfer1::Dims dims = engine->getTensorShape(name);
             nvinfer1::DataType dtype = engine->getTensorDataType(name);
@@ -103,6 +107,11 @@ void Detector::getOutputNames()
 
         if (engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT)
         {
+            if (config.verbose)
+            {
+                std::cout << "[Detector] Detected model output name: " << name << std::endl;
+            }
+
             outputNames.emplace_back(name);
 
             nvinfer1::Dims dims = engine->getTensorShape(name);
@@ -186,6 +195,11 @@ void Detector::initialize(const std::string& modelFile)
         inputSizes[inputName] = inputSize;
 
         cudaMalloc(&inputBufferDevice, inputSize);
+
+        if (config.verbose)
+        {
+            std::cout << "[Detector] Model input size: " << inputSize << std::endl;
+        }
     }
     else
     {

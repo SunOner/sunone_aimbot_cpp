@@ -47,7 +47,7 @@ GhubMouse::GhubMouse()
         auto mouse_open = reinterpret_cast<bool(*)()>(GetProcAddress(gm, "mouse_open"));
         if (mouse_open == NULL)
         {
-            std::cerr << "[Ghub] Failed to get mouse_open function" << std::endl;
+            std::cerr << "[Ghub] Failed to open mouse!" << std::endl;
             gmok = false;
         }
         else
