@@ -154,18 +154,18 @@ std::pair<double, double> MouseThread::calc_movement(double target_x, double tar
     double offset_y = target_y - center_y;
 
     double distance = std::sqrt(offset_x * offset_x + offset_y * offset_y);
-    
+
     double speed_multiplier = calculate_speed_multiplier(distance);
-    
+
     double degrees_per_pixel_x = fov_x / screen_width;
     double degrees_per_pixel_y = fov_y / screen_height;
-    
+
     double mouse_move_x = offset_x * degrees_per_pixel_x;
     double mouse_move_y = offset_y * degrees_per_pixel_y;
 
     double move_x = (mouse_move_x / 360) * (dpi * (1 / mouse_sensitivity)) * speed_multiplier;
     double move_y = (mouse_move_y / 360) * (dpi * (1 / mouse_sensitivity)) * speed_multiplier;
-    
+
     return { move_x, move_y };
 }
 
@@ -179,15 +179,25 @@ bool MouseThread::check_target_in_scope(double target_x, double target_y, double
     double y1 = target_y - reduced_h;
     double y2 = target_y + reduced_h;
 
-    return center_x > x1 && center_x < x2 && center_y > y1 && center_y < y2;
+    return center_x > x1 && center_x < x2&& center_y > y1 && center_y < y2;
 }
 
 void MouseThread::moveMouse(const Target& target)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
 
-    auto predicted_position = predict_target_position(target.x + target.w / 2, target.y + target.h / 2);
-    auto movement = calc_movement(predicted_position.first, predicted_position.second);
+    std::pair<double, double> predicted_position = std::make_pair(0.0, 0.0);
+    std::pair<double, double>  movement = std::make_pair(0.0, 0.0);
+
+    if (prediction_interval >= 0.01)
+    {
+        predicted_position = predict_target_position(target.x + target.w / 2, target.y + target.h / 2);
+        movement = calc_movement(predicted_position.first, predicted_position.second);
+    }
+    else
+    {
+        movement = calc_movement(target.x + target.w / 2, target.y + target.h / 2);
+    }
 
     int move_x = static_cast<INT>(movement.first);
     int move_y = static_cast<INT>(movement.second);

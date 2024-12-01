@@ -413,7 +413,7 @@ void OverlayThread()
                     // ********************************************* CAPTURE ********************************************
                     if (ImGui::BeginTabItem("Capture"))
                     {
-                        ImGui::SliderInt("Detection Resolution", &config.detection_resolution, 50, 720);
+                        ImGui::SliderInt("Detection Resolution", &config.detection_resolution, 50, 1280);
                         ImGui::SliderInt("Lock FPS", &config.capture_fps, 0, 240);
                         if (ImGui::Checkbox("Circle mask", &config.circle_mask))
                         {
@@ -503,7 +503,7 @@ void OverlayThread()
                         ImGui::SliderInt("FOV Y", &config.fovY, 40, 100);
                         ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 5.0f, "%.1f");
                         ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 5.0f, "%.1f");
-                        ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.10f, 3.00f, "%.2f");
+                        ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.00f, 3.00f, "%.2f");
 
                         ImGui::Checkbox("Auto Shoot", &config.auto_shoot);
                         ImGui::SliderFloat("bScope Multiplier", &config.bScope_multiplier, 0.5f, 2.0f, "%.1f");
@@ -526,7 +526,7 @@ void OverlayThread()
                             {
                                 input_method_index = static_cast<int>(i);
                                 break;
-                            }
+                                         }
                         }
 
                         if (ImGui::Combo("Mouse Input Method", &input_method_index, method_items.data(), static_cast<int>(method_items.size())))
@@ -761,9 +761,18 @@ void OverlayThread()
                             std::string remove_button_label = "Remove##button_targeting" + std::to_string(i);
                             if (ImGui::Button(remove_button_label.c_str()))
                             {
-                                config.button_targeting.erase(config.button_targeting.begin() + i);
-                                config.saveConfig("config.ini");
-                                continue;
+                                if (config.button_targeting.size() <= 1)
+                                {
+                                    config.button_targeting[0] = std::string("None");
+                                    config.saveConfig("config.ini");
+                                    continue;
+                                }
+                                else
+                                {
+                                    config.button_targeting.erase(config.button_targeting.begin() + i);
+                                    config.saveConfig("config.ini");
+                                    continue;
+                                }
                             }
 
                             ++i;
@@ -810,9 +819,18 @@ void OverlayThread()
                             std::string remove_button_label = "Remove##button_exit" + std::to_string(i);
                             if (ImGui::Button(remove_button_label.c_str()))
                             {
-                                config.button_exit.erase(config.button_exit.begin() + i);
-                                config.saveConfig("config.ini");
-                                continue;
+                                if (config.button_exit.size() <= 1)
+                                {
+                                    config.button_exit[0] = std::string("None");
+                                    config.saveConfig("config.ini");
+                                    continue;
+                                }
+                                else
+                                {
+                                    config.button_exit.erase(config.button_exit.begin() + i);
+                                    config.saveConfig("config.ini");
+                                    continue;
+                                }
                             }
 
                             ++i;
@@ -859,11 +877,19 @@ void OverlayThread()
                             std::string remove_button_label = "Remove##button_pause" + std::to_string(i);
                             if (ImGui::Button(remove_button_label.c_str()))
                             {
-                                config.button_pause.erase(config.button_pause.begin() + i);
-                                config.saveConfig("config.ini");
-                                continue;
+                                if (config.button_pause.size() <= 1)
+                                {
+                                    config.button_pause[0] = std::string("None");
+                                    config.saveConfig("config.ini");
+                                    continue;
+                                }
+                                else
+                                {
+                                    config.button_pause.erase(config.button_pause.begin() + i);
+                                    config.saveConfig("config.ini");
+                                    continue;
+                                }
                             }
-
                             ++i;
                         }
 
@@ -908,9 +934,18 @@ void OverlayThread()
                             std::string remove_button_label = "Remove##button_reload_config" + std::to_string(i);
                             if (ImGui::Button(remove_button_label.c_str()))
                             {
-                                config.button_reload_config.erase(config.button_reload_config.begin() + i);
-                                config.saveConfig("config.ini");
-                                continue;
+                                if (config.button_reload_config.size() <= 1)
+                                {
+                                    config.button_reload_config[0] = std::string("None");
+                                    config.saveConfig("config.ini");
+                                    continue;
+                                }
+                                else
+                                {
+                                    config.button_reload_config.erase(config.button_reload_config.begin() + i);
+                                    config.saveConfig("config.ini");
+                                    continue;
+                                }
                             }
 
                             ++i;
@@ -1027,17 +1062,26 @@ void OverlayThread()
                             std::string remove_button_label = "Remove##button_screenshot" + std::to_string(i);
                             if (ImGui::Button(remove_button_label.c_str()))
                             {
-                                config.screenshot_button.erase(config.screenshot_button.begin() + i);
-                                config.saveConfig("config.ini");
-                                continue;
+                                if (config.screenshot_button.size() <= 1)
+                                {
+                                    config.screenshot_button[0] = std::string("None");
+                                    config.saveConfig("config.ini");
+                                    continue;
+                                }
+                                else
+                                {
+                                    config.screenshot_button.erase(config.screenshot_button.begin() + i);
+                                    config.saveConfig("config.ini");
+                                    continue;
+                                }
                             }
 
                             ++i;
                         }
 
-                        if (ImGui::Button("Add button##overlay"))
+                        if (ImGui::Button("Add button##button_screenshot"))
                         {
-                            config.button_open_overlay.push_back("None");
+                            config.screenshot_button.push_back("None");
                             config.saveConfig("config.ini");
                         }
 

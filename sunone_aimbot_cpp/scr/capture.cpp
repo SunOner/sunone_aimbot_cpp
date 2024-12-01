@@ -647,7 +647,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 }
                 frameCV.notify_one();
 
-                if (config.screenshot_button[0] != "None")
+                if (config.screenshot_button.size() && config.screenshot_button[0] != "None")
                 {
                     bool buttonPressed = isAnyKeyPressed(config.screenshot_button);
 

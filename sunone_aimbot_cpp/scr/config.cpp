@@ -78,7 +78,7 @@ bool Config::loadConfig(const std::string& filename)
         show_fps = true;
         window_name = "Debug";
         window_size = 80;
-        screenshot_button = splitString("RightMouseButton");
+        screenshot_button = splitString("None");
         screenshot_delay = 500;
         always_on_top = true;
         verbose = false;
@@ -161,7 +161,7 @@ bool Config::loadConfig(const std::string& filename)
         show_fps = pt.get<bool>("show_fps", true);
         window_name = pt.get<std::string>("window_name", "Debug");
         window_size = pt.get<int>("window_size", 80);
-        screenshot_button = splitString(pt.get<std::string>("screenshot_button", "RightMouseButton"));
+        screenshot_button = splitString(pt.get<std::string>("screenshot_button", "None"));
         screenshot_delay = pt.get<int>("screenshot_delay", 500);
         always_on_top = pt.get<bool>("always_on_top", true);
         verbose = pt.get<bool>("verbose", false);

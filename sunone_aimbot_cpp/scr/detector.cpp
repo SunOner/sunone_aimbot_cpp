@@ -33,9 +33,19 @@ extern std::atomic<bool> detector_model_changed;
 static bool error_logged = false;
 
 Detector::Detector()
-    : frameReady(false), shouldExit(false), detectionVersion(0), inputBufferDevice(nullptr)
+    : frameReady(false),
+    shouldExit(false),
+    detectionVersion(0),
+    inputBufferDevice(nullptr),
+    inputDims(),
+    scale(0.0f)
 {
-    cudaStreamCreate(&stream);
+    cudaError_t err = cudaStreamCreate(&stream);
+
+    if (err != cudaSuccess)
+    {
+        std::cout << "[Detector] Can't create CUDA stream!" << std::endl;
+    }
 }
 
 Detector::~Detector()
@@ -524,7 +534,7 @@ void Detector::postProcess(const float* output, int outputSize)
     int64_t batch_size = shape[0];
     int64_t dim1 = shape[1];
     int64_t dim2 = shape[2];
-    
+
     if (batch_size != 1)
     {
         std::cerr << "Batch size > 1 is not supported" << std::endl;
@@ -580,10 +590,8 @@ void Detector::postProcess(const float* output, int outputSize)
         for (const auto& detection : detections)
         {
             float confidence = *std::max_element(detection.begin() + 4, detection.end());
-
             if (confidence > config.confidence_threshold)
             {
-                
                 int64_t classId = std::distance(detection.begin() + 4, std::max_element(detection.begin() + 4, detection.end()));
 
                 float x = detection[0];
