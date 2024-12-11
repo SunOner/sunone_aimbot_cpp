@@ -30,6 +30,7 @@ bool Config::loadConfig(const std::string& filename)
         body_y_offset = 0.15f;
         ignore_third_person = false;
         shooting_range_targets = false;
+        auto_aim = false;
 
         dpi = 1000;
         sensitivity = 4.0f;
@@ -105,6 +106,7 @@ bool Config::loadConfig(const std::string& filename)
         body_y_offset = pt.get<float>("body_y_offset", 0.15f);
         ignore_third_person = pt.get<bool>("ignore_third_person", false);
         shooting_range_targets = pt.get<bool>("shooting_range_targets", false);
+        auto_aim = pt.get<bool>("auto_aiming", false);
 
         // Mouse
         dpi = pt.get<int>("dpi", 1000);
@@ -209,7 +211,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "disable_headshot = " << (disable_headshot ? "true" : "false") << "\n";
     file << "body_y_offset = " << std::fixed << std::setprecision(2) << body_y_offset << "\n";
     file << "ignore_third_person = " << (ignore_third_person ? "true" : "false") << "\n";
-    file << "shooting_range_targets = " << (shooting_range_targets ? "true" : "false") << "\n\n";
+    file << "shooting_range_targets = " << (shooting_range_targets ? "true" : "false") << "\n";
+    file << "auto_aim = " << (auto_aim ? "true" : "false") << "\n\n";
 
     file << "# Mouse move\n";
     file << "dpi = " << dpi << "\n";

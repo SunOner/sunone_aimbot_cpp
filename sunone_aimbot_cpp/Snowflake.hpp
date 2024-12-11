@@ -1,10 +1,14 @@
 #pragma once
 #include <cmath>
 #include <vector>
+#include <random>
+#include <chrono>
 #include "imgui.h"
 
 namespace Snowflake
 {
+    static std::default_random_engine generator(static_cast<unsigned>(std::chrono::system_clock::now().time_since_epoch().count()));
+
     struct vec3
     {
         float x, y, z;
@@ -30,7 +34,7 @@ namespace Snowflake
             z = 0.f;
         }
 
-        vec3 operator+(const vec3& target)
+        vec3 operator+(const vec3& target) const
         {
             return vec3(x + target.x, y + target.y, z + target.z);
         }
@@ -44,35 +48,45 @@ namespace Snowflake
             return *this;
         }
 
-        vec3& operator*=(const float& target)
+        vec3 operator*(const float& scalar) const
         {
-            x *= target;
-            y *= target;
-            z *= target;
+            return vec3(x * scalar, y * scalar, z * scalar);
+        }
+
+        vec3& operator*=(const float& scalar)
+        {
+            x *= scalar;
+            y *= scalar;
+            z *= scalar;
 
             return *this;
         }
 
-        bool operator==(const vec3& target)
+        vec3 operator/(const float& scalar) const
+        {
+            return vec3(x / scalar, y / scalar, z / scalar);
+        }
+
+        vec3& operator/=(const float& scalar)
+        {
+            x /= scalar;
+            y /= scalar;
+            z /= scalar;
+
+            return *this;
+        }
+
+        bool operator==(const vec3& target) const
         {
             return x == target.x && y == target.y && z == target.z;
         }
 
-        vec3& operator/=(const float& target)
-        {
-            x /= target;
-            y /= target;
-            z /= target;
-
-            return *this;
-        }
-
-        float MagSq()
+        float MagSq() const
         {
             return x * x + y * y + z * z;
         }
 
-        float Mag()
+        float Mag() const
         {
             return sqrt(MagSq());
         }
@@ -97,15 +111,22 @@ namespace Snowflake
         }
     };
 
+    float PerlinNoise(float x);
+
     class Snowflake
     {
     private:
         vec3 velocity;
-        vec3 accelaretion;
+        vec3 acceleration;
         float radius;
         ImU32 color;
         float minSize;
         float maxSize;
+        float timeOffset;
+        float opacity;
+
+        float angle;
+        float dir;
 
     public:
         int width;
@@ -116,7 +137,7 @@ namespace Snowflake
 
         Snowflake(float _minSize, float _maxSize, int _windowX, int _windowY, int _width, int _height, ImU32 _color);
         void ApplyForce(vec3 force);
-        void Update();
+        void Update(float deltaTime);
         void Render();
         bool OffScreen();
         void Randomize();
@@ -124,6 +145,6 @@ namespace Snowflake
     };
 
     void CreateSnowFlakes(std::vector<Snowflake>& snow, uint64_t limit, float _minSize, float _maxSize, int _windowX, int _windowY, int _width, int _height, vec3 _gravity, ImU32 _color);
-    void Update(std::vector<Snowflake>& snow, vec3 mousePos, vec3 windowPos);
+    void Update(std::vector<Snowflake>& snow, vec3 mousePos, vec3 windowPos, float deltaTime);
     void ChangeWindowPos(std::vector<Snowflake>& snow, int _windowX, int _windowY);
 }

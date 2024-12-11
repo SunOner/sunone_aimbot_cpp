@@ -253,29 +253,32 @@ size_t Detector::getElementSize(nvinfer1::DataType dtype)
 
 void Detector::loadEngine(const std::string& modelFile)
 {
-    std::string engineFilePath = modelFile;
+    std::string engineFilePath;
     std::filesystem::path modelPath(modelFile);
     std::string extension = modelPath.extension().string();
 
-    if (extension == ".onnx")
+    if (extension == ".engine")
+    {
+        engineFilePath = modelFile;
+    }
+    else if (extension == ".onnx")
     {
         engineFilePath = modelPath.replace_extension(".engine").string();
 
         if (!fileExists(engineFilePath))
         {
-            std::cout << "[Detector] ONNX model detected. Start building engine model from: " << modelFile << ".\nPlease wait 1-5 minutes..."  << std::endl;
-
+            std::cout << "[Detector] ONNX model detected. Building engine from: " << modelFile << ".\nPlease wait..." << std::endl;
             nvinfer1::ICudaEngine* builtEngine = buildEngineFromOnnx(modelFile, gLogger);
             if (!builtEngine)
             {
-                std::cerr << "[Detector] Could not build engine model from ONNX model: " << modelFile << std::endl;
+                std::cerr << "[Detector] Could not build engine from ONNX model: " << modelFile << std::endl;
                 return;
             }
 
             nvinfer1::IHostMemory* serializedEngine = builtEngine->serialize();
             if (!serializedEngine)
             {
-                std::cerr << "[Detector] Engine model serialization error for the model: " << modelFile << std::endl;
+                std::cerr << "[Detector] Engine serialization error for model: " << modelFile << std::endl;
                 delete builtEngine;
                 return;
             }
@@ -283,7 +286,7 @@ void Detector::loadEngine(const std::string& modelFile)
             std::ofstream engineFile(engineFilePath, std::ios::binary);
             if (!engineFile)
             {
-                std::cerr << "[Detector] The engine model write file could not be opened: " << engineFilePath << std::endl;
+                std::cerr << "[Detector] Could not open engine file for writing: " << engineFilePath << std::endl;
                 delete serializedEngine;
                 delete builtEngine;
                 return;
@@ -294,60 +297,28 @@ void Detector::loadEngine(const std::string& modelFile)
             delete serializedEngine;
             delete builtEngine;
 
-            // apply exported model to config
-            std::vector<std::string> strs;
-            boost::split(strs, engineFilePath, boost::is_any_of("/"));
-            config.ai_model = strs[1];
+            config.ai_model = std::filesystem::path(engineFilePath).filename().string();
             config.saveConfig("config.ini");
 
-            std::cout << "[Detector] Engine model has been successfully built and saved in: " << engineFilePath << std::endl;
-        }
-        else
-        {
-            std::cout << "[Detector] An existing engine model was found: " << engineFilePath << std::endl;
+            std::cout << "[Detector] Engine successfully built and saved to: " << engineFilePath << std::endl;
         }
     }
-    else if (extension != ".engine")
+    else
     {
         std::cerr << "[Detector] Unsupported model format: " << modelFile << std::endl;
         return;
     }
 
-    std::cout << "[Detector] Loading engine model from a file: " << engineFilePath << std::endl;
+    std::cout << "[Detector] Loading engine model from file: " << engineFilePath << std::endl;
     engine.reset(loadEngineFromFile(engineFilePath, runtime.get()));
 
     if (!engine)
     {
-        std::cerr << "[Detector] Error loading engine model from a file: " << engineFilePath << std::endl;
-
-        std::vector<std::string> engineFiles = getEngineFiles();
-        bool engineLoaded = false;
-
-        for (const auto& engineFileName : engineFiles)
-        {
-            engineFilePath = "models/" + engineFileName;
-            std::cout << "[Detector] Trying to load another engine: " << engineFileName << std::endl;
-            engine.reset(loadEngineFromFile(engineFilePath, runtime.get()));
-            if (engine)
-            {
-                std::cout << "[Detector] Engine loaded successfully: " << engineFilePath << std::endl;
-                config.ai_model = engineFileName;
-                config.saveConfig("config.ini");
-                engineLoaded = true;
-                break;
-            }
-        }
-
-        if (!engineLoaded)
-        {
-            std::cerr << "[Detector] Could not load any engine model." << std::endl;
-            return;
-        }
+        std::cerr << "[Detector] Error loading engine from file: " << engineFilePath << std::endl;
+        return;
     }
-    else
-    {
-        std::cout << "[Detector] Engine loaded successfully: " << engineFilePath << std::endl;
-    }
+
+    std::cout << "[Detector] Engine loaded successfully: " << engineFilePath << std::endl;
 }
 
 void Detector::processFrame(const cv::cuda::GpuMat& frame)

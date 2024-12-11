@@ -125,33 +125,11 @@
 		b2.exe --build-type=complete link=static runtime-link=static threading=multi variant=release
 		```
 
-9. **Verify Folder Structure**  
-   Ensure your project hierarchy looks like this:
-   ```
-   sunone_aimbot_cpp/
-   ├── .gitattributes
-   ├── .gitignore
-   ├── LICENSE
-   ├── README.md
-   ├── sunone_aimbot_cpp.sln
-   ├── include/
-   ├── models/
-   ├── modules/
-   │   ├── boost_1_82_0/
-   │   ├── imgui-1.91.2/
-   │   ├── opencv/
-   │   │   ├── build/
-   │   │   ├── opencv_contrib-4.10.0/
-   │   │   └── opencv-4.10.0/
-   │   ├── stb/
-   │   ├── TensorRT-10.6.0.26/
-   │   └── tools/
-   ├── scr/
-   ├── screenshots/
-   ├── config.ini
-   └── ghub_mouse.dll
-   ```
-
+9. **Download GLFW binaries (v3.4)**
+	- Download [GLWF Windows pre-compiled binaries](https://www.glfw.org/download.html)
+	- Extract the downloaded binaries into:
+		- `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/glfw-3.4.bin.WIN64`
+   
 10. **Configure Project Settings**
 	- Open the project in Visual Studio.
 	- Ensure all library paths are correctly set in **Project Properties** under **Library Directories**.
@@ -182,6 +160,7 @@
 - [CppWinRT](https://github.com/microsoft/cppwinrt)
 - [Python AI AIMBOT](https://github.com/SunOner/sunone_aimbot)
 - [Snowflake.cpp](https://github.com/BaconToaster/Snowflake.cpp)
+- [GLFW](https://www.glfw.org/)
 
 ## 📄 Licenses
 

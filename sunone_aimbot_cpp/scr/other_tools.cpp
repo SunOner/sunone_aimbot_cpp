@@ -441,3 +441,32 @@ HMONITOR GetMonitorHandleByIndex(int monitorIndex)
 
     return search.targetMonitor;
 }
+
+std::vector<std::string> getAvailableModels()
+{
+    std::vector<std::string> availableModels;
+    std::vector<std::string> engineFiles = getEngineFiles();
+    std::vector<std::string> onnxFiles = getOnnxFiles();
+
+    std::set<std::string> engineModels;
+    for (const auto& file : engineFiles)
+    {
+        engineModels.insert(std::filesystem::path(file).stem().string());
+    }
+
+    for (const auto& file : engineFiles)
+    {
+        availableModels.push_back(file);
+    }
+
+    for (const auto& file : onnxFiles)
+    {
+        std::string modelName = std::filesystem::path(file).stem().string();
+        if (engineModels.find(modelName) == engineModels.end())
+        {
+            availableModels.push_back(file);
+        }
+    }
+
+    return availableModels;
+}

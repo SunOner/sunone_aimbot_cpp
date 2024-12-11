@@ -35,8 +35,8 @@ private:
     float bScope_multiplier;
 
     std::chrono::steady_clock::time_point last_target_time;
-    std::atomic<bool> target_detected { false };
-    std::atomic<bool> mouse_pressed { false };
+    std::atomic<bool> target_detected{ false };
+    std::atomic<bool> mouse_pressed{ false };
 
 public:
     MouseThread(int resolution, int dpi, double sensitivity, int fovX, int fovY,

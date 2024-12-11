@@ -52,9 +52,7 @@ int overlayWidth = 680;
 int overlayHeight = 480;
 
 // init vars
-std::vector<std::string> model_files;
-__int64 prev_ai_model_index;
-__int64 current_ai_model_index;
+std::vector<std::string> availableModels;
 int prev_imgsz_index;
 int selected_imgsz;
 
@@ -64,6 +62,7 @@ extern std::atomic<bool> capture_method_changed;
 extern std::atomic<bool> capture_cursor_changed;
 extern std::atomic<bool> capture_borders_changed;
 extern std::atomic<bool> capture_fps_changed;
+extern std::atomic<bool> capture_window_changed;
 extern std::atomic<bool> detector_model_changed;
 extern std::atomic<bool> show_window_changed;
 
@@ -255,18 +254,18 @@ bool CreateOverlayWindow()
         return false;
     
     // Opacity checks and init
-    if (config.overlay_opacity <= 0)
+    if (config.overlay_opacity <= 20)
     {
-        std::cout << "[Overlay] The transparency value of the overlay is set to less than one, this value is unacceptable." << std::endl;
-        std::cin.get();
-        return false;
+        std::cout << "[Overlay] The transparency value of the overlay is set to less than 20, this value is unacceptable." << std::endl;
+        config.overlay_opacity = 20;
+        config.saveConfig("config.ini");
     }
 
     if (config.overlay_opacity >= 256)
     {
         std::cout << "[Overlay] The transparency value of the overlay is set to more than 255, this value is unacceptable." << std::endl;
-        std::cin.get();
-        return false;
+        config.overlay_opacity = 255;
+        config.saveConfig("config.ini");
     }
 
     BYTE opacity = config.overlay_opacity;
@@ -305,18 +304,11 @@ void OverlayThread()
     bool prev_capture_method = config.duplication_api;
     int monitors = get_active_monitors();
 
-    bool prev_show_window = config.show_window;
-    int prev_opacity = config.overlay_opacity;
-
-    int current_ai_model_index = prev_ai_model_index;
-    float prev_confidence_threshold = config.confidence_threshold;
-    float prev_nms_threshold = config.nms_threshold;
-    int prev_max_detections = config.max_detections;
-
     bool prev_disable_headshot = config.disable_headshot;
     float prev_body_y_offset = config.body_y_offset;
     bool prev_ignore_third_person = config.ignore_third_person;
     bool prev_shooting_range_targets = config.shooting_range_targets;
+    bool prev_auto_aim = config.auto_aim;
 
     int prev_dpi = config.dpi;
     float prev_sensitivity = config.sensitivity;
@@ -329,10 +321,18 @@ void OverlayThread()
     bool prev_auto_shoot = config.auto_shoot;
     float prev_bScope_multiplier = config.bScope_multiplier;
 
+    float prev_confidence_threshold = config.confidence_threshold;
+    float prev_nms_threshold = config.nms_threshold;
+    int prev_max_detections = config.max_detections;
+
+    int prev_opacity = config.overlay_opacity;
+
+    bool prev_show_window = config.show_window;
     bool prev_show_fps = config.show_fps;
     int prev_window_size = config.window_size;
     int prev_screenshot_delay = config.screenshot_delay;
     bool prev_always_on_top = config.always_on_top;
+    bool prev_verbose = config.verbose;
 
     // keycodes
     std::vector<std::string> key_names;
@@ -362,26 +362,28 @@ void OverlayThread()
 
     std::string ghub_version = get_ghub_version();
     
-    // Load available engine models
-    model_files = getModelFiles();
-    prev_ai_model_index = getModelIndex(model_files);
-    current_ai_model_index = prev_ai_model_index;
+    std::vector<std::string> availableModels = getAvailableModels();
+    if (availableModels.empty())
+    {
+        std::cerr << "[Overlay] No models found in 'models' directory." << std::endl;
+    }
 
     // SNOW THEME VARS
     std::vector<Snowflake::Snowflake> snow;
+    static auto lastTime = std::chrono::high_resolution_clock::now();
     POINT mouse;
 
     Snowflake::CreateSnowFlakes(
         snow,
-        300,
+        80,
         2.f,
-        10.f,
+        5.f,
         0,
         0,
         680,
         480,
-        Snowflake::vec3(0.f, 0.002f),
-        IM_COL32(255, 255, 255, 100));
+        Snowflake::vec3(0.f, 0.005f),
+        IM_COL32(255, 255, 255, 255));
 
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
@@ -424,17 +426,20 @@ void OverlayThread()
             ImGui::SetNextWindowPos(ImVec2(0, 0));
             ImGui::SetNextWindowSize(ImVec2((float)overlayWidth, (float)overlayHeight));
 
-            ImGui::Begin("Options", &show_overlay, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+            ImGui::Begin("Options", &show_overlay, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
             {
                 std::lock_guard<std::mutex> lock(configMutex);
 
+                auto currentTime = std::chrono::high_resolution_clock::now();
+                float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
+                lastTime = currentTime;
+
                 GetCursorPos(&mouse);
-                Snowflake::Update(snow,
-                    Snowflake::vec3(mouse.x, mouse.y),
-                    Snowflake::vec3(0, 0));
+                Snowflake::Update(snow, Snowflake::vec3(mouse.x, mouse.y), Snowflake::vec3(0, 0), deltaTime);
 
                 if (ImGui::BeginTabBar("Options tab bar"))
                 {
+#pragma region CAPTURE
                     // ********************************************* CAPTURE ********************************************
                     if (ImGui::BeginTabItem("Capture"))
                     {
@@ -481,7 +486,7 @@ void OverlayThread()
                             monitorItems.push_back(name.c_str());
                         }
 
-                        if (ImGui::Combo("Capture monitor (CUDA)", &config.monitor_idx, monitorItems.data(), static_cast<int>(monitorItems.size())))
+                        if (ImGui::Combo("Capture monitor (CUDA GPU)", &config.monitor_idx, monitorItems.data(), static_cast<int>(monitorItems.size())))
                         {
                             config.saveConfig("config.ini");
                             capture_method_changed.store(true);
@@ -496,7 +501,8 @@ void OverlayThread()
 
                         ImGui::EndTabItem();
                     }
-
+#pragma endregion
+#pragma region TARGET
                     // ********************************************* TARGET *********************************************
                     if (ImGui::BeginTabItem("Target"))
                     {
@@ -531,10 +537,12 @@ void OverlayThread()
                         ImGui::Separator();
                         ImGui::Checkbox("Ignore Third Person", &config.ignore_third_person);
                         ImGui::Checkbox("Shooting range targets", &config.shooting_range_targets);
+                        ImGui::Checkbox("Auto Aim", &config.auto_aim);
 
                         ImGui::EndTabItem();
                     }
-
+#pragma endregion
+#pragma region MOUSE
                     // ********************************************** MOUSE *********************************************
                     if (ImGui::BeginTabItem("Mouse"))
                     {
@@ -552,8 +560,11 @@ void OverlayThread()
                         }
 
                         ImGui::Checkbox("Auto Shoot", &config.auto_shoot);
-                        ImGui::SliderFloat("bScope Multiplier", &config.bScope_multiplier, 0.5f, 2.0f, "%.1f");
-                        
+                        if (config.auto_shoot)
+                        {
+                            ImGui::SliderFloat("bScope Multiplier", &config.bScope_multiplier, 0.5f, 2.0f, "%.1f");
+                        }
+
                         // INPUT METHODS
                         ImGui::Separator();
                         std::vector<std::string> input_methods = {"WIN32", "GHUB", "ARDUINO" };
@@ -589,6 +600,18 @@ void OverlayThread()
 
                         if (config.input_method == "ARDUINO")
                         {
+                            if (serial)
+                            {
+                                if (serial->isOpen())
+                                {
+                                    ImGui::TextColored(ImVec4(0, 255, 0, 255), "Arduino connected");
+                                }
+                                else
+                                {
+                                    ImGui::TextColored(ImVec4(255, 0, 0, 255), "Arduino not connected");
+                                }
+                            }
+
                             std::vector<std::string> port_list;
                             for (int i = 1; i <= 30; ++i)
                             {
@@ -693,78 +716,42 @@ void OverlayThread()
 
                         ImGui::EndTabItem();
                     }
-
+#pragma endregion
+#pragma region AI
                     // *********************************************** AI ***********************************************
                     if (ImGui::BeginTabItem("AI"))
                     {
-                        // select ai model
-                        std::set<std::string> engine_base_names;
-                        for (const auto& file : model_files)
+                        std::vector<std::string> availableModels = getAvailableModels();
+                        if (availableModels.empty())
                         {
-                            std::filesystem::path p(file);
-                            if (p.extension() == ".engine")
-                            {
-                                engine_base_names.insert(p.stem().string());
-                            }
+                            ImGui::Text("No models available in the 'models' folder.");
                         }
-
-                        std::vector<std::string> filtered_model_files;
-                        for (const auto& file : model_files)
+                        else
                         {
-                            std::filesystem::path p(file);
-                            if (p.extension() == ".onnx")
+                            // Get index
+                            int currentModelIndex = 0;
+                            auto it = std::find(availableModels.begin(), availableModels.end(), config.ai_model);
+                            if (it != availableModels.end())
                             {
-                                std::string base_name = p.stem().string();
-                                if (engine_base_names.find(base_name) != engine_base_names.end())
+                                currentModelIndex = static_cast<int>(std::distance(availableModels.begin(), it));
+                            }
+
+                            // Create array
+                            std::vector<const char*> modelsItems;
+                            modelsItems.reserve(availableModels.size());
+                            for (const auto& modelName : availableModels)
+                            {
+                                modelsItems.push_back(modelName.c_str());
+                            }
+
+                            if (ImGui::Combo("Model", &currentModelIndex, modelsItems.data(), static_cast<int>(modelsItems.size())))
+                            {
+                                if (config.ai_model != availableModels[currentModelIndex])
                                 {
-                                    continue;
+                                    config.ai_model = availableModels[currentModelIndex];
+                                    config.saveConfig("config.ini");
+                                    detector_model_changed.store(true);
                                 }
-                            }
-                            filtered_model_files.push_back(file);
-                        }
-
-                        model_files = filtered_model_files;
-
-                        std::vector<const char*> models_items;
-                        models_items.reserve(model_files.size());
-                        for (const auto& item : model_files)
-                        {
-                            models_items.push_back(item.c_str());
-                        }
-
-                        ImGui::Combo("Model", &current_ai_model_index, models_items.data(), static_cast<int>(models_items.size()));
-
-                        // Update models button
-                        if (ImGui::Button("Update##update_models_dir"))
-                        {
-                            model_files = getModelFiles();
-                        }
-
-                        // Model size
-                        ImGui::Separator();
-                        int model_sizes[] = { 320, 480, 640 };
-                        const int model_sizes_count = sizeof(model_sizes) / sizeof(model_sizes[0]);
-
-                        const char* model_sizes_str[model_sizes_count];
-                        std::string model_sizes_buffer[model_sizes_count];
-
-                        for (int i = 0; i < model_sizes_count; ++i)
-                        {
-                            model_sizes_buffer[i] = intToString(model_sizes[i]);
-                            model_sizes_str[i] = model_sizes_buffer[i].c_str();
-                        }
-
-                        if (ImGui::Combo("Engine Image Size", &selected_imgsz, model_sizes_str, model_sizes_count))
-                        {
-                            if (selected_imgsz != prev_imgsz_index)
-                            {
-                                std::cout << "Image size changed to: " << model_sizes[selected_imgsz] << std::endl;
-
-                                config.engine_image_size = model_sizes[selected_imgsz];
-                                detector_model_changed.store(true);
-                                prev_imgsz_index = selected_imgsz;
-
-                                config.saveConfig("config.ini");
                             }
                         }
 
@@ -775,7 +762,8 @@ void OverlayThread()
 
                         ImGui::EndTabItem();
                     }
-
+#pragma endregion
+#pragma region BUTTONS
                     // ********************************************* BUTTONS ********************************************
                     if (ImGui::BeginTabItem("Buttons"))
                     {
@@ -1060,7 +1048,8 @@ void OverlayThread()
 
                         ImGui::EndTabItem();
                     }
-
+#pragma endregion
+#pragma region OVERLAY
                     // ********************************************* OVERLAY ********************************************
                     if (ImGui::BeginTabItem("Overlay"))
                     {
@@ -1070,7 +1059,8 @@ void OverlayThread()
                     }
                     
                     // TODO CUSTOM CLASSES
-
+#pragma endregion
+#pragma region DEBUG
                     // ********************************************** DEBUG *********************************************
                     if (ImGui::BeginTabItem("Debug"))
                     {
@@ -1139,7 +1129,7 @@ void OverlayThread()
 
                         ImGui::InputInt("Screenshot delay", &config.screenshot_delay, 50, 500);
                         ImGui::Checkbox("Always On Top", &config.always_on_top);
-
+                        ImGui::Checkbox("Verbose console output", &config.verbose);
                         // test functions
                         ImGui::Separator();
                         ImGui::Text("Test functions");
@@ -1153,21 +1143,29 @@ void OverlayThread()
                             ShowConsole();
                         }
 
-                        if (ImGui::Button("Print cuda device info"))
-                        {
-                            cv::cuda::printCudaDeviceInfo(0);
-                        }
-
                         ImGui::EndTabItem();
                     }
-
+#pragma endregion
                     // ******************************************* APPLY VARS *******************************************
                     // DETECTION RESOLUTION
                     if (prev_detection_resolution != config.detection_resolution)
                     {
+                        prev_detection_resolution = config.detection_resolution;
                         detection_resolution_changed.store(true);
                         detector_model_changed.store(true); // reboot vars for visuals
-                        prev_detection_resolution = config.detection_resolution;
+
+                        // need apply new detection_resolution
+                        globalMouseThread->updateConfig(
+                            config.detection_resolution,
+                            config.dpi,
+                            config.sensitivity,
+                            config.fovX,
+                            config.fovY,
+                            config.minSpeedMultiplier,
+                            config.maxSpeedMultiplier,
+                            config.predictionInterval,
+                            config.auto_shoot,
+                            config.bScope_multiplier);
                         config.saveConfig("config.ini");
                     }
 
@@ -1205,16 +1203,18 @@ void OverlayThread()
                         config.saveConfig("config.ini");
                     }
 
-                    // DISABLE_HEADSHOT / BODY_Y_OFFSET / IGNORE_THIRD_PERSON
+                    // DISABLE_HEADSHOT / BODY_Y_OFFSET / IGNORE_THIRD_PERSON / SHOOTING_RANGE_TARGETS / AUTO_AIM
                     if (prev_disable_headshot != config.disable_headshot ||
                         prev_body_y_offset != config.body_y_offset ||
                         prev_ignore_third_person != config.ignore_third_person ||
-                        prev_shooting_range_targets != config.shooting_range_targets)
+                        prev_shooting_range_targets != config.shooting_range_targets ||
+                        prev_auto_aim != config.auto_aim)
                     {
                         prev_disable_headshot = config.disable_headshot;
                         prev_body_y_offset = config.body_y_offset;
                         prev_ignore_third_person = config.ignore_third_person;
                         prev_shooting_range_targets = config.shooting_range_targets;
+                        prev_auto_aim = config.auto_aim;
                         config.saveConfig("config.ini");
                     }
 
@@ -1250,12 +1250,25 @@ void OverlayThread()
                         config.saveConfig("config.ini");
                     }
 
-                    // AUTO_SHOOT / BSCOPE_MULTIPLIER
+                    // AUTO_SHOOT / BSCOPE_MULTIPLIER / AUTO_SHOOT_REPLAY
                     if (prev_auto_shoot != config.auto_shoot ||
                         prev_bScope_multiplier != config.bScope_multiplier)
                     {
                         prev_auto_shoot = config.auto_shoot;
                         prev_bScope_multiplier = config.bScope_multiplier;
+
+                        globalMouseThread->updateConfig(
+                            config.detection_resolution,
+                            config.dpi,
+                            config.sensitivity,
+                            config.fovX,
+                            config.fovY,
+                            config.minSpeedMultiplier,
+                            config.maxSpeedMultiplier,
+                            config.predictionInterval,
+                            config.auto_shoot,
+                            config.bScope_multiplier);
+
                         config.saveConfig("config.ini");
                     }
 
@@ -1264,15 +1277,6 @@ void OverlayThread()
                     {
                         BYTE opacity = config.overlay_opacity;
                         SetLayeredWindowAttributes(g_hwnd, 0, opacity, LWA_ALPHA);
-                        config.saveConfig("config.ini");
-                    }
-
-                    // AI_MODEL
-                    if (current_ai_model_index != prev_ai_model_index)
-                    {
-                        config.ai_model = model_files[current_ai_model_index];
-                        detector_model_changed.store(true);
-                        prev_ai_model_index = current_ai_model_index;
                         config.saveConfig("config.ini");
                     }
 
@@ -1287,29 +1291,26 @@ void OverlayThread()
                         config.saveConfig("config.ini");
                     }
 
-                    // SHOW WINDOW
-                    if (prev_show_window != config.show_window)
+                    // SHOW WINDOW / ALWAYS_ON_TOP
+                    if (prev_show_window != config.show_window ||
+                        prev_always_on_top != config.always_on_top)
                     {
+                        prev_always_on_top = config.always_on_top;
                         show_window_changed.store(true);
                         prev_show_window = config.show_window;
                         config.saveConfig("config.ini");
                     }
                     
-                    // ALWAYS_ON_TOP
-                    if (prev_always_on_top != config.always_on_top)
-                    {
-                        // TODO: update window property
-                        prev_always_on_top = config.always_on_top;
-                    }
-
-                    // SHOW_FPS / WINDOW_SIZE / SCREENSHOT_DELAY
+                    // SHOW_FPS / WINDOW_SIZE / SCREENSHOT_DELAY / VERBOSE
                     if (prev_show_fps != config.show_fps ||
                         prev_window_size != config.window_size ||
-                        prev_screenshot_delay != config.screenshot_delay)
+                        prev_screenshot_delay != config.screenshot_delay ||
+                        prev_verbose != config.verbose)
                     {
                         prev_show_fps = config.show_fps;
                         prev_window_size = config.window_size;
                         prev_screenshot_delay = config.screenshot_delay;
+                        prev_verbose = config.verbose;
                         config.saveConfig("config.ini");
                     }
 
@@ -1318,7 +1319,7 @@ void OverlayThread()
             }
 
             ImGui::Separator();
-            ImGui::TextColored(ImVec4(255, 255, 255, 100), "Do not test shooting and aiming with the overlay open.");
+            ImGui::TextColored(ImVec4(255, 255, 255, 100), "Do not test shooting and aiming with the overlay and debug window is open.");
 
             ImGui::End();
             ImGui::Render();
@@ -1330,7 +1331,7 @@ void OverlayThread()
 
             HRESULT result = g_pSwapChain->Present(0, 0);
 
-            if (result == DXGI_STATUS_OCCLUDED) // TODO
+            if (result == DXGI_STATUS_OCCLUDED || result == DXGI_ERROR_ACCESS_LOST)
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
@@ -1346,7 +1347,6 @@ void OverlayThread()
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
 
-    // unload texture
     if (bodyTexture)
     {
         bodyTexture->Release();

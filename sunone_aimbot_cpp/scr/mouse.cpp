@@ -169,13 +169,16 @@ std::pair<double, double> MouseThread::calc_movement(double target_x, double tar
 
 bool MouseThread::check_target_in_scope(double target_x, double target_y, double target_w, double target_h, double reduction_factor)
 {
+    double center_target_x = target_x + target_w / 2;
+    double center_target_y = target_y + target_h / 2;
+
     double reduced_w = target_w * reduction_factor / 2;
     double reduced_h = target_h * reduction_factor / 2;
 
-    double x1 = target_x - reduced_w;
-    double x2 = target_x + reduced_w;
-    double y1 = target_y - reduced_h;
-    double y2 = target_y + reduced_h;
+    double x1 = center_target_x - reduced_w;
+    double x2 = center_target_x + reduced_w;
+    double y1 = center_target_y - reduced_h;
+    double y2 = center_target_y + reduced_h;
 
     return center_x > x1 && center_x < x2&& center_y > y1 && center_y < y2;
 }
@@ -219,33 +222,42 @@ void MouseThread::moveMouse(const Target& target)
     }
 }
 
+int mouse_press_iter = 0;
+
 void MouseThread::pressMouse(const Target& target)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
-
+    
     auto bScope = check_target_in_scope(target.x, target.y, target.w, target.h, bScope_multiplier);
 
-    if (bScope)
+    if (mouse_pressed == true)
     {
-        if (!mouse_pressed)
+        mouse_press_iter++;
+        if (mouse_press_iter >= 2)
         {
-            if (serial)
-            {
-                serial->press();
-            }
-            else if (gHub)
-            {
-                gHub->mouse_down();
-            }
-            else
-            {
-                INPUT input = { 0 };
-                input.type = INPUT_MOUSE;
-                input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-                SendInput(1, &input, sizeof(INPUT));
-            }
-            mouse_pressed = true;
+            mouse_press_iter = 0;
+            mouse_pressed = false;
         }
+    }
+
+    if (bScope && !mouse_pressed)
+    {
+        if (serial)
+        {
+            serial->press();
+        }
+        else if (gHub)
+        {
+            gHub->mouse_down();
+        }
+        else
+        {
+            INPUT input = { 0 };
+            input.type = INPUT_MOUSE;
+            input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+            SendInput(1, &input, sizeof(INPUT));
+        }
+        mouse_pressed = true;
     }
     else
     {

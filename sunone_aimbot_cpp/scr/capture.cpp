@@ -479,7 +479,7 @@ cv::cuda::GpuMat DuplicationAPIScreenCapture::GetNextFrame()
             return cv::cuda::GpuMat();
         }
 
-        if (hr == DXGI_ERROR_ACCESS_LOST)
+        if (hr == DXGI_ERROR_ACCESS_LOST || hr == DXGI_ERROR_DEVICE_RESET)
         {
             capture_method_changed.store(true);
         }

@@ -21,6 +21,7 @@ public:
     float body_y_offset;
     bool ignore_third_person;
     bool shooting_range_targets;
+    bool auto_aim;
 
     // Mouse
     int dpi;

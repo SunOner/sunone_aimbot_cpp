@@ -19,6 +19,7 @@
 #include "overlay.h"
 #include "SerialConnection.h"
 #include "ghub.h"
+#include "other_tools.h"
 
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
@@ -38,6 +39,7 @@ std::atomic<bool> capture_method_changed(false);
 std::atomic<bool> capture_cursor_changed(false);
 std::atomic<bool> capture_borders_changed(false);
 std::atomic<bool> capture_fps_changed(false);
+std::atomic<bool> capture_window_changed(false);
 std::atomic<bool> detector_model_changed(false);
 std::atomic<bool> show_window_changed(false);
 std::atomic<bool> input_method_changed(false);
@@ -109,36 +111,43 @@ void mouseThreadFunction(MouseThread& mouseThread)
 
         boxes = detector.detectedBoxes;
         classes = detector.detectedClasses;
-
         if (input_method_changed.load())
         {
             initializeInputMethod();
             input_method_changed.store(false);
         }
 
+        Target* target = sortTargets(boxes, classes, config.detection_resolution, config.detection_resolution, config.disable_headshot);
+
         if (aiming)
         {
-            Target* target = sortTargets(boxes, classes, config.detection_resolution, config.detection_resolution, config.disable_headshot);
             if (target)
             {
                 mouseThread.moveMouse(*target);
+
                 if (config.auto_shoot)
                 {
                     mouseThread.pressMouse(*target);
                 }
-                delete target;
             }
             else
             {
-                // release mouse button
-                if (!aiming && config.auto_shoot)
+                if (config.auto_shoot)
                 {
                     mouseThread.releaseMouse();
                 }
             }
         }
+        else
+        {
+            if (config.auto_shoot)
+            {
+                mouseThread.releaseMouse();
+            }
+        }
 
         mouseThread.checkAndResetPredictions();
+        delete target;
     }
 }
 
@@ -166,6 +175,27 @@ int main()
         std::cerr << "[Config] Error with loading config.ini" << std::endl;
         std::cin.get();
         return -1;
+    }
+
+    std::string modelPath = "models/" + config.ai_model;
+    if (!std::filesystem::exists(modelPath))
+    {
+        std::cerr << "[MAIN] Specified model does not exist: " << modelPath << std::endl;
+
+        std::vector<std::string> modelFiles = getModelFiles();
+
+        if (!modelFiles.empty())
+        {
+            config.ai_model = modelFiles[0];
+            config.saveConfig("config.ini");
+            std::cout << "[MAIN] Loaded first available model: " << config.ai_model << std::endl;
+        }
+        else
+        {
+            std::cerr << "[MAIN] No models found in 'models' directory." << std::endl;
+            std::cin.get();
+            return -1;
+        }
     }
 
     if (config.input_method == "ARDUINO")
@@ -200,6 +230,45 @@ int main()
 
     globalMouseThread = &mouseThread;
 
+    std::vector<std::string> availableModels = getAvailableModels();
+
+    if (!config.ai_model.empty())
+    {
+        std::string modelPath = "models/" + config.ai_model;
+        if (!std::filesystem::exists(modelPath))
+        {
+            std::cerr << "[MAIN] Specified model does not exist: " << modelPath << std::endl;
+
+            if (!availableModels.empty())
+            {
+                config.ai_model = availableModels[0];
+                config.saveConfig("config.ini");
+                std::cout << "[MAIN] Loaded first available model: " << config.ai_model << std::endl;
+            }
+            else
+            {
+                std::cerr << "[MAIN] No models found in 'models' directory." << std::endl;
+                std::cin.get();
+                return -1;
+            }
+        }
+    }
+    else
+    {
+        if (!availableModels.empty())
+        {
+            config.ai_model = availableModels[0];
+            config.saveConfig("config.ini");
+            std::cout << "[MAIN] No AI model specified in config. Loaded first available model: " << config.ai_model << std::endl;
+        }
+        else
+        {
+            std::cerr << "[MAIN] No AI models found in 'models' directory." << std::endl;
+            std::cin.get();
+            return -1;
+        }
+    }
+
     detector.initialize("models/" + config.ai_model);
 
     initializeInputMethod();
@@ -211,11 +280,6 @@ int main()
     std::thread overlayThread(OverlayThread);
 
     displayThread();
-
-    if (config.ai_model.empty())
-    {
-        std::cout << "[MAIN] No AI model specified in config. Please select an AI model in the overlay." << std::endl;
-    }
 
     keyThread.join();
     capThread.join();
