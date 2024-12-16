@@ -282,7 +282,7 @@ cv::cuda::GpuMat WinRTScreenCapture::GetNextFrame()
 
         if (!frameTexture)
         {
-            throw std::runtime_error("Failed to get ID3D11Texture2D from frame surface.");
+            throw std::runtime_error("[Capture] Failed to get ID3D11Texture2D from frame surface.");
         }
 
         D3D11_BOX sourceRegion;
@@ -328,7 +328,7 @@ winrt::Windows::Graphics::Capture::GraphicsCaptureItem WinRTScreenCapture::Creat
         HRESULT hr = interopFactory->CreateForMonitor(hMonitor, winrt::guid_of<winrt::Windows::Graphics::Capture::GraphicsCaptureItem>(), winrt::put_abi(item));
         if (FAILED(hr))
         {
-            throw std::runtime_error("Can't create GraphicsCaptureItem for monitor. HRESULT: " + std::to_string(hr));
+            throw std::runtime_error("[Capture] Can't create GraphicsCaptureItem for monitor. HRESULT: " + std::to_string(hr));
         }
         return item;
     }
@@ -423,14 +423,14 @@ DuplicationAPIScreenCapture::DuplicationAPIScreenCapture(int desiredWidth, int d
     HRESULT hr = d3dDevice->CreateTexture2D(&sharedTexDesc, nullptr, &sharedTexture);
     if (FAILED(hr))
     {
-        std::cerr << "Failed to create shared texture." << std::endl;
+        std::cerr << "[Capture] Failed to create shared texture." << std::endl;
         return;
     }
 
     cudaError_t err = cudaGraphicsD3D11RegisterResource(&cudaResource, sharedTexture, cudaGraphicsRegisterFlagsNone);
     if (err != cudaSuccess)
     {
-        std::cerr << "Failed to register shared texture with CUDA." << std::endl;
+        std::cerr << "[Capture] Failed to register shared texture with CUDA." << std::endl;
         return;
     }
 
@@ -550,7 +550,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             capturer = new DuplicationAPIScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
             if (config.verbose)
             {
-                cout << "[Capture] Using Duplication API." << endl;
+                std::cout << "[Capture] Using Duplication API." << std::endl;
             }
         }
         else
@@ -559,7 +559,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             capturer = new WinRTScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
             if (config.verbose)
             {
-                cout << "[Capture] Using WinRT." << endl;
+                std::cout << "[Capture] Using WinRT." << std::endl;
             }
         }
 
@@ -621,7 +621,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     capturer = new DuplicationAPIScreenCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
                     if (config.verbose)
                     {
-                        cout << "[Capture] Using Duplication API." << endl;
+                        std::cout << "[Capture] Using Duplication API." << std::endl;
                     }
                 }
                 else
@@ -629,7 +629,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     capturer = new WinRTScreenCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
                     if (config.verbose)
                     {
-                        cout << "[Capture] Using WinRT." << endl;
+                        std::cout << "[Capture] Using WinRT." << std::endl;
                     }
                 }
 
@@ -648,6 +648,8 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             {
                 cv::cuda::GpuMat resizedGpu;
 
+                int model_input_size = config.engine_image_size;
+
                 if (config.circle_mask)
                 {
                     cv::Mat mask = cv::Mat::zeros(screenshotGpu.size(), CV_8UC1);
@@ -661,11 +663,20 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     cv::cuda::GpuMat maskedImageGpu;
                     screenshotGpu.copyTo(maskedImageGpu, maskGpu);
 
-                    cv::cuda::resize(maskedImageGpu, resizedGpu, cv::Size(config.engine_image_size, config.engine_image_size), 0, 0, cv::INTER_LINEAR);
+                    cv::cuda::resize(maskedImageGpu, resizedGpu, cv::Size(model_input_size, model_input_size), 0, 0, cv::INTER_LINEAR);
                 }
                 else
                 {
-                    cv::cuda::resize(screenshotGpu, resizedGpu, cv::Size(config.engine_image_size, config.engine_image_size), 0, 0, cv::INTER_LINEAR);
+                    cv::cuda::resize(screenshotGpu, resizedGpu, cv::Size(model_input_size, model_input_size), 0, 0, cv::INTER_LINEAR);
+                }
+
+                float scale_x = 1;
+                float scale_y = 1;
+
+                {
+                    std::lock_guard<std::mutex> lock(detector.scaleMutex);
+                    detector.scaleX = scale_x;
+                    detector.scaleY = scale_y;
                 }
 
                 {
@@ -681,6 +692,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     latestFrameCpu = latestFrameCpu.clone();
                 }
                 frameCV.notify_one();
+
 
                 if (config.screenshot_button.size() && config.screenshot_button[0] != "None")
                 {
@@ -751,6 +763,6 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[CaptureThread] Unhandled exception: " << e.what() << std::endl;
+        std::cerr << "[Capture] Unhandled exception: " << e.what() << std::endl;
     }
 }

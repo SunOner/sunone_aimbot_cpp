@@ -24,6 +24,8 @@
 #include "nvinf.h"
 #include "sunone_aimbot_cpp.h"
 #include "other_tools.h"
+#include "preprocess.h"
+#include <cuda_utils.h>
 
 extern std::atomic<bool> detectionPaused;
 int model_quant;
@@ -38,7 +40,7 @@ Detector::Detector()
     detectionVersion(0),
     inputBufferDevice(nullptr),
     inputDims(),
-    scale(0.0f)
+    img_scale(0.0f)
 {
     cudaError_t err = cudaStreamCreate(&stream);
 
@@ -107,10 +109,6 @@ void Detector::getOutputNames()
 
         if (engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT)
         {
-            if (config.verbose)
-            {
-                std::cout << "[Detector] Detected model output name: " << name << std::endl;
-            }
 
             outputNames.emplace_back(name);
 
@@ -128,6 +126,13 @@ void Detector::getOutputNames()
                 dim.push_back(dims.d[j]);
             }
             outputShapes[name] = dim;
+
+            if (config.verbose)
+            {
+                std::cout << "[Detector] Model output name: " << name << std::endl;
+                std::cout << "[Detector] Model output size: " << size << std::endl;
+                std::cout << "[Detector] Model output dims: " << dims.nbDims << std::endl;
+            }
         }
     }
 }
@@ -198,7 +203,9 @@ void Detector::initialize(const std::string& modelFile)
 
         if (config.verbose)
         {
-            std::cout << "[Detector] Model input size: " << inputSize << std::endl;
+            std::cout << "[Detector] Model input size: " << getSizeByDim(inputDims) << std::endl;
+            std::cout << "[Detector] Model input dims: " << getElementSize(dtype) << std::endl;
+            std::cout << "[Detector] Model input name: " << inputName << std::endl;
         }
     }
     else
@@ -226,7 +233,9 @@ void Detector::initialize(const std::string& modelFile)
     }
 
     channels.resize(3);
-    scale = static_cast<float>(config.detection_resolution) / config.engine_image_size;
+    int64_t inputH = inputDims.d[2];
+    img_scale = static_cast<float>(config.detection_resolution) / inputH;
+    std::cout << "[Detector] Image scale factor: " << img_scale << std::endl;
 }
 
 size_t Detector::getSizeByDim(const nvinfer1::Dims& dims)
@@ -267,7 +276,8 @@ void Detector::loadEngine(const std::string& modelFile)
 
         if (!fileExists(engineFilePath))
         {
-            std::cout << "[Detector] ONNX model detected. Building engine from: " << modelFile << ".\nPlease wait..." << std::endl;
+            std::cout << "[Detector] ONNX model detected. Building engine from: " << modelFile << ".\n[Detector] Please wait..." << std::endl;
+
             nvinfer1::ICudaEngine* builtEngine = buildEngineFromOnnx(modelFile, gLogger);
             if (!builtEngine)
             {
@@ -484,23 +494,19 @@ void Detector::preProcess(const cv::cuda::GpuMat& frame)
 {
     int64_t inputH = inputDims.d[2];
     int64_t inputW = inputDims.d[3];
-    size_t channelSize = inputH * inputW * sizeof(float);
+    
+    int num_channels = frame.channels();
 
-    cv::cuda::GpuMat resized;
-    cv::cuda::resize(frame, resized, cv::Size(static_cast<int>(inputW), static_cast<int>(inputH)), 0, 0, cv::INTER_LINEAR);
-
-    cv::cuda::GpuMat floatMat;
-    resized.convertTo(floatMat, CV_32F, 1.0 / 255.0);
-
-    std::vector<cv::cuda::GpuMat> gpuChannels(3);
-    cv::cuda::split(floatMat, gpuChannels);
-
-    for (int i = 0; i < 3; ++i)
-    {
-        void* srcPtr = gpuChannels[i].data;
-        void* dstPtr = static_cast<float*>(inputBufferDevice) + i * inputH * inputW;
-        cudaMemcpyAsync(dstPtr, srcPtr, channelSize, cudaMemcpyDeviceToDevice, stream);
-    }
+    cuda_preprocess(
+        frame.ptr<const uint8_t>(),
+        frame.cols,
+        frame.rows,
+        static_cast<float*>(inputBufferDevice),
+        static_cast<int>(inputW),
+        static_cast<int>(inputH),
+        num_channels,
+        stream
+    );
 }
 
 void Detector::postProcess(const float* output, int outputSize)
@@ -516,6 +522,7 @@ void Detector::postProcess(const float* output, int outputSize)
         std::cerr << "Unsupported output shape" << std::endl;
         return;
     }
+
     int64_t batch_size = shape[0];
     int64_t dim1 = shape[1];
     int64_t dim2 = shape[2];
@@ -544,10 +551,10 @@ void Detector::postProcess(const float* output, int outputSize)
                 float x_max = det[2];
                 float y_max = det[3];
 
-                int x1 = static_cast<int>(x_min * scale);
-                int y1 = static_cast<int>(y_min * scale);
-                int width = static_cast<int>((x_max - x_min) * scale);
-                int height = static_cast<int>((y_max - y_min) * scale);
+                int x1 = static_cast<int>(x_min * img_scale);
+                int y1 = static_cast<int>(y_min * img_scale);
+                int width = static_cast<int>((x_max - x_min) * img_scale);
+                int height = static_cast<int>((y_max - y_min) * img_scale);
 
                 boxes.emplace_back(cv::Rect(x1, y1, width, height));
                 confidences.push_back(confidence);
@@ -555,43 +562,44 @@ void Detector::postProcess(const float* output, int outputSize)
             }
         }
     }
-    else if (dim1 == 15 && dim2 == 8400 or dim1 == 15 && dim2 == 8400 / 4) // [1, 15, 8400] or [1, 15, 2100] Yolov11
+    else if (dim1 == 15 && (dim2 == 8400 || dim2 == 2100)) // [1, 15, 8400] or [1, 15, 2100] Yolov11
     {
         int64_t channels = dim1;
-        int64_t cols = dim2;
-        
-        std::vector<std::vector<float>> detections;
-        for (int i = 0; i < cols; ++i)
+        int64_t numDetections = dim2;
+        const cv::Mat det_output(channels, numDetections, CV_32F, (void*)output);
+
+        int num_classes = channels - 4;
+
+        for (int i = 0; i < numDetections; ++i)
         {
-            std::vector<float> detection;
-            
-            for (int j = 0; j < channels; ++j)
+            const cv::Mat classes_scores = det_output.col(i).rowRange(4, channels);
+
+            cv::Mat exp_scores;
+            cv::exp(classes_scores, exp_scores);
+
+            double sum_exp_scores = cv::sum(exp_scores)[0]; 
+
+            cv::Mat probabilities = exp_scores / sum_exp_scores;
+
+            cv::Point class_id_point;
+            double max_class_score;
+            cv::minMaxLoc(probabilities, nullptr, &max_class_score, nullptr, &class_id_point);
+
+            if (max_class_score > config.confidence_threshold)
             {
-                detection.push_back(output[j * cols + i]);
-            }
-            detections.push_back(detection);
-        }
+                float x = det_output.at<float>(0, i);
+                float y = det_output.at<float>(1, i);
+                float w = det_output.at<float>(2, i);
+                float h = det_output.at<float>(3, i);
 
-        for (const auto& detection : detections)
-        {
-            float confidence = *std::max_element(detection.begin() + 4, detection.end());
-            if (confidence > config.confidence_threshold)
-            {
-                int64_t classId = std::distance(detection.begin() + 4, std::max_element(detection.begin() + 4, detection.end()));
-
-                float x = detection[0];
-                float y = detection[1];
-                float w = detection[2];
-                float h = detection[3];
-
-                int x1 = static_cast<int>((x - w / 2) * scale);
-                int y1 = static_cast<int>((y - h / 2) * scale);
-                int width = static_cast<int>(w * scale);
-                int height = static_cast<int>(h * scale);
+                int x1 = static_cast<int>((x - w / 2) * img_scale);
+                int y1 = static_cast<int>((y - h / 2) * img_scale);
+                int width = static_cast<int>(w * img_scale);
+                int height = static_cast<int>(h * img_scale);
 
                 boxes.emplace_back(x1, y1, width, height);
-                confidences.push_back(confidence);
-                classes.push_back(static_cast<int>(classId));
+                confidences.push_back(static_cast<float>(max_class_score));
+                classes.push_back(class_id_point.y);
             }
         }
     }
@@ -612,10 +620,10 @@ void Detector::postProcess(const float* output, int outputSize)
             {
                 int classId = 0;
 
-                int x1 = static_cast<int>((x - w / 2) * scale);
-                int y1 = static_cast<int>((y - h / 2) * scale);
-                int width = static_cast<int>(w * scale);
-                int height = static_cast<int>(h * scale);
+                int x1 = static_cast<int>((x - w / 2) * img_scale);
+                int y1 = static_cast<int>((y - h / 2) * img_scale);
+                int width = static_cast<int>(w * img_scale);
+                int height = static_cast<int>(h * img_scale);
 
                 boxes.emplace_back(x1, y1, width, height);
                 confidences.push_back(confidence);
@@ -642,10 +650,10 @@ void Detector::postProcess(const float* output, int outputSize)
 
             if (confidence > config.confidence_threshold)
             {
-                int x1 = static_cast<int>((x_center - width / 2) * scale);
-                int y1 = static_cast<int>((y_center - height / 2) * scale);
-                int w = static_cast<int>(width * scale);
-                int h = static_cast<int>(height * scale);
+                int x1 = static_cast<int>((x_center - width / 2) * img_scale);
+                int y1 = static_cast<int>((y_center - height / 2) * img_scale);
+                int w = static_cast<int>(width * img_scale);
+                int h = static_cast<int>(height * img_scale);
 
                 boxes.emplace_back(x1, y1, w, h);
                 confidences.push_back(confidence);
@@ -692,6 +700,17 @@ void Detector::postProcess(const float* output, int outputSize)
     {
         finalBoxes.push_back(selectedBoxes[idx]);
         finalClasses.push_back(selectedClasses[idx]);
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(scaleMutex);
+        for (auto& box : finalBoxes)
+        {
+            box.x = static_cast<int>(box.x * scaleX);
+            box.y = static_cast<int>(box.y * scaleY);
+            box.width = static_cast<int>(box.width * scaleX);
+            box.height = static_cast<int>(box.height * scaleY);
+        }
     }
 
     {

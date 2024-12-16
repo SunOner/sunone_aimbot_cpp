@@ -111,6 +111,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
 
         boxes = detector.detectedBoxes;
         classes = detector.detectedClasses;
+
         if (input_method_changed.load())
         {
             initializeInputMethod();

@@ -36,6 +36,11 @@ public:
     std::condition_variable detectionCV;
     std::vector<cv::Rect> detectedBoxes;
     std::vector<int> detectedClasses;
+    float img_scale;
+
+    std::mutex scaleMutex;
+    float scaleX;
+    float scaleY;
 
 private:
     std::unique_ptr<nvinfer1::IRuntime> runtime;
@@ -77,7 +82,6 @@ private:
     std::vector<cv::Rect> boxes;
     std::vector<float> confidences;
     std::vector<int> classes;
-    float scale;
     std::vector<cv::Mat> channels;
 };
 

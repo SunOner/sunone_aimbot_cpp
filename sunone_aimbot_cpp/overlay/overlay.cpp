@@ -14,9 +14,9 @@
 #include <dxgi.h>
 #include <filesystem>
 
-#include "../imgui.h"
-#include "../imgui_impl_dx11.h"
-#include "../imgui_impl_win32.h"
+#include <imgui.h>
+#include <imgui_impl_dx11.h>
+#include <imgui_impl_win32.h>
 
 #include "config.h"
 #include "keycodes.h"
@@ -26,8 +26,8 @@
 #include "other_tools.h"
 #include "memory_images.h"
 
-// snow theme
-#include "../Snowflake.hpp"
+// snow
+#include "Snowflake.hpp"
 
 static ID3D11Device* g_pd3dDevice = NULL;
 static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
@@ -755,6 +755,33 @@ void OverlayThread()
                             }
                         }
 
+                        //ImGui::Separator();
+                        //int model_sizes[] = { 320, 480, 640 };
+                        //const int model_sizes_count = sizeof(model_sizes) / sizeof(model_sizes[0]);
+                        //
+                        //const char* model_sizes_str[model_sizes_count];
+                        //std::string model_sizes_buffer[model_sizes_count];
+                        //
+                        //for (int i = 0; i < model_sizes_count; ++i)
+                        //{
+                        //    model_sizes_buffer[i] = intToString(model_sizes[i]);
+                        //    model_sizes_str[i] = model_sizes_buffer[i].c_str();
+                        //}
+                        //
+                        //if (ImGui::Combo("Engine Image Size", &selected_imgsz, model_sizes_str, model_sizes_count))
+                        //{
+                        //    if (selected_imgsz != prev_imgsz_index)
+                        //    {
+                        //        std::cout << "Image size changed to: " << model_sizes[selected_imgsz] << std::endl;
+                        //
+                        //        config.engine_image_size = model_sizes[selected_imgsz];
+                        //        detector_model_changed.store(true);
+                        //        prev_imgsz_index = selected_imgsz;
+                        //
+                        //        config.saveConfig("config.ini");
+                        //    }
+                        //}
+
                         ImGui::Separator();
                         ImGui::SliderFloat("Confidence Threshold", &config.confidence_threshold, 0.01f, 1.00f, "%.2f");
                         ImGui::SliderFloat("NMS Threshold", &config.nms_threshold, 0.01f, 1.00f, "%.2f");
@@ -1319,7 +1346,8 @@ void OverlayThread()
             }
 
             ImGui::Separator();
-            ImGui::TextColored(ImVec4(255, 255, 255, 100), "Do not test shooting and aiming with the overlay and debug window is open.");
+            ImGui::TextColored(ImVec4(255, 255, 255, 100),
+                "Do not test shooting and aiming with the overlay and debug window is open.");
 
             ImGui::End();
             ImGui::Render();

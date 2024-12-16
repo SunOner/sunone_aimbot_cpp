@@ -23,19 +23,6 @@ void displayThread()
 {
     std::vector<cv::Rect> boxes;
     std::vector<int> classes;
-    std::vector<int> cv_classes{
-        config.class_player,
-        config.class_bot,
-        config.class_weapon,
-        config.class_outline,
-        config.class_dead_body,
-        config.class_hideout_target_human,
-        config.class_hideout_target_balls,
-        config.class_head,
-        config.class_smoke,
-        config.class_fire,
-        config.class_third_person
-    };
 
     if (config.show_window)
     {
@@ -51,7 +38,7 @@ void displayThread()
         }
     }
 
-    int currentSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
+    int currentSize = 0;
 
     while (!shouldExit)
     {
@@ -68,8 +55,6 @@ void displayThread()
                 {
                     cv::setWindowProperty(config.window_name, cv::WND_PROP_TOPMOST, 0);
                 }
-
-                cv::resizeWindow(config.window_name, currentSize, currentSize);
             }
             else
             {
@@ -88,57 +73,64 @@ void displayThread()
                 frame = latestFrameCpu.clone();
             }
 
-            if (detector.getLatestDetections(boxes, classes))
-            {
-                float scale = static_cast<float>(config.detection_resolution) / config.engine_image_size;
-
-                for (size_t i = 0; i < boxes.size(); ++i)
-                {
-                    cv::Rect box = boxes[i];
-
-                    box.x = static_cast<int>(box.x / scale);
-                    box.y = static_cast<int>(box.y / scale);
-                    box.width = static_cast<int>(box.width / scale);
-                    box.height = static_cast<int>(box.height / scale);
-
-                    box.x = std::max(0, box.x);
-                    box.y = std::max(0, box.y);
-                    box.width = std::min(frame.cols - box.x, box.width);
-                    box.height = std::min(frame.rows - box.y, box.height);
-
-                    cv::rectangle(frame, box, cv::Scalar(0, 255, 0), 2);
-
-                    std::string className = std::to_string(cv_classes[classes[i]]);
-
-                    int baseline = 0;
-                    cv::Size textSize = cv::getTextSize(className, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
-                    cv::Point textOrg(box.x, box.y - 5);
-
-                    cv::putText(frame, className, textOrg, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
-                }
-            }
-
-            if (config.show_fps)
-            {
-                cv::putText(frame, "FPS: " + std::to_string(static_cast<int>(captureFps)), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 2);
-            }
-
             cv::Mat displayFrame;
+            int desiredWidth = frame.cols;
+            int desiredHeight = frame.rows;
 
             if (config.window_size != 100)
             {
-                int desiredSize = static_cast<int>((config.detection_resolution * config.window_size) / 100);
+                int desiredSize = static_cast<int>((config.engine_image_size * config.window_size) / 100);
                 if (desiredSize != currentSize)
                 {
                     cv::resizeWindow(config.window_name, desiredSize, desiredSize);
                     currentSize = desiredSize;
                 }
 
-                cv::resize(frame, displayFrame, cv::Size(currentSize, currentSize));
+                cv::resize(frame, displayFrame, cv::Size(desiredSize, desiredSize));
             }
             else
             {
-                displayFrame = frame;
+                displayFrame = frame.clone();
+            }
+
+            if (detector.getLatestDetections(boxes, classes))
+            {
+                float box_scale_x = static_cast<float>(frame.cols) / config.detection_resolution;
+                float box_scale_y = static_cast<float>(frame.rows) / config.detection_resolution;
+
+                float resize_scale_x = static_cast<float>(displayFrame.cols) / frame.cols;
+                float resize_scale_y = static_cast<float>(displayFrame.rows) / frame.rows;
+
+                for (size_t i = 0; i < boxes.size(); ++i)
+                {
+                    cv::Rect box = boxes[i];
+
+                    box.x = static_cast<int>(box.x * box_scale_x);
+                    box.y = static_cast<int>(box.y * box_scale_y);
+                    box.width = static_cast<int>(box.width * box_scale_x);
+                    box.height = static_cast<int>(box.height * box_scale_y);
+
+                    box.x = static_cast<int>(box.x * resize_scale_x);
+                    box.y = static_cast<int>(box.y * resize_scale_y);
+                    box.width = static_cast<int>(box.width * resize_scale_x);
+                    box.height = static_cast<int>(box.height * resize_scale_y);
+
+                    box.x = std::max(0, box.x);
+                    box.y = std::max(0, box.y);
+                    box.width = std::min(displayFrame.cols - box.x, box.width);
+                    box.height = std::min(displayFrame.rows - box.y, box.height);
+
+                    cv::rectangle(displayFrame, box, cv::Scalar(0, 255, 0), 2);
+                    std::string className = std::to_string(classes[i]);
+                    cv::putText(displayFrame, className, cv::Point(box.x, box.y - 5),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+                }
+            }
+
+            if (config.show_fps)
+            {
+                cv::putText(displayFrame, "FPS: " + std::to_string(static_cast<int>(captureFps)), cv::Point(10, 30),
+                    cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 2);
             }
 
             try

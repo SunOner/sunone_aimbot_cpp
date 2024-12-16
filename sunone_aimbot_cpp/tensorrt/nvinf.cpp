@@ -66,7 +66,7 @@ nvinfer1::ICudaEngine* loadEngineFromFile(const std::string& engineFile, nvinfer
     std::ifstream file(engineFile, std::ios::binary);
     if (!file.good())
     {
-        std::cerr << "[nvinf] Error opening the engine file: " << engineFile << std::endl;
+        std::cerr << "[TensorRT] Error opening the engine file: " << engineFile << std::endl;
         return nullptr;
     }
 
@@ -80,11 +80,11 @@ nvinfer1::ICudaEngine* loadEngineFromFile(const std::string& engineFile, nvinfer
     nvinfer1::ICudaEngine* engine = runtime->deserializeCudaEngine(engineData.data(), size);
     if (!engine)
     {
-        std::cerr << "[nvinf] Engine deserialization error from file: " << engineFile << std::endl;
+        std::cerr << "[TensorRT] Engine deserialization error from file: " << engineFile << std::endl;
         return nullptr;
     }
 
-    std::cout << "[nvinf] The engine was successfully loaded from the file: " << engineFile << std::endl;
+    std::cout << "[TensorRT] The engine was successfully loaded from the file: " << engineFile << std::endl;
 
     return engine;
 }
@@ -100,28 +100,37 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
 
     if (!parser->parseFromFile(onnxFile.c_str(), static_cast<int>(nvinfer1::ILogger::Severity::kWARNING)))
     {
-        std::cerr << "[nvinf] ERROR: Error parsing the ONNX file: " << onnxFile << std::endl;
-        
+        std::cerr << "[TensorRT] ERROR: Error parsing the ONNX file: " << onnxFile << std::endl;
+
         delete parser;
         delete network;
         delete builder;
         delete config;
-        
+
         return nullptr;
     }
 
-    config->setFlag(nvinfer1::BuilderFlag::kFP16);
+    const char* inputTensorName = network->getInput(0)->getName();
+
+    nvinfer1::IOptimizationProfile* profile = builder->createOptimizationProfile();
+
+    config->addOptimizationProfile(profile);
+
+    if (builder->platformHasFastFp16())
+    {
+        config->setFlag(nvinfer1::BuilderFlag::kFP16);
+    }
 
     nvinfer1::ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
     if (!engine)
     {
-        std::cerr << "[nvinf] ERROR: Could not build the engine" << std::endl;
-        
+        std::cerr << "[TensorRT] ERROR: Could not build the engine" << std::endl;
+
         delete parser;
         delete network;
         delete builder;
         delete config;
-        
+
         return nullptr;
     }
 
@@ -132,15 +141,15 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     std::ofstream p(engineFile, std::ios::binary);
     if (!p)
     {
-        std::cerr << "[nvinf] ERROR: Could not open file to write: " << engineFile << std::endl;
-        
+        std::cerr << "[TensorRT] ERROR: Could not open file to write: " << engineFile << std::endl;
+
         delete serializedModel;
         delete engine;
         delete parser;
         delete network;
         delete builder;
         delete config;
-        
+
         return nullptr;
     }
 
@@ -152,7 +161,7 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     delete config;
     delete builder;
 
-    std::cout << "[nvinf] The engine was built and saved to the file: " << engineFile << std::endl;
+    std::cout << "[TensorRT] The engine was built and saved to the file: " << engineFile << std::endl;
 
     return engine;
 }
