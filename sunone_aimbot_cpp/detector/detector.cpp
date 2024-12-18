@@ -574,14 +574,18 @@ void Detector::postProcess(const float* output, int outputSize)
         {
             const cv::Mat classes_scores = det_output.col(i).rowRange(4, channels);
 
-            cv::Mat exp_scores;
-            cv::exp(classes_scores, exp_scores);
+            double max_classes_score;
+            cv::minMaxLoc(classes_scores, nullptr, &max_classes_score);
 
-            double sum_exp_scores = cv::sum(exp_scores)[0]; 
+            cv::Mat exp_scores;
+            cv::exp(classes_scores - max_classes_score, exp_scores);
+
+            double sum_exp_scores = cv::sum(exp_scores)[0];
 
             cv::Mat probabilities = exp_scores / sum_exp_scores;
 
             cv::Point class_id_point;
+
             double max_class_score;
             cv::minMaxLoc(probabilities, nullptr, &max_class_score, nullptr, &class_id_point);
 
