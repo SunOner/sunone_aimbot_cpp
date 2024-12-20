@@ -47,8 +47,6 @@
     <ClInclude Include="mouse\SerialConnection.h" />
     <ClInclude Include="mouse\target.h" />
     <ClInclude Include="detector\detector.h" />
-    <ClInclude Include="detector\preprocess.h" />
-    <ClInclude Include="detector\cuda_utils.h" />
     <ClInclude Include="tensorrt\nvinf.h" />
     <ClInclude Include="keyboard\keyboard_listener.h" />
     <ClInclude Include="keyboard\keycodes.h" />
@@ -68,8 +66,5 @@
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
-  </ItemGroup>
-  <ItemGroup>
-    <CudaCompile Include="detector\preprocess.cu" />
   </ItemGroup>
 </Project>

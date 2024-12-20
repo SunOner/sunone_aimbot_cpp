@@ -24,8 +24,6 @@
 #include "nvinf.h"
 #include "sunone_aimbot_cpp.h"
 #include "other_tools.h"
-#include "preprocess.h"
-#include <cuda_utils.h>
 
 extern std::atomic<bool> detectionPaused;
 int model_quant;
@@ -195,6 +193,7 @@ void Detector::initialize(const std::string& modelFile)
     {
         inputName = inputNames[0];
         inputDims = engine->getTensorShape(inputName.c_str());
+
         nvinfer1::DataType dtype = engine->getTensorDataType(inputName.c_str());
         size_t inputSize = getSizeByDim(inputDims) * getElementSize(dtype);
         inputSizes[inputName] = inputSize;
@@ -492,21 +491,43 @@ bool Detector::getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int
 
 void Detector::preProcess(const cv::cuda::GpuMat& frame)
 {
-    int64_t inputH = inputDims.d[2];
-    int64_t inputW = inputDims.d[3];
-    
-    int num_channels = frame.channels();
+    cv::Mat frameCpu;
+    frame.download(frameCpu);
 
-    cuda_preprocess(
-        frame.ptr<const uint8_t>(),
-        frame.cols,
-        frame.rows,
-        static_cast<float*>(inputBufferDevice),
-        static_cast<int>(inputW),
-        static_cast<int>(inputH),
-        num_channels,
-        stream
+    int inputC = inputDims.d[1];
+    int inputH = inputDims.d[2];
+    int inputW = inputDims.d[3];
+
+    cv::Mat resizedImage;
+    cv::resize(frameCpu, resizedImage, cv::Size(inputW, inputH));
+
+    if (resizedImage.channels() == 4)
+    {
+        cv::cvtColor(resizedImage, resizedImage, cv::COLOR_BGRA2BGR);
+    }
+    else if (resizedImage.channels() != 3)
+    {
+        return;
+    }
+
+    cv::Mat inputBlob = cv::dnn::blobFromImage(
+        resizedImage,
+        1.0 / 255.0,
+        cv::Size(inputW, inputH),
+        cv::Scalar(),
+        true,
+        false
     );
+
+    size_t inputDataSize = inputBlob.total() * inputBlob.elemSize();
+    size_t expectedSize = inputSizes[inputName];
+
+    if (inputDataSize != expectedSize)
+    {
+        return;
+    }
+
+    cudaMemcpyAsync(inputBufferDevice, inputBlob.ptr<float>(), inputDataSize, cudaMemcpyHostToDevice, stream);
 }
 
 void Detector::postProcess(const float* output, int outputSize)

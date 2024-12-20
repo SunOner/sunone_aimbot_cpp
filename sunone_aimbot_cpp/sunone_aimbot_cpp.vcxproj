@@ -45,9 +45,7 @@
   <ItemGroup>
     <ClInclude Include="capture\capture.h" />
     <ClInclude Include="config\config.h" />
-    <ClInclude Include="detector\cuda_utils.h" />
     <ClInclude Include="detector\detector.h" />
-    <ClInclude Include="detector\preprocess.h" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />
@@ -75,9 +73,6 @@
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
-  </ItemGroup>
-  <ItemGroup>
-    <CudaCompile Include="detector\preprocess.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

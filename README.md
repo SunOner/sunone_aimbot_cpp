@@ -161,7 +161,6 @@
 - [Python AI AIMBOT](https://github.com/SunOner/sunone_aimbot)
 - [Snowflake.cpp](https://github.com/BaconToaster/Snowflake.cpp)
 - [GLFW](https://www.glfw.org/)
-- [CUDA PreProcess](https://github.com/hamdiboukamcha/Yolo-V11-cpp-TensorRT)
 
 ## 📄 Licenses
 
