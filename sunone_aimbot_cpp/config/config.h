@@ -45,7 +45,6 @@ public:
 
     // AI
     std::string ai_model;
-    int engine_image_size;
     float confidence_threshold;
     float nms_threshold;
     int max_detections;

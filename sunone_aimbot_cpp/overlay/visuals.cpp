@@ -79,7 +79,7 @@ void displayThread()
 
             if (config.window_size != 100)
             {
-                int desiredSize = static_cast<int>((config.engine_image_size * config.window_size) / 100);
+                int desiredSize = static_cast<int>((640 * config.window_size) / 100);
                 if (desiredSize != currentSize)
                 {
                     cv::resizeWindow(config.window_name, desiredSize, desiredSize);

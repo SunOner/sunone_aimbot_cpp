@@ -648,7 +648,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             {
                 cv::cuda::GpuMat resizedGpu;
 
-                int model_input_size = config.engine_image_size;
+                int model_input_size = 640;
 
                 if (config.circle_mask)
                 {

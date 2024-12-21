@@ -50,7 +50,6 @@ bool Config::loadConfig(const std::string& filename)
         bScope_multiplier = 1.2f;
 
         ai_model = "sunxds_0.5.6.engine";
-        engine_image_size = 640;
         confidence_threshold = 0.15f;
         nms_threshold = 0.50;
         max_detections = 20;
@@ -130,7 +129,6 @@ bool Config::loadConfig(const std::string& filename)
 
         // AI
         ai_model = pt.get<std::string>("ai_model", "sunxds_0.5.6.engine");
-        engine_image_size = pt.get<int>("engine_image_size", 640);
         confidence_threshold = pt.get<float>("confidence_threshold", 0.15f);
         nms_threshold = pt.get<float>("nms_threshold", 0.50);
         max_detections = pt.get<int>("max_detections", 20);
@@ -237,7 +235,6 @@ bool Config::saveConfig(const std::string& filename)
 
     file << "# AI\n";
     file << "ai_model = " << ai_model << "\n";
-    file << "engine_image_size = " << engine_image_size << "\n";
     file << "confidence_threshold = " << std::fixed << std::setprecision(2) << confidence_threshold << "\n";
     file << "nms_threshold = " << std::fixed << std::setprecision(2) << nms_threshold << "\n";
     file << "max_detections = " << max_detections << "\n\n";

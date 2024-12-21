@@ -12,7 +12,6 @@ std::vector<std::string> getEngineFiles();
 std::vector<std::string> getModelFiles();
 std::vector<std::string> getOnnxFiles();
 std::vector<std::string>::difference_type getModelIndex(std::vector<std::string> engine_models);
-int getImageSizeIndex(int engine_image_size, const int* model_sizes, int model_sizes_count);
 void HideConsole();
 void ShowConsole();
 bool IsConsoleVisible();

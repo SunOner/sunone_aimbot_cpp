@@ -181,18 +181,6 @@ std::vector<std::string>::difference_type getModelIndex(std::vector<std::string>
     }
 }
 
-int getImageSizeIndex(int engine_image_size, const int* model_sizes, int model_sizes_count)
-{
-    for (int i = 0; i < model_sizes_count; ++i)
-    {
-        if (model_sizes[i] == engine_image_size)
-        {
-            return i;
-        }
-    }
-    return 0; // not found
-}
-
 bool LoadTextureFromFile(const char* filename, ID3D11Device* device, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
 {
     int image_width = 0;

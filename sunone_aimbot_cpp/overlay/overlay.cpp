@@ -212,13 +212,6 @@ void SetupImGui()
     ImGui::StyleColorsDark();
 
     // Other setups
-
-    // ai model image sizes
-    int model_sizes[] = { 320, 480, 640 };
-    const int model_sizes_count = sizeof(model_sizes) / sizeof(model_sizes[0]);
-
-    selected_imgsz = getImageSizeIndex(config.engine_image_size, model_sizes, model_sizes_count);
-    prev_imgsz_index = selected_imgsz;
     
     // Load body texture
     int image_width = 0;
@@ -754,33 +747,6 @@ void OverlayThread()
                                 }
                             }
                         }
-
-                        //ImGui::Separator();
-                        //int model_sizes[] = { 320, 480, 640 };
-                        //const int model_sizes_count = sizeof(model_sizes) / sizeof(model_sizes[0]);
-                        //
-                        //const char* model_sizes_str[model_sizes_count];
-                        //std::string model_sizes_buffer[model_sizes_count];
-                        //
-                        //for (int i = 0; i < model_sizes_count; ++i)
-                        //{
-                        //    model_sizes_buffer[i] = intToString(model_sizes[i]);
-                        //    model_sizes_str[i] = model_sizes_buffer[i].c_str();
-                        //}
-                        //
-                        //if (ImGui::Combo("Engine Image Size", &selected_imgsz, model_sizes_str, model_sizes_count))
-                        //{
-                        //    if (selected_imgsz != prev_imgsz_index)
-                        //    {
-                        //        std::cout << "Image size changed to: " << model_sizes[selected_imgsz] << std::endl;
-                        //
-                        //        config.engine_image_size = model_sizes[selected_imgsz];
-                        //        detector_model_changed.store(true);
-                        //        prev_imgsz_index = selected_imgsz;
-                        //
-                        //        config.saveConfig("config.ini");
-                        //    }
-                        //}
 
                         ImGui::Separator();
                         ImGui::SliderFloat("Confidence Threshold", &config.confidence_threshold, 0.01f, 1.00f, "%.2f");
