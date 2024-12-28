@@ -25,6 +25,8 @@
     <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="detector\postProcess.cpp" />
+    <ClCompile Include="capture\winrt_capture.cpp" />
+    <ClCompile Include="capture\duplication_api_capture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -62,6 +64,8 @@
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="detector\postProcess.h" />
+    <ClInclude Include="capture\winrt_capture.h" />
+    <ClInclude Include="capture\duplication_api_capture.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -7,6 +7,12 @@
 #include <mutex>
 #include <condition_variable>
 
+extern std::atomic<bool> detection_resolution_changed;
+extern std::atomic<bool> capture_method_changed;
+extern std::atomic<bool> capture_cursor_changed;
+extern std::atomic<bool> capture_borders_changed;
+extern std::atomic<bool> capture_fps_changed;
+
 void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT);
 extern int screenWidth;
 extern int screenHeight;
