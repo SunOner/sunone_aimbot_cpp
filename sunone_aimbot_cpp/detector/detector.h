@@ -11,15 +11,6 @@
 #include <cuda_fp16.h>
 #include <memory>
 
-struct DetResult
-{
-    cv::Rect bbox;
-    float conf;
-    int label;
-
-    DetResult(cv::Rect b, float c, int l) : bbox(b), conf(c), label(l) {}
-};
-
 class Detector
 {
 public:
@@ -31,14 +22,15 @@ public:
     void releaseDetections();
     bool getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int>& classes);
 
-    int detectionVersion;
     std::mutex detectionMutex;
+    std::mutex scaleMutex;
+
+    int detectionVersion;
     std::condition_variable detectionCV;
     std::vector<cv::Rect> detectedBoxes;
     std::vector<int> detectedClasses;
     float img_scale;
 
-    std::mutex scaleMutex;
     float scaleX;
     float scaleY;
 
@@ -57,7 +49,10 @@ private:
 
     void loadEngine(const std::string& engineFile);
     void preProcess(const cv::cuda::GpuMat& frame);
-    void postProcess(const float* output, int outputSize);
+    void postProcess(const float* output, const std::string& outputName);
+    void getInputNames();
+    void getOutputNames();
+    void getBindings();
 
     std::vector<std::string> inputNames;
     std::vector<std::string> outputNames;
@@ -66,22 +61,21 @@ private:
     std::unordered_map<std::string, void*> inputBindings;
     std::unordered_map<std::string, void*> outputBindings;
     std::unordered_map<std::string, std::vector<int64_t>> outputShapes;
+    int numClasses;
 
     size_t getSizeByDim(const nvinfer1::Dims& dims);
     size_t getElementSize(nvinfer1::DataType dtype);
-    void getInputNames();
-    void getOutputNames();
-    void getBindings();
 
-    std::vector<float> inputBuffer;
     std::string inputName;
     void* inputBufferDevice;
     std::unordered_map<std::string, std::vector<float>> outputDataBuffers;
     std::unordered_map<std::string, std::vector<__half>> outputDataBuffersHalf;
     std::unordered_map<std::string, nvinfer1::DataType> outputTypes;
+
     std::vector<cv::Rect> boxes;
     std::vector<float> confidences;
     std::vector<int> classes;
+
     std::vector<cv::Mat> channels;
 };
 

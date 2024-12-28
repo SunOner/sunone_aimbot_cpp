@@ -299,5 +299,7 @@ int main()
         delete gHub;
     }
 
+    std::cin.get();
+
     return 0;
 }

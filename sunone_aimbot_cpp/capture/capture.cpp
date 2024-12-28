@@ -646,46 +646,19 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
             if (!screenshotGpu.empty())
             {
-                cv::cuda::GpuMat resizedGpu;
-
-                int model_input_size = 640;
-
-                if (config.circle_mask)
-                {
-                    cv::Mat mask = cv::Mat::zeros(screenshotGpu.size(), CV_8UC1);
-                    cv::Point center(mask.cols / 2, mask.rows / 2);
-                    int radius = std::min(mask.cols, mask.rows) / 2;
-                    cv::circle(mask, center, radius, cv::Scalar(255), -1);
-
-                    cv::cuda::GpuMat maskGpu;
-                    maskGpu.upload(mask);
-
-                    cv::cuda::GpuMat maskedImageGpu;
-                    screenshotGpu.copyTo(maskedImageGpu, maskGpu);
-
-                    cv::cuda::resize(maskedImageGpu, resizedGpu, cv::Size(model_input_size, model_input_size), 0, 0, cv::INTER_LINEAR);
-                }
-                else
-                {
-                    cv::cuda::resize(screenshotGpu, resizedGpu, cv::Size(model_input_size, model_input_size), 0, 0, cv::INTER_LINEAR);
-                }
-
-                float scale_x = 1;
-                float scale_y = 1;
-
                 {
                     std::lock_guard<std::mutex> lock(detector.scaleMutex);
-                    detector.scaleX = scale_x;
-                    detector.scaleY = scale_y;
+                    detector.scaleX = 1;
+                    detector.scaleY = 1;
                 }
 
                 {
                     std::lock_guard<std::mutex> lock(frameMutex);
-                    latestFrameGpu = resizedGpu.clone();
+                    latestFrameGpu = screenshotGpu.clone();
                 }
 
-                detector.processFrame(resizedGpu);
-                resizedGpu.download(latestFrameCpu);
+                detector.processFrame(screenshotGpu);
+                screenshotGpu.download(latestFrameCpu);
 
                 {
                     std::lock_guard<std::mutex> lock(frameMutex);
@@ -706,7 +679,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                         if (elapsed >= config.screenshot_delay)
                         {
                             cv::Mat resizedCpu;
-                            resizedGpu.download(resizedCpu);
+                            screenshotGpu.download(resizedCpu);
 
                             auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
                                 std::chrono::system_clock::now().time_since_epoch()).count();

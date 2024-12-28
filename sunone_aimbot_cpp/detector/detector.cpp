@@ -24,6 +24,7 @@
 #include "nvinf.h"
 #include "sunone_aimbot_cpp.h"
 #include "other_tools.h"
+#include "postProcess.h"
 
 extern std::atomic<bool> detectionPaused;
 int model_quant;
@@ -107,7 +108,6 @@ void Detector::getOutputNames()
 
         if (engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT)
         {
-
             outputNames.emplace_back(name);
 
             nvinfer1::Dims dims = engine->getTensorShape(name);
@@ -211,6 +211,67 @@ void Detector::initialize(const std::string& modelFile)
     {
         std::cerr << "[Detector] No input tensors found" << std::endl;
     }
+
+    if (!outputNames.empty())
+    {
+        const std::string& outputName = outputNames[0];
+        const std::vector<int64_t>& shape = outputShapes[outputName];
+
+        if (config.postprocess == "yolo8" || config.postprocess == "yolo9")
+        {
+            if (shape.size() >= 2)
+            {
+                numClasses = static_cast<int>(shape[1] - 4);
+                std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
+            }
+            else
+            {
+                std::cerr << "[Detector] Unsupported output tensor shape for yolo8/yolo9." << std::endl;
+                numClasses = 0;
+            }
+        }
+        else if (config.postprocess == "yolo10")
+        {
+            if (shape.size() >= 3)
+            {
+                numClasses = 300; // not supported
+            }
+            else
+            {
+                std::cerr << "[Detector] Unsupported output tensor shape for yolo10." << std::endl;
+                numClasses = 0;
+            }
+        }
+        else if (config.postprocess == "yolo11")
+        {
+            if (shape.size() >= 2)
+            {
+                numClasses = static_cast<int>(shape[1] - 4);
+                std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
+            }
+            else
+            {
+                std::cerr << "[Detector] Unsupported output tensor shape for yolo11." << std::endl;
+                numClasses = 0;
+            }
+        }
+        else
+        {
+            std::cerr << "[Detector] Unknown post-processing method: " << config.postprocess << std::endl;
+            numClasses = 0;
+        }
+    }
+    else
+    {
+        std::cerr << "[Detector] No output tensors were found." << std::endl;
+        numClasses = 0;
+    }
+
+    if (numClasses <= 0)
+    {
+        std::cerr << "[Detector] The number of classes from the output tensor could not be determined." << std::endl;
+    }
+
 
     for (const auto& name : outputNames)
     {
@@ -443,7 +504,7 @@ void Detector::inferenceThread()
         for (const auto& name : outputNames)
         {
             nvinfer1::DataType dtype = outputTypes[name];
-            
+
             if (dtype == nvinfer1::DataType::kHALF)
             {
                 const std::vector<__half>& outputDataHalf = outputDataBuffersHalf[name];
@@ -454,12 +515,12 @@ void Detector::inferenceThread()
                     outputData[i] = __half2float(outputDataHalf[i]);
                 }
 
-                postProcess(outputData.data(), static_cast<int>(outputData.size()));
+                postProcess(outputData.data(), name);
             }
             else if (dtype == nvinfer1::DataType::kFLOAT)
             {
                 const std::vector<float>& outputData = outputDataBuffers[name];
-                postProcess(outputData.data(), static_cast<int>(outputData.size()));
+                postProcess(outputData.data(), name);
             }
             else
             {
@@ -491,259 +552,89 @@ bool Detector::getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int
 
 void Detector::preProcess(const cv::cuda::GpuMat& frame)
 {
-    cv::Mat frameCpu;
-    frame.download(frameCpu);
-
     int inputC = inputDims.d[1];
     int inputH = inputDims.d[2];
     int inputW = inputDims.d[3];
 
-    cv::Mat resizedImage;
-    cv::resize(frameCpu, resizedImage, cv::Size(inputW, inputH));
+    cv::cuda::GpuMat resizedImage;
+    cv::cuda::resize(frame, resizedImage, cv::Size(inputW, inputH));
 
     if (resizedImage.channels() == 4)
     {
-        cv::cvtColor(resizedImage, resizedImage, cv::COLOR_BGRA2BGR);
+        cv::cuda::cvtColor(resizedImage, resizedImage, cv::COLOR_BGRA2BGR);
     }
     else if (resizedImage.channels() != 3)
     {
         return;
     }
 
-    cv::Mat inputBlob = cv::dnn::blobFromImage(
-        resizedImage,
-        1.0 / 255.0,
-        cv::Size(inputW, inputH),
-        cv::Scalar(),
-        true,
-        false
-    );
+    cv::cuda::cvtColor(resizedImage, resizedImage, cv::COLOR_BGR2RGB);
 
-    size_t inputDataSize = inputBlob.total() * inputBlob.elemSize();
-    size_t expectedSize = inputSizes[inputName];
+    resizedImage.convertTo(resizedImage, CV_32F, 1.0 / 255.0);
 
-    if (inputDataSize != expectedSize)
+    std::vector<cv::cuda::GpuMat> gpuChannels;
+    cv::cuda::split(resizedImage, gpuChannels);
+
+    for (int c = 0; c < inputC; ++c)
     {
-        return;
+        cudaMemcpyAsync(
+            static_cast<float*>(inputBufferDevice) + c * inputH * inputW,
+            gpuChannels[c].ptr<float>(),
+            inputH * inputW * sizeof(float),
+            cudaMemcpyDeviceToDevice,
+            stream
+        );
     }
 
-    cudaMemcpyAsync(inputBufferDevice, inputBlob.ptr<float>(), inputDataSize, cudaMemcpyHostToDevice, stream);
+    cudaStreamSynchronize(stream);
 }
 
-void Detector::postProcess(const float* output, int outputSize)
+void Detector::postProcess(const float* output, const std::string& outputName)
 {
-    boxes.clear();
-    confidences.clear();
-    classes.clear();
-
-    const auto& shape = outputShapes[outputNames[0]];
-
-    if (shape.size() != 3)
+    if (numClasses <= 0)
     {
-        std::cerr << "Unsupported output shape" << std::endl;
+        std::cerr << "[Detector] The number of model classes is undefined or incorrect." << std::endl;
         return;
     }
 
-    int64_t batch_size = shape[0];
-    int64_t dim1 = shape[1];
-    int64_t dim2 = shape[2];
+    std::vector<Detection> detections;
+    size_t outputSize = outputSizes[outputName] / sizeof(float);
 
-    if (batch_size != 1)
+    if (config.postprocess == "yolo8")
     {
-        std::cerr << "Batch size > 1 is not supported" << std::endl;
-        return;
+        std::vector<float> outputVec(output, output + outputSize);
+        detections = postProcessYolo8(outputVec, img_scale, config.detection_resolution, config.detection_resolution, numClasses, config.confidence_threshold, config.nms_threshold);
     }
-
-    if (dim2 == 6) // [1, 300, 6]
+    else if (config.postprocess == "yolo9")
     {
-        int64_t numDetections = dim1;
-
-        for (int i = 0; i < numDetections; ++i)
-        {
-            const float* det = output + i * dim2;
-            float confidence = det[4];
-
-            if (confidence > config.confidence_threshold)
-            {
-                int classId = static_cast<int>(det[5]);
-
-                float x_min = det[0];
-                float y_min = det[1];
-                float x_max = det[2];
-                float y_max = det[3];
-
-                int x1 = static_cast<int>(x_min * img_scale);
-                int y1 = static_cast<int>(y_min * img_scale);
-                int width = static_cast<int>((x_max - x_min) * img_scale);
-                int height = static_cast<int>((y_max - y_min) * img_scale);
-
-                boxes.emplace_back(cv::Rect(x1, y1, width, height));
-                confidences.push_back(confidence);
-                classes.push_back(classId);
-            }
-        }
+        std::vector<float> outputVec(output, output + outputSize);
+        detections = postProcessYolo9(outputVec, img_scale, config.detection_resolution, config.detection_resolution, numClasses, config.confidence_threshold, config.nms_threshold);
     }
-    else if (dim1 == 15 && (dim2 == 8400 || dim2 == 2100)) // [1, 15, 8400] or [1, 15, 2100] Yolov11
+    else if (config.postprocess == "yolo10")
     {
-        int64_t channels = dim1;
-        int64_t numDetections = dim2;
-        const cv::Mat det_output(channels, numDetections, CV_32F, (void*)output);
-
-        int num_classes = channels - 4;
-
-        for (int i = 0; i < numDetections; ++i)
-        {
-            const cv::Mat classes_scores = det_output.col(i).rowRange(4, channels);
-
-            double max_classes_score;
-            cv::minMaxLoc(classes_scores, nullptr, &max_classes_score);
-
-            cv::Mat exp_scores;
-            cv::exp(classes_scores - max_classes_score, exp_scores);
-
-            double sum_exp_scores = cv::sum(exp_scores)[0];
-
-            cv::Mat probabilities = exp_scores / sum_exp_scores;
-
-            cv::Point class_id_point;
-
-            double max_class_score;
-            cv::minMaxLoc(probabilities, nullptr, &max_class_score, nullptr, &class_id_point);
-
-            if (max_class_score > config.confidence_threshold)
-            {
-                float x = det_output.at<float>(0, i);
-                float y = det_output.at<float>(1, i);
-                float w = det_output.at<float>(2, i);
-                float h = det_output.at<float>(3, i);
-
-                int x1 = static_cast<int>((x - w / 2) * img_scale);
-                int y1 = static_cast<int>((y - h / 2) * img_scale);
-                int width = static_cast<int>(w * img_scale);
-                int height = static_cast<int>(h * img_scale);
-
-                boxes.emplace_back(x1, y1, width, height);
-                confidences.push_back(static_cast<float>(max_class_score));
-                classes.push_back(class_id_point.y);
-            }
-        }
+        const std::vector<int64_t>& shape = outputShapes[outputName];
+        detections = postProcessYolo10(output, shape, img_scale, numClasses, config.confidence_threshold, config.nms_threshold);
     }
-    else if (dim1 == 5 && dim2 == 8400) // [1, 5, 8400] with one class output
+    else if (config.postprocess == "yolo11")
     {
-        int64_t channels = dim1;
-        int64_t cols = dim2;
-
-        for (int i = 0; i < cols; ++i)
-        {
-            float x = output[i];
-            float y = output[cols + i];
-            float w = output[2 * cols + i];
-            float h = output[3 * cols + i];
-            float confidence = output[4 * cols + i];
-
-            if (confidence > config.confidence_threshold)
-            {
-                int classId = 0;
-
-                int x1 = static_cast<int>((x - w / 2) * img_scale);
-                int y1 = static_cast<int>((y - h / 2) * img_scale);
-                int width = static_cast<int>(w * img_scale);
-                int height = static_cast<int>(h * img_scale);
-
-                boxes.emplace_back(x1, y1, width, height);
-                confidences.push_back(confidence);
-                classes.push_back(classId);
-            }
-        }
-    }
-    else if (dim1 == 7 && dim2 == 8400) // [1, 7, 8400] Yolov9
-    {
-        int64_t channels = dim1;
-        int64_t cols = dim2;
-
-        for (int i = 0; i < cols; ++i)
-        {
-            float x_center = output[i];
-            float y_center = output[cols + i];
-            float width = output[2 * cols + i];
-            float height = output[3 * cols + i];
-            float objectness = output[4 * cols + i];
-            float class_confidence = output[5 * cols + i];
-            int classId = static_cast<int>(output[6 * cols + i]);
-
-            float confidence = objectness * class_confidence;
-
-            if (confidence > config.confidence_threshold)
-            {
-                int x1 = static_cast<int>((x_center - width / 2) * img_scale);
-                int y1 = static_cast<int>((y_center - height / 2) * img_scale);
-                int w = static_cast<int>(width * img_scale);
-                int h = static_cast<int>(height * img_scale);
-
-                boxes.emplace_back(x1, y1, w, h);
-                confidences.push_back(confidence);
-                classes.push_back(classId);
-            }
-        }
+        const std::vector<int64_t>& shape = outputShapes[outputName];
+        detections = postProcessYolo11(output, shape, numClasses, config.confidence_threshold, config.nms_threshold, img_scale);
     }
     else
     {
-        std::cerr << "Unknown output shape(" << shape[0] << "," << shape[1] << "," << shape[2] << ")" << std::endl;
-        return;
-    }
-
-    std::vector<int> indices(boxes.size());
-    std::iota(indices.begin(), indices.end(), 0);
-
-    std::sort(indices.begin(), indices.end(), [&](int i1, int i2) {
-        return confidences[i1] > confidences[i2];
-        });
-
-    if (indices.size() > config.max_detections)
-    {
-        indices.resize(config.max_detections);
-    }
-
-    std::vector<cv::Rect> selectedBoxes;
-    std::vector<float> selectedConfidences;
-    std::vector<int> selectedClasses;
-
-    for (int idx : indices)
-    {
-        selectedBoxes.push_back(boxes[idx]);
-        selectedConfidences.push_back(confidences[idx]);
-        selectedClasses.push_back(classes[idx]);
-    }
-
-    std::vector<int> nmsIndices;
-    cv::dnn::NMSBoxes(selectedBoxes, selectedConfidences, config.confidence_threshold, config.nms_threshold, nmsIndices);
-
-    std::vector<cv::Rect> finalBoxes;
-    std::vector<int> finalClasses;
-
-    for (int idx : nmsIndices)
-    {
-        finalBoxes.push_back(selectedBoxes[idx]);
-        finalClasses.push_back(selectedClasses[idx]);
-    }
-
-    {
-        std::lock_guard<std::mutex> lock(scaleMutex);
-        for (auto& box : finalBoxes)
-        {
-            box.x = static_cast<int>(box.x * scaleX);
-            box.y = static_cast<int>(box.y * scaleY);
-            box.width = static_cast<int>(box.width * scaleX);
-            box.height = static_cast<int>(box.height * scaleY);
-        }
+        std::cerr << "[Detector] Unknown postprocess method: " << config.postprocess << std::endl;
     }
 
     {
         std::lock_guard<std::mutex> lock(detectionMutex);
-        detectedBoxes = std::move(finalBoxes);
-        detectedClasses = std::move(finalClasses);
+        detectedBoxes.clear();
+        detectedClasses.clear();
+        for (const auto& det : detections)
+        {
+            detectedBoxes.push_back(det.box);
+            detectedClasses.push_back(det.classId);
+        }
         detectionVersion++;
     }
-
     detectionCV.notify_one();
 }

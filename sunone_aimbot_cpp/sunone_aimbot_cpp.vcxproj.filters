@@ -24,6 +24,7 @@
     <ClCompile Include="imgui\imgui_impl_win32.cpp" />
     <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
+    <ClCompile Include="detector\postProcess.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -60,6 +61,7 @@
     <ClInclude Include="imgui\imstb_rectpack.h" />
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
+    <ClInclude Include="detector\postProcess.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

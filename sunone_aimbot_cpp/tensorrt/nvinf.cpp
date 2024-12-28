@@ -5,7 +5,6 @@
 #include <iostream>
 #include <fstream>
 
-//#include <NvInferPlugin.h> // TODO: add batchedNMS
 #include <NvOnnxParser.h>
 
 #include "nvinf.h"

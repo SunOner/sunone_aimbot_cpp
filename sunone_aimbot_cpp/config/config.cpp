@@ -53,6 +53,7 @@ bool Config::loadConfig(const std::string& filename)
         confidence_threshold = 0.15f;
         nms_threshold = 0.50;
         max_detections = 20;
+        postprocess = "yolo10";
 
         button_targeting = splitString("RightMouseButton");
         button_exit = splitString("F2");
@@ -132,6 +133,7 @@ bool Config::loadConfig(const std::string& filename)
         confidence_threshold = pt.get<float>("confidence_threshold", 0.15f);
         nms_threshold = pt.get<float>("nms_threshold", 0.50);
         max_detections = pt.get<int>("max_detections", 20);
+        postprocess = pt.get<std::string>("postprocess", "yolo11");
 
         // Buttons
         button_targeting = splitString(pt.get<std::string>("button_targeting", "RightMouseButton"));
@@ -237,7 +239,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "ai_model = " << ai_model << "\n";
     file << "confidence_threshold = " << std::fixed << std::setprecision(2) << confidence_threshold << "\n";
     file << "nms_threshold = " << std::fixed << std::setprecision(2) << nms_threshold << "\n";
-    file << "max_detections = " << max_detections << "\n\n";
+    file << "max_detections = " << max_detections << "\n";
+    file << "postprocess = " << postprocess << "\n\n";
 
     file << "# Buttons\n";
     file << "button_targeting = " << joinStrings(button_targeting) << "\n";

@@ -747,6 +747,26 @@ void OverlayThread()
                                 }
                             }
                         }
+                        ImGui::Separator();
+                        std::vector<std::string> postprocessOptions = { "yolo8", "yolo9", "yolo10", "yolo11" };
+                        std::vector<const char*> postprocessItems;
+                        for (const auto& option : postprocessOptions) {
+                            postprocessItems.push_back(option.c_str());
+                        }
+
+                        int currentPostprocessIndex = 0;
+                        for (size_t i = 0; i < postprocessOptions.size(); ++i) {
+                            if (postprocessOptions[i] == config.postprocess) {
+                                currentPostprocessIndex = static_cast<int>(i);
+                                break;
+                            }
+                        }
+
+                        if (ImGui::Combo("Postprocess", &currentPostprocessIndex, postprocessItems.data(), static_cast<int>(postprocessItems.size()))) {
+                            config.postprocess = postprocessOptions[currentPostprocessIndex];
+                            config.saveConfig("config.ini");
+                            detector_model_changed.store(true);
+                        }
 
                         ImGui::Separator();
                         ImGui::SliderFloat("Confidence Threshold", &config.confidence_threshold, 0.01f, 1.00f, "%.2f");

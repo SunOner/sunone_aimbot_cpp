@@ -48,6 +48,7 @@ public:
     float confidence_threshold;
     float nms_threshold;
     int max_detections;
+    std::string postprocess;
 
     // Buttons
     std::vector<std::string> button_targeting;
