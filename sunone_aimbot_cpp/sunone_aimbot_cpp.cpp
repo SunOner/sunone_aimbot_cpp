@@ -20,6 +20,7 @@
 #include "SerialConnection.h"
 #include "ghub.h"
 #include "other_tools.h"
+#include "optical_flow.h"
 
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
@@ -33,6 +34,8 @@ Config config;
 
 GhubMouse* gHub = nullptr;
 SerialConnection* serial = nullptr;
+
+OpticalFlow opticalFlow;
 
 std::atomic<bool> detection_resolution_changed(false);
 std::atomic<bool> capture_method_changed(false);
@@ -98,34 +101,34 @@ void mouseThreadFunction(MouseThread& mouseThread)
     {
         std::vector<cv::Rect> boxes;
         std::vector<int> classes;
-
+        
         std::unique_lock<std::mutex> lock(detector.detectionMutex);
-
+        
         detector.detectionCV.wait_for(lock, timeout, [&]() { return detector.detectionVersion > lastDetectionVersion || shouldExit; });
-
+        
         if (shouldExit) break;
-
+        
         if (detector.detectionVersion <= lastDetectionVersion) continue;
-
+        
         lastDetectionVersion = detector.detectionVersion;
-
+        
         boxes = detector.detectedBoxes;
         classes = detector.detectedClasses;
-
+        
         if (input_method_changed.load())
         {
             initializeInputMethod();
             input_method_changed.store(false);
         }
-
+        
         Target* target = sortTargets(boxes, classes, config.detection_resolution, config.detection_resolution, config.disable_headshot);
-
+        
         if (aiming)
         {
             if (target)
             {
                 mouseThread.moveMouse(*target);
-
+        
                 if (config.auto_shoot)
                 {
                     mouseThread.pressMouse(*target);
@@ -146,7 +149,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
                 mouseThread.releaseMouse();
             }
         }
-
+        
         mouseThread.checkAndResetPredictions();
         delete target;
     }
@@ -279,6 +282,9 @@ int main()
     std::thread detThread(&Detector::inferenceThread, &detector);
     std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
     std::thread overlayThread(OverlayThread);
+    opticalFlow.startOpticalFlowThread();
+
+    welcome_message();
 
     displayThread();
 
@@ -298,6 +304,8 @@ int main()
         gHub->mouse_close();
         delete gHub;
     }
+
+    opticalFlow.stopOpticalFlowThread();
 
     std::cin.get();
 

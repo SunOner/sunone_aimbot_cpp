@@ -27,7 +27,7 @@
 
 #include "other_tools.h"
 #include "config.h"
-#include <sunone_aimbot_cpp.h>
+#include "sunone_aimbot_cpp.h"
 
 static const std::string base64_chars =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -457,4 +457,15 @@ std::vector<std::string> getAvailableModels()
     }
 
     return availableModels;
+}
+
+void welcome_message()
+{
+    std::cout <<
+    "\n\nAimbot is started!\n" <<
+    config.joinStrings(config.button_targeting) << " -> Targeting\n" <<
+    config.joinStrings(config.button_exit) << " -> Exit\n" <<
+    config.joinStrings(config.button_pause) << " -> Pause Aiming\n" <<
+    config.joinStrings(config.button_open_overlay) << " -> Overlay (OPTIONS)" <<
+    std::endl;
 }

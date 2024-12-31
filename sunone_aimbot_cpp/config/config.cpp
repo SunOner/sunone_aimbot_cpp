@@ -18,20 +18,24 @@ bool Config::loadConfig(const std::string& filename)
     if (!boost::filesystem::exists(filename))
     {
         std::cerr << "Config file does not exist, creating default config: " << filename << std::endl;
+        // Capture
+        capture_method = "duplication_api";
         detection_resolution = 320;
         capture_fps = 60;
         monitor_idx = 0;
         circle_mask = true;
         capture_borders = true;
         capture_cursor = true;
-        duplication_api = true;
+        virtual_camera_name = "None";
 
+        // Target
         disable_headshot = false;
         body_y_offset = 0.15f;
         ignore_third_person = false;
         shooting_range_targets = false;
         auto_aim = false;
 
+        // Mouse
         dpi = 1000;
         sensitivity = 4.0f;
         fovX = 50;
@@ -41,28 +45,41 @@ bool Config::loadConfig(const std::string& filename)
         predictionInterval = 0.5f;
         input_method = "WIN32";
 
+        // Arduino
         arduino_baudrate = 115200;
         arduino_port = "COM0";
         arduino_16_bit_mouse = false;
         arduino_enable_keys = false;
-
+        
+        // Mouse shooting
         auto_shoot = false;
         bScope_multiplier = 1.2f;
-
+        
+        // AI
         ai_model = "sunxds_0.5.6.engine";
         confidence_threshold = 0.15f;
         nms_threshold = 0.50;
-        max_detections = 20;
+        max_detections = 100;
         postprocess = "yolo10";
 
+        // optical flow
+        enable_optical_flow = false;
+        draw_optical_flow = true;
+        draw_optical_flow_steps = 16;
+        optical_flow_alpha_cpu = 0.06f;
+        optical_flow_magnitudeThreshold = 2.08;
+
+        // Buttons
         button_targeting = splitString("RightMouseButton");
         button_exit = splitString("F2");
         button_pause = splitString("F3");
         button_reload_config = splitString("F4");
         button_open_overlay = splitString("Home");
 
+        // Overlay
         overlay_opacity = 225;
 
+        // Custom classes
         class_player =  0;
         class_bot = 1;
         class_weapon = 2;
@@ -75,6 +92,7 @@ bool Config::loadConfig(const std::string& filename)
         class_fire = 9;
         class_third_person = 10;
 
+        // Debug
         show_window = true;
         show_fps = true;
         window_name = "Debug";
@@ -93,13 +111,14 @@ bool Config::loadConfig(const std::string& filename)
         boost::property_tree::ini_parser::read_ini(filename, pt);
 
         // Capture
+        capture_method = pt.get<std::string>("capture_method", "duplication_api");
         detection_resolution = pt.get<int>("detection_resolution", 320);
         capture_fps = pt.get<int>("capture_fps", 60);
         monitor_idx = pt.get<int>("monitor_idx", 0);
         circle_mask = pt.get<bool>("circle_mask", true);
         capture_borders = pt.get<bool>("capture_borders", true);
         capture_cursor = pt.get<bool>("capture_cursor", true);
-        duplication_api = pt.get<bool>("duplication_api", true);
+        virtual_camera_name = pt.get<std::string>("virtual_camera_name", "None");
 
         // Target
         disable_headshot = pt.get<bool>("disable_headshot", false);
@@ -134,6 +153,13 @@ bool Config::loadConfig(const std::string& filename)
         nms_threshold = pt.get<float>("nms_threshold", 0.50);
         max_detections = pt.get<int>("max_detections", 20);
         postprocess = pt.get<std::string>("postprocess", "yolo11");
+
+        // Optical Flow
+        enable_optical_flow = pt.get<bool>("enable_optical_flow", false);
+        draw_optical_flow = pt.get<bool>("draw_optical_flow", true);
+        draw_optical_flow_steps = pt.get<int>("draw_optical_flow_steps", 16);
+        optical_flow_alpha_cpu = pt.get<float>("optical_flow_alpha_cpu", 0.06f);
+        optical_flow_magnitudeThreshold = pt.get<double>("optical_flow_magnitudeThreshold", 2.08);
 
         // Buttons
         button_targeting = splitString(pt.get<std::string>("button_targeting", "RightMouseButton"));
@@ -199,13 +225,15 @@ bool Config::saveConfig(const std::string& filename)
     file << "# An explanation of the options can be found at the link\n";
     file << "# https://github.com/SunOner/sunone_aimbot_docs/blob/main/config/config_cpp.md\n\n";
     file << "# Capture\n";
+    file << "# duplication_api, winrt, virtual_camera\n";
+    file << "capture_method = " << capture_method << "\n";
     file << "detection_resolution = " << detection_resolution << "\n";
     file << "capture_fps = " << capture_fps << "\n";
     file << "monitor_idx = " << monitor_idx << "\n";
     file << "circle_mask = " << (circle_mask ? "true" : "false") << "\n";
     file << "capture_borders = " << (capture_borders ? "true" : "false") << "\n";
     file << "capture_cursor = " << (capture_cursor ? "true" : "false") << "\n";
-    file << "duplication_api = " << (duplication_api ? "true" : "false") << "\n\n";
+    file << "virtual_camera_name = " << virtual_camera_name << "\n\n";
 
     file << "# Target\n";
     file << "disable_headshot = " << (disable_headshot ? "true" : "false") << "\n";
@@ -241,6 +269,13 @@ bool Config::saveConfig(const std::string& filename)
     file << "nms_threshold = " << std::fixed << std::setprecision(2) << nms_threshold << "\n";
     file << "max_detections = " << max_detections << "\n";
     file << "postprocess = " << postprocess << "\n\n";
+
+    file << "# Optical Flow\n";
+    file << "enable_optical_flow = " << (enable_optical_flow ? "true" : "false") << "\n";
+    file << "draw_optical_flow = " << (draw_optical_flow ? "true" : "false") << "\n";
+    file << "draw_optical_flow_steps = " << draw_optical_flow_steps << "\n";
+    file << "optical_flow_alpha_cpu = " << std::fixed << std::setprecision(2) << optical_flow_alpha_cpu << "\n";
+    file << "optical_flow_magnitudeThreshold = " << std::fixed << std::setprecision(2) << optical_flow_magnitudeThreshold << "\n\n";
 
     file << "# Buttons\n";
     file << "button_targeting = " << joinStrings(button_targeting) << "\n";

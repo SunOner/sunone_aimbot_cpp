@@ -22,6 +22,8 @@
   <ItemGroup>
     <ClCompile Include="capture\capture.cpp" />
     <ClCompile Include="capture\duplication_api_capture.cpp" />
+    <ClCompile Include="capture\optical_flow.cpp" />
+    <ClCompile Include="capture\virtual_camera.cpp" />
     <ClCompile Include="capture\winrt_capture.cpp" />
     <ClCompile Include="config\config.cpp" />
     <ClCompile Include="detector\detector.cpp" />
@@ -42,12 +44,14 @@
     <ClCompile Include="overlay\Snowflake.cpp" />
     <ClCompile Include="overlay\visuals.cpp" />
     <ClCompile Include="scr\other_tools.cpp" />
-    <ClCompile Include="scr\sunone_aimbot_cpp.cpp" />
+    <ClCompile Include="sunone_aimbot_cpp.cpp" />
     <ClCompile Include="tensorrt\nvinf.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="capture\capture.h" />
     <ClInclude Include="capture\duplication_api_capture.h" />
+    <ClInclude Include="capture\optical_flow.h" />
+    <ClInclude Include="capture\virtual_camera.h" />
     <ClInclude Include="capture\winrt_capture.h" />
     <ClInclude Include="config\config.h" />
     <ClInclude Include="detector\detector.h" />
@@ -62,7 +66,6 @@
     <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="include\memory_images.h" />
     <ClInclude Include="include\other_tools.h" />
-    <ClInclude Include="include\sunone_aimbot_cpp.h" />
     <ClInclude Include="keyboard\keyboard_listener.h" />
     <ClInclude Include="keyboard\keycodes.h" />
     <ClInclude Include="mouse\ghub.h" />
@@ -72,6 +75,7 @@
     <ClInclude Include="overlay\overlay.h" />
     <ClInclude Include="overlay\Snowflake.hpp" />
     <ClInclude Include="overlay\visuals.h" />
+    <ClInclude Include="sunone_aimbot_cpp.h" />
     <ClInclude Include="tensorrt\nvinf.h" />
   </ItemGroup>
   <ItemGroup>
@@ -149,7 +153,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(MSBuildProjectDirectory)\imgui;$(MSBuildProjectDirectory)\keyboard;$(MSBuildProjectDirectory)\config;$(MSBuildProjectDirectory)\tensorrt;$(MSBuildProjectDirectory)\detector;$(MSBuildProjectDirectory)\mouse;$(MSBuildProjectDirectory)\overlay;$(MSBuildProjectDirectory)\capture;$(MSBuildProjectDirectory)\modules\opencv\build\install\include;$(WindowsSDK_IncludePath);$(WindowsSDK_IncludePath)\cppwinrt;$(MSBuildProjectDirectory)\modules\TensorRT-10.6.0.26\include;include;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v12.4\include;$(ProgramW6432)\NVIDIA\CUDNN\v9.1\include\12.4;$(IncludePath)</IncludePath>
+    <IncludePath>$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\imgui;$(MSBuildProjectDirectory)\keyboard;$(MSBuildProjectDirectory)\config;$(MSBuildProjectDirectory)\tensorrt;$(MSBuildProjectDirectory)\detector;$(MSBuildProjectDirectory)\mouse;$(MSBuildProjectDirectory)\overlay;$(MSBuildProjectDirectory)\capture;$(MSBuildProjectDirectory)\modules\opencv\build\install\include;$(WindowsSDK_IncludePath);$(WindowsSDK_IncludePath)\cppwinrt;$(MSBuildProjectDirectory)\modules\TensorRT-10.6.0.26\include;include;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v12.4\include;$(ProgramW6432)\NVIDIA\CUDNN\v9.1\include\12.4;$(IncludePath)</IncludePath>
     <LibraryPath>$(MSBuildProjectDirectory)\modules\glfw-3.4.bin.WIN64\lib-vc2019;$(MSBuildProjectDirectory)\modules\opencv\build\install\x64\vc16\lib;$(MSBuildProjectDirectory)\modules\\TensorRT-10.6.0.26\lib;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v12.4\lib\x64;$(ProgramW6432)\NVIDIA\CUDNN\v9.1\lib\12.4;$(MSBuildProjectDirectory)\modules\boost_1_82_0\stage\lib;$(LibraryPath)</LibraryPath>
     <TargetName>ai</TargetName>
   </PropertyGroup>

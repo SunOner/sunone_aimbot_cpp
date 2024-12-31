@@ -25,6 +25,7 @@
 #include "keyboard_listener.h"
 #include "other_tools.h"
 #include "memory_images.h"
+#include "virtual_camera.h"
 
 // snow
 #include "Snowflake.hpp"
@@ -288,14 +289,15 @@ void OverlayThread()
     bool show_overlay = false;
 
     // Real time settings vars
+    std::string prev_capture_method = config.capture_method;
     int prev_detection_resolution = config.detection_resolution;
     int prev_capture_fps = config.capture_fps;
     int prev_monitor_idx = config.monitor_idx;
     bool prev_circle_mask = config.circle_mask;
     bool prev_capture_borders = config.capture_borders;
     bool prev_capture_cursor = config.capture_cursor;
-    bool prev_capture_method = config.duplication_api;
     int monitors = get_active_monitors();
+    std::vector<std::string> virtual_cameras = { };
 
     bool prev_disable_headshot = config.disable_headshot;
     float prev_body_y_offset = config.body_y_offset;
@@ -460,36 +462,105 @@ void OverlayThread()
                             config.saveConfig("config.ini");
                         }
 
-                        std::vector<std::string> monitorNames;
-                        if (monitors == -1)
+                        std::vector<std::string> captureMethodOptions = { "duplication_api", "winrt", "virtual_camera" };
+                        std::vector<const char*> captureMethodItems;
+                        for (const auto& option : captureMethodOptions)
                         {
-                            monitorNames.push_back("Monitor 1");
+                            captureMethodItems.push_back(option.c_str());
                         }
-                        else
+
+                        int currentcaptureMethodIndex = 0;
+                        for (size_t i = 0; i < captureMethodOptions.size(); ++i)
                         {
-                            for (int i = -1; i < monitors; ++i)
+                            if (captureMethodOptions[i] == config.capture_method)
                             {
-                                monitorNames.push_back("Monitor " + std::to_string(i + 1));
+                                currentcaptureMethodIndex = static_cast<int>(i);
+                                break;
                             }
                         }
 
-                        std::vector<const char*> monitorItems;
-                        for (const auto& name : monitorNames)
-                        {
-                            monitorItems.push_back(name.c_str());
-                        }
-
-                        if (ImGui::Combo("Capture monitor (CUDA GPU)", &config.monitor_idx, monitorItems.data(), static_cast<int>(monitorItems.size())))
-                        {
+                        if (ImGui::Combo("Capture method", &currentcaptureMethodIndex, captureMethodItems.data(), static_cast<int>(captureMethodItems.size()))) {
+                            config.capture_method = captureMethodOptions[currentcaptureMethodIndex];
                             config.saveConfig("config.ini");
                             capture_method_changed.store(true);
                         }
 
-                        ImGui::Checkbox("Duplication API", &config.duplication_api);
-                        if (config.duplication_api == false)
+                        if (config.capture_method == "winrt")
                         {
                             ImGui::Checkbox("Capture Borders", &config.capture_borders);
                             ImGui::Checkbox("Capture Cursor", &config.capture_cursor);
+                        }
+
+                        if (config.capture_method == "duplication_api" || config.capture_method == "winrt")
+                        {
+                            std::vector<std::string> monitorNames;
+                            if (monitors == -1)
+                            {
+                                monitorNames.push_back("Monitor 1");
+                            }
+                            else
+                            {
+                                for (int i = -1; i < monitors; ++i)
+                                {
+                                    monitorNames.push_back("Monitor " + std::to_string(i + 1));
+                                }
+                            }
+
+                            std::vector<const char*> monitorItems;
+                            for (const auto& name : monitorNames)
+                            {
+                                monitorItems.push_back(name.c_str());
+                            }
+
+                            if (ImGui::Combo("Capture monitor (CUDA GPU)", &config.monitor_idx, monitorItems.data(), static_cast<int>(monitorItems.size())))
+                            {
+                                config.saveConfig("config.ini");
+                                capture_method_changed.store(true);
+                            }
+                        }
+
+                        if (config.capture_method == "virtual_camera")
+                        {
+                            if (!virtual_cameras.empty())
+                            {
+                                int currentCameraIndex = 0;
+                                for (size_t i = 0; i < virtual_cameras.size(); i++)
+                                {
+                                    if (virtual_cameras[i] == config.virtual_camera_name)
+                                    {
+                                        currentCameraIndex = i;
+                                        break;
+                                    }
+                                }
+                        
+                                std::vector<const char*> cameraItems;
+                                for (const auto& cam : virtual_cameras)
+                                {
+                                    cameraItems.push_back(cam.c_str());
+                                }
+                        
+                                if (ImGui::Combo("Virtual Camera", &currentCameraIndex,
+                                    cameraItems.data(), static_cast<int>(cameraItems.size())))
+                                {
+                                    config.virtual_camera_name = virtual_cameras[currentCameraIndex];
+                                    config.saveConfig("config.ini");
+                                    capture_method_changed.store(true);
+                                }
+                                ImGui::SameLine();
+                                if (ImGui::Button("Update##update_virtual_cameras"))
+                                {
+                                    virtual_cameras = VirtualCameraCapture::GetAvailableVirtualCameras();
+                                }
+                            }
+                            else
+                            {
+                                ImGui::Text("No virtual cameras found");
+                                ImGui::SameLine();
+                                if (ImGui::Button("Update##update_virtual_cameras"))
+                                {
+                                    virtual_cameras = VirtualCameraCapture::GetAvailableVirtualCameras();
+                                }
+                            }
                         }
 
                         ImGui::EndTabItem();
@@ -773,6 +844,47 @@ void OverlayThread()
                         ImGui::SliderFloat("NMS Threshold", &config.nms_threshold, 0.01f, 1.00f, "%.2f");
                         ImGui::SliderInt("Max Detections", &config.max_detections, 1, 100);
 
+                        ImGui::EndTabItem();
+                    }
+#pragma endregion
+#pragma region OPTICAL_FLOW
+                    if (ImGui::BeginTabItem("Optical flow"))
+                    {
+                        // enable / disable
+                        if (ImGui::Checkbox("Enable Optical Flow", &config.enable_optical_flow))
+                        {
+                            config.saveConfig("config.ini");
+                            opticalFlow.manageOpticalFlowThread();
+                        }
+
+                        // draw options
+                        if (config.draw_optical_flow)
+                        {
+                            ImGui::Separator();
+                            if (ImGui::SliderInt("Draw steps", &config.draw_optical_flow_steps, 2, 32))
+                            {
+                                config.saveConfig("config.ini");
+                            }
+                        }
+
+                        ImGui::Separator();
+                        if (ImGui::Checkbox("Draw in debug window", &config.draw_optical_flow))
+                        {
+                            config.saveConfig("config.ini");
+                        }
+
+                        if (ImGui::SliderFloat("Alpha CPU", &config.optical_flow_alpha_cpu, 0.01f, 1.00f, "%.2f"))
+                        {
+                            config.saveConfig("config.ini");
+                        }
+
+                        float magnitudeThreshold = static_cast<float>(config.optical_flow_magnitudeThreshold);
+                        if (ImGui::SliderFloat("Magnitude Threshold", &magnitudeThreshold, 0.01f, 10.00f, "%.2f"))
+                        {
+                            config.optical_flow_magnitudeThreshold = static_cast<double>(magnitudeThreshold);
+                            config.saveConfig("config.ini");
+                        }
+                        
                         ImGui::EndTabItem();
                     }
 #pragma endregion
@@ -1182,16 +1294,8 @@ void OverlayThread()
                         config.saveConfig("config.ini");
                     }
 
-                    // CAPTURE METHOD
-                    if (prev_capture_method != config.duplication_api)
-                    {
-                        capture_method_changed.store(true);
-                        prev_capture_method = config.duplication_api;
-                        config.saveConfig("config.ini");
-                    }
-
                     // CAPTURE CURSOR
-                    if (prev_capture_cursor != config.capture_cursor && config.duplication_api == false)
+                    if (prev_capture_cursor != config.capture_cursor && config.capture_method == "duplication_api")
                     {
                         capture_cursor_changed.store(true);
                         prev_capture_cursor = config.capture_cursor;
@@ -1199,7 +1303,7 @@ void OverlayThread()
                     }
 
                     // CAPTURE BORDERS
-                    if (prev_capture_borders != config.capture_borders && config.duplication_api == false)
+                    if (prev_capture_borders != config.capture_borders && config.capture_method == "duplication_api")
                     {
                         capture_borders_changed.store(true);
                         prev_capture_borders = config.capture_borders;

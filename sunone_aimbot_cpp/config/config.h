@@ -8,13 +8,14 @@ class Config
 {
 public:
     // Capture
+    std::string capture_method;
     int detection_resolution;
     int capture_fps;
     int monitor_idx;
     bool circle_mask;
     bool capture_borders;
     bool capture_cursor;
-    bool duplication_api;
+    std::string virtual_camera_name;
 
     // Target
     bool disable_headshot;
@@ -49,6 +50,13 @@ public:
     float nms_threshold;
     int max_detections;
     std::string postprocess;
+
+    // Optical Flow
+    bool enable_optical_flow;
+    bool draw_optical_flow;
+    int draw_optical_flow_steps;
+    float optical_flow_alpha_cpu;
+    double optical_flow_magnitudeThreshold;
 
     // Buttons
     std::vector<std::string> button_targeting;
@@ -85,9 +93,9 @@ public:
 
     bool loadConfig(const std::string& filename);
     bool saveConfig(const std::string& filename);
+    std::string joinStrings(const std::vector<std::string>& vec, const std::string& delimiter = ",");
 private:
     std::vector<std::string> splitString(const std::string& str, char delimiter = ',');
-    std::string joinStrings(const std::vector<std::string>& vec, const std::string& delimiter = ",");
 };
 
 #endif // CONFIG_H

@@ -222,7 +222,11 @@ void Detector::initialize(const std::string& modelFile)
             if (shape.size() >= 2)
             {
                 numClasses = static_cast<int>(shape[1] - 4);
-                std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
+                
+                if (config.verbose)
+                {
+                    std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
+                }
             }
             else
             {
@@ -295,7 +299,11 @@ void Detector::initialize(const std::string& modelFile)
     channels.resize(3);
     int64_t inputH = inputDims.d[2];
     img_scale = static_cast<float>(config.detection_resolution) / inputH;
-    std::cout << "[Detector] Image scale factor: " << img_scale << std::endl;
+
+    if (config.verbose)
+    {
+        std::cout << "[Detector] Image scale factor: " << img_scale << std::endl;
+    }
 }
 
 size_t Detector::getSizeByDim(const nvinfer1::Dims& dims)
@@ -557,11 +565,22 @@ void Detector::preProcess(const cv::cuda::GpuMat& frame)
     int inputW = inputDims.d[3];
 
     cv::cuda::GpuMat resizedImage;
+    cv::cuda::GpuMat flowImage;
     cv::cuda::resize(frame, resizedImage, cv::Size(inputW, inputH));
+
+    if (config.enable_optical_flow)
+    {
+        flowImage = resizedImage.clone();
+    }
 
     if (resizedImage.channels() == 4)
     {
         cv::cuda::cvtColor(resizedImage, resizedImage, cv::COLOR_BGRA2BGR);
+
+        if (config.enable_optical_flow)
+        {
+            cv::cuda::cvtColor(flowImage, flowImage, cv::COLOR_BGRA2BGR);
+        }
     }
     else if (resizedImage.channels() != 3)
     {
@@ -571,6 +590,11 @@ void Detector::preProcess(const cv::cuda::GpuMat& frame)
     cv::cuda::cvtColor(resizedImage, resizedImage, cv::COLOR_BGR2RGB);
 
     resizedImage.convertTo(resizedImage, CV_32F, 1.0 / 255.0);
+
+    if (config.enable_optical_flow)
+    {
+        opticalFlow.enqueueFrame(flowImage);
+    }
 
     std::vector<cv::cuda::GpuMat> gpuChannels;
     cv::cuda::split(resizedImage, gpuChannels);

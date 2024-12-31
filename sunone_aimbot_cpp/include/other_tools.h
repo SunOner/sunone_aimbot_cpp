@@ -24,4 +24,5 @@ std::string get_tensorrt_path();
 int get_active_monitors();
 HMONITOR GetMonitorHandleByIndex(int monitorIndex);
 std::vector<std::string> getAvailableModels();
+void welcome_message();
 #endif // OTHER_TOOLS_H

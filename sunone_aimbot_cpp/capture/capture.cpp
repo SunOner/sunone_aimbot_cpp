@@ -38,9 +38,11 @@
 #include "keycodes.h"
 #include "keyboard_listener.h"
 #include "other_tools.h"
+#include "optical_flow.h"
 
 #include "duplication_api_capture.h"
 #include "winrt_capture.h"
+#include "virtual_camera.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -72,7 +74,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
         IScreenCapture* capturer = nullptr;
 
-        if (config.duplication_api)
+        if (config.capture_method == "duplication_api")
         {
             capturer = new DuplicationAPIScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
             if (config.verbose)
@@ -80,13 +82,33 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 std::cout << "[Capture] Using Duplication API." << std::endl;
             }
         }
-        else
+        else if (config.capture_method == "winrt")
         {
             winrt::init_apartment(winrt::apartment_type::multi_threaded);
             capturer = new WinRTScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
             if (config.verbose)
             {
                 std::cout << "[Capture] Using WinRT." << std::endl;
+            }
+        }
+        else if (config.capture_method == "virtual_camera")
+        {
+            capturer = new VirtualCameraCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+            if (config.verbose)
+            {
+                std::cout << "[Capture] Using virtual camera input." << std::endl;
+            }
+        }
+        else
+        {
+            std::cout << "[Capture] Unknown screen capture method. The default screen capture method is set." << std::endl;
+            config.capture_method = "duplication_api";
+            config.saveConfig("config.ini");
+
+            capturer = new DuplicationAPIScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+            if (config.verbose)
+            {
+                std::cout << "[Capture] Using Duplication API." << std::endl;
             }
         }
 
@@ -143,7 +165,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 int new_CAPTURE_WIDTH = config.detection_resolution;
                 int new_CAPTURE_HEIGHT = config.detection_resolution;
 
-                if (config.duplication_api)
+                if (config.capture_method == "duplication_api")
                 {
                     capturer = new DuplicationAPIScreenCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
                     if (config.verbose)
@@ -151,13 +173,28 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                         std::cout << "[Capture] Using Duplication API." << std::endl;
                     }
                 }
-                else
+                else if (config.capture_method == "winrt")
                 {
                     capturer = new WinRTScreenCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
                     if (config.verbose)
                     {
                         std::cout << "[Capture] Using WinRT." << std::endl;
                     }
+                }
+                else if (config.capture_method == "virtual_camera")
+                {
+                    capturer = new VirtualCameraCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+                    if (config.verbose)
+                    {
+                        std::cout << "[Capture] Using virtual camera input." << std::endl;
+                    }
+                }
+                else
+                {
+                    std::cout << "[Capture] Unknown screen capture method. The default screen capture method is set." << std::endl;
+                    config.capture_method = "duplication_api";
+                    config.saveConfig("config.ini");
+                    continue;
                 }
 
                 screenWidth = new_CAPTURE_WIDTH;
@@ -173,6 +210,23 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
             if (!screenshotGpu.empty())
             {
+                if (config.circle_mask)
+                {
+                    cv::Mat mask = cv::Mat::zeros(screenshotGpu.size(), CV_8UC1);
+                    cv::Point center(mask.cols / 2, mask.rows / 2);
+                    int radius = std::min(mask.cols, mask.rows) / 2;
+                    cv::circle(mask, center, radius, cv::Scalar(255), -1);
+                    cv::cuda::GpuMat maskGpu;
+                    maskGpu.upload(mask);
+                    cv::cuda::GpuMat maskedImageGpu;
+                    screenshotGpu.copyTo(maskedImageGpu, maskGpu);
+                    cv::cuda::resize(maskedImageGpu, screenshotGpu, cv::Size(640, 640), 0, 0, cv::INTER_LINEAR);
+                }
+                else
+                {
+                    cv::cuda::resize(screenshotGpu, screenshotGpu, cv::Size(640, 640), 0, 0, cv::INTER_LINEAR);
+                }
+
                 {
                     std::lock_guard<std::mutex> lock(detector.scaleMutex);
                     detector.scaleX = 1;
@@ -256,7 +310,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
         delete capturer;
 
-        if (!config.duplication_api)
+        if (config.capture_method == "winrt")
         {
             winrt::uninit_apartment();
         }

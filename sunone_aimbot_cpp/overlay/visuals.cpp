@@ -16,6 +16,7 @@
 #include "config.h"
 #include "sunone_aimbot_cpp.h"
 #include "capture.h"
+#include "optical_flow.h"
 
 extern std::atomic<bool> show_window_changed;
 
@@ -125,6 +126,11 @@ void displayThread()
                     cv::putText(displayFrame, className, cv::Point(box.x, box.y - 5),
                         cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
                 }
+            }
+
+            if (config.enable_optical_flow && config.draw_optical_flow)
+            {
+                opticalFlow.drawOpticalFlow(displayFrame);
             }
 
             if (config.show_fps)

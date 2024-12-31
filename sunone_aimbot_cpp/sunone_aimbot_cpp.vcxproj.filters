@@ -1,9 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="scr\sunone_aimbot_cpp.cpp">
-      <Filter>scr</Filter>
-    </ClCompile>
     <ClCompile Include="scr\other_tools.cpp" />
     <ClCompile Include="capture\capture.cpp" />
     <ClCompile Include="overlay\overlay.cpp" />
@@ -27,6 +24,9 @@
     <ClCompile Include="detector\postProcess.cpp" />
     <ClCompile Include="capture\winrt_capture.cpp" />
     <ClCompile Include="capture\duplication_api_capture.cpp" />
+    <ClCompile Include="capture\optical_flow.cpp" />
+    <ClCompile Include="capture\virtual_camera.cpp" />
+    <ClCompile Include="sunone_aimbot_cpp.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -37,9 +37,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\sunone_aimbot_cpp.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="include\other_tools.h" />
     <ClInclude Include="include\memory_images.h" />
     <ClInclude Include="capture\capture.h" />
@@ -66,6 +63,9 @@
     <ClInclude Include="detector\postProcess.h" />
     <ClInclude Include="capture\winrt_capture.h" />
     <ClInclude Include="capture\duplication_api_capture.h" />
+    <ClInclude Include="capture\optical_flow.h" />
+    <ClInclude Include="capture\virtual_camera.h" />
+    <ClInclude Include="sunone_aimbot_cpp.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
