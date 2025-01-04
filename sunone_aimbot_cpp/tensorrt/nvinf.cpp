@@ -6,6 +6,7 @@
 #include <fstream>
 
 #include <NvOnnxParser.h>
+#include <cuda_runtime.h>
 
 #include "nvinf.h"
 
@@ -112,7 +113,12 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     const char* inputTensorName = network->getInput(0)->getName();
 
     nvinfer1::IOptimizationProfile* profile = builder->createOptimizationProfile();
-
+ 
+    nvinfer1::Dims dims = network->getInput(0)->getDimensions();
+    profile->setDimensions(inputTensorName, nvinfer1::OptProfileSelector::kMIN, dims);
+    profile->setDimensions(inputTensorName, nvinfer1::OptProfileSelector::kOPT, dims);
+    profile->setDimensions(inputTensorName, nvinfer1::OptProfileSelector::kMAX, dims);
+    
     config->addOptimizationProfile(profile);
 
     if (builder->platformHasFastFp16())
@@ -120,11 +126,32 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
         config->setFlag(nvinfer1::BuilderFlag::kFP16);
     }
 
-    nvinfer1::ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
-    if (!engine)
+cudaStream_t stream;
+    cudaStreamCreate(&stream);
+
+    std::cout << "[TensorRT] Building engine (this may take several minutes)..." << std::endl;
+    auto plan = builder->buildSerializedNetwork(*network, *config);
+    if (!plan)
     {
         std::cerr << "[TensorRT] ERROR: Could not build the engine" << std::endl;
+        delete parser;
+        delete network;
+        delete builder;
+        delete config;
+        return nullptr;
+    }
 
+    nvinfer1::IRuntime* runtime = nvinfer1::createInferRuntime(logger);
+    nvinfer1::ICudaEngine* engine = runtime->deserializeCudaEngine(plan->data(), plan->size());
+    
+    cudaStreamSynchronize(stream);
+    cudaStreamDestroy(stream);
+
+    if (!engine)
+    {
+        std::cerr << "[TensorRT] ERROR: Could not create engine" << std::endl;
+        delete plan;
+        delete runtime;
         delete parser;
         delete network;
         delete builder;
@@ -152,9 +179,11 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
         return nullptr;
     }
 
-    p.write(reinterpret_cast<const char*>(serializedModel->data()), serializedModel->size());
+    p.write(static_cast<const char*>(plan->data()), plan->size());
+    p.close();
 
-    delete serializedModel;
+    delete plan;
+    delete runtime;
     delete parser;
     delete network;
     delete config;
