@@ -76,7 +76,7 @@ void keyboardListener()
         {
             if (!reloadPressed)
             {
-                config.loadConfig("config.ini");
+                config.loadConfig();
 
                 if (globalMouseThread)
                 {

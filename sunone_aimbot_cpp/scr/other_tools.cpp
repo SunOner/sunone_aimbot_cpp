@@ -25,6 +25,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#include <VersionHelpers.h>
+
 #include "other_tools.h"
 #include "config.h"
 #include "sunone_aimbot_cpp.h"
@@ -457,6 +459,11 @@ std::vector<std::string> getAvailableModels()
     }
 
     return availableModels;
+}
+
+bool checkwin1903()
+{
+    return IsWindows10OrGreater() && IsWindowsVersionOrGreater(10, 0, 18362);
 }
 
 void welcome_message()

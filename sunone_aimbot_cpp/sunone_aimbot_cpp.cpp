@@ -22,6 +22,7 @@
 #include "other_tools.h"
 #include "optical_flow.h"
 
+extern Config config;
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
 std::atomic<bool> aiming(false);
@@ -157,96 +158,42 @@ void mouseThreadFunction(MouseThread& mouseThread)
 
 int main()
 {
-    int cuda_devices = 0;
-    cudaError_t err = cudaGetDeviceCount(&cuda_devices);
+    try {
+        int cuda_devices = 0;
+        cudaError_t err = cudaGetDeviceCount(&cuda_devices);
 
-    if (err != cudaSuccess)
-    {
-        std::cout << "[MAIN] No GPU devices with CUDA support available." << std::endl;
-        std::cin.get();
-        return -1;
-    }
-
-    if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
-    {
-        std::cout << "[MAIN] Error with screenshoot folder" << std::endl;
-        std::cin.get();
-        return -1;
-    }
-
-    if (!config.loadConfig("config.ini"))
-    {
-        std::cerr << "[Config] Error with loading config.ini" << std::endl;
-        std::cin.get();
-        return -1;
-    }
-
-    std::string modelPath = "models/" + config.ai_model;
-    if (!std::filesystem::exists(modelPath))
-    {
-        std::cerr << "[MAIN] Specified model does not exist: " << modelPath << std::endl;
-
-        std::vector<std::string> modelFiles = getModelFiles();
-
-        if (!modelFiles.empty())
+        if (err != cudaSuccess)
         {
-            config.ai_model = modelFiles[0];
-            config.saveConfig("config.ini");
-            std::cout << "[MAIN] Loaded first available model: " << config.ai_model << std::endl;
-        }
-        else
-        {
-            std::cerr << "[MAIN] No models found in 'models' directory." << std::endl;
+            std::cout << "[MAIN] No GPU devices with CUDA support available." << std::endl;
             std::cin.get();
             return -1;
         }
-    }
 
-    if (config.input_method == "ARDUINO")
-    {
-        serial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
-    }
-    else if (config.input_method == "GHUB")
-    {
-        gHub = new GhubMouse();
-        if (!gHub->mouse_xy(0, 0))
+        if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
         {
-            std::cerr << "[Ghub] Error with opening mouse." << std::endl;
-            delete gHub;
-            gHub = nullptr;
+            std::cout << "[MAIN] Error with screenshoot folder" << std::endl;
+            std::cin.get();
+            return -1;
         }
-    }
 
-    MouseThread mouseThread(
-        config.detection_resolution,
-        config.dpi,
-        config.sensitivity,
-        config.fovX,
-        config.fovY,
-        config.minSpeedMultiplier,
-        config.maxSpeedMultiplier,
-        config.predictionInterval,
-        config.auto_shoot,
-        config.bScope_multiplier,
-        serial,
-        gHub
-    );
+        if (!config.loadConfig())
+        {
+            std::cerr << "[Config] Error with loading config!" << std::endl;
+            std::cin.get();
+            return -1;
+        }
 
-    globalMouseThread = &mouseThread;
-
-    std::vector<std::string> availableModels = getAvailableModels();
-
-    if (!config.ai_model.empty())
-    {
         std::string modelPath = "models/" + config.ai_model;
         if (!std::filesystem::exists(modelPath))
         {
             std::cerr << "[MAIN] Specified model does not exist: " << modelPath << std::endl;
 
-            if (!availableModels.empty())
+            std::vector<std::string> modelFiles = getModelFiles();
+
+            if (!modelFiles.empty())
             {
-                config.ai_model = availableModels[0];
-                config.saveConfig("config.ini");
+                config.ai_model = modelFiles[0];
+                config.saveConfig();
                 std::cout << "[MAIN] Loaded first available model: " << config.ai_model << std::endl;
             }
             else
@@ -256,58 +203,118 @@ int main()
                 return -1;
             }
         }
-    }
-    else
-    {
-        if (!availableModels.empty())
+
+        if (config.input_method == "ARDUINO")
         {
-            config.ai_model = availableModels[0];
-            config.saveConfig("config.ini");
-            std::cout << "[MAIN] No AI model specified in config. Loaded first available model: " << config.ai_model << std::endl;
+            serial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
+        }
+        else if (config.input_method == "GHUB")
+        {
+            gHub = new GhubMouse();
+            if (!gHub->mouse_xy(0, 0))
+            {
+                std::cerr << "[Ghub] Error with opening mouse." << std::endl;
+                delete gHub;
+                gHub = nullptr;
+            }
+        }
+
+        MouseThread mouseThread(
+            config.detection_resolution,
+            config.dpi,
+            config.sensitivity,
+            config.fovX,
+            config.fovY,
+            config.minSpeedMultiplier,
+            config.maxSpeedMultiplier,
+            config.predictionInterval,
+            config.auto_shoot,
+            config.bScope_multiplier,
+            serial,
+            gHub
+        );
+
+        globalMouseThread = &mouseThread;
+
+        std::vector<std::string> availableModels = getAvailableModels();
+
+        if (!config.ai_model.empty())
+        {
+            std::string modelPath = "models/" + config.ai_model;
+            if (!std::filesystem::exists(modelPath))
+            {
+                std::cerr << "[MAIN] Specified model does not exist: " << modelPath << std::endl;
+
+                if (!availableModels.empty())
+                {
+                    config.ai_model = availableModels[0];
+                    config.saveConfig("config.ini");
+                    std::cout << "[MAIN] Loaded first available model: " << config.ai_model << std::endl;
+                }
+                else
+                {
+                    std::cerr << "[MAIN] No models found in 'models' directory." << std::endl;
+                    std::cin.get();
+                    return -1;
+                }
+            }
         }
         else
         {
-            std::cerr << "[MAIN] No AI models found in 'models' directory." << std::endl;
-            std::cin.get();
-            return -1;
+            if (!availableModels.empty())
+            {
+                config.ai_model = availableModels[0];
+                config.saveConfig();
+                std::cout << "[MAIN] No AI model specified in config. Loaded first available model: " << config.ai_model << std::endl;
+            }
+            else
+            {
+                std::cerr << "[MAIN] No AI models found in 'models' directory." << std::endl;
+                std::cin.get();
+                return -1;
+            }
         }
+
+        detector.initialize("models/" + config.ai_model);
+
+        initializeInputMethod();
+
+        std::thread keyThread(keyboardListener);
+        std::thread capThread(captureThread, config.detection_resolution, config.detection_resolution);
+        std::thread detThread(&Detector::inferenceThread, &detector);
+        std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
+        std::thread overlayThread(OverlayThread);
+        opticalFlow.startOpticalFlowThread();
+
+        welcome_message();
+
+        displayThread();
+
+        keyThread.join();
+        capThread.join();
+        detThread.join();
+        mouseMovThread.join();
+        overlayThread.join();
+
+        if (serial)
+        {
+            delete serial;
+        }
+
+        if (gHub)
+        {
+            gHub->mouse_close();
+            delete gHub;
+        }
+
+        opticalFlow.stopOpticalFlowThread();
+
+        return 0;
     }
-
-    detector.initialize("models/" + config.ai_model);
-
-    initializeInputMethod();
-
-    std::thread keyThread(keyboardListener);
-    std::thread capThread(captureThread, config.detection_resolution, config.detection_resolution);
-    std::thread detThread(&Detector::inferenceThread, &detector);
-    std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
-    std::thread overlayThread(OverlayThread);
-    opticalFlow.startOpticalFlowThread();
-
-    welcome_message();
-
-    displayThread();
-
-    keyThread.join();
-    capThread.join();
-    detThread.join();
-    mouseMovThread.join();
-    overlayThread.join();
-
-    if (serial)
-    {
-        delete serial;
+    catch (const std::exception& e) {
+        std::cerr << "[MAIN] An error has occurred in the main stream: " << e.what() << std::endl;
+        std::cout << "Press Enter to exit...";
+        std::cin.get();
+        return -1;
     }
-
-    if (gHub)
-    {
-        gHub->mouse_close();
-        delete gHub;
-    }
-
-    opticalFlow.stopOpticalFlowThread();
-
-    std::cin.get();
-
-    return 0;
 }

@@ -21,6 +21,10 @@ public:
     void getMotion(int& xShift, int& yShift);
     void drawOpticalFlow(cv::Mat& frame);
     void manageOpticalFlowThread();
+    void getAngularVelocity(double& angularVelocityXOut, double& angularVelocityYOut);
+    void getAngularAcceleration(double& angularAccelerationXOut, double& angularAccelerationYOut);
+
+    bool isOpticalFlowValid() const;
 
 private:
     void computeOpticalFlow(const cv::cuda::GpuMat& frame);
@@ -46,7 +50,15 @@ private:
     int outputGridSizeValue;
     int hintGridSizeValue;
 
+    double prevTime = 0.0;
+    double prevAngularVelocityX = 0.0;
+    double prevAngularVelocityY = 0.0;
+    double angularAccelerationX = 0.0;
+    double angularAccelerationY = 0.0;
+
     cv::Ptr<cv::cuda::NvidiaOpticalFlow_2_0> opticalFlow;
+
+    bool isFlowValid = false;
 };
 
 #endif // OPTICAL_FLOW_H

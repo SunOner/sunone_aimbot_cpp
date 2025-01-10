@@ -1,11 +1,10 @@
+#include "sunone_aimbot_cpp.h"
 #include "winrt_capture.h"
 #include "config.h"
 #include "other_tools.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
-
-extern Config config;
 
 WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
 {

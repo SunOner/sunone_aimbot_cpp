@@ -8,8 +8,6 @@
 #include <cuda_d3d11_interop.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
-
-#include "capture.h"
 #include <mutex>
 
 #include <winrt/Windows.Foundation.h>
@@ -23,6 +21,8 @@
 #include <windows.graphics.directx.direct3d11.interop.h>
 #include <winrt/base.h>
 #include <comdef.h>
+
+#include "capture.h"
 
 class WinRTScreenCapture : public IScreenCapture
 {

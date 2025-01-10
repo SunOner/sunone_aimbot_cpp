@@ -1,17 +1,33 @@
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudafilters.hpp>
+#include <opencv2/cudaarithm.hpp>
+#include <algorithm>
+#include <sstream>
+#include <iomanip>
+#include <cmath>
 
 #include "optical_flow.h"
 #include "sunone_aimbot_cpp.h"
 
 void OpticalFlow::preprocessFrame(cv::cuda::GpuMat& frameGray)
 {
+    if (frameGray.empty()) return;
+
     cv::Mat frameCPU;
     frameGray.download(frameCPU);
-    cv::GaussianBlur(frameCPU, frameCPU, cv::Size(3, 3), 0);
-    cv::equalizeHist(frameCPU, frameCPU);
-    cv::threshold(frameCPU, frameCPU, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
-    frameGray.upload(frameCPU);
+
+    if (frameCPU.type() != CV_8UC1)
+    {
+        cv::cvtColor(frameCPU, frameCPU, cv::COLOR_BGR2GRAY);
+    }
+
+    cv::Mat blurredFrame, equalizedFrame, thresholdFrame;
+
+    cv::GaussianBlur(frameCPU, blurredFrame, cv::Size(3, 3), 0);
+    cv::equalizeHist(blurredFrame, equalizedFrame);
+    cv::threshold(equalizedFrame, thresholdFrame, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+
+    frameGray.upload(thresholdFrame);
 }
 
 OpticalFlow::OpticalFlow() : xShift(0), yShift(0), opticalFlow(nullptr)
@@ -20,6 +36,8 @@ OpticalFlow::OpticalFlow() : xShift(0), yShift(0), opticalFlow(nullptr)
 
 void OpticalFlow::computeOpticalFlow(const cv::cuda::GpuMat& frame)
 {
+    isFlowValid = false;
+
     cv::cuda::GpuMat frameGray;
     if (frame.channels() == 3)
     {
@@ -33,6 +51,31 @@ void OpticalFlow::computeOpticalFlow(const cv::cuda::GpuMat& frame)
     {
         return;
     }
+
+    preprocessFrame(frameGray);
+
+    static cv::cuda::GpuMat prevStaticCheck;
+    static float staticThreshold = config.staticFrameThreshold;
+
+    if (!prevStaticCheck.empty())
+    {
+        cv::cuda::GpuMat diffFrame;
+        cv::cuda::absdiff(frameGray, prevStaticCheck, diffFrame);
+
+        cv::Mat diffCPU;
+        diffFrame.download(diffCPU);
+
+        float meanDiff = cv::mean(diffCPU)[0];
+
+        if (meanDiff < staticThreshold)
+        {
+            flow.release();
+            prevFrameGray.release();
+            return;
+        }
+    }
+
+    prevStaticCheck = frameGray.clone();
 
     if (!prevFrameGray.empty())
     {
@@ -71,50 +114,98 @@ void OpticalFlow::computeOpticalFlow(const cv::cuda::GpuMat& frame)
             hintFlow.setTo(cv::Scalar::all(0));
         }
 
-        opticalFlow->calc(
-            prevFrameGray,
-            frameGray,
-            flow,
-            cv::cuda::Stream::Null(),
-            hintFlow
-        );
+        try
+        {
+            opticalFlow->calc(
+                prevFrameGray,
+                frameGray,
+                flow,
+                cv::cuda::Stream::Null(),
+                hintFlow
+            );
+        }
+        catch (const cv::Exception& e)
+        {
+            std::cerr << "Optical Flow Error: " << e.what() << std::endl;
+            return;
+        }
 
+        isFlowValid = true;
         cv::Mat flowCpu;
         flow.download(flowCpu);
 
-        cv::Mat flowFloat;
-        flowCpu.convertTo(flowFloat, CV_32FC2, config.optical_flow_alpha_cpu);
+        int width = flowCpu.cols;
+        int height = flowCpu.rows;
 
-        cv::Mat magnitude;
-        cv::Mat flowChannels[2];
-        cv::split(flowFloat, flowChannels);
-        cv::magnitude(flowChannels[0], flowChannels[1], magnitude);
+        double magnitudeScale = width > height ? width / 640.0 : height / 640.0;
+        double dynamicThreshold = config.optical_flow_magnitudeThreshold * magnitudeScale;
 
-        double magThreshold = config.optical_flow_magnitudeThreshold;
-        cv::Mat validMask;
-        cv::threshold(magnitude, validMask, magThreshold, 1.0, cv::THRESH_BINARY);
+        double sumAngularVelocityX = 0.0;
+        double sumAngularVelocityY = 0.0;
+        int validPoints = 0;
 
-        cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
-        cv::morphologyEx(validMask, validMask, cv::MORPH_OPEN, kernel);
-        cv::morphologyEx(validMask, validMask, cv::MORPH_CLOSE, kernel);
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                cv::Point2f flowAtPoint = flowCpu.at<cv::Point2f>(y, x);
 
-        validMask.convertTo(validMask, CV_8UC1);
+                if (std::isfinite(flowAtPoint.x) && std::isfinite(flowAtPoint.y) &&
+                    std::abs(flowAtPoint.x) < width &&
+                    std::abs(flowAtPoint.y) < height)
+                {
+                    double flowMagnitude = cv::norm(flowAtPoint);
+                    if (flowMagnitude > dynamicThreshold)
+                    {
+                        double normalizedX = flowAtPoint.x / width;
+                        double normalizedY = flowAtPoint.y / height;
 
-        cv::Mat flowXFiltered, flowYFiltered;
-        cv::medianBlur(flowChannels[0], flowXFiltered, 3);
-        cv::medianBlur(flowChannels[1], flowYFiltered, 3);
+                        double angularVelocityX = normalizedX * config.fovX;
+                        double angularVelocityY = normalizedY * config.fovY;
 
-        cv::Scalar avgFlowX = cv::mean(flowXFiltered, validMask);
-        cv::Scalar avgFlowY = cv::mean(flowYFiltered, validMask);
+                        sumAngularVelocityX += angularVelocityX;
+                        sumAngularVelocityY += angularVelocityY;
+                        validPoints++;
+                    }
+                }
+            }
+        }
 
+        if (validPoints > 0)
         {
             std::lock_guard<std::mutex> lock(flowMutex);
-            xShift = static_cast<int>(avgFlowX[0]);
-            yShift = static_cast<int>(avgFlowY[0]);
+
+            double currentTime = cv::getTickCount() / cv::getTickFrequency();
+            double deltaTime = currentTime - prevTime;
+
+            double newAngularVelocityX = sumAngularVelocityX / validPoints;
+            double newAngularVelocityY = sumAngularVelocityY / validPoints;
+
+            prevAngularVelocityX = 0.7 * prevAngularVelocityX + 0.3 * newAngularVelocityX;
+            prevAngularVelocityY = 0.7 * prevAngularVelocityY + 0.3 * newAngularVelocityY;
+
+            prevAngularVelocityX = std::clamp(prevAngularVelocityX, -10.0, 10.0);
+            prevAngularVelocityY = std::clamp(prevAngularVelocityY, -10.0, 10.0);
+
+            prevTime = currentTime;
         }
     }
 
     prevFrameGray = frameGray.clone();
+}
+
+void OpticalFlow::getAngularVelocity(double& angularVelocityXOut, double& angularVelocityYOut)
+{
+    std::lock_guard<std::mutex> lock(flowMutex);
+    angularVelocityXOut = prevAngularVelocityX;
+    angularVelocityYOut = prevAngularVelocityY;
+}
+
+void OpticalFlow::getAngularAcceleration(double& angularAccelerationXOut, double& angularAccelerationYOut)
+{
+    std::lock_guard<std::mutex> lock(flowMutex);
+    angularAccelerationXOut = angularAccelerationX;
+    angularAccelerationYOut = angularAccelerationY;
 }
 
 void OpticalFlow::getMotion(int& xShiftOut, int& yShiftOut)
@@ -124,9 +215,14 @@ void OpticalFlow::getMotion(int& xShiftOut, int& yShiftOut)
     yShiftOut = yShift;
 }
 
+bool OpticalFlow::isOpticalFlowValid() const
+{
+    return isFlowValid;
+}
+
 void OpticalFlow::drawOpticalFlow(cv::Mat& frame)
 {
-    if (flow.empty())
+    if (flow.empty() || !isFlowValid)
         return;
 
     cv::Mat flowCpu;
@@ -172,6 +268,25 @@ void OpticalFlow::drawOpticalFlow(cv::Mat& frame)
     cv::Point shiftedCenter(centerX + xShift, centerY + yShift);
 
     cv::line(frame, center, shiftedCenter, cv::Scalar(0, 0, 255), 2);
+
+    float meanMagnitude = 0.0f;
+    int count = 0;
+    for (int y = 0; y < magnitude.rows; y++)
+    {
+        for (int x = 0; x < magnitude.cols; x++)
+        {
+            meanMagnitude += magnitude.at<float>(y, x);
+            count++;
+        }
+    }
+    meanMagnitude /= count;
+
+    std::stringstream ss;
+    ss << "Flow Mag: " << std::fixed << std::setprecision(2) << meanMagnitude;
+    cv::putText(frame, ss.str(), cv::Point(10, 50),
+        cv::FONT_HERSHEY_SIMPLEX, 0.7,
+        cv::Scalar(255, 255, 255), 2);
+
 }
 
 void OpticalFlow::startOpticalFlowThread()

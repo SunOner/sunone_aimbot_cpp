@@ -227,7 +227,7 @@ int mouse_press_iter = 0;
 void MouseThread::pressMouse(const Target& target)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
-    
+
     auto bScope = check_target_in_scope(target.x, target.y, target.w, target.h, bScope_multiplier);
 
     if (mouse_pressed == true)

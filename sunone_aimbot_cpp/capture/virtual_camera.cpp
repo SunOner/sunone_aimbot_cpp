@@ -25,7 +25,7 @@ VirtualCameraCapture::VirtualCameraCapture(int width, int height)
     {
         cameraIndex = 0;
         config.virtual_camera_name = cameras[0];
-        config.saveConfig("config.ini");
+        config.saveConfig();
     }
 
     if (cameraIndex != -1)

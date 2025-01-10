@@ -57,6 +57,7 @@ public:
     int draw_optical_flow_steps;
     float optical_flow_alpha_cpu;
     double optical_flow_magnitudeThreshold;
+    float staticFrameThreshold;
 
     // Buttons
     std::vector<std::string> button_targeting;
@@ -67,6 +68,7 @@ public:
 
     // Overlay
     int overlay_opacity;
+    bool overlay_snow_theme;
 
     // Custom Classes
     int class_player;                  // 0
@@ -91,8 +93,8 @@ public:
     bool always_on_top;
     bool verbose;
 
-    bool loadConfig(const std::string& filename);
-    bool saveConfig(const std::string& filename);
+    bool loadConfig(const std::string& filename = "config.ini");
+    bool saveConfig(const std::string& filename = "config.ini");
     std::string joinStrings(const std::vector<std::string>& vec, const std::string& delimiter = ",");
 private:
     std::vector<std::string> splitString(const std::string& str, char delimiter = ',');

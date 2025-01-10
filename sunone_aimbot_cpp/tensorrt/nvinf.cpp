@@ -126,7 +126,7 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
         config->setFlag(nvinfer1::BuilderFlag::kFP16);
     }
 
-cudaStream_t stream;
+    cudaStream_t stream;
     cudaStreamCreate(&stream);
 
     std::cout << "[TensorRT] Building engine (this may take several minutes)..." << std::endl;

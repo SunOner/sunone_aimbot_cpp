@@ -42,7 +42,7 @@ bool Config::loadConfig(const std::string& filename)
         fovY = 50;
         minSpeedMultiplier = 1.0f;
         maxSpeedMultiplier = 4.0f;
-        predictionInterval = 0.5f;
+        predictionInterval = 0.0f;
         input_method = "WIN32";
 
         // Arduino
@@ -53,7 +53,7 @@ bool Config::loadConfig(const std::string& filename)
         
         // Mouse shooting
         auto_shoot = false;
-        bScope_multiplier = 1.2f;
+        bScope_multiplier = 1.0f;
         
         // AI
         ai_model = "sunxds_0.5.6.engine";
@@ -68,6 +68,7 @@ bool Config::loadConfig(const std::string& filename)
         draw_optical_flow_steps = 16;
         optical_flow_alpha_cpu = 0.06f;
         optical_flow_magnitudeThreshold = 2.08;
+        staticFrameThreshold = 4.0f;
 
         // Buttons
         button_targeting = splitString("RightMouseButton");
@@ -78,6 +79,7 @@ bool Config::loadConfig(const std::string& filename)
 
         // Overlay
         overlay_opacity = 225;
+        overlay_snow_theme = true;
 
         // Custom classes
         class_player =  0;
@@ -160,6 +162,7 @@ bool Config::loadConfig(const std::string& filename)
         draw_optical_flow_steps = pt.get<int>("draw_optical_flow_steps", 16);
         optical_flow_alpha_cpu = pt.get<float>("optical_flow_alpha_cpu", 0.06f);
         optical_flow_magnitudeThreshold = pt.get<double>("optical_flow_magnitudeThreshold", 2.08);
+        staticFrameThreshold = pt.get<float>("staticFrameThreshold", 4.0f);
 
         // Buttons
         button_targeting = splitString(pt.get<std::string>("button_targeting", "RightMouseButton"));
@@ -170,6 +173,7 @@ bool Config::loadConfig(const std::string& filename)
 
         // Overlay
         overlay_opacity = pt.get<int>("overlay_opacity", 225);
+        overlay_snow_theme = pt.get<bool>("overlay_snow_theme", true);
 
         // Custom Classes
         class_player = pt.get<int>("class_player", 0);
@@ -275,7 +279,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "draw_optical_flow = " << (draw_optical_flow ? "true" : "false") << "\n";
     file << "draw_optical_flow_steps = " << draw_optical_flow_steps << "\n";
     file << "optical_flow_alpha_cpu = " << std::fixed << std::setprecision(2) << optical_flow_alpha_cpu << "\n";
-    file << "optical_flow_magnitudeThreshold = " << std::fixed << std::setprecision(2) << optical_flow_magnitudeThreshold << "\n\n";
+    file << "optical_flow_magnitudeThreshold = " << std::fixed << std::setprecision(2) << optical_flow_magnitudeThreshold << "\n";
+    file << "staticFrameThreshold = " << std::fixed << std::setprecision(2) << staticFrameThreshold << "\n\n";
 
     file << "# Buttons\n";
     file << "button_targeting = " << joinStrings(button_targeting) << "\n";
@@ -285,7 +290,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "button_open_overlay = " << joinStrings(button_open_overlay) << "\n\n";
 
     file << "# Overlay\n";
-    file << "overlay_opacity = " << overlay_opacity << "\n\n";
+    file << "overlay_opacity = " << overlay_opacity << "\n";
+    file << "overlay_snow_theme = " << (overlay_snow_theme ? "true" : "false") << "\n\n";
 
     file << "# Custom Classes\n";
     file << "class_player = " << class_player << "\n";

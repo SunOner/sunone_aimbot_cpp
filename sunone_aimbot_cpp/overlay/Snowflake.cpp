@@ -161,11 +161,8 @@ namespace Snowflake
             snow.push_back(Snowflake(_minSize, _maxSize, _windowX, _windowY, _width, _height, _color));
     }
 
-    void Update(std::vector<Snowflake>& snow, vec3 mouse, vec3 windowPos, float deltaTime)
+    void Update(std::vector<Snowflake>& snow, vec3 windowPos, float deltaTime)
     {
-        mouse.x -= windowPos.x;
-        mouse.y -= windowPos.y;
-
         for (Snowflake& flake : snow)
         {
             flake.ApplyForce(gravity);

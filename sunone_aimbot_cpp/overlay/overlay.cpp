@@ -17,6 +17,7 @@
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
+#include <imgui/imgui_internal.h>
 
 #include "config.h"
 #include "keycodes.h"
@@ -26,8 +27,6 @@
 #include "other_tools.h"
 #include "memory_images.h"
 #include "virtual_camera.h"
-
-// snow
 #include "Snowflake.hpp"
 
 static ID3D11Device* g_pd3dDevice = NULL;
@@ -288,23 +287,28 @@ void OverlayThread()
 
     bool show_overlay = false;
 
-    // Real time settings vars
+    // Capture
     std::string prev_capture_method = config.capture_method;
     int prev_detection_resolution = config.detection_resolution;
     int prev_capture_fps = config.capture_fps;
     int prev_monitor_idx = config.monitor_idx;
     bool prev_circle_mask = config.circle_mask;
+    
+    bool disable_winrt_futures = checkwin1903();
+
     bool prev_capture_borders = config.capture_borders;
     bool prev_capture_cursor = config.capture_cursor;
     int monitors = get_active_monitors();
     std::vector<std::string> virtual_cameras = { };
 
+    // Target
     bool prev_disable_headshot = config.disable_headshot;
     float prev_body_y_offset = config.body_y_offset;
     bool prev_ignore_third_person = config.ignore_third_person;
     bool prev_shooting_range_targets = config.shooting_range_targets;
     bool prev_auto_aim = config.auto_aim;
 
+    // Mouse
     int prev_dpi = config.dpi;
     float prev_sensitivity = config.sensitivity;
     int prev_fovX = config.fovX;
@@ -313,15 +317,19 @@ void OverlayThread()
     float prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
     float prev_predictionInterval = config.predictionInterval;
 
+    //Mouse shooting
     bool prev_auto_shoot = config.auto_shoot;
     float prev_bScope_multiplier = config.bScope_multiplier;
 
+    // AI
     float prev_confidence_threshold = config.confidence_threshold;
     float prev_nms_threshold = config.nms_threshold;
     int prev_max_detections = config.max_detections;
 
+    // Overlay
     int prev_opacity = config.overlay_opacity;
 
+    // Debug
     bool prev_show_window = config.show_window;
     bool prev_show_fps = config.show_fps;
     int prev_window_size = config.window_size;
@@ -425,12 +433,14 @@ void OverlayThread()
             {
                 std::lock_guard<std::mutex> lock(configMutex);
 
-                auto currentTime = std::chrono::high_resolution_clock::now();
-                float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
-                lastTime = currentTime;
+                if (config.overlay_snow_theme)
+                {
+                    auto currentTime = std::chrono::high_resolution_clock::now();
+                    float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
+                    lastTime = currentTime;
 
-                GetCursorPos(&mouse);
-                Snowflake::Update(snow, Snowflake::vec3(mouse.x, mouse.y), Snowflake::vec3(0, 0), deltaTime);
+                    Snowflake::Update(snow, Snowflake::vec3(0, 0), deltaTime);
+                }
 
                 if (ImGui::BeginTabBar("Options tab bar"))
                 {
@@ -459,7 +469,7 @@ void OverlayThread()
                         if (ImGui::Checkbox("Circle mask", &config.circle_mask))
                         {
                             capture_method_changed.store(true);
-                            config.saveConfig("config.ini");
+                            config.saveConfig();
                         }
 
                         std::vector<std::string> captureMethodOptions = { "duplication_api", "winrt", "virtual_camera" };
@@ -481,14 +491,26 @@ void OverlayThread()
 
                         if (ImGui::Combo("Capture method", &currentcaptureMethodIndex, captureMethodItems.data(), static_cast<int>(captureMethodItems.size()))) {
                             config.capture_method = captureMethodOptions[currentcaptureMethodIndex];
-                            config.saveConfig("config.ini");
+                            config.saveConfig();
                             capture_method_changed.store(true);
                         }
 
                         if (config.capture_method == "winrt")
                         {
+                            if (disable_winrt_futures)
+                            {
+                                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+                            }
+
                             ImGui::Checkbox("Capture Borders", &config.capture_borders);
                             ImGui::Checkbox("Capture Cursor", &config.capture_cursor);
+
+                            if (disable_winrt_futures)
+                            {
+                                ImGui::PopStyleVar();
+                                ImGui::PopItemFlag();
+                            }
                         }
 
                         if (config.capture_method == "duplication_api" || config.capture_method == "winrt")
@@ -514,7 +536,7 @@ void OverlayThread()
 
                             if (ImGui::Combo("Capture monitor (CUDA GPU)", &config.monitor_idx, monitorItems.data(), static_cast<int>(monitorItems.size())))
                             {
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                                 capture_method_changed.store(true);
                             }
                         }
@@ -543,7 +565,7 @@ void OverlayThread()
                                     cameraItems.data(), static_cast<int>(cameraItems.size())))
                                 {
                                     config.virtual_camera_name = virtual_cameras[currentCameraIndex];
-                                    config.saveConfig("config.ini");
+                                    config.saveConfig();
                                     capture_method_changed.store(true);
                                 }
                                 ImGui::SameLine();
@@ -647,7 +669,7 @@ void OverlayThread()
                             {
                                 input_method_index = static_cast<int>(i);
                                 break;
-                                         }
+                            }
                         }
 
                         if (ImGui::Combo("Mouse Input Method", &input_method_index, method_items.data(), static_cast<int>(method_items.size())))
@@ -657,7 +679,7 @@ void OverlayThread()
                             if (new_input_method != config.input_method)
                             {
                                 config.input_method = new_input_method;
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                                 input_method_changed.store(true);
                             }
                         }
@@ -702,7 +724,7 @@ void OverlayThread()
                             if (ImGui::Combo("Arduino Port", &port_index, port_items.data(), static_cast<int>(port_items.size())))
                             {
                                 config.arduino_port = port_list[port_index];
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                                 input_method_changed.store(true);
                             }
 
@@ -733,18 +755,18 @@ void OverlayThread()
                             if (ImGui::Combo("Arduino Baudrate", &baud_rate_index, baud_rate_items.data(), static_cast<int>(baud_rate_items.size())))
                             {
                                 config.arduino_baudrate = baud_rate_list[baud_rate_index];
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                                 input_method_changed.store(true);
                             }
 
                             if (ImGui::Checkbox("Arduino 16-bit Mouse", &config.arduino_16_bit_mouse))
                             {
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                                 input_method_changed.store(true);
                             }
                             if (ImGui::Checkbox("Arduino Enable Keys", &config.arduino_enable_keys))
                             {
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                                 input_method_changed.store(true);
                             }
                         }
@@ -813,7 +835,7 @@ void OverlayThread()
                                 if (config.ai_model != availableModels[currentModelIndex])
                                 {
                                     config.ai_model = availableModels[currentModelIndex];
-                                    config.saveConfig("config.ini");
+                                    config.saveConfig();
                                     detector_model_changed.store(true);
                                 }
                             }
@@ -835,7 +857,7 @@ void OverlayThread()
 
                         if (ImGui::Combo("Postprocess", &currentPostprocessIndex, postprocessItems.data(), static_cast<int>(postprocessItems.size()))) {
                             config.postprocess = postprocessOptions[currentPostprocessIndex];
-                            config.saveConfig("config.ini");
+                            config.saveConfig();
                             detector_model_changed.store(true);
                         }
 
@@ -850,41 +872,48 @@ void OverlayThread()
 #pragma region OPTICAL_FLOW
                     if (ImGui::BeginTabItem("Optical flow"))
                     {
+                        ImGui::Text("This is an experimental feature");
                         // enable / disable
                         if (ImGui::Checkbox("Enable Optical Flow", &config.enable_optical_flow))
                         {
-                            config.saveConfig("config.ini");
+                            config.saveConfig();
                             opticalFlow.manageOpticalFlowThread();
                         }
 
                         // draw options
+                        ImGui::Separator();
+                        if (ImGui::Checkbox("Draw in debug window", &config.draw_optical_flow))
+                        {
+                            config.saveConfig();
+                        }
+                        
                         if (config.draw_optical_flow)
                         {
                             ImGui::Separator();
                             if (ImGui::SliderInt("Draw steps", &config.draw_optical_flow_steps, 2, 32))
                             {
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                             }
-                        }
-
                         ImGui::Separator();
-                        if (ImGui::Checkbox("Draw in debug window", &config.draw_optical_flow))
-                        {
-                            config.saveConfig("config.ini");
                         }
 
                         if (ImGui::SliderFloat("Alpha CPU", &config.optical_flow_alpha_cpu, 0.01f, 1.00f, "%.2f"))
                         {
-                            config.saveConfig("config.ini");
+                            config.saveConfig();
                         }
 
                         float magnitudeThreshold = static_cast<float>(config.optical_flow_magnitudeThreshold);
                         if (ImGui::SliderFloat("Magnitude Threshold", &magnitudeThreshold, 0.01f, 10.00f, "%.2f"))
                         {
                             config.optical_flow_magnitudeThreshold = static_cast<double>(magnitudeThreshold);
-                            config.saveConfig("config.ini");
+                            config.saveConfig();
                         }
                         
+                        if (ImGui::SliderFloat("Static Frame Threshold", &config.staticFrameThreshold, 0.01f, 10.00f, "%.2f"))
+                        {
+                            config.saveConfig();
+                        }
+
                         ImGui::EndTabItem();
                     }
 #pragma endregion
@@ -919,7 +948,7 @@ void OverlayThread()
                             if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
                             {
                                 current_key_name = key_names[current_index];
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                             }
 
                             ImGui::SameLine();
@@ -929,13 +958,13 @@ void OverlayThread()
                                 if (config.button_targeting.size() <= 1)
                                 {
                                     config.button_targeting[0] = std::string("None");
-                                    config.saveConfig("config.ini");
+                                    config.saveConfig();
                                     continue;
                                 }
                                 else
                                 {
                                     config.button_targeting.erase(config.button_targeting.begin() + i);
-                                    config.saveConfig("config.ini");
+                                    config.saveConfig();
                                     continue;
                                 }
                             }
@@ -946,7 +975,7 @@ void OverlayThread()
                         if (ImGui::Button("Add button##targeting"))
                         {
                             config.button_targeting.push_back("None");
-                            config.saveConfig("config.ini");
+                            config.saveConfig();
                         }
 
                         // exit
@@ -977,7 +1006,7 @@ void OverlayThread()
                             if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
                             {
                                 current_key_name = key_names[current_index];
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                             }
 
                             ImGui::SameLine();
@@ -987,13 +1016,13 @@ void OverlayThread()
                                 if (config.button_exit.size() <= 1)
                                 {
                                     config.button_exit[0] = std::string("None");
-                                    config.saveConfig("config.ini");
+                                    config.saveConfig();
                                     continue;
                                 }
                                 else
                                 {
                                     config.button_exit.erase(config.button_exit.begin() + i);
-                                    config.saveConfig("config.ini");
+                                    config.saveConfig();
                                     continue;
                                 }
                             }
@@ -1004,7 +1033,7 @@ void OverlayThread()
                         if (ImGui::Button("Add button##exit"))
                         {
                             config.button_exit.push_back("None");
-                            config.saveConfig("config.ini");
+                            config.saveConfig();
                         }
 
                         // pause
@@ -1035,7 +1064,7 @@ void OverlayThread()
                             if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
                             {
                                 current_key_name = key_names[current_index];
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                             }
 
                             ImGui::SameLine();
@@ -1045,13 +1074,13 @@ void OverlayThread()
                                 if (config.button_pause.size() <= 1)
                                 {
                                     config.button_pause[0] = std::string("None");
-                                    config.saveConfig("config.ini");
+                                    config.saveConfig();
                                     continue;
                                 }
                                 else
                                 {
                                     config.button_pause.erase(config.button_pause.begin() + i);
-                                    config.saveConfig("config.ini");
+                                    config.saveConfig();
                                     continue;
                                 }
                             }
@@ -1061,7 +1090,7 @@ void OverlayThread()
                         if (ImGui::Button("Add button##pause"))
                         {
                             config.button_pause.push_back("None");
-                            config.saveConfig("config.ini");
+                            config.saveConfig();
                         }
 
                         // reload config
@@ -1092,7 +1121,7 @@ void OverlayThread()
                             if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
                             {
                                 current_key_name = key_names[current_index];
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                             }
 
                             ImGui::SameLine();
@@ -1102,13 +1131,13 @@ void OverlayThread()
                                 if (config.button_reload_config.size() <= 1)
                                 {
                                     config.button_reload_config[0] = std::string("None");
-                                    config.saveConfig("config.ini");
+                                    config.saveConfig();
                                     continue;
                                 }
                                 else
                                 {
                                     config.button_reload_config.erase(config.button_reload_config.begin() + i);
-                                    config.saveConfig("config.ini");
+                                    config.saveConfig();
                                     continue;
                                 }
                             }
@@ -1119,7 +1148,7 @@ void OverlayThread()
                         if (ImGui::Button("Add button##reload_config"))
                         {
                             config.button_reload_config.push_back("None");
-                            config.saveConfig("config.ini");
+                            config.saveConfig();
                         }
 
                         // overlay
@@ -1150,7 +1179,7 @@ void OverlayThread()
                             if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
                             {
                                 current_key_name = key_names[current_index];
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                             }
 
                             ImGui::SameLine();
@@ -1158,7 +1187,7 @@ void OverlayThread()
                             if (ImGui::Button(remove_button_label.c_str()))
                             {
                                 config.button_open_overlay.erase(config.button_open_overlay.begin() + i);
-                                config.saveConfig("config.ini");
+                                config.saveConfig();
                                 continue;
                             }
 
@@ -1168,7 +1197,7 @@ void OverlayThread()
                         if (ImGui::Button("Add button##overlay"))
                         {
                             config.button_open_overlay.push_back("None");
-                            config.saveConfig("config.ini");
+                            config.saveConfig();
                         }
 
                         ImGui::EndTabItem();
@@ -1180,10 +1209,13 @@ void OverlayThread()
                     {
                         ImGui::SliderInt("Overlay Opacity", &config.overlay_opacity, 40, 255);
 
+                        if (ImGui::Checkbox("Enable snow theme", &config.overlay_snow_theme))
+                        {
+                            config.saveConfig();
+                        }
+
                         ImGui::EndTabItem();
                     }
-                    
-                    // TODO CUSTOM CLASSES
 #pragma endregion
 #pragma region DEBUG
                     // ********************************************** DEBUG *********************************************
@@ -1232,13 +1264,13 @@ void OverlayThread()
                                 if (config.screenshot_button.size() <= 1)
                                 {
                                     config.screenshot_button[0] = std::string("None");
-                                    config.saveConfig("config.ini");
+                                    config.saveConfig();
                                     continue;
                                 }
                                 else
                                 {
                                     config.screenshot_button.erase(config.screenshot_button.begin() + i);
-                                    config.saveConfig("config.ini");
+                                    config.saveConfig();
                                     continue;
                                 }
                             }
@@ -1249,7 +1281,7 @@ void OverlayThread()
                         if (ImGui::Button("Add button##button_screenshot"))
                         {
                             config.screenshot_button.push_back("None");
-                            config.saveConfig("config.ini");
+                            config.saveConfig();
                         }
 
                         ImGui::InputInt("Screenshot delay", &config.screenshot_delay, 50, 500);
@@ -1279,7 +1311,7 @@ void OverlayThread()
                         detection_resolution_changed.store(true);
                         detector_model_changed.store(true); // reboot vars for visuals
 
-                        // need apply new detection_resolution
+                        // apply new detection_resolution
                         globalMouseThread->updateConfig(
                             config.detection_resolution,
                             config.dpi,
@@ -1291,23 +1323,23 @@ void OverlayThread()
                             config.predictionInterval,
                             config.auto_shoot,
                             config.bScope_multiplier);
-                        config.saveConfig("config.ini");
+                        config.saveConfig();
                     }
 
                     // CAPTURE CURSOR
-                    if (prev_capture_cursor != config.capture_cursor && config.capture_method == "duplication_api")
+                    if (prev_capture_cursor != config.capture_cursor && config.capture_method == "winrt")
                     {
                         capture_cursor_changed.store(true);
                         prev_capture_cursor = config.capture_cursor;
-                        config.saveConfig("config.ini");
+                        config.saveConfig();
                     }
 
                     // CAPTURE BORDERS
-                    if (prev_capture_borders != config.capture_borders && config.capture_method == "duplication_api")
+                    if (prev_capture_borders != config.capture_borders && config.capture_method == "winrt")
                     {
                         capture_borders_changed.store(true);
                         prev_capture_borders = config.capture_borders;
-                        config.saveConfig("config.ini");
+                        config.saveConfig();
                     }
 
                     // CAPTURE_FPS
@@ -1317,7 +1349,7 @@ void OverlayThread()
                         capture_fps_changed.store(true);
                         prev_monitor_idx = config.monitor_idx;
                         prev_capture_fps = config.capture_fps;
-                        config.saveConfig("config.ini");
+                        config.saveConfig();
                     }
 
                     // DISABLE_HEADSHOT / BODY_Y_OFFSET / IGNORE_THIRD_PERSON / SHOOTING_RANGE_TARGETS / AUTO_AIM
@@ -1332,7 +1364,7 @@ void OverlayThread()
                         prev_ignore_third_person = config.ignore_third_person;
                         prev_shooting_range_targets = config.shooting_range_targets;
                         prev_auto_aim = config.auto_aim;
-                        config.saveConfig("config.ini");
+                        config.saveConfig();
                     }
 
                     // DPI / SENSITIVITY / FOVX / FOVY / MINSPEEDMULTIPLIER / MAXSPEEDMULTIPLIER / PREDICTIONINTERVAL
@@ -1364,7 +1396,7 @@ void OverlayThread()
                             config.auto_shoot,
                             config.bScope_multiplier);
 
-                        config.saveConfig("config.ini");
+                        config.saveConfig();
                     }
 
                     // AUTO_SHOOT / BSCOPE_MULTIPLIER / AUTO_SHOOT_REPLAY
@@ -1386,7 +1418,7 @@ void OverlayThread()
                             config.auto_shoot,
                             config.bScope_multiplier);
 
-                        config.saveConfig("config.ini");
+                        config.saveConfig();
                     }
 
                     // OVERLAY OPACITY
@@ -1394,7 +1426,7 @@ void OverlayThread()
                     {
                         BYTE opacity = config.overlay_opacity;
                         SetLayeredWindowAttributes(g_hwnd, 0, opacity, LWA_ALPHA);
-                        config.saveConfig("config.ini");
+                        config.saveConfig();
                     }
 
                     // CONFIDENCE THERSHOLD / NMS THRESHOLD / MAX DETECTIONS
@@ -1405,7 +1437,7 @@ void OverlayThread()
                         prev_nms_threshold = config.nms_threshold;
                         prev_confidence_threshold = config.confidence_threshold;
                         prev_max_detections = config.max_detections;
-                        config.saveConfig("config.ini");
+                        config.saveConfig();
                     }
 
                     // SHOW WINDOW / ALWAYS_ON_TOP
@@ -1415,7 +1447,7 @@ void OverlayThread()
                         prev_always_on_top = config.always_on_top;
                         show_window_changed.store(true);
                         prev_show_window = config.show_window;
-                        config.saveConfig("config.ini");
+                        config.saveConfig();
                     }
                     
                     // SHOW_FPS / WINDOW_SIZE / SCREENSHOT_DELAY / VERBOSE
@@ -1428,7 +1460,7 @@ void OverlayThread()
                         prev_window_size = config.window_size;
                         prev_screenshot_delay = config.screenshot_delay;
                         prev_verbose = config.verbose;
-                        config.saveConfig("config.ini");
+                        config.saveConfig();
                     }
 
                 ImGui::EndTabBar();

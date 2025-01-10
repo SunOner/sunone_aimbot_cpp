@@ -8,7 +8,7 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
-#include "timeapi.h"
+#include <timeapi.h>
 #include <condition_variable>
 
 #include <opencv2/opencv.hpp>
@@ -47,8 +47,6 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "windowsapp.lib")
-
-using namespace std;
 
 cv::cuda::GpuMat latestFrameGpu;
 cv::Mat latestFrameCpu;
@@ -103,7 +101,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         {
             std::cout << "[Capture] Unknown screen capture method. The default screen capture method is set." << std::endl;
             config.capture_method = "duplication_api";
-            config.saveConfig("config.ini");
+            config.saveConfig();
 
             capturer = new DuplicationAPIScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
             if (config.verbose)
@@ -193,7 +191,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 {
                     std::cout << "[Capture] Unknown screen capture method. The default screen capture method is set." << std::endl;
                     config.capture_method = "duplication_api";
-                    config.saveConfig("config.ini");
+                    config.saveConfig();
                     continue;
                 }
 

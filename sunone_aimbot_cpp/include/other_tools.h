@@ -25,4 +25,5 @@ int get_active_monitors();
 HMONITOR GetMonitorHandleByIndex(int monitorIndex);
 std::vector<std::string> getAvailableModels();
 void welcome_message();
+bool checkwin1903();
 #endif // OTHER_TOOLS_H
