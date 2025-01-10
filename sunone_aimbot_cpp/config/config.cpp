@@ -42,7 +42,7 @@ bool Config::loadConfig(const std::string& filename)
         fovY = 50;
         minSpeedMultiplier = 1.0f;
         maxSpeedMultiplier = 4.0f;
-        predictionInterval = 0.0f;
+        predictionInterval = 0.20f;
         input_method = "WIN32";
 
         // Arduino
@@ -66,8 +66,8 @@ bool Config::loadConfig(const std::string& filename)
         enable_optical_flow = false;
         draw_optical_flow = true;
         draw_optical_flow_steps = 16;
-        optical_flow_alpha_cpu = 0.06f;
-        optical_flow_magnitudeThreshold = 2.08;
+        optical_flow_alpha_cpu = 0.01f;
+        optical_flow_magnitudeThreshold = 0.10;
         staticFrameThreshold = 4.0f;
 
         // Buttons
