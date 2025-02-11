@@ -50,6 +50,7 @@ public:
     float nms_threshold;
     int max_detections;
     std::string postprocess;
+    int img_size;
 
     // Optical Flow
     bool enable_optical_flow;

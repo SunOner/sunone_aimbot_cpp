@@ -22,7 +22,6 @@
 #include "other_tools.h"
 #include "optical_flow.h"
 
-extern Config config;
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
 std::atomic<bool> aiming(false);
@@ -102,34 +101,54 @@ void mouseThreadFunction(MouseThread& mouseThread)
     {
         std::vector<cv::Rect> boxes;
         std::vector<int> classes;
-        
+
         std::unique_lock<std::mutex> lock(detector.detectionMutex);
-        
+
         detector.detectionCV.wait_for(lock, timeout, [&]() { return detector.detectionVersion > lastDetectionVersion || shouldExit; });
-        
+
         if (shouldExit) break;
-        
+
         if (detector.detectionVersion <= lastDetectionVersion) continue;
-        
+
         lastDetectionVersion = detector.detectionVersion;
-        
+
         boxes = detector.detectedBoxes;
         classes = detector.detectedClasses;
-        
+
         if (input_method_changed.load())
         {
             initializeInputMethod();
             input_method_changed.store(false);
         }
-        
+
+        if (detection_resolution_changed.load())
+        {
+            {
+                std::lock_guard<std::mutex> lock(configMutex);
+                mouseThread.updateConfig(
+                    config.detection_resolution,
+                    config.dpi,
+                    config.sensitivity,
+                    config.fovX,
+                    config.fovY,
+                    config.minSpeedMultiplier,
+                    config.maxSpeedMultiplier,
+                    config.predictionInterval,
+                    config.auto_shoot,
+                    config.bScope_multiplier
+                );
+            }
+            detection_resolution_changed.store(false);
+        }
+
         Target* target = sortTargets(boxes, classes, config.detection_resolution, config.detection_resolution, config.disable_headshot);
-        
+
         if (aiming)
         {
             if (target)
             {
                 mouseThread.moveMouse(*target);
-        
+
                 if (config.auto_shoot)
                 {
                     mouseThread.pressMouse(*target);
@@ -150,7 +169,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
                 mouseThread.releaseMouse();
             }
         }
-        
+
         mouseThread.checkAndResetPredictions();
         delete target;
     }
@@ -158,7 +177,8 @@ void mouseThreadFunction(MouseThread& mouseThread)
 
 int main()
 {
-    try {
+    try
+    {
         int cuda_devices = 0;
         cudaError_t err = cudaGetDeviceCount(&cuda_devices);
 
@@ -276,6 +296,7 @@ int main()
         }
 
         detector.initialize("models/" + config.ai_model);
+        detection_resolution_changed.store(true);
 
         initializeInputMethod();
 
@@ -311,7 +332,8 @@ int main()
 
         return 0;
     }
-    catch (const std::exception& e) {
+    catch (const std::exception& e)
+    {
         std::cerr << "[MAIN] An error has occurred in the main stream: " << e.what() << std::endl;
         std::cout << "Press Enter to exit...";
         std::cin.get();

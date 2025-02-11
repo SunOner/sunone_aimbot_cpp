@@ -61,6 +61,7 @@ bool Config::loadConfig(const std::string& filename)
         nms_threshold = 0.50;
         max_detections = 100;
         postprocess = "yolo10";
+        img_size = 640;
 
         // optical flow
         enable_optical_flow = false;
@@ -155,6 +156,7 @@ bool Config::loadConfig(const std::string& filename)
         nms_threshold = pt.get<float>("nms_threshold", 0.50);
         max_detections = pt.get<int>("max_detections", 20);
         postprocess = pt.get<std::string>("postprocess", "yolo11");
+        img_size = pt.get<int>("img_size", 640);
 
         // Optical Flow
         enable_optical_flow = pt.get<bool>("enable_optical_flow", false);
@@ -272,7 +274,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "confidence_threshold = " << std::fixed << std::setprecision(2) << confidence_threshold << "\n";
     file << "nms_threshold = " << std::fixed << std::setprecision(2) << nms_threshold << "\n";
     file << "max_detections = " << max_detections << "\n";
-    file << "postprocess = " << postprocess << "\n\n";
+    file << "postprocess = " << postprocess << "\n";
+    file << "img_size = " << img_size << "\n\n";
 
     file << "# Optical Flow\n";
     file << "enable_optical_flow = " << (enable_optical_flow ? "true" : "false") << "\n";

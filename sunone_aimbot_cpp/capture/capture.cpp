@@ -15,6 +15,7 @@
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudacodec.hpp>
 #include <opencv2/cudaimgproc.hpp>
+#include <opencv2/cudaarithm.hpp>
 
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.System.h>
@@ -102,7 +103,6 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             std::cout << "[Capture] Unknown screen capture method. The default screen capture method is set." << std::endl;
             config.capture_method = "duplication_api";
             config.saveConfig();
-
             capturer = new DuplicationAPIScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
             if (config.verbose)
             {
@@ -130,36 +130,12 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
         while (!shouldExit)
         {
-            if (capture_fps_changed.load())
-            {
-                if (config.capture_fps > 0.0)
-                {
-                    if (!frameLimitingEnabled)
-                    {
-                        timeBeginPeriod(1);
-                        frameLimitingEnabled = true;
-                    }
-                    frame_duration = std::chrono::duration<double, std::milli>(1000.0 / config.capture_fps);
-                }
-                else
-                {
-                    if (frameLimitingEnabled)
-                    {
-                        timeEndPeriod(1);
-                        frameLimitingEnabled = false;
-                    }
-                    frame_duration = std::nullopt;
-                }
-                capture_fps_changed.store(false);
-            }
-
-            if (detection_resolution_changed.load()
-                || capture_method_changed.load()
-                || capture_cursor_changed.load()
-                || capture_borders_changed.load())
+            if (detection_resolution_changed.load() ||
+                capture_method_changed.load() ||
+                capture_cursor_changed.load() ||
+                capture_borders_changed.load())
             {
                 delete capturer;
-
                 int new_CAPTURE_WIDTH = config.detection_resolution;
                 int new_CAPTURE_HEIGHT = config.detection_resolution;
 
@@ -167,29 +143,23 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 {
                     capturer = new DuplicationAPIScreenCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
                     if (config.verbose)
-                    {
                         std::cout << "[Capture] Using Duplication API." << std::endl;
-                    }
                 }
                 else if (config.capture_method == "winrt")
                 {
                     capturer = new WinRTScreenCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
                     if (config.verbose)
-                    {
                         std::cout << "[Capture] Using WinRT." << std::endl;
-                    }
                 }
                 else if (config.capture_method == "virtual_camera")
                 {
-                    capturer = new VirtualCameraCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+                    capturer = new VirtualCameraCapture(new_CAPTURE_WIDTH, new_CAPTURE_HEIGHT);
                     if (config.verbose)
-                    {
                         std::cout << "[Capture] Using virtual camera input." << std::endl;
-                    }
                 }
                 else
                 {
-                    std::cout << "[Capture] Unknown screen capture method. The default screen capture method is set." << std::endl;
+                    std::cout << "[Capture] Unknown screen capture method. Setting default." << std::endl;
                     config.capture_method = "duplication_api";
                     config.saveConfig();
                     continue;
@@ -208,6 +178,8 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
             if (!screenshotGpu.empty())
             {
+                cv::cuda::GpuMat processedFrame;
+
                 if (config.circle_mask)
                 {
                     cv::Mat mask = cv::Mat::zeros(screenshotGpu.size(), CV_8UC1);
@@ -218,68 +190,70 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     maskGpu.upload(mask);
                     cv::cuda::GpuMat maskedImageGpu;
                     screenshotGpu.copyTo(maskedImageGpu, maskGpu);
-                    cv::cuda::resize(maskedImageGpu, screenshotGpu, cv::Size(640, 640), 0, 0, cv::INTER_LINEAR);
+                    cv::cuda::resize(maskedImageGpu, processedFrame, cv::Size(config.img_size, config.img_size), 0, 0, cv::INTER_LINEAR);
                 }
                 else
                 {
-                    cv::cuda::resize(screenshotGpu, screenshotGpu, cv::Size(640, 640), 0, 0, cv::INTER_LINEAR);
-                }
-
-                {
-                    std::lock_guard<std::mutex> lock(detector.scaleMutex);
-                    detector.scaleX = 1;
-                    detector.scaleY = 1;
+                    cv::cuda::resize(screenshotGpu, processedFrame, cv::Size(config.img_size, config.img_size));
                 }
 
                 {
                     std::lock_guard<std::mutex> lock(frameMutex);
-                    latestFrameGpu = screenshotGpu.clone();
+                    latestFrameGpu = processedFrame.clone();
                 }
 
-                detector.processFrame(screenshotGpu);
-                screenshotGpu.download(latestFrameCpu);
+                detector.processFrame(processedFrame);
 
+                if (config.enable_optical_flow)
+                {
+                    cv::cuda::GpuMat opticFrame = processedFrame.clone();
+                    if (opticFrame.channels() == 4)
+                    {
+                        cv::cuda::cvtColor(opticFrame, opticFrame, cv::COLOR_BGRA2BGR);
+                    }
+                    if (opticFrame.channels() == 3)
+                    {
+                        cv::cuda::GpuMat opticGray;
+                        cv::cuda::cvtColor(opticFrame, opticGray, cv::COLOR_BGR2GRAY);
+                        opticalFlow.enqueueFrame(opticGray);
+                    }
+                    else
+                    {
+                        opticalFlow.enqueueFrame(opticFrame);
+                    }
+                }
+
+                processedFrame.download(latestFrameCpu);
                 {
                     std::lock_guard<std::mutex> lock(frameMutex);
                     latestFrameCpu = latestFrameCpu.clone();
                 }
                 frameCV.notify_one();
 
-
-                if (config.screenshot_button.size() && config.screenshot_button[0] != "None")
+                if (!config.screenshot_button.empty() && config.screenshot_button[0] != "None")
                 {
                     bool buttonPressed = isAnyKeyPressed(config.screenshot_button);
+                    auto now = std::chrono::steady_clock::now();
+                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count();
 
-                    if (buttonPressed)
+                    if (buttonPressed && elapsed >= config.screenshot_delay)
                     {
-                        auto now = std::chrono::steady_clock::now();
-                        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count();
-
-                        if (elapsed >= config.screenshot_delay)
-                        {
-                            cv::Mat resizedCpu;
-                            screenshotGpu.download(resizedCpu);
-
-                            auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                std::chrono::system_clock::now().time_since_epoch()).count();
-                            std::string filename = std::to_string(epoch_time) + ".jpg";
-
-                            cv::imwrite("screenshots/" + filename, resizedCpu);
-
-                            lastSaveTime = now;
-                        }
+                        cv::Mat resizedCpu;
+                        processedFrame.download(resizedCpu);
+                        auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::system_clock::now().time_since_epoch()).count();
+                        std::string filename = std::to_string(epoch_time) + ".jpg";
+                        cv::imwrite("screenshots/" + filename, resizedCpu);
+                        lastSaveTime = now;
                     }
-
-                    buttonPreviouslyPressed = buttonPressed;
                 }
 
                 captureFrameCount++;
                 auto currentTime = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> elapsed = currentTime - captureFpsStartTime;
-
-                if (elapsed.count() >= 1.0)
+                std::chrono::duration<double> elapsedTime = currentTime - captureFpsStartTime;
+                if (elapsedTime.count() >= 1.0)
                 {
-                    captureFps = static_cast<int>(captureFrameCount / elapsed.count());
+                    captureFps = static_cast<int>(captureFrameCount / elapsedTime.count());
                     captureFrameCount = 0;
                     captureFpsStartTime = currentTime;
                 }
@@ -289,14 +263,12 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             {
                 auto end_time = std::chrono::high_resolution_clock::now();
                 auto work_duration = end_time - start_time;
-
                 auto sleep_duration = frame_duration.value() - work_duration;
 
                 if (sleep_duration > std::chrono::duration<double, std::milli>(0))
                 {
                     std::this_thread::sleep_for(sleep_duration);
                 }
-
                 start_time = std::chrono::high_resolution_clock::now();
             }
         }

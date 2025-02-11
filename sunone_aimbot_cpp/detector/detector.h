@@ -23,7 +23,6 @@ public:
     bool getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int>& classes);
 
     std::mutex detectionMutex;
-    std::mutex scaleMutex;
 
     int detectionVersion;
     std::condition_variable detectionCV;
@@ -31,8 +30,18 @@ public:
     std::vector<int> detectedClasses;
     float img_scale;
 
-    float scaleX;
-    float scaleY;
+    int getInputHeight() const { return inputDims.d[2]; }
+    int getInputWidth() const { return inputDims.d[3]; }
+
+    struct AffineMatrix
+    {
+        float value[6];
+    };
+    AffineMatrix d2s;
+
+    std::vector<std::string> inputNames;
+    std::vector<std::string> outputNames;
+    std::unordered_map<std::string, size_t> outputSizes;
 
 private:
     std::unique_ptr<nvinfer1::IRuntime> runtime;
@@ -54,10 +63,7 @@ private:
     void getOutputNames();
     void getBindings();
 
-    std::vector<std::string> inputNames;
-    std::vector<std::string> outputNames;
     std::unordered_map<std::string, size_t> inputSizes;
-    std::unordered_map<std::string, size_t> outputSizes;
     std::unordered_map<std::string, void*> inputBindings;
     std::unordered_map<std::string, void*> outputBindings;
     std::unordered_map<std::string, std::vector<int64_t>> outputShapes;
@@ -75,8 +81,6 @@ private:
     std::vector<cv::Rect> boxes;
     std::vector<float> confidences;
     std::vector<int> classes;
-
-    std::vector<cv::Mat> channels;
 };
 
 #endif // DETECTOR_H

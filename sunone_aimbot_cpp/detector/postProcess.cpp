@@ -1,6 +1,9 @@
-#include "postProcess.h"
-#include <algorithm>
+﻿#include <algorithm>
 #include <numeric>
+
+#include "postProcess.h"
+#include "sunone_aimbot_cpp.h"
+#include "detector.h"
 
 void NMS(std::vector<Detection>& detections, float nmsThreshold)
 {
@@ -18,11 +21,9 @@ void NMS(std::vector<Detection>& detections, float nmsThreshold)
         for (size_t j = i + 1; j < detections.size(); ++j)
         {
             if (suppress[j])
-            {
                 continue;
-            }
 
-            float iou = (detections[i].box & detections[j].box).area() / (float)(detections[i].box | detections[j].box).area();
+            float iou = (detections[i].box & detections[j].box).area() / float((detections[i].box | detections[j].box).area());
             if (iou > nmsThreshold)
             {
                 suppress[j] = true;
@@ -38,11 +39,23 @@ void NMS(std::vector<Detection>& detections, float nmsThreshold)
             result.push_back(detections[i]);
         }
     }
-
     detections = result;
 }
 
-std::vector<Detection> postProcessYolo8(const std::vector<float>& output, float ratio, int imgWidth, int imgHeight, int numClasses, float confThreshold, float nmsThreshold)
+cv::Point2f transformPoint(const cv::Point2f& pt, const Detector::AffineMatrix& inv)
+{
+    float x = inv.value[0] * pt.x + inv.value[1] * pt.y + inv.value[2];
+    float y = inv.value[3] * pt.x + inv.value[4] * pt.y + inv.value[5];
+    return cv::Point2f(x, y);
+}
+
+std::vector<Detection> postProcessYolo8(const std::vector<float>& output,
+    float ratio,
+    int imgWidth,
+    int imgHeight,
+    int numClasses,
+    float confThreshold,
+    float nmsThreshold)
 {
     int numChannels = numClasses + 4;
     int numAnchors = output.size() / numChannels;
@@ -88,7 +101,13 @@ std::vector<Detection> postProcessYolo8(const std::vector<float>& output, float 
     return detections;
 }
 
-std::vector<Detection> postProcessYolo9(const std::vector<float>& output, float ratio, int imgWidth, int imgHeight, int numClasses, float confThreshold, float nmsThreshold)
+std::vector<Detection> postProcessYolo9(const std::vector<float>& output,
+    float ratio,
+    int imgWidth,
+    int imgHeight,
+    int numClasses,
+    float confThreshold,
+    float nmsThreshold)
 {
     return postProcessYolo8(output, ratio, imgWidth, imgHeight, numClasses, confThreshold, nmsThreshold);
 }
@@ -134,7 +153,11 @@ std::vector<Detection> postProcessYolo10(const float* output, const std::vector<
     return detections;
 }
 
-std::vector<Detection> postProcessYolo11(const float* output, const std::vector<int64_t>& shape, int numClasses, float confThreshold, float nmsThreshold, float imgScale)
+std::vector<Detection> postProcessYolo11(const float* output,
+    const std::vector<int64_t>& shape,
+    int numClasses,
+    float confThreshold,
+    float nmsThreshold)
 {
     if (shape.size() != 3)
     {
@@ -169,10 +192,10 @@ std::vector<Detection> postProcessYolo11(const float* output, const std::vector<
             float oh = det_output.at<float>(3, i);
 
             cv::Rect box;
-            box.x = static_cast<int>((cx - 0.5f * ow) * imgScale);
-            box.y = static_cast<int>((cy - 0.5f * oh) * imgScale);
-            box.width = static_cast<int>(ow * imgScale);
-            box.height = static_cast<int>(oh * imgScale);
+            box.x = static_cast<int>((cx - 0.5f * ow) * detector.img_scale);
+            box.y = static_cast<int>((cy - 0.5f * oh) * detector.img_scale);
+            box.width = static_cast<int>(ow * detector.img_scale);
+            box.height = static_cast<int>(oh * detector.img_scale);
 
             Detection detection;
             detection.box = box;

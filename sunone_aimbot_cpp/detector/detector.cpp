@@ -1,4 +1,4 @@
-#define WIN32_LEAN_AND_MEAN
+﻿#define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
@@ -31,6 +31,8 @@ int model_quant;
 std::vector<float> outputData;
 
 extern std::atomic<bool> detector_model_changed;
+extern std::atomic<bool> detection_resolution_changed;
+
 static bool error_logged = false;
 
 Detector::Detector()
@@ -168,17 +170,15 @@ void Detector::getBindings()
 void Detector::initialize(const std::string& modelFile)
 {
     runtime.reset(nvinfer1::createInferRuntime(gLogger));
-
     loadEngine(modelFile);
 
     if (!engine)
     {
-        std::cerr << "[Detector] Error loading the engine from a file " << modelFile << std::endl;
+        std::cerr << "[Detector] Error loading the engine from the file " << modelFile << std::endl;
         return;
     }
 
     context.reset(engine->createExecutionContext());
-
     if (!context)
     {
         std::cerr << "[Detector] Error creating the execution context" << std::endl;
@@ -188,6 +188,24 @@ void Detector::initialize(const std::string& modelFile)
     getInputNames();
     getOutputNames();
     getBindings();
+
+    for (const auto& name : outputNames)
+    {
+        size_t size = outputSizes[name];
+        nvinfer1::DataType dtype = outputTypes[name];
+        if (dtype == nvinfer1::DataType::kHALF)
+        {
+            outputDataBuffersHalf[name].resize(size / sizeof(__half));
+        }
+        else if (dtype == nvinfer1::DataType::kFLOAT)
+        {
+            outputDataBuffers[name].resize(size / sizeof(float));
+        }
+        else
+        {
+            std::cerr << "[Detector] Unsupported output tensor data type during initialization" << std::endl;
+        }
+    }
 
     if (!inputNames.empty())
     {
@@ -216,54 +234,9 @@ void Detector::initialize(const std::string& modelFile)
     {
         const std::string& outputName = outputNames[0];
         const std::vector<int64_t>& shape = outputShapes[outputName];
-
-        if (config.postprocess == "yolo8" || config.postprocess == "yolo9")
-        {
-            if (shape.size() >= 2)
-            {
-                numClasses = static_cast<int>(shape[1] - 4);
-                
-                if (config.verbose)
-                {
-                    std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
-                }
-            }
-            else
-            {
-                std::cerr << "[Detector] Unsupported output tensor shape for yolo8/yolo9." << std::endl;
-                numClasses = 0;
-            }
-        }
-        else if (config.postprocess == "yolo10")
-        {
-            if (shape.size() >= 3)
-            {
-                numClasses = 300; // not supported
-            }
-            else
-            {
-                std::cerr << "[Detector] Unsupported output tensor shape for yolo10." << std::endl;
-                numClasses = 0;
-            }
-        }
-        else if (config.postprocess == "yolo11")
-        {
-            if (shape.size() >= 2)
-            {
-                numClasses = static_cast<int>(shape[1] - 4);
-                std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
-            }
-            else
-            {
-                std::cerr << "[Detector] Unsupported output tensor shape for yolo11." << std::endl;
-                numClasses = 0;
-            }
-        }
-        else
-        {
-            std::cerr << "[Detector] Unknown post-processing method: " << config.postprocess << std::endl;
-            numClasses = 0;
-        }
+        int dimensions = static_cast<int>(shape[1]);
+        numClasses = dimensions - 4;
+        std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
     }
     else
     {
@@ -271,39 +244,8 @@ void Detector::initialize(const std::string& modelFile)
         numClasses = 0;
     }
 
-    if (numClasses <= 0)
-    {
-        std::cerr << "[Detector] The number of classes from the output tensor could not be determined." << std::endl;
-    }
-
-
-    for (const auto& name : outputNames)
-    {
-        size_t size = outputSizes[name];
-        nvinfer1::DataType dtype = outputTypes[name];
-
-        if (dtype == nvinfer1::DataType::kHALF)
-        {
-            outputDataBuffersHalf[name].resize(size / sizeof(__half));
-        }
-        else if (dtype == nvinfer1::DataType::kFLOAT)
-        {
-            outputDataBuffers[name].resize(size / sizeof(float));
-        }
-        else
-        {
-            std::cerr << "[Detector] Unsupported output tensor data type during initialization" << std::endl;
-        }
-    }
-
-    channels.resize(3);
-    int64_t inputH = inputDims.d[2];
-    img_scale = static_cast<float>(config.detection_resolution) / inputH;
-
-    if (config.verbose)
-    {
-        std::cout << "[Detector] Image scale factor: " << img_scale << std::endl;
-    }
+    img_scale = static_cast<float>(config.detection_resolution) / config.img_size;
+    std::cout << img_scale << std::endl;
 }
 
 size_t Detector::getSizeByDim(const nvinfer1::Dims& dims)
@@ -320,10 +262,10 @@ size_t Detector::getElementSize(nvinfer1::DataType dtype)
 {
     switch (dtype)
     {
+        case nvinfer1::DataType::kINT32: return 4;
         case nvinfer1::DataType::kFLOAT: return 4;
         case nvinfer1::DataType::kHALF:  return 2;
         case nvinfer1::DataType::kINT8:  return 1;
-        case nvinfer1::DataType::kINT32: return 4;
         default: return 0;
     }
 }
@@ -447,6 +389,8 @@ void Detector::inferenceThread()
 
                 initialize("models/" + config.ai_model);
             }
+
+            detection_resolution_changed.store(true);
             detector_model_changed.store(false);
         }
 
@@ -560,56 +504,75 @@ bool Detector::getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int
 
 void Detector::preProcess(const cv::cuda::GpuMat& frame)
 {
+    if (frame.empty())
+    {
+        std::cerr << "[Detector] An empty image was obtained." << std::endl;
+        return;
+    }
+
+    cv::cuda::GpuMat procFrame;
+    procFrame = frame;
+
     int inputC = inputDims.d[1];
     int inputH = inputDims.d[2];
     int inputW = inputDims.d[3];
 
     cv::cuda::GpuMat resizedImage;
-    cv::cuda::GpuMat flowImage;
-    cv::cuda::resize(frame, resizedImage, cv::Size(inputW, inputH));
-
-    if (config.enable_optical_flow)
+    cv::cuda::resize(procFrame, resizedImage, cv::Size(inputW, inputH));
+    if (resizedImage.empty())
     {
-        flowImage = resizedImage.clone();
-    }
-
-    if (resizedImage.channels() == 4)
-    {
-        cv::cuda::cvtColor(resizedImage, resizedImage, cv::COLOR_BGRA2BGR);
-
-        if (config.enable_optical_flow)
-        {
-            cv::cuda::cvtColor(flowImage, flowImage, cv::COLOR_BGRA2BGR);
-        }
-    }
-    else if (resizedImage.channels() != 3)
-    {
+        std::cerr << "[Detector] Error when resizing the image." << std::endl;
         return;
     }
 
-    cv::cuda::cvtColor(resizedImage, resizedImage, cv::COLOR_BGR2RGB);
-
-    resizedImage.convertTo(resizedImage, CV_32F, 1.0 / 255.0);
-
-    if (config.enable_optical_flow)
+    try
     {
-        opticalFlow.enqueueFrame(flowImage);
+        resizedImage.convertTo(resizedImage, CV_32F, 1.0 / 255.0);
+    }
+    catch (const cv::Exception& e)
+    {
+        std::cerr << "[Detector] Error when converting an image: " << e.what() << std::endl;
+        return;
     }
 
+    for (int i = 0; i < 6; i++)
+    {
+        d2s.value[i] = 0.0f;
+    }
+    d2s.value[0] = 1.0f;
+    d2s.value[4] = 1.0f;
+
     std::vector<cv::cuda::GpuMat> gpuChannels;
-    cv::cuda::split(resizedImage, gpuChannels);
+    try
+    {
+        cv::cuda::split(resizedImage, gpuChannels);
+    }
+    catch (const cv::Exception& e)
+    {
+        std::cerr << "[Detector] Error when dividing the image into channels: " << e.what() << std::endl;
+        return;
+    }
+    if (gpuChannels.size() < static_cast<size_t>(inputC))
+    {
+        std::cerr << "[Detector] Mismatch in the number of channels. Expected: "
+            << inputC << ", received: " << gpuChannels.size() << std::endl;
+        return;
+    }
 
     for (int c = 0; c < inputC; ++c)
     {
-        cudaMemcpyAsync(
-            static_cast<float*>(inputBufferDevice) + c * inputH * inputW,
+        cudaError_t err = cudaMemcpyAsync(static_cast<float*>(inputBufferDevice) + c * inputH * inputW,
             gpuChannels[c].ptr<float>(),
             inputH * inputW * sizeof(float),
             cudaMemcpyDeviceToDevice,
-            stream
-        );
+            stream);
+        if (err != cudaSuccess)
+        {
+            std::cerr << "[Detector] Channel copy error " << c
+                << ": " << cudaGetErrorString(err) << std::endl;
+            return;
+        }
     }
-
     cudaStreamSynchronize(stream);
 }
 
@@ -627,22 +590,38 @@ void Detector::postProcess(const float* output, const std::string& outputName)
     if (config.postprocess == "yolo8")
     {
         std::vector<float> outputVec(output, output + outputSize);
-        detections = postProcessYolo8(outputVec, img_scale, config.detection_resolution, config.detection_resolution, numClasses, config.confidence_threshold, config.nms_threshold);
+        detections = postProcessYolo8(outputVec, img_scale, config.detection_resolution, config.detection_resolution,
+            numClasses, config.confidence_threshold, config.nms_threshold);
     }
     else if (config.postprocess == "yolo9")
     {
         std::vector<float> outputVec(output, output + outputSize);
-        detections = postProcessYolo9(outputVec, img_scale, config.detection_resolution, config.detection_resolution, numClasses, config.confidence_threshold, config.nms_threshold);
+        detections = postProcessYolo9(outputVec, img_scale, config.detection_resolution, config.detection_resolution,
+            numClasses, config.confidence_threshold, config.nms_threshold);
     }
     else if (config.postprocess == "yolo10")
     {
         const std::vector<int64_t>& shape = outputShapes[outputName];
-        detections = postProcessYolo10(output, shape, img_scale, numClasses, config.confidence_threshold, config.nms_threshold);
+        detections = postProcessYolo10(output, shape, img_scale, numClasses,
+            config.confidence_threshold, config.nms_threshold);
     }
     else if (config.postprocess == "yolo11")
     {
-        const std::vector<int64_t>& shape = outputShapes[outputName];
-        detections = postProcessYolo11(output, shape, numClasses, config.confidence_threshold, config.nms_threshold, img_scale);
+        const std::vector<int64_t>& engineShape = outputShapes[outputName];
+        if (engineShape.size() != 3)
+        {
+            std::cerr << "[Detector] Invalid output shape dimensions for yolo11. Expected 3 dimensions, but got "
+                << engineShape.size() << std::endl;
+            detections.clear();
+        }
+        else
+        {
+            detections = postProcessYolo11(output,
+                engineShape,
+                numClasses,
+                config.confidence_threshold,
+                config.nms_threshold);
+        }
     }
     else
     {

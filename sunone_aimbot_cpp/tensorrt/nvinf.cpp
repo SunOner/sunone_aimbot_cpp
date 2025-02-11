@@ -1,4 +1,4 @@
-#define WIN32_LEAN_AND_MEAN
+﻿#define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
@@ -9,6 +9,7 @@
 #include <cuda_runtime.h>
 
 #include "nvinf.h"
+#include "sunone_aimbot_cpp.h"
 
 Logger gLogger;
 
@@ -20,8 +21,7 @@ void Logger::log(nvinfer1::ILogger::Severity severity, const char* msg) noexcept
 
         std::string magicTag = "Serialization assertion plan->header.magicTag == rt::kPLAN_MAGIC_TAG failed.";
         std::string old_deserialization = "Using old deserialization call on a weight-separated plan file.";
-        if (devMsg.find(magicTag) != std::string::npos ||
-            devMsg.find(old_deserialization) != std::string::npos)
+        if (devMsg.find(magicTag) != std::string::npos || devMsg.find(old_deserialization) != std::string::npos)
         {
             std::cout << "[TensorRT] ERROR: This engine model is not suitable for execution. Please delete this engine model and set the ONNX version of this model in the settings. The program will export the model automatically." << std::endl;
         }
@@ -94,7 +94,7 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     nvinfer1::IBuilder* builder = nvinfer1::createInferBuilder(logger);
     const auto explicitBatch = 1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
     nvinfer1::INetworkDefinition* network = builder->createNetworkV2(explicitBatch);
-    nvinfer1::IBuilderConfig* config = builder->createBuilderConfig();
+    nvinfer1::IBuilderConfig* cfg = builder->createBuilderConfig();
 
     nvonnxparser::IParser* parser = nvonnxparser::createParser(*network, logger);
 
@@ -105,7 +105,7 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
         delete parser;
         delete network;
         delete builder;
-        delete config;
+        delete cfg;
 
         return nullptr;
     }
@@ -119,25 +119,22 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     profile->setDimensions(inputTensorName, nvinfer1::OptProfileSelector::kOPT, dims);
     profile->setDimensions(inputTensorName, nvinfer1::OptProfileSelector::kMAX, dims);
     
-    config->addOptimizationProfile(profile);
+    cfg->addOptimizationProfile(profile);
 
-    if (builder->platformHasFastFp16())
-    {
-        config->setFlag(nvinfer1::BuilderFlag::kFP16);
-    }
+    cfg->setFlag(nvinfer1::BuilderFlag::kFP8);
 
     cudaStream_t stream;
     cudaStreamCreate(&stream);
 
     std::cout << "[TensorRT] Building engine (this may take several minutes)..." << std::endl;
-    auto plan = builder->buildSerializedNetwork(*network, *config);
+    auto plan = builder->buildSerializedNetwork(*network, *cfg);
     if (!plan)
     {
         std::cerr << "[TensorRT] ERROR: Could not build the engine" << std::endl;
         delete parser;
         delete network;
         delete builder;
-        delete config;
+        delete cfg;
         return nullptr;
     }
 
@@ -155,7 +152,7 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
         delete parser;
         delete network;
         delete builder;
-        delete config;
+        delete cfg;
 
         return nullptr;
     }
@@ -174,7 +171,7 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
         delete parser;
         delete network;
         delete builder;
-        delete config;
+        delete cfg;
 
         return nullptr;
     }
@@ -186,7 +183,7 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     delete runtime;
     delete parser;
     delete network;
-    delete config;
+    delete cfg;
     delete builder;
 
     std::cout << "[TensorRT] The engine was built and saved to the file: " << engineFile << std::endl;

@@ -3,9 +3,7 @@
 #include <winsock2.h>
 #include <Windows.h>
 
-// for browser
 #include "shellapi.h"
-
 #include <tchar.h>
 #include <thread>
 #include <mutex>
@@ -211,8 +209,6 @@ void SetupImGui()
 
     ImGui::StyleColorsDark();
 
-    // Other setups
-    
     // Load body texture
     int image_width = 0;
     int image_height = 0;
