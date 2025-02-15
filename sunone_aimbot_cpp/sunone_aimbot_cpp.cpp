@@ -141,7 +141,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
             detection_resolution_changed.store(false);
         }
 
-        Target* target = sortTargets(boxes, classes, config.detection_resolution, config.detection_resolution, config.disable_headshot);
+        AimbotTarget* target = sortTargets(boxes, classes, config.detection_resolution, config.detection_resolution, config.disable_headshot);
 
         if (aiming)
         {

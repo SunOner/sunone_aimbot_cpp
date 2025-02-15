@@ -3,7 +3,7 @@
 
 #include <string>
 #include <boost/asio.hpp>
-#include "target.h"
+#include "AimbotTarget.h"
 
 class SerialConnection
 {

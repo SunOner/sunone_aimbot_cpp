@@ -8,14 +8,12 @@
 #include <opencv2/opencv.hpp>
 
 #include "sunone_aimbot_cpp.h"
-#include "target.h"
+#include "AimbotTarget.h"
 #include "config.h"
 
-using namespace std;
+AimbotTarget::AimbotTarget(int x, int y, int w, int h, int cls) : x(x), y(y), w(w), h(h), classId(cls) {}
 
-Target::Target(int x, int y, int w, int h, int cls) : x(x), y(y), w(w), h(h), cls(cls) {}
-
-Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& classes, int screenWidth, int screenHeight, bool disableHeadshot)
+AimbotTarget* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& classes, int screenWidth, int screenHeight, bool disableHeadshot)
 {
     if (boxes.empty() || classes.empty())
     {
@@ -92,7 +90,7 @@ Target* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& 
         y = targetY - boxes[nearestIdx].height / 2;
     }
 
-    return new Target(
+    return new AimbotTarget(
         boxes[nearestIdx].x,
         y,
         boxes[nearestIdx].width,

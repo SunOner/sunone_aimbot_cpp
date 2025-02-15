@@ -81,6 +81,7 @@ bool Config::loadConfig(const std::string& filename)
         // Overlay
         overlay_opacity = 225;
         overlay_snow_theme = true;
+        overlay_ui_scale = 1.0f;
 
         // Custom classes
         class_player =  0;
@@ -176,6 +177,7 @@ bool Config::loadConfig(const std::string& filename)
         // Overlay
         overlay_opacity = pt.get<int>("overlay_opacity", 225);
         overlay_snow_theme = pt.get<bool>("overlay_snow_theme", true);
+        overlay_ui_scale = pt.get<float>("overlay_ui_scale", 1.0f);
 
         // Custom Classes
         class_player = pt.get<int>("class_player", 0);
@@ -294,7 +296,8 @@ bool Config::saveConfig(const std::string& filename)
 
     file << "# Overlay\n";
     file << "overlay_opacity = " << overlay_opacity << "\n";
-    file << "overlay_snow_theme = " << (overlay_snow_theme ? "true" : "false") << "\n\n";
+    file << "overlay_snow_theme = " << (overlay_snow_theme ? "true" : "false") << "\n";
+    file << "overlay_ui_scale = " << std::fixed << std::setprecision(2) << overlay_ui_scale << "\n\n";
 
     file << "# Custom Classes\n";
     file << "class_player = " << class_player << "\n";

@@ -70,6 +70,7 @@ public:
     // Overlay
     int overlay_opacity;
     bool overlay_snow_theme;
+    float overlay_ui_scale;
 
     // Custom Classes
     int class_player;                  // 0

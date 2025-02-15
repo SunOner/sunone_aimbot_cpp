@@ -183,7 +183,7 @@ bool MouseThread::check_target_in_scope(double target_x, double target_y, double
     return center_x > x1 && center_x < x2&& center_y > y1 && center_y < y2;
 }
 
-void MouseThread::moveMouse(const Target& target)
+void MouseThread::moveMouse(const AimbotTarget& target)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
 
@@ -224,7 +224,7 @@ void MouseThread::moveMouse(const Target& target)
 
 int mouse_press_iter = 0;
 
-void MouseThread::pressMouse(const Target& target)
+void MouseThread::pressMouse(const AimbotTarget& target)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
 
