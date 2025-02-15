@@ -88,6 +88,7 @@ void Detector::getInputNames()
             {
                 std::cout << "[Detector] Detected model input name: " << name << std::endl;
             }
+
             inputNames.emplace_back(name);
             nvinfer1::Dims dims = engine->getTensorShape(name);
             nvinfer1::DataType dtype = engine->getTensorDataType(name);
@@ -236,16 +237,25 @@ void Detector::initialize(const std::string& modelFile)
         const std::vector<int64_t>& shape = outputShapes[outputName];
         int dimensions = static_cast<int>(shape[1]);
         numClasses = dimensions - 4;
-        std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
+        if (config.verbose)
+        {
+            std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
+        }
     }
     else
     {
-        std::cerr << "[Detector] No output tensors were found." << std::endl;
+        if (config.verbose)
+        {
+            std::cerr << "[Detector] No output tensors were found." << std::endl;
+        }
         numClasses = 0;
     }
 
     img_scale = static_cast<float>(config.detection_resolution) / config.img_size;
-    std::cout << img_scale << std::endl;
+    if (config.verbose)
+    {
+        std::cout << "[Detector] img_scale: " << img_scale << std::endl;
+    }
 }
 
 size_t Detector::getSizeByDim(const nvinfer1::Dims& dims)
