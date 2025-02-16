@@ -31,8 +31,7 @@ ID3D11Device* g_pd3dDevice = NULL;
 ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
 IDXGISwapChain* g_pSwapChain = NULL;
 ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
-
-static HWND g_hwnd = NULL;
+HWND g_hwnd = NULL;
 
 extern Config config;
 extern std::mutex configMutex;
@@ -47,8 +46,10 @@ ID3D11BlendState* g_pBlendState = nullptr;
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-int overlayWidth = 680;
-int overlayHeight = 480;
+const int BASE_OVERLAY_WIDTH = 680;
+const int BASE_OVERLAY_HEIGHT = 480;
+int overlayWidth = 0;
+int overlayHeight = 0;
 
 std::vector<std::string> availableModels;
 std::vector<std::string> key_names;
@@ -163,15 +164,13 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         if (g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED)
         {
             RECT rect;
-            if (GetClientRect(hWnd, &rect))
-            {
-                UINT width = rect.right - rect.left;
-                UINT height = rect.bottom - rect.top;
+            GetWindowRect(hWnd, &rect);
+            UINT width = rect.right - rect.left;
+            UINT height = rect.bottom - rect.top;
 
-                CleanupRenderTarget();
-                g_pSwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
-                CreateRenderTarget();
-            }
+            CleanupRenderTarget();
+            g_pSwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
+            CreateRenderTarget();
         }
         return 0;
     case WM_DESTROY:
@@ -199,6 +198,9 @@ void SetupImGui()
 
 bool CreateOverlayWindow()
 {
+    int overlayWidth = static_cast<int>(BASE_OVERLAY_WIDTH * config.overlay_ui_scale);
+    int overlayHeight = static_cast<int>(BASE_OVERLAY_HEIGHT * config.overlay_ui_scale);
+
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L,
                       GetModuleHandle(NULL), NULL, NULL, NULL, NULL,
                       _T("Edge"), NULL };

@@ -3,7 +3,6 @@
 
 #include "NvInfer.h"
 
-
 class Logger : public nvinfer1::ILogger
 {
 public:

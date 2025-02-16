@@ -12,6 +12,7 @@ extern ID3D11Device* g_pd3dDevice;
 extern ID3D11DeviceContext* g_pd3dDeviceContext;
 extern IDXGISwapChain* g_pSwapChain;
 extern ID3D11RenderTargetView* g_mainRenderTargetView;
+extern HWND g_hwnd;
 
 void OverlayThread();
 
@@ -26,5 +27,10 @@ extern std::atomic<bool> show_window_changed;
 
 extern std::vector<std::string> key_names;
 extern std::vector<const char*> key_names_cstrs;
+
+extern const int BASE_OVERLAY_WIDTH;
+extern const int BASE_OVERLAY_HEIGHT;
+extern int overlayWidth;
+extern int overlayHeight;
 
 #endif // OVERLAY_H
