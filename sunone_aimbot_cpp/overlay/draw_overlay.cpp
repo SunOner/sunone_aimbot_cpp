@@ -17,6 +17,7 @@ void draw_overlay()
     }
 
     static float ui_scale = config.overlay_ui_scale;
+
     if (ImGui::SliderFloat("UI Scale", &ui_scale, 0.5f, 3.0f, "%.2f"))
     {
         ImGui::GetIO().FontGlobalScale = ui_scale;
