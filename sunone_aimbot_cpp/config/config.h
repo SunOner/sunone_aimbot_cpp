@@ -8,7 +8,7 @@ class Config
 {
 public:
     // Capture
-    std::string capture_method;
+    std::string capture_method; // "duplication_api", "winrt", "virtual_camera"
     int detection_resolution;
     int capture_fps;
     int monitor_idx;
@@ -51,6 +51,8 @@ public:
     int max_detections;
     std::string postprocess;
     int img_size;
+    bool export_enable_fp8;
+    bool export_enable_fp16;
 
     // Optical Flow
     bool enable_optical_flow;

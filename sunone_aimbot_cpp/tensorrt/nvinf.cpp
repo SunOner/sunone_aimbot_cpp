@@ -121,7 +121,25 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     
     cfg->addOptimizationProfile(profile);
 
-    cfg->setFlag(nvinfer1::BuilderFlag::kFP8);
+    if (config.export_enable_fp16)
+    {
+        if (config.verbose)
+        {
+            std::cout << "[TensorRT] Set FP16" << std::endl;
+        }
+
+        cfg->setFlag(nvinfer1::BuilderFlag::kFP16);
+    }
+
+    if (config.export_enable_fp8)
+    {
+        if (config.verbose)
+        {
+            std::cout << "[TensorRT] Set FP8" << std::endl;
+        }
+
+        cfg->setFlag(nvinfer1::BuilderFlag::kFP8);
+    }
 
     cudaStream_t stream;
     cudaStreamCreate(&stream);

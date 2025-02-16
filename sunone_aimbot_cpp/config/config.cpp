@@ -62,6 +62,8 @@ bool Config::loadConfig(const std::string& filename)
         max_detections = 100;
         postprocess = "yolo10";
         img_size = 640;
+        export_enable_fp8 = true;
+        export_enable_fp16 = true;
 
         // optical flow
         enable_optical_flow = false;
@@ -158,6 +160,8 @@ bool Config::loadConfig(const std::string& filename)
         max_detections = pt.get<int>("max_detections", 20);
         postprocess = pt.get<std::string>("postprocess", "yolo11");
         img_size = pt.get<int>("img_size", 640);
+        export_enable_fp8 = pt.get<bool>("export_enable_fp8", true);
+        export_enable_fp16 = pt.get<bool>("export_enable_fp16", true);
 
         // Optical Flow
         enable_optical_flow = pt.get<bool>("enable_optical_flow", false);
@@ -277,7 +281,9 @@ bool Config::saveConfig(const std::string& filename)
     file << "nms_threshold = " << std::fixed << std::setprecision(2) << nms_threshold << "\n";
     file << "max_detections = " << max_detections << "\n";
     file << "postprocess = " << postprocess << "\n";
-    file << "img_size = " << img_size << "\n\n";
+    file << "img_size = " << img_size << "\n";
+    file << "export_enable_fp8 = " << (export_enable_fp8 ? "true" : "false") << "\n";
+    file << "export_enable_fp16 = " << (export_enable_fp16 ? "true" : "false") << "\n\n";
 
     file << "# Optical Flow\n";
     file << "enable_optical_flow = " << (enable_optical_flow ? "true" : "false") << "\n";
