@@ -198,8 +198,8 @@ void SetupImGui()
 
 bool CreateOverlayWindow()
 {
-    int overlayWidth = static_cast<int>(BASE_OVERLAY_WIDTH * config.overlay_ui_scale);
-    int overlayHeight = static_cast<int>(BASE_OVERLAY_HEIGHT * config.overlay_ui_scale);
+    overlayWidth = static_cast<int>(BASE_OVERLAY_WIDTH * config.overlay_ui_scale);
+    overlayHeight = static_cast<int>(BASE_OVERLAY_HEIGHT * config.overlay_ui_scale);
 
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L,
                       GetModuleHandle(NULL), NULL, NULL, NULL, NULL,
@@ -334,10 +334,11 @@ void OverlayThread()
         5.f,
         0,
         0,
-        680,
-        480,
+        overlayWidth,
+        overlayHeight,
         Snowflake::vec3(0.f, 0.005f),
-        IM_COL32(255, 255, 255, 255));
+        IM_COL32(255, 255, 255, 255)
+    );
 
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
