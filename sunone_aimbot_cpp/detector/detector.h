@@ -33,12 +33,6 @@ public:
     int getInputHeight() const { return inputDims.d[2]; }
     int getInputWidth() const { return inputDims.d[3]; }
 
-    struct AffineMatrix
-    {
-        float value[6];
-    };
-    AffineMatrix d2s;
-
     std::vector<std::string> inputNames;
     std::vector<std::string> outputNames;
     std::unordered_map<std::string, size_t> outputSizes;

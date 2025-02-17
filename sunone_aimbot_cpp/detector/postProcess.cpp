@@ -42,13 +42,6 @@ void NMS(std::vector<Detection>& detections, float nmsThreshold)
     detections = result;
 }
 
-cv::Point2f transformPoint(const cv::Point2f& pt, const Detector::AffineMatrix& inv)
-{
-    float x = inv.value[0] * pt.x + inv.value[1] * pt.y + inv.value[2];
-    float y = inv.value[3] * pt.x + inv.value[4] * pt.y + inv.value[5];
-    return cv::Point2f(x, y);
-}
-
 std::vector<Detection> postProcessYolo8(const std::vector<float>& output,
     float ratio,
     int imgWidth,

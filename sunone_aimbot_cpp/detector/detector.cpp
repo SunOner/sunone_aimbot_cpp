@@ -236,7 +236,9 @@ void Detector::initialize(const std::string& modelFile)
         const std::string& outputName = outputNames[0];
         const std::vector<int64_t>& shape = outputShapes[outputName];
         int dimensions = static_cast<int>(shape[1]);
+
         numClasses = dimensions - 4;
+        
         if (config.verbose)
         {
             std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
@@ -529,6 +531,7 @@ void Detector::preProcess(const cv::cuda::GpuMat& frame)
 
     cv::cuda::GpuMat resizedImage;
     cv::cuda::resize(procFrame, resizedImage, cv::Size(inputW, inputH));
+
     if (resizedImage.empty())
     {
         std::cerr << "[Detector] Error when resizing the image." << std::endl;
@@ -544,13 +547,6 @@ void Detector::preProcess(const cv::cuda::GpuMat& frame)
         std::cerr << "[Detector] Error when converting an image: " << e.what() << std::endl;
         return;
     }
-
-    for (int i = 0; i < 6; i++)
-    {
-        d2s.value[i] = 0.0f;
-    }
-    d2s.value[0] = 1.0f;
-    d2s.value[4] = 1.0f;
 
     std::vector<cv::cuda::GpuMat> gpuChannels;
     try
