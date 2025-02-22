@@ -23,16 +23,16 @@
 	- Download and install [CUDA 12.8](https://developer.nvidia.com/cuda-12-8-0-download-archive).
 
 2. **Download the Latest Release**  
-	- Download the latest release from [here](https://disk.yandex.ru/d/gBneQIuTU-Sytw) v2.9 (Updated 11.02.2025).
+	- Download the latest release from [here](https://disk.yandex.ru/d/Ha8iGvGFXz_7kw) v3.0 (Updated 22.02.2025).
 
-3. **Unpack Aimbot**  
+3. **Unpack Aimbot**
    - Extract the contents of the Aimbot.
 
-4. **First Launch and Model Export**  
+4. **First Launch and Model Export**
 	- Run `ai.exe` and wait until the standard `.onnx` model is exported, usually taking no more than five minutes.
 	- To export another model, simply place it in `.onnx` format in the `models` folder. Then, in the AI tab (press `HOME` to open overlay), select this model, and it will be exported automatically.
 
-5. **Settings**  
+5. **Settings**
 	- After successfully exporting the model, you can configure the program.
 	- All settings are available in the overlay (default key is `Home`).
 	- A list of settings can be found in the [config documentation](https://github.com/SunOner/sunone_aimbot_docs/blob/main/config/config_cpp.md).
