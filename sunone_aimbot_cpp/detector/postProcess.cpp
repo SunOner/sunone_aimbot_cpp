@@ -42,70 +42,13 @@ void NMS(std::vector<Detection>& detections, float nmsThreshold)
     detections = result;
 }
 
-std::vector<Detection> postProcessYolo8(const std::vector<float>& output,
-    float ratio,
-    int imgWidth,
-    int imgHeight,
+std::vector<Detection> postProcessYolo10(
+    const float* output,
+    const std::vector<int64_t>& shape,
     int numClasses,
     float confThreshold,
-    float nmsThreshold)
-{
-    int numChannels = numClasses + 4;
-    int numAnchors = output.size() / numChannels;
-
-    std::vector<Detection> detections;
-
-    cv::Mat outputMat(numChannels, numAnchors, CV_32F, (void*)output.data());
-    outputMat = outputMat.t();
-
-    for (int i = 0; i < numAnchors; i++)
-    {
-        const float* rowPtr = outputMat.row(i).ptr<float>();
-        const float* bboxesPtr = rowPtr;
-        const float* scoresPtr = rowPtr + 4;
-
-        auto maxSPtr = std::max_element(scoresPtr, scoresPtr + numClasses);
-        float score = *maxSPtr;
-        if (score > confThreshold)
-        {
-            float x = *bboxesPtr++;
-            float y = *bboxesPtr++;
-            float w = *bboxesPtr++;
-            float h = *bboxesPtr;
-
-            float x0 = std::clamp((x - 0.5f * w) * ratio, 0.f, (float)imgWidth);
-            float y0 = std::clamp((y - 0.5f * h) * ratio, 0.f, (float)imgHeight);
-            float x1 = std::clamp((x + 0.5f * w) * ratio, 0.f, (float)imgWidth);
-            float y1 = std::clamp((y + 0.5f * h) * ratio, 0.f, (float)imgHeight);
-
-            int label = static_cast<int>(maxSPtr - scoresPtr);
-
-            Detection det;
-            det.box = cv::Rect(cv::Point(x0, y0), cv::Point(x1, y1));
-            det.confidence = score;
-            det.classId = label;
-
-            detections.push_back(det);
-        }
-    }
-
-    NMS(detections, nmsThreshold);
-
-    return detections;
-}
-
-std::vector<Detection> postProcessYolo9(const std::vector<float>& output,
-    float ratio,
-    int imgWidth,
-    int imgHeight,
-    int numClasses,
-    float confThreshold,
-    float nmsThreshold)
-{
-    return postProcessYolo8(output, ratio, imgWidth, imgHeight, numClasses, confThreshold, nmsThreshold);
-}
-
-std::vector<Detection> postProcessYolo10(const float* output, const std::vector<int64_t>& shape, float factor, int numClasses, float confThreshold, float nmsThreshold)
+    float nmsThreshold
+)
 {
     std::vector<Detection> detections;
 
@@ -125,10 +68,10 @@ std::vector<Detection> postProcessYolo10(const float* output, const std::vector<
             float dx = det[2];
             float dy = det[3];
 
-            int x = static_cast<int>(cx * factor);
-            int y = static_cast<int>(cy * factor);
-            int width = static_cast<int>((dx - cx) * factor);
-            int height = static_cast<int>((dy - cy) * factor);
+            int x = static_cast<int>(cx * detector.img_scale);
+            int y = static_cast<int>(cy * detector.img_scale);
+            int width = static_cast<int>((dx - cx) * detector.img_scale);
+            int height = static_cast<int>((dy - cy) * detector.img_scale);
 
             cv::Rect box(x, y, width, height);
 
@@ -146,11 +89,13 @@ std::vector<Detection> postProcessYolo10(const float* output, const std::vector<
     return detections;
 }
 
-std::vector<Detection> postProcessYolo11(const float* output,
+std::vector<Detection> postProcessYolo11(
+    const float* output,
     const std::vector<int64_t>& shape,
     int numClasses,
     float confThreshold,
-    float nmsThreshold)
+    float nmsThreshold
+)
 {
     if (shape.size() != 3)
     {
@@ -160,7 +105,9 @@ std::vector<Detection> postProcessYolo11(const float* output,
 
     std::vector<Detection> detections;
 
-    cv::Mat det_output(shape[1], shape[2], CV_32F, (void*)output);
+    int rows = shape[1];
+    int cols = shape[2];
+    cv::Mat det_output(rows, cols, CV_32F, (void*)output);
 
     for (int i = 0; i < det_output.cols; ++i)
     {

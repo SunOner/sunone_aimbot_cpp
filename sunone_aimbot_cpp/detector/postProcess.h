@@ -3,7 +3,8 @@
 
 #include <vector>
 #include <opencv2/opencv.hpp>
-#include <detector.h>
+
+#include "detector.h"
 
 struct Detection
 {
@@ -14,25 +15,9 @@ struct Detection
 
 void NMS(std::vector<Detection>& detections, float nmsThreshold);
 
-std::vector<Detection> postProcessYolo8(const std::vector<float>& output,
-    float ratio,
-    int imgWidth,
-    int imgHeight,
-    int numClasses,
-    float confThreshold,
-    float nmsThreshold);
-
-std::vector<Detection> postProcessYolo9(const std::vector<float>& output,
-    float ratio,
-    int imgWidth,
-    int imgHeight,
-    int numClasses,
-    float confThreshold,
-    float nmsThreshold);
-
-std::vector<Detection> postProcessYolo10(const float* output,
+std::vector<Detection> postProcessYolo10(
+    const float* output,
     const std::vector<int64_t>& shape,
-    float factor,
     int numClasses,
     float confThreshold,
     float nmsThreshold);

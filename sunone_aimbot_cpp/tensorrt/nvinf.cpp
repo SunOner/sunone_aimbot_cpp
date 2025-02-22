@@ -4,7 +4,7 @@
 #include <Windows.h>
 #include <iostream>
 #include <fstream>
-
+#include <vector>
 #include <NvOnnxParser.h>
 #include <cuda_runtime.h>
 
@@ -85,7 +85,6 @@ nvinfer1::ICudaEngine* loadEngineFromFile(const std::string& engineFile, nvinfer
     }
 
     std::cout << "[TensorRT] The engine was successfully loaded from the file: " << engineFile << std::endl;
-
     return engine;
 }
 
@@ -94,50 +93,50 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     nvinfer1::IBuilder* builder = nvinfer1::createInferBuilder(logger);
     const auto explicitBatch = 1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
     nvinfer1::INetworkDefinition* network = builder->createNetworkV2(explicitBatch);
+
     nvinfer1::IBuilderConfig* cfg = builder->createBuilderConfig();
 
     nvonnxparser::IParser* parser = nvonnxparser::createParser(*network, logger);
-
     if (!parser->parseFromFile(onnxFile.c_str(), static_cast<int>(nvinfer1::ILogger::Severity::kWARNING)))
     {
         std::cerr << "[TensorRT] ERROR: Error parsing the ONNX file: " << onnxFile << std::endl;
-
         delete parser;
         delete network;
         delete builder;
         delete cfg;
-
         return nullptr;
     }
 
-    const char* inputTensorName = network->getInput(0)->getName();
-
     nvinfer1::IOptimizationProfile* profile = builder->createOptimizationProfile();
- 
-    nvinfer1::Dims dims = network->getInput(0)->getDimensions();
-    profile->setDimensions(inputTensorName, nvinfer1::OptProfileSelector::kMIN, dims);
-    profile->setDimensions(inputTensorName, nvinfer1::OptProfileSelector::kOPT, dims);
-    profile->setDimensions(inputTensorName, nvinfer1::OptProfileSelector::kMAX, dims);
-    
+    profile->setDimensions(
+        "images",
+        nvinfer1::OptProfileSelector::kMIN,
+        nvinfer1::Dims4(1, 3, 160, 160)
+    );
+    profile->setDimensions(
+        "images",
+        nvinfer1::OptProfileSelector::kOPT,
+        nvinfer1::Dims4(1, 3, 320, 320)
+    );
+    profile->setDimensions(
+        "images",
+        nvinfer1::OptProfileSelector::kMAX,
+        nvinfer1::Dims4(1, 3, 640, 640)
+    );
+
     cfg->addOptimizationProfile(profile);
+
 
     if (config.export_enable_fp16)
     {
         if (config.verbose)
-        {
             std::cout << "[TensorRT] Set FP16" << std::endl;
-        }
-
         cfg->setFlag(nvinfer1::BuilderFlag::kFP16);
     }
-
     if (config.export_enable_fp8)
     {
         if (config.verbose)
-        {
             std::cout << "[TensorRT] Set FP8" << std::endl;
-        }
-
         cfg->setFlag(nvinfer1::BuilderFlag::kFP8);
     }
 
@@ -145,6 +144,7 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     cudaStreamCreate(&stream);
 
     std::cout << "[TensorRT] Building engine (this may take several minutes)..." << std::endl;
+
     auto plan = builder->buildSerializedNetwork(*network, *cfg);
     if (!plan)
     {
@@ -158,7 +158,7 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
 
     nvinfer1::IRuntime* runtime = nvinfer1::createInferRuntime(logger);
     nvinfer1::ICudaEngine* engine = runtime->deserializeCudaEngine(plan->data(), plan->size());
-    
+
     cudaStreamSynchronize(stream);
     cudaStreamDestroy(stream);
 
@@ -171,29 +171,23 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
         delete network;
         delete builder;
         delete cfg;
-
         return nullptr;
     }
 
     nvinfer1::IHostMemory* serializedModel = engine->serialize();
-
     std::string engineFile = onnxFile.substr(0, onnxFile.find_last_of('.')) + ".engine";
-
     std::ofstream p(engineFile, std::ios::binary);
     if (!p)
     {
         std::cerr << "[TensorRT] ERROR: Could not open file to write: " << engineFile << std::endl;
-
         delete serializedModel;
         delete engine;
         delete parser;
         delete network;
         delete builder;
         delete cfg;
-
         return nullptr;
     }
-
     p.write(static_cast<const char*>(plan->data()), plan->size());
     p.close();
 
@@ -205,6 +199,5 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     delete builder;
 
     std::cout << "[TensorRT] The engine was built and saved to the file: " << engineFile << std::endl;
-
     return engine;
 }

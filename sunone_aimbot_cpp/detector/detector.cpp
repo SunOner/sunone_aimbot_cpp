@@ -41,7 +41,8 @@ Detector::Detector()
     detectionVersion(0),
     inputBufferDevice(nullptr),
     inputDims(),
-    img_scale(0.0f)
+    img_scale(1.0f),
+    numClasses(0)
 {
     cudaError_t err = cudaStreamCreate(&stream);
 
@@ -88,12 +89,9 @@ void Detector::getInputNames()
             {
                 std::cout << "[Detector] Detected model input name: " << name << std::endl;
             }
-
             inputNames.emplace_back(name);
-            nvinfer1::Dims dims = engine->getTensorShape(name);
+
             nvinfer1::DataType dtype = engine->getTensorDataType(name);
-            size_t size = getSizeByDim(dims) * getElementSize(dtype);
-            inputSizes[name] = size;
         }
     }
 }
@@ -108,31 +106,15 @@ void Detector::getOutputNames()
     for (int i = 0; i < engine->getNbIOTensors(); ++i)
     {
         const char* name = engine->getIOTensorName(i);
-
         if (engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT)
         {
             outputNames.emplace_back(name);
-
-            nvinfer1::Dims dims = engine->getTensorShape(name);
             nvinfer1::DataType dtype = engine->getTensorDataType(name);
-
-            size_t size = getSizeByDim(dims) * getElementSize(dtype);
-
-            outputSizes[name] = size;
             outputTypes[name] = dtype;
-
-            std::vector<int64_t> dim;
-            for (int j = 0; j < dims.nbDims; ++j)
-            {
-                dim.push_back(dims.d[j]);
-            }
-            outputShapes[name] = dim;
 
             if (config.verbose)
             {
                 std::cout << "[Detector] Model output name: " << name << std::endl;
-                std::cout << "[Detector] Model output size: " << size << std::endl;
-                std::cout << "[Detector] Model output dims: " << dims.nbDims << std::endl;
             }
         }
     }
@@ -142,29 +124,60 @@ void Detector::getBindings()
 {
     for (auto& binding : inputBindings)
     {
-        cudaFree(binding.second);
+        if (binding.second) cudaFree(binding.second);
     }
     inputBindings.clear();
 
     for (auto& binding : outputBindings)
     {
-        cudaFree(binding.second);
+        if (binding.second) cudaFree(binding.second);
     }
     outputBindings.clear();
 
     for (const auto& name : inputNames)
     {
         size_t size = inputSizes[name];
-        void* ptr;
-        cudaMalloc(&ptr, size);
-        inputBindings[name] = ptr;
+        void* ptr = nullptr;
+        if (size > 0)
+        {
+            cudaError_t err = cudaMalloc(&ptr, size);
+            if (err != cudaSuccess)
+            {
+                std::cerr << "[CUDA] Failed to allocate " << size << " bytes for input " << name << ": " << cudaGetErrorString(err) << std::endl;
+            }
+            else
+            {
+                inputBindings[name] = ptr;
+                std::cout << "[DEBUG] Allocated " << size << " bytes for input " << name << std::endl;
+            }
+        }
+        else
+        {
+            std::cerr << "[ERROR] inputSize = 0 for " << name << " (perhaps -1 remained in dims)" << std::endl;
+        }
     }
+
     for (const auto& name : outputNames)
     {
         size_t size = outputSizes[name];
-        void* ptr;
-        cudaMalloc(&ptr, size);
-        outputBindings[name] = ptr;
+        void* ptr = nullptr;
+        if (size > 0)
+        {
+            cudaError_t err = cudaMalloc(&ptr, size);
+            if (err != cudaSuccess)
+            {
+                std::cerr << "[CUDA] Failed to allocate " << size << " bytes for output " << name << ": " << cudaGetErrorString(err) << std::endl;
+            }
+            else
+            {
+                outputBindings[name] = ptr;
+                std::cout << "[DEBUG] Allocated " << size << " bytes for output " << name << std::endl;
+            }
+        }
+        else
+        {
+            std::cerr << "[ERROR] outputSize = 0 for " << name << " (perhaps -1 remained in dims)" << std::endl;
+        }
     }
 }
 
@@ -188,75 +201,103 @@ void Detector::initialize(const std::string& modelFile)
 
     getInputNames();
     getOutputNames();
+
+    if (inputNames.empty())
+    {
+        std::cerr << "[Detector] No input tensors found!" << std::endl;
+        return;
+    }
+
+    inputName = inputNames[0];
+
+    bool success = context->setInputShape(inputName.c_str(), nvinfer1::Dims4{ 1, 3, 640, 640 });
+    if (!success)
+    {
+        std::cerr << "[Detector] Failed to set input shape for " << inputName << std::endl;
+        return;
+    }
+
+    if (!context->allInputDimensionsSpecified())
+    {
+        std::cerr << "[Detector] Not all input dimensions are specified." << std::endl;
+        return;
+    }
+
+    for (const auto& inName : inputNames)
+    {
+        nvinfer1::Dims inDims = context->getTensorShape(inName.c_str());
+        nvinfer1::DataType inType = engine->getTensorDataType(inName.c_str());
+        size_t size = getSizeByDim(inDims) * getElementSize(inType);
+        inputSizes[inName] = size;
+
+        if (config.verbose)
+        {
+            std::cout << "[Detector] Real input '" << inName << "' shape: ";
+            for (int j = 0; j < inDims.nbDims; j++)
+                std::cout << inDims.d[j] << " ";
+            std::cout << " => bytes: " << size << std::endl;
+        }
+    }
+
+    for (const auto& outName : outputNames)
+    {
+        nvinfer1::Dims outDims = context->getTensorShape(outName.c_str());
+        nvinfer1::DataType outType = engine->getTensorDataType(outName.c_str());
+        size_t size = getSizeByDim(outDims) * getElementSize(outType);
+        outputSizes[outName] = size;
+
+        std::vector<int64_t> shapeVec;
+        for (int j = 0; j < outDims.nbDims; j++) {
+            shapeVec.push_back(outDims.d[j]);
+        }
+        outputShapes[outName] = shapeVec;
+
+        if (config.verbose)
+        {
+            std::cout << "[Detector] Real output '" << outName << "' shape: ";
+            for (int j = 0; j < outDims.nbDims; j++)
+                std::cout << outDims.d[j] << " ";
+            std::cout << " => bytes: " << size << std::endl;
+        }
+    }
+
     getBindings();
 
-    for (const auto& name : outputNames)
+    numClasses = 0;
+    if (!outputNames.empty())
     {
-        size_t size = outputSizes[name];
-        nvinfer1::DataType dtype = outputTypes[name];
-        if (dtype == nvinfer1::DataType::kHALF)
+        const std::string& mainOut = outputNames[0];
+        nvinfer1::Dims outDims = context->getTensorShape(mainOut.c_str());
+
+        if (config.postprocess == "yolo10")
         {
-            outputDataBuffersHalf[name].resize(size / sizeof(__half));
-        }
-        else if (dtype == nvinfer1::DataType::kFLOAT)
-        {
-            outputDataBuffers[name].resize(size / sizeof(float));
+            numClasses = 11;
         }
         else
         {
-            std::cerr << "[Detector] Unsupported output tensor data type during initialization" << std::endl;
+            int c = outDims.d[1];
+            numClasses = c - 4;
         }
-    }
-
-    if (!inputNames.empty())
-    {
-        inputName = inputNames[0];
-        inputDims = engine->getTensorShape(inputName.c_str());
-
-        nvinfer1::DataType dtype = engine->getTensorDataType(inputName.c_str());
-        size_t inputSize = getSizeByDim(inputDims) * getElementSize(dtype);
-        inputSizes[inputName] = inputSize;
-
-        cudaMalloc(&inputBufferDevice, inputSize);
-
-        if (config.verbose)
-        {
-            std::cout << "[Detector] Model input size: " << getSizeByDim(inputDims) << std::endl;
-            std::cout << "[Detector] Model input dims: " << getElementSize(dtype) << std::endl;
-            std::cout << "[Detector] Model input name: " << inputName << std::endl;
-        }
-    }
-    else
-    {
-        std::cerr << "[Detector] No input tensors found" << std::endl;
-    }
-
-    if (!outputNames.empty())
-    {
-        const std::string& outputName = outputNames[0];
-        const std::vector<int64_t>& shape = outputShapes[outputName];
-        int dimensions = static_cast<int>(shape[1]);
-
-        numClasses = dimensions - 4;
         
-        if (config.verbose)
+        if (numClasses < 1)
+        {
+            std::cerr << "[Detector] Invalid number of classes: " << numClasses << std::endl;
+            numClasses = 0;
+        }
+        else
         {
             std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
         }
     }
     else
     {
-        if (config.verbose)
-        {
-            std::cerr << "[Detector] No output tensors were found." << std::endl;
-        }
-        numClasses = 0;
+        std::cerr << "[Detector] No outputs found to compute classes!" << std::endl;
     }
 
-    img_scale = static_cast<float>(config.detection_resolution) / config.img_size;
+    img_scale = static_cast<float>(config.detection_resolution) / 640;
     if (config.verbose)
     {
-        std::cout << "[Detector] img_scale: " << img_scale << std::endl;
+        std::cout << "[Detector] Image scale factor: " << img_scale << std::endl;
     }
 }
 
@@ -265,6 +306,11 @@ size_t Detector::getSizeByDim(const nvinfer1::Dims& dims)
     size_t size = 1;
     for (int i = 0; i < dims.nbDims; ++i)
     {
+        if (dims.d[i] < 0)
+        {
+            std::cerr << "[WARNING] Negative dimension detected: " << dims.d[i] << " in tensor shape!" << std::endl;
+            return 0;
+        }
         size *= dims.d[i];
     }
     return size;
@@ -298,7 +344,7 @@ void Detector::loadEngine(const std::string& modelFile)
 
         if (!fileExists(engineFilePath))
         {
-            std::cout << "[Detector] ONNX model detected. Building engine from: " << modelFile << ".\n[Detector] Please wait..." << std::endl;
+            std::cout << "[Detector] ONNX model detected: " << modelFile << std::endl;
 
             nvinfer1::ICudaEngine* builtEngine = buildEngineFromOnnx(modelFile, gLogger);
             if (!builtEngine)
@@ -432,11 +478,25 @@ void Detector::inferenceThread()
 
         preProcess(frame);
 
-        context->setTensorAddress(inputName.c_str(), inputBufferDevice);
+        const std::string& inputName = inputNames[0];
+        void* inputAddress = inputBindings[inputName];
+        
+        if (!inputAddress)
+        {
+            std::cerr << "[ERROR] Input tensor '" << inputName << "' not allocated!" << std::endl;
+            return;
+        }
+
+        context->setTensorAddress(inputName.c_str(), inputAddress);
 
         for (const auto& name : outputNames)
         {
-            context->setTensorAddress(name.c_str(), outputBindings[name]);
+            void* outputAddress = outputBindings[name];
+            if (!outputAddress) {
+                std::cerr << "[ERROR] Output tensor '" << name << "' not allocated!" << std::endl;
+                return;
+            }
+            context->setTensorAddress(name.c_str(), outputAddress);
         }
 
         context->enqueueV3(stream);
@@ -448,12 +508,16 @@ void Detector::inferenceThread()
 
             if (dtype == nvinfer1::DataType::kHALF)
             {
+                size_t numElements = size / sizeof(__half);
                 std::vector<__half>& outputDataHalf = outputDataBuffersHalf[name];
+                outputDataHalf.resize(numElements);
                 cudaMemcpyAsync(outputDataHalf.data(), outputBindings[name], size, cudaMemcpyDeviceToHost, stream);
             }
             else if (dtype == nvinfer1::DataType::kFLOAT)
             {
+                size_t numElements = size / sizeof(float);
                 std::vector<float>& outputData = outputDataBuffers[name];
+                outputData.resize(numElements);
                 cudaMemcpyAsync(outputData.data(), outputBindings[name], size, cudaMemcpyDeviceToHost, stream);
             }
             else
@@ -514,71 +578,43 @@ bool Detector::getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int
     return false;
 }
 
-void Detector::preProcess(const cv::cuda::GpuMat& frame)
-{
-    if (frame.empty())
-    {
-        std::cerr << "[Detector] An empty image was obtained." << std::endl;
+void Detector::preProcess(const cv::cuda::GpuMat& frame) {
+    if (frame.empty()) {
+        std::cerr << "[Detector] Empty frame received" << std::endl;
         return;
     }
 
-    cv::cuda::GpuMat procFrame;
-    procFrame = frame;
-
-    int inputC = inputDims.d[1];
-    int inputH = inputDims.d[2];
-    int inputW = inputDims.d[3];
-
-    cv::cuda::GpuMat resizedImage;
-    cv::cuda::resize(procFrame, resizedImage, cv::Size(inputW, inputH));
-
-    if (resizedImage.empty())
-    {
-        std::cerr << "[Detector] Error when resizing the image." << std::endl;
+    void* inputBuffer = inputBindings[inputName];
+    if (!inputBuffer) {
+        std::cerr << "[ERROR] Input buffer not allocated for " << inputName << std::endl;
         return;
     }
 
-    try
-    {
-        resizedImage.convertTo(resizedImage, CV_32F, 1.0 / 255.0);
-    }
-    catch (const cv::Exception& e)
-    {
-        std::cerr << "[Detector] Error when converting an image: " << e.what() << std::endl;
-        return;
-    }
+    nvinfer1::Dims dims = context->getTensorShape(inputName.c_str());
+    int n = dims.d[0];
+    int c = dims.d[1];
+    int h = dims.d[2];
+    int w = dims.d[3];
+
+    cv::cuda::GpuMat resized;
+    cv::cuda::resize(frame, resized, cv::Size(w, h));
+
+    cv::cuda::GpuMat floatResized;
+    resized.convertTo(floatResized, CV_32F, 1.0f / 255.0f);
 
     std::vector<cv::cuda::GpuMat> gpuChannels;
-    try
-    {
-        cv::cuda::split(resizedImage, gpuChannels);
-    }
-    catch (const cv::Exception& e)
-    {
-        std::cerr << "[Detector] Error when dividing the image into channels: " << e.what() << std::endl;
-        return;
-    }
-    if (gpuChannels.size() < static_cast<size_t>(inputC))
-    {
-        std::cerr << "[Detector] Mismatch in the number of channels. Expected: "
-            << inputC << ", received: " << gpuChannels.size() << std::endl;
-        return;
+    cv::cuda::split(floatResized, gpuChannels);
+
+    for (int cc = 0; cc < c; ++cc) {
+        cudaMemcpyAsync(
+            static_cast<float*>(inputBuffer) + cc * h * w,
+            gpuChannels[cc].ptr<float>(),
+            h * w * sizeof(float),
+            cudaMemcpyDeviceToDevice,
+            stream
+        );
     }
 
-    for (int c = 0; c < inputC; ++c)
-    {
-        cudaError_t err = cudaMemcpyAsync(static_cast<float*>(inputBufferDevice) + c * inputH * inputW,
-            gpuChannels[c].ptr<float>(),
-            inputH * inputW * sizeof(float),
-            cudaMemcpyDeviceToDevice,
-            stream);
-        if (err != cudaSuccess)
-        {
-            std::cerr << "[Detector] Channel copy error " << c
-                << ": " << cudaGetErrorString(err) << std::endl;
-            return;
-        }
-    }
     cudaStreamSynchronize(stream);
 }
 
@@ -593,45 +629,41 @@ void Detector::postProcess(const float* output, const std::string& outputName)
     std::vector<Detection> detections;
     size_t outputSize = outputSizes[outputName] / sizeof(float);
 
-    if (config.postprocess == "yolo8")
-    {
-        std::vector<float> outputVec(output, output + outputSize);
-        detections = postProcessYolo8(outputVec, img_scale, config.detection_resolution, config.detection_resolution,
-            numClasses, config.confidence_threshold, config.nms_threshold);
-    }
-    else if (config.postprocess == "yolo9")
-    {
-        std::vector<float> outputVec(output, output + outputSize);
-        detections = postProcessYolo9(outputVec, img_scale, config.detection_resolution, config.detection_resolution,
-            numClasses, config.confidence_threshold, config.nms_threshold);
-    }
-    else if (config.postprocess == "yolo10")
+    if (config.postprocess == "yolo10")
     {
         const std::vector<int64_t>& shape = outputShapes[outputName];
-        detections = postProcessYolo10(output, shape, img_scale, numClasses,
-            config.confidence_threshold, config.nms_threshold);
+        detections = postProcessYolo10(
+            output,
+            shape,
+            numClasses,
+            config.confidence_threshold,
+            config.nms_threshold
+        );
     }
-    else if (config.postprocess == "yolo11")
+    else if (
+        config.postprocess == "yolo8" ||
+        config.postprocess == "yolo9" ||
+        config.postprocess == "yolo11" ||
+        config.postprocess == "yolo12"
+    )
     {
-        const std::vector<int64_t>& engineShape = outputShapes[outputName];
-        if (engineShape.size() != 3)
+        auto curShape = context->getTensorShape(outputName.c_str());
+        
+        std::vector<int64_t> engineShape;
+        engineShape.reserve(curShape.nbDims);
+
+        for (int i = 0; i < curShape.nbDims; ++i)
         {
-            std::cerr << "[Detector] Invalid output shape dimensions for yolo11. Expected 3 dimensions, but got "
-                << engineShape.size() << std::endl;
-            detections.clear();
+            engineShape.push_back(curShape.d[i]);
         }
-        else
-        {
-            detections = postProcessYolo11(output,
-                engineShape,
-                numClasses,
-                config.confidence_threshold,
-                config.nms_threshold);
-        }
-    }
-    else
-    {
-        std::cerr << "[Detector] Unknown postprocess method: " << config.postprocess << std::endl;
+
+        detections = postProcessYolo11(
+            output,
+            engineShape,
+            numClasses,
+            config.confidence_threshold,
+            config.nms_threshold
+        );
     }
 
     {

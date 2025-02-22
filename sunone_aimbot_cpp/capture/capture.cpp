@@ -190,11 +190,11 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     maskGpu.upload(mask);
                     cv::cuda::GpuMat maskedImageGpu;
                     screenshotGpu.copyTo(maskedImageGpu, maskGpu);
-                    cv::cuda::resize(maskedImageGpu, processedFrame, cv::Size(config.img_size, config.img_size), 0, 0, cv::INTER_LINEAR);
+                    cv::cuda::resize(maskedImageGpu, processedFrame, cv::Size(640, 640), 0, 0, cv::INTER_LINEAR);
                 }
                 else
                 {
-                    cv::cuda::resize(screenshotGpu, processedFrame, cv::Size(config.img_size, config.img_size));
+                    cv::cuda::resize(screenshotGpu, processedFrame, cv::Size(640, 640));
                 }
 
                 {

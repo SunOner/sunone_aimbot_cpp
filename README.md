@@ -144,6 +144,14 @@
     - Switch the build configuration to **Release**.
     - Build the project by selecting **Build** > **Build Solution**.
 
+## Export PyTorch models from Python
+- .pt -> .onnx
+	```bash
+	pip install ultralytics -U
+	yolo export model=sunxds_0.5.6.pt format=onnx dynamic=true simplify=true
+	```
+- For .onnx -> .engine model export use overlay export tab in overlay.
+
 ## Old releases
 - Stored [here](https://disk.yandex.ru/d/m0jbkiLEFvnZKg).
 	

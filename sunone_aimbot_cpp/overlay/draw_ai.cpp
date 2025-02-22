@@ -46,7 +46,7 @@ void draw_ai()
 
     ImGui::Separator();
 
-    std::vector<std::string> postprocessOptions = { "yolo8", "yolo9", "yolo10", "yolo11" };
+    std::vector<std::string> postprocessOptions = { "yolo8", "yolo9", "yolo10", "yolo11", "yolo12" };
     std::vector<const char*> postprocessItems;
     for (const auto& option : postprocessOptions)
     {

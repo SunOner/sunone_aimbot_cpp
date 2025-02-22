@@ -61,7 +61,6 @@ bool Config::loadConfig(const std::string& filename)
         nms_threshold = 0.50;
         max_detections = 100;
         postprocess = "yolo10";
-        img_size = 640;
         export_enable_fp8 = true;
         export_enable_fp16 = true;
 
@@ -159,7 +158,6 @@ bool Config::loadConfig(const std::string& filename)
         nms_threshold = pt.get<float>("nms_threshold", 0.50);
         max_detections = pt.get<int>("max_detections", 20);
         postprocess = pt.get<std::string>("postprocess", "yolo11");
-        img_size = pt.get<int>("img_size", 640);
         export_enable_fp8 = pt.get<bool>("export_enable_fp8", true);
         export_enable_fp16 = pt.get<bool>("export_enable_fp16", true);
 
@@ -281,7 +279,6 @@ bool Config::saveConfig(const std::string& filename)
     file << "nms_threshold = " << std::fixed << std::setprecision(2) << nms_threshold << "\n";
     file << "max_detections = " << max_detections << "\n";
     file << "postprocess = " << postprocess << "\n";
-    file << "img_size = " << img_size << "\n";
     file << "export_enable_fp8 = " << (export_enable_fp8 ? "true" : "false") << "\n";
     file << "export_enable_fp16 = " << (export_enable_fp16 ? "true" : "false") << "\n\n";
 
