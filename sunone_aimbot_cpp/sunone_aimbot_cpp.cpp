@@ -47,6 +47,9 @@ std::atomic<bool> detector_model_changed(false);
 std::atomic<bool> show_window_changed(false);
 std::atomic<bool> input_method_changed(false);
 
+std::atomic<bool> zooming(false);
+std::atomic<bool> shooting(false);
+
 void initializeInputMethod()
 {
     {
@@ -89,6 +92,33 @@ void initializeInputMethod()
 
     globalMouseThread->setSerialConnection(serial);
     globalMouseThread->setGHubMouse(gHub);
+}
+
+void handleEasyNoRecoil(MouseThread& mouseThread)
+{
+    if (config.easynorecoil && shooting.load() && zooming.load())
+    {
+        std::lock_guard<std::mutex> lock(mouseThread.input_method_mutex);
+        int recoil_compensation = static_cast<int>(config.easynorecoilstrength);
+        
+        if (serial)
+        {
+            serial->move(0, recoil_compensation);  // 양수로 변경하여 아래로 향하는 반동 제어
+        }
+        else if (gHub)
+        {
+            gHub->mouse_xy(0, recoil_compensation);  // 양수로 변경하여 아래로 향하는 반동 제어
+        }
+        else
+        {
+            INPUT input = { 0 };
+            input.type = INPUT_MOUSE;
+            input.mi.dx = 0;
+            input.mi.dy = recoil_compensation;  // 양수로 변경하여 아래로 향하는 반동 제어
+            input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
+            SendInput(1, &input, sizeof(INPUT));
+        }
+    }
 }
 
 void mouseThreadFunction(MouseThread& mouseThread)
@@ -169,6 +199,8 @@ void mouseThreadFunction(MouseThread& mouseThread)
                 mouseThread.releaseMouse();
             }
         }
+
+        handleEasyNoRecoil(mouseThread);
 
         mouseThread.checkAndResetPredictions();
         delete target;

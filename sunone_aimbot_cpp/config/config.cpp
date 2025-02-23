@@ -43,6 +43,8 @@ bool Config::loadConfig(const std::string& filename)
         minSpeedMultiplier = 1.0f;
         maxSpeedMultiplier = 4.0f;
         predictionInterval = 0.20f;
+        easynorecoil = false;
+        easynorecoilstrength = 0.0f;
         input_method = "WIN32";
 
         // Arduino
@@ -74,6 +76,8 @@ bool Config::loadConfig(const std::string& filename)
 
         // Buttons
         button_targeting = splitString("RightMouseButton");
+        button_shoot = splitString("LeftMouseButton");
+        button_zoom = splitString("RightMouseButton");
         button_exit = splitString("F2");
         button_pause = splitString("F3");
         button_reload_config = splitString("F4");
@@ -140,6 +144,8 @@ bool Config::loadConfig(const std::string& filename)
         minSpeedMultiplier = pt.get<float>("minSpeedMultiplier", 1.0f);
         maxSpeedMultiplier = pt.get<float>("maxSpeedMultiplier", 4.0f);
         predictionInterval = pt.get<float>("predictionInterval", 0.5f);
+        easynorecoil = pt.get<bool>("easynorecoil", false);
+        easynorecoilstrength = pt.get<float>("easynorecoilstrength", 0.0f);
         input_method = pt.get<std::string>("input_method", "WIN32");
 
         // Arduino
@@ -171,6 +177,8 @@ bool Config::loadConfig(const std::string& filename)
 
         // Buttons
         button_targeting = splitString(pt.get<std::string>("button_targeting", "RightMouseButton"));
+        button_shoot = splitString(pt.get<std::string>("button_shoot", "LeftMouseButton"));
+        button_zoom = splitString(pt.get<std::string>("button_zoom", "RightMouseButton"));
         button_exit = splitString(pt.get<std::string>("button_exit", "F2"));
         button_pause = splitString(pt.get<std::string>("button_pause", "F3"));
         button_reload_config = splitString(pt.get<std::string>("button_reload_config", "F4"));
@@ -260,6 +268,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "minSpeedMultiplier = " << std::fixed << std::setprecision(1) << minSpeedMultiplier << "\n";
     file << "maxSpeedMultiplier = " << std::fixed << std::setprecision(1) << maxSpeedMultiplier << "\n";
     file << "predictionInterval = " << std::fixed << std::setprecision(2) << predictionInterval << "\n";
+    file << "easynorecoil = " << (easynorecoil ? "true" : "false") << "\n";
+    file << "easynorecoilstrength = " << std::fixed << std::setprecision(1) << easynorecoilstrength << "\n";
     file << "# WIN32, GHUB, ARDUINO\n";
     file << "input_method = " << input_method << "\n\n";
 
@@ -292,6 +302,8 @@ bool Config::saveConfig(const std::string& filename)
 
     file << "# Buttons\n";
     file << "button_targeting = " << joinStrings(button_targeting) << "\n";
+    file << "button_shoot = " << joinStrings(button_shoot) << "\n";
+    file << "button_zoom = " << joinStrings(button_zoom) << "\n";
     file << "button_exit = " << joinStrings(button_exit) << "\n";
     file << "button_pause = " << joinStrings(button_pause) << "\n";
     file << "button_reload_config = " << joinStrings(button_reload_config) << "\n";

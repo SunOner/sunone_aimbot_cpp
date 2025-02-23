@@ -32,6 +32,8 @@ public:
     float minSpeedMultiplier;
     float maxSpeedMultiplier;
     float predictionInterval;
+    bool easynorecoil;
+    float easynorecoilstrength;
     std::string input_method;   // "WIN32", "GHUB", "ARDUINO"
     
     // Arduino
@@ -64,6 +66,8 @@ public:
 
     // Buttons
     std::vector<std::string> button_targeting;
+    std::vector<std::string> button_shoot;
+    std::vector<std::string> button_zoom;
     std::vector<std::string> button_exit;
     std::vector<std::string> button_pause;
     std::vector<std::string> button_reload_config;
