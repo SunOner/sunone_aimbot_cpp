@@ -22,6 +22,8 @@ public:
     void move(int x, int y);
 
     bool aiming_active;
+    bool shooting_active;
+    bool zooming_active;
 
 private:
     boost::asio::io_context io_context_;
