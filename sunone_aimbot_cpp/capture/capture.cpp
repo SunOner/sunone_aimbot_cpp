@@ -130,6 +130,29 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
         while (!shouldExit)
         {
+            if (capture_fps_changed.load())
+            {
+                if (config.capture_fps > 0.0)
+                {
+                    if (!frameLimitingEnabled)
+                    {
+                        timeBeginPeriod(1);
+                        frameLimitingEnabled = true;
+                    }
+                    frame_duration = std::chrono::duration<double, std::milli>(1000.0 / config.capture_fps);
+                }
+                else
+                {
+                    if (frameLimitingEnabled)
+                    {
+                        timeEndPeriod(1);
+                        frameLimitingEnabled = false;
+                    }
+                    frame_duration = std::nullopt;
+                }
+                capture_fps_changed.store(false);
+            }
+
             if (detection_resolution_changed.load() ||
                 capture_method_changed.load() ||
                 capture_cursor_changed.load() ||
