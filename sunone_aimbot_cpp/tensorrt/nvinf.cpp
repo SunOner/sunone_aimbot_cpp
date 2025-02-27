@@ -84,7 +84,10 @@ nvinfer1::ICudaEngine* loadEngineFromFile(const std::string& engineFile, nvinfer
         return nullptr;
     }
 
-    std::cout << "[TensorRT] The engine was successfully loaded from the file: " << engineFile << std::endl;
+    if (config.verbose)
+    {
+        std::cout << "[TensorRT] The engine was successfully loaded from the file: " << engineFile << std::endl;
+    }
     return engine;
 }
 
