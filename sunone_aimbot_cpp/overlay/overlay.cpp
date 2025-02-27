@@ -55,6 +55,8 @@ std::vector<std::string> availableModels;
 std::vector<std::string> key_names;
 std::vector<const char*> key_names_cstrs;
 
+ID3D11ShaderResourceView* body_texture = nullptr;
+
 bool InitializeBlendState()
 {
     D3D11_BLEND_DESC blendDesc;
