@@ -33,7 +33,12 @@ public:
     float maxSpeedMultiplier;
     float predictionInterval;
     std::string input_method;   // "WIN32", "GHUB", "ARDUINO"
-    
+
+        // KMBOX configuration
+    std::string kmbox_ip;
+    std::string kmbox_port;
+    std::string kmbox_mac;
+
     // Arduino
     int arduino_baudrate;
     std::string arduino_port;
