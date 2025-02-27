@@ -26,7 +26,7 @@ SerialConnection::SerialConnection(const std::string& port, unsigned int baud_ra
         serial_port_.set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::hardware));
 
         is_open_ = true;
-        std::cout << "[Arduino] Connected!" << std::endl;
+        std::cout << "[Arduino] Connected! PORT: " << port << std::endl;
 
         startTimer();
 
@@ -37,7 +37,7 @@ SerialConnection::SerialConnection(const std::string& port, unsigned int baud_ra
     }
     catch (boost::system::system_error& e)
     {
-        std::cerr << "[Arduino] Unable to connect to the port" << std::endl;
+        std::cerr << "[Arduino] Unable to connect to the port: " << port << std::endl;
     }
 }
 
