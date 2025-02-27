@@ -45,6 +45,11 @@ bool Config::loadConfig(const std::string& filename)
         predictionInterval = 0.20f;
         input_method = "WIN32";
 
+        // KMBOX defaults (please make a proper config for this. I can't
+        kmbox_ip = "192.168.2.188";
+        kmbox_port = "16896";
+        kmbox_mac = "46405C53";
+        
         // Arduino
         arduino_baudrate = 115200;
         arduino_port = "COM0";
