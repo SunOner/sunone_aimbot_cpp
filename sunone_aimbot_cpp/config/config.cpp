@@ -63,7 +63,7 @@ bool Config::loadConfig(const std::string& filename)
         nms_threshold = 0.50;
         max_detections = 100;
         postprocess = "yolo10";
-        export_enable_fp8 = true;
+        export_enable_fp8 = false;
         export_enable_fp16 = true;
 
         // optical flow
