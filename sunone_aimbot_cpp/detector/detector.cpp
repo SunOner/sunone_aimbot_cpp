@@ -1,4 +1,4 @@
-﻿#define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
@@ -148,7 +148,10 @@ void Detector::getBindings()
             else
             {
                 inputBindings[name] = ptr;
-                std::cout << "[DEBUG] Allocated " << size << " bytes for input " << name << std::endl;
+                if (config.verbose)
+                {
+                    std::cout << "[CUDA] Allocated " << size << " bytes for input " << name << std::endl;
+                }
             }
         }
         else
@@ -171,7 +174,10 @@ void Detector::getBindings()
             else
             {
                 outputBindings[name] = ptr;
-                std::cout << "[DEBUG] Allocated " << size << " bytes for output " << name << std::endl;
+                if (config.verbose)
+                {
+                    std::cout << "[CUDA] Allocated " << size << " bytes for output " << name << std::endl;
+                }
             }
         }
         else
@@ -286,7 +292,10 @@ void Detector::initialize(const std::string& modelFile)
         }
         else
         {
-            std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
+            if (config.verbose)
+            {
+                std::cout << "[Detector] Number of classes: " << numClasses << std::endl;
+            }
         }
     }
     else

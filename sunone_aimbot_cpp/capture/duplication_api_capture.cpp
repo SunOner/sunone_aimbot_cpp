@@ -1,3 +1,4 @@
+#include "sunone_aimbot_cpp.h"
 #include "duplication_api_capture.h"
 #include "config.h"
 #include "other_tools.h"
@@ -5,8 +6,6 @@
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
-
-extern Config config;
 
 DuplicationAPIScreenCapture::DuplicationAPIScreenCapture(int desiredWidth, int desiredHeight)
 {

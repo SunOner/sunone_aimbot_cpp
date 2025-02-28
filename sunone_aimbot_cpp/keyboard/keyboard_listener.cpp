@@ -8,6 +8,8 @@
 #include <thread>
 #include <iostream>
 
+#include "config.h"
+#include "SerialConnection.h"
 #include "keyboard_listener.h"
 #include "mouse.h"
 #include "keycodes.h"
@@ -16,6 +18,8 @@
 
 extern std::atomic<bool> shouldExit;
 extern std::atomic<bool> aiming;
+extern std::atomic<bool> shooting;
+extern std::atomic<bool> zooming;
 extern std::atomic<bool> detectionPaused;
 
 extern MouseThread* globalMouseThread;
@@ -47,6 +51,14 @@ void keyboardListener()
         {
             aiming = true;
         }
+
+        // Shooting
+        shooting = isAnyKeyPressed(config.button_shoot) ||
+            (config.arduino_enable_keys && serial && serial->isOpen() && serial->shooting_active);
+
+        // Zooming
+        zooming = isAnyKeyPressed(config.button_zoom) ||
+            (config.arduino_enable_keys && serial && serial->isOpen() && serial->zooming_active);
 
         // Exit
         if (isAnyKeyPressed(config.button_exit))

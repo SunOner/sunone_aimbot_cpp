@@ -26,6 +26,21 @@ void draw_mouse()
         ImGui::TextColored(ImVec4(255, 0, 0, 255), "-> Disabled");
     }
 
+    ImGui::Separator();
+
+    // No recoil settings
+    ImGui::Checkbox("Easy No Recoil", &config.easynorecoil);
+    if (config.easynorecoil)
+    {
+        ImGui::SliderFloat("No Recoil Strength", &config.easynorecoilstrength, 0.1f, 500.0f, "%.1f");
+        if (config.easynorecoilstrength >= 100.0f)
+        {
+            ImGui::TextColored(ImVec4(255, 255, 0, 255), "WARNING: High recoil strength may be detected.");
+        }
+    }
+
+    ImGui::Separator();
+
     ImGui::Checkbox("Auto Shoot", &config.auto_shoot);
     if (config.auto_shoot)
     {
