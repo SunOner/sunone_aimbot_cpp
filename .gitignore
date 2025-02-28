@@ -31,11 +31,7 @@
 *.app
 
 # modules
-sunone_aimbot_cpp/modules/boost_1_82_0
 sunone_aimbot_cpp/modules/opencv
-sunone_aimbot_cpp/modules/TensorRT-10.6.0.26
-
-# others
 sunone_aimbot_cpp/screenshots/
 .vs
 sunone_aimbot_cpp/x64
