@@ -92,6 +92,12 @@ void MouseThread::setGHubMouse(GhubMouse* newGHub)
     gHub = newGHub;
 }
 
+void MouseThread::setKmboxMode(bool mode)
+{
+    std::lock_guard<std::mutex> lock(input_method_mutex);
+    useKmbox = mode;
+}
+
 std::pair<double, double> MouseThread::predict_target_position(double target_x, double target_y)
 {
     auto current_time = std::chrono::steady_clock::now();
