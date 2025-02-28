@@ -21,6 +21,7 @@
 #include "ghub.h"
 #include "other_tools.h"
 #include "optical_flow.h"
+#include "kmboxNet.h"   // Added for KMBOX support
 
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
@@ -84,6 +85,25 @@ void initializeInputMethod()
             delete gHub;
             gHub = nullptr;
         }
+    }
+    else if (config.input_method == "KMBOX")
+    {
+        std::cout << "[Mouse] Using KMBOX method input." << std::endl;
+        // Call kmNet_init with KMBOX connection parameters.
+        // Ensure that config has kmbox_ip, kmbox_port, and kmbox_mac fields.
+        int ret = kmNet_init(const_cast<char*>(config.kmbox_ip.c_str()),
+            const_cast<char*>(config.kmbox_port.c_str()),
+            const_cast<char*>(config.kmbox_mac.c_str()));
+        if (ret != 0)
+        {
+            std::cerr << "[KMBOX] Error connecting to KMBOX device. Return code: " << ret << std::endl;
+        }
+        else
+        {
+            std::cout << "[KMBOX] Connection established." << std::endl;
+        }
+        // Set the MouseThread to use KMBOX mode.
+        globalMouseThread->setKmboxMode(true);
     }
     else
     {

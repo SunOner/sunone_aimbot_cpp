@@ -47,6 +47,11 @@ bool Config::loadConfig(const std::string& filename)
         easynorecoilstrength = 0.0f;
         input_method = "WIN32";
 
+        // KMBOX defaults (please make a proper config for this. I can't
+        kmbox_ip = "192.168.2.188";
+        kmbox_port = "16896";
+        kmbox_mac = "46405C53";
+        
         // Arduino
         arduino_baudrate = 115200;
         arduino_port = "COM0";
@@ -147,6 +152,9 @@ bool Config::loadConfig(const std::string& filename)
         easynorecoil = pt.get<bool>("easynorecoil", false);
         easynorecoilstrength = pt.get<float>("easynorecoilstrength", 0.0f);
         input_method = pt.get<std::string>("input_method", "WIN32");
+        kmbox_ip = pt.get<std::string>("kmbox_ip", "192.168.2.188");
+        kmbox_port = pt.get<std::string>("kmbox_port", "16896");
+        kmbox_mac = pt.get<std::string>("kmbox_mac", "46405C53");
 
         // Arduino
         arduino_baudrate = pt.get<int>("arduino_baudrate", 115200);
@@ -272,6 +280,10 @@ bool Config::saveConfig(const std::string& filename)
     file << "easynorecoilstrength = " << std::fixed << std::setprecision(1) << easynorecoilstrength << "\n";
     file << "# WIN32, GHUB, ARDUINO\n";
     file << "input_method = " << input_method << "\n\n";
+    file << "# KMBOX configuration\n";
+    file << "kmbox_ip = " << kmbox_ip << "\n";
+    file << "kmbox_port = " << kmbox_port << "\n";
+    file << "kmbox_mac = " << kmbox_mac << "\n\n";
 
     file << "# Arduino\n";
     file << "arduino_baudrate = " << arduino_baudrate << "\n";

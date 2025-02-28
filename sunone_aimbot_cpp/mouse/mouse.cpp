@@ -14,6 +14,7 @@
 #include "SerialConnection.h"
 #include "sunone_aimbot_cpp.h"
 #include "ghub.h"
+#include "kmbox/kmboxNet.h"
 
 extern std::atomic<bool> aiming;
 extern std::mutex configMutex;
@@ -52,7 +53,8 @@ MouseThread::MouseThread(
     center_y(resolution / 2),
     serial(serialConnection),
     gHub(ghubMouse),
-    last_target_time(std::chrono::steady_clock::now())
+    useKmbox(false),
+    last_target_time(std::chrono::steady_clock::now()
 {
 }
 
@@ -88,6 +90,12 @@ void MouseThread::setGHubMouse(GhubMouse* newGHub)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
     gHub = newGHub;
+}
+
+void MouseThread::setKmboxMode(bool mode)
+{
+    std::lock_guard<std::mutex> lock(input_method_mutex);
+    useKmbox = mode;
 }
 
 std::pair<double, double> MouseThread::predict_target_position(double target_x, double target_y)
@@ -211,6 +219,10 @@ void MouseThread::moveMouse(const AimbotTarget& target)
     {
         gHub->mouse_xy(move_x, move_y);
     }
+    else if (useKmbox)
+    {
+        kmNet_mouse_move(move_x, move_y);
+    }
     else
     {
         INPUT input = { 0 };
@@ -250,6 +262,10 @@ void MouseThread::pressMouse(const AimbotTarget& target)
         {
             gHub->mouse_down();
         }
+        else if (useKmbox)
+        {
+            kmNet_mouse_left(1);
+        }
         else
         {
             INPUT input = { 0 };
@@ -270,6 +286,10 @@ void MouseThread::pressMouse(const AimbotTarget& target)
             else if (gHub)
             {
                 gHub->mouse_up();
+            }
+            else if (useKmbox)
+            {
+                kmNet_mouse_left(0);
             }
             else
             {
@@ -296,6 +316,10 @@ void MouseThread::releaseMouse()
         else if (gHub)
         {
             gHub->mouse_up();
+        }
+        else if (useKmbox)
+        {
+            kmNet_mouse_left(0);
         }
         else
         {

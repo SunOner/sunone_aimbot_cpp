@@ -33,6 +33,8 @@ private:
     double center_y;
     bool auto_shoot;
     float bScope_multiplier;
+    // KMBOX mode flag (useKmbox replaces the earlier kmboxMode)
+    bool useKmbox = false;
 
     std::chrono::steady_clock::time_point last_target_time;
     std::atomic<bool> target_detected{ false };
@@ -61,6 +63,7 @@ public:
     std::mutex input_method_mutex;
     void setSerialConnection(SerialConnection* newSerial);
     void setGHubMouse(GhubMouse* newGHub);
+    void setKmboxMode(bool mode);
 };
 
 #endif // MOUSE_H
