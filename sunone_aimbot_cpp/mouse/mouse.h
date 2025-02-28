@@ -63,6 +63,7 @@ public:
     std::mutex input_method_mutex;
     void setSerialConnection(SerialConnection* newSerial);
     void setGHubMouse(GhubMouse* newGHub);
+    void setKmboxMode(bool mode);
 };
 
 #endif // MOUSE_H
