@@ -14,7 +14,7 @@
 #include "SerialConnection.h"
 #include "sunone_aimbot_cpp.h"
 #include "ghub.h"
-#include "kmboxNet.h
+#include "kmbox/kmboxNet.h"
 
 extern std::atomic<bool> aiming;
 extern std::mutex configMutex;
@@ -53,8 +53,8 @@ MouseThread::MouseThread(
     center_y(resolution / 2),
     serial(serialConnection),
     gHub(ghubMouse),
-    last_target_time(std::chrono::steady_clock::now())
     useKmbox(false),
+    last_target_time(std::chrono::steady_clock::now()
 {
 }
 
