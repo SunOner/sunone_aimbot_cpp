@@ -33,7 +33,7 @@ MouseThread* globalMouseThread = nullptr;
 Config config;
 
 GhubMouse* gHub = nullptr;
-SerialConnection* serial = nullptr;
+SerialConnection* arduinoSerial = nullptr;
 
 OpticalFlow opticalFlow;
 
@@ -55,10 +55,10 @@ void initializeInputMethod()
     {
         std::lock_guard<std::mutex> lock(globalMouseThread->input_method_mutex);
 
-        if (serial)
+        if (arduinoSerial)
         {
-            delete serial;
-            serial = nullptr;
+            delete arduinoSerial;
+            arduinoSerial = nullptr;
         }
 
         if (gHub)
@@ -72,7 +72,7 @@ void initializeInputMethod()
     if (config.input_method == "ARDUINO")
     {
         std::cout << "[Mouse] Using Arduino method input." << std::endl;
-        serial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
+        arduinoSerial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
     }
     else if (config.input_method == "GHUB")
     {
@@ -90,7 +90,7 @@ void initializeInputMethod()
         std::cout << "[Mouse] Using default Win32 method input." << std::endl;
     }
 
-    globalMouseThread->setSerialConnection(serial);
+    globalMouseThread->setSerialConnection(arduinoSerial);
     globalMouseThread->setGHubMouse(gHub);
 }
 
@@ -101,9 +101,9 @@ void handleEasyNoRecoil(MouseThread& mouseThread)
         std::lock_guard<std::mutex> lock(mouseThread.input_method_mutex);
         int recoil_compensation = static_cast<int>(config.easynorecoilstrength);
         
-        if (serial)
+        if (arduinoSerial)
         {
-            serial->move(0, recoil_compensation);
+            arduinoSerial->move(0, recoil_compensation);
         }
         else if (gHub)
         {
@@ -258,7 +258,7 @@ int main()
 
         if (config.input_method == "ARDUINO")
         {
-            serial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
+            arduinoSerial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
         }
         else if (config.input_method == "GHUB")
         {
@@ -282,7 +282,7 @@ int main()
             config.predictionInterval,
             config.auto_shoot,
             config.bScope_multiplier,
-            serial,
+            arduinoSerial,
             gHub
         );
 
@@ -349,9 +349,9 @@ int main()
         mouseMovThread.join();
         overlayThread.join();
 
-        if (serial)
+        if (arduinoSerial)
         {
-            delete serial;
+            delete arduinoSerial;
         }
 
         if (gHub)

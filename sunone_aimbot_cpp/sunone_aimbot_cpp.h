@@ -10,7 +10,7 @@
 extern Config config;
 extern Detector detector;
 extern MouseThread* globalMouseThread;
-extern SerialConnection* serial;
+extern SerialConnection* arduinoSerial;
 extern std::atomic<bool> input_method_changed;
 extern OpticalFlow opticalFlow;
 

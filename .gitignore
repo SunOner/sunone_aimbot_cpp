@@ -48,3 +48,5 @@ sunone_aimbot_cpp/opencv_world4100.dll
 /sunone_aimbot_cpp/modules/TensorRT-10.8.0.43
 sunone_aimbot_cpp/imgui.ini
 /sunone_aimbot_cpp/models
+sunone_aimbot_cpp/modules/SimpleIni.h
+/sunone_aimbot_cpp/modules/serial

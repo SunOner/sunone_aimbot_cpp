@@ -1,69 +1,70 @@
-#define WIN32_LEAN_AND_MEAN
+﻿#define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
-#include <winsock2.h>
-#include <Windows.h>
-
+#include <windows.h>
 #include <iostream>
 #include <vector>
-#include <boost/asio/deadline_timer.hpp>
+#include <algorithm>
 
-#include "SerialConnection.h"
 #include "sunone_aimbot_cpp.h"
-#include "mouse.h"
+#include "SerialConnection.h"
 
 SerialConnection::SerialConnection(const std::string& port, unsigned int baud_rate)
-    : io_context_(),
-    work_guard_(boost::asio::make_work_guard(io_context_)),
-    serial_port_(io_context_),
-    timer_(io_context_),
-    is_open_(false),
-    listening_(false)
+    : is_open_(false),
+    timer_running_(false),
+    listening_(false),
+    aiming_active(false),
+    shooting_active(false),
+    zooming_active(false)
 {
     try
     {
-        serial_port_.open(port);
-        serial_port_.set_option(boost::asio::serial_port_base::baud_rate(baud_rate));
-        serial_port_.set_option(boost::asio::serial_port_base::flow_control(boost::asio::serial_port_base::flow_control::hardware));
+        serial_.setPort(port);
+        serial_.setBaudrate(baud_rate);
+        //serial::Flowcontrol fc = serial::flowcontrol_none; 👀
+        // fc = serial::flowcontrol_hardware;
+        //serial_.setFlowcontrol(fc);
+        serial_.open();
 
-        is_open_ = true;
-        std::cout << "[Arduino] Connected! PORT: " << port << std::endl;
+        if (serial_.isOpen())
+        {
+            is_open_ = true;
+            std::cout << "[Arduino] Connected! PORT: " << port << std::endl;
+        }
+        else
+        {
+            std::cerr << "[Arduino] Unable to connect to the port: " << port << std::endl;
+        }
 
-        startTimer();
-
-        io_thread_ = std::thread([this]()
-            {
-                io_context_.run();
-            });
+        timer_running_ = true;
+        timer_thread_ = std::thread(&SerialConnection::timerThreadFunc, this);
     }
-    catch (boost::system::system_error& e)
+    catch (std::exception& e)
     {
-        std::cerr << "[Arduino] Unable to connect to the port: " << port << std::endl;
+        std::cerr << "[Arduino] Error: " << e.what() << std::endl;
     }
+}
+
+SerialConnection::~SerialConnection()
+{
+    timer_running_ = false;
+    if (timer_thread_.joinable()) {
+        timer_thread_.join();
+    }
+
+    listening_ = false;
+    if (listening_thread_.joinable()) {
+        listening_thread_.join();
+    }
+
+    if (serial_.isOpen()) {
+        serial_.close();
+    }
+    is_open_ = false;
 }
 
 bool SerialConnection::isOpen() const
 {
     return is_open_;
-}
-
-SerialConnection::~SerialConnection()
-{
-    work_guard_.reset();
-
-    if (serial_port_.is_open())
-    {
-        serial_port_.cancel();
-        serial_port_.close();
-    }
-
-    timer_.cancel();
-
-    io_context_.stop();
-
-    if (io_thread_.joinable())
-    {
-        io_thread_.join();
-    }
 }
 
 void SerialConnection::write(const std::string& data)
@@ -72,9 +73,9 @@ void SerialConnection::write(const std::string& data)
     {
         try
         {
-            boost::asio::write(serial_port_, boost::asio::buffer(data));
+            serial_.write(data);
         }
-        catch (const boost::system::system_error&)
+        catch (...)
         {
             is_open_ = false;
         }
@@ -83,17 +84,15 @@ void SerialConnection::write(const std::string& data)
 
 std::string SerialConnection::read()
 {
-    char c;
+    if (!is_open_)
+        return std::string();
+
     std::string result;
     try
     {
-        while (boost::asio::read(serial_port_, boost::asio::buffer(&c, 1)))
-        {
-            if (c == '\n') break;
-            result += c;
-        }
+        result = serial_.readline(65536, "\n");
     }
-    catch (const boost::system::system_error&)
+    catch (...)
     {
         is_open_ = false;
     }
@@ -117,7 +116,8 @@ void SerialConnection::release()
 
 void SerialConnection::move(int x, int y)
 {
-    if (!is_open_) return;
+    if (!is_open_)
+        return;
 
     if (config.arduino_16_bit_mouse)
     {
@@ -130,11 +130,8 @@ void SerialConnection::move(int x, int y)
         std::vector<int> y_parts = splitValue(y);
 
         size_t max_splits = std::max(x_parts.size(), y_parts.size());
-
-        while (x_parts.size() < max_splits)
-            x_parts.push_back(0);
-        while (y_parts.size() < max_splits)
-            y_parts.push_back(0);
+        while (x_parts.size() < max_splits) x_parts.push_back(0);
+        while (y_parts.size() < max_splits) y_parts.push_back(0);
 
         for (size_t i = 0; i < max_splits; ++i)
         {
@@ -153,6 +150,7 @@ std::vector<int> SerialConnection::splitValue(int value)
 {
     std::vector<int> values;
     int sign = (value < 0) ? -1 : 1;
+    int absVal = (value < 0) ? -value : value;
 
     if (value == 0)
     {
@@ -160,47 +158,46 @@ std::vector<int> SerialConnection::splitValue(int value)
         return values;
     }
 
-    while (abs(value) > 127)
+    while (absVal > 127)
     {
         values.push_back(sign * 127);
-        value -= sign * 127;
+        absVal -= 127;
     }
-
-    if (value != 0)
+    if (absVal != 0)
     {
-        values.push_back(value);
+        values.push_back(sign * absVal);
     }
 
     return values;
 }
 
-void SerialConnection::startTimer()
+void SerialConnection::timerThreadFunc()
 {
-    timer_.expires_from_now(boost::posix_time::milliseconds(100));
-    timer_.async_wait([this](const boost::system::error_code& ec)
-        {
-            if (!ec)
-            {
-                if (config.arduino_enable_keys)
-                {
-                    if (!listening_)
-                    {
-                        listening_ = true;
-                        startListening();
-                    }
-                }
-                else
-                {
-                    if (listening_)
-                    {
-                        listening_ = false;
-                        serial_port_.cancel();
-                    }
-                }
+    while (timer_running_)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if (!is_open_)
+            continue;
 
-                startTimer(); // restart timer
+        if (config.arduino_enable_keys)
+        {
+            if (!listening_)
+            {
+                startListening();
             }
-        });
+        }
+        else
+        {
+            if (listening_)
+            {
+                listening_ = false;
+                if (listening_thread_.joinable())
+                {
+                    listening_thread_.join();
+                }
+            }
+        }
+    }
 }
 
 void SerialConnection::startListening()
@@ -210,40 +207,35 @@ void SerialConnection::startListening()
     // https://github.com/SunOner/usb-host-shield-mouse_for_ai_aimbot/blob/main/hidmousereport/hidmousereport.ino
     // Use Serial.println() to send commands
 
-    if (!listening_ || !config.arduino_enable_keys)
-    {
-        listening_ = false;
-        return;
-    }
+    listening_ = true;
+    if (listening_thread_.joinable())
+        listening_thread_.join();
 
-    try
+    listening_thread_ = std::thread(&SerialConnection::listeningThreadFunc, this);
+}
+
+void SerialConnection::listeningThreadFunc()
+{
+    while (listening_ && is_open_)
     {
-        boost::asio::async_read_until(serial_port_, buffer_, '\n',
-            [this](const boost::system::error_code& ec, size_t bytes_transferred)
+        try
+        {
+            std::string line = serial_.readline(65536, "\n");
+            if (!line.empty())
             {
-                if (!ec)
-                {
-                    std::istream is(&buffer_);
-                    std::string line;
-                    std::getline(is, line);
+                if (!line.empty() && (line.back() == '\r' || line.back() == '\n'))
+                    line.pop_back();
+                if (!line.empty() && line.back() == '\r')
+                    line.pop_back();
 
-                    processIncomingLine(line);
-
-                    startListening();
-                }
-                else
-                {
-                    if (ec != boost::asio::error::operation_aborted)
-                    {
-                        std::cerr << "[Arduino] Error on receive: " << ec.message() << "\n";
-                    }
-                    listening_ = false;
-                }
-            });
-    }
-    catch (const std::exception& ex)
-    {
-        std::cerr << "[Arduino] Exception in listener: " << ex.what() << std::endl;
+                processIncomingLine(line);
+            }
+        }
+        catch (...)
+        {
+            is_open_ = false;
+            break;
+        }
     }
 }
 
@@ -251,26 +243,24 @@ void SerialConnection::processIncomingLine(const std::string& line)
 {
     // In this example, we parse mouse button clicks and tell the program that the button
     // has been pressed and the automatic hover function needs to be activated.
-    if (line.find("BD:") == 0)
+    if (line.rfind("BD:", 0) == 0)
     {
-        uint16_t buttonId = std::stoi(line.substr(3));
-
+        uint16_t buttonId = static_cast<uint16_t>(std::stoi(line.substr(3)));
         switch (buttonId)
         {
-            case 2:
-                aiming_active = true;
-                break;
+        case 2:
+            aiming_active = true;
+            break;
         }
     }
-    else if (line.find("BU:") == 0)
+    else if (line.rfind("BU:", 0) == 0)
     {
-        uint16_t buttonId = std::stoi(line.substr(3));
-
+        uint16_t buttonId = static_cast<uint16_t>(std::stoi(line.substr(3)));
         switch (buttonId)
         {
-            case 2:
-                aiming_active = false;
-                break;
+        case 2:
+            aiming_active = false;
+            break;
         }
     }
 }

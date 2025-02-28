@@ -82,9 +82,9 @@ void draw_mouse()
 
     if (config.input_method == "ARDUINO")
     {
-        if (serial)
+        if (arduinoSerial)
         {
-            if (serial->isOpen())
+            if (arduinoSerial->isOpen())
             {
                 ImGui::TextColored(ImVec4(0, 255, 0, 255), "Arduino connected");
             }

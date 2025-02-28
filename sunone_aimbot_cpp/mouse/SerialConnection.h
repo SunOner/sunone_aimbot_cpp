@@ -1,9 +1,15 @@
 #ifndef SERIALCONNECTION_H
 #define SERIALCONNECTION_H
 
+#define WIN32_LEAN_AND_MEAN
+#define _WINSOCKAPI_
+#include <windows.h>
 #include <string>
-#include <boost/asio.hpp>
-#include "AimbotTarget.h"
+#include <vector>
+#include <thread>
+#include <atomic>
+
+#include "serial/serial.h"
 
 class SerialConnection
 {
@@ -26,22 +32,26 @@ public:
     bool zooming_active;
 
 private:
-    boost::asio::io_context io_context_;
-    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
-    boost::asio::serial_port serial_port_;
-    boost::asio::streambuf buffer_;
-    std::thread io_thread_;
-    bool is_open_;
-
-    boost::asio::deadline_timer timer_;
-    bool listening_;
-
-    void startListening();
-    void processIncomingLine(const std::string& line);
-    void startTimer();
-
     void sendCommand(const std::string& command);
     std::vector<int> splitValue(int value);
+
+    void startTimer();
+    void startListening();
+    void processIncomingLine(const std::string& line);
+
+    void timerThreadFunc();
+    void listeningThreadFunc();
+
+private:
+    serial::Serial serial_;
+    std::atomic<bool> is_open_;
+
+    std::thread timer_thread_;
+    std::atomic<bool> timer_running_;
+
+    std::thread listening_thread_;
+    std::atomic<bool> listening_;
+
 };
 
 #endif // SERIALCONNECTION_H

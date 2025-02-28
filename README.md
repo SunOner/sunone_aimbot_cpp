@@ -48,7 +48,7 @@
 
 > **ℹ️ NOTE:** This guide is intended for advanced users. If you encounter errors while building the modules, please report them on the [Discord server](https://discord.gg/sunone).
 
-1. **Install Visual Studio 2019 Community**  
+1. **Install Visual Studio 2022 Community**  
    Download and install from the [official website](https://visualstudio.microsoft.com/vs/community/).
 
 2. **Install Windows SDK**  
@@ -103,48 +103,39 @@
      - `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc16/lib` - Contains `.lib` files.
 
 6. **Download Required Libraries**  
-	- [Boost](https://disk.yandex.ru/d/O8XkcKeQ3vNDFg)
-	- TensorRT from [Yandex](https://disk.yandex.ru/d/42O4Fp4WbTscvQ) or [NVIDIA Developer](https://developer.nvidia.com/tensorrt/download/10x)
-
+	- [simpleIni](https://github.com/brofield/simpleini/blob/master/SimpleIni.h)
+	- [serial](https://github.com/wjwwood/serial)
+	- [TensorRT-10.8.0.43](https://developer.nvidia.com/tensorrt/download/10x)
+	- [GLWF Windows pre-compiled binaries](https://www.glfw.org/download.html)
+	
 7. **Extract Libraries**  
-	Extract the downloaded libraries into the respective directories:
-	- `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0`
-	- `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/TensorRT-10.8.0.43`
-
-8. **Compile Boost Libraries**
-	- Navigate to the Boost directory:
-		```bash
-		cd sunone_aimbot_cpp/sunone_aimbot_cpp/modules/boost_1_82_0
-		```
-	- Run the bootstrap script (from PowerShell):
-		```bash
-		bootstrap.bat vc142
-		```
-	- After successful bootstrapping, build Boost:
-		```bash
-		b2.exe --build-type=complete link=static runtime-link=static threading=multi variant=release
-		```
-
-9. **Download GLFW binaries (v3.4)**
-	- Download [GLWF Windows pre-compiled binaries](https://www.glfw.org/download.html)
-	- Extract the downloaded binaries into:
-		- `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/glfw-3.4.bin.WIN64`
+	Place the downloaded libraries into the respective directories:
+	- `SimpleIni.h` -> `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/SimpleIni.h`
+	- `serial` -> `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/serial`
+	- `TensorRT-10.8.0.43` -> `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/TensorRT-10.8.0.43`
+	- `GLWF` -> `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/glfw-3.4.bin.WIN64`
+	
+8. **Compile serial**
+	- Navigate to the serial directory `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/serial/visual_studio/`
+	- Open `visual_studio.sln`
+	- Go to project settings -> C/C++ -> Code Generation -> and change `Runtime Library` to `Multi-threaded (/MT)`
+	- Build in `Release x64`
    
-10. **Configure Project Settings**
+9. **Configure Project Settings**
 	- Open the project in Visual Studio.
 	- Ensure all library paths are correctly set in **Project Properties** under **Library Directories**.
 	- Go to NuGet packages and install `Microsoft.Windows.CppWinRT`.
 
-11. **Verify CUDA Integration**
+10. **Verify CUDA Integration**
 	- Right-click on the project in Visual Studio.
 	- Navigate to **Build Dependencies** > **Build Customizations**.
 	- Ensure that **CUDA 12.8** (.targets, .props) is included.
 
-12. **Build the Project**
+11. **Build the Project**
     - Switch the build configuration to **Release**.
     - Build the project by selecting **Build** > **Build Solution**.
 
-## Export PyTorch models from Python
+## Export PyTorch models from Python with dynamic shapes
 - .pt -> .onnx
 	```bash
 	pip install ultralytics -U
@@ -158,12 +149,13 @@
 ## 📋 Config Documentation
 - The config documentation is available in a separate [repository](https://github.com/SunOner/sunone_aimbot_docs/blob/main/config/config_cpp.md).
 
-## 📚 References
+## 📚 References and modules
 
 - [TensorRT Documentation](https://docs.nvidia.com/deeplearning/tensorrt/)
 - [OpenCV Documentation](https://docs.opencv.org/4.x/d1/dfb/intro.html)
 - [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/)
-- [Boost](https://www.boost.org/)
+- [simpleIni](https://github.com/brofield/simpleini/)
+- [serial](https://github.com/wjwwood/serial)
 - [ImGui](https://github.com/ocornut/imgui)
 - [CppWinRT](https://github.com/microsoft/cppwinrt)
 - [Python AI AIMBOT](https://github.com/SunOner/sunone_aimbot)

@@ -29,6 +29,7 @@ bool isAnyKeyPressed(const std::vector<std::string>& keys)
     for (const auto& key_name : keys)
     {
         int key_code = KeyCodes::getKeyCode(key_name);
+
         if (key_code != -1 && (GetAsyncKeyState(key_code) & 0x8000))
         {
             return true;
@@ -45,7 +46,7 @@ void keyboardListener()
         if (!config.auto_aim)
         {
         aiming = isAnyKeyPressed(config.button_targeting) ||
-            (config.arduino_enable_keys && serial && serial->isOpen() && serial->aiming_active);
+            (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->aiming_active);
         }
         else
         {
@@ -54,11 +55,11 @@ void keyboardListener()
 
         // Shooting
         shooting = isAnyKeyPressed(config.button_shoot) ||
-            (config.arduino_enable_keys && serial && serial->isOpen() && serial->shooting_active);
+            (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->shooting_active);
 
         // Zooming
         zooming = isAnyKeyPressed(config.button_zoom) ||
-            (config.arduino_enable_keys && serial && serial->isOpen() && serial->zooming_active);
+            (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->zooming_active);
 
         // Exit
         if (isAnyKeyPressed(config.button_exit))

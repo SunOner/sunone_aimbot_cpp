@@ -1,24 +1,51 @@
 #define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
-#include <winsock2.h>
-#include <Windows.h>
-
+#include <windows.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <iomanip>
 #include <string>
-#include <boost/filesystem.hpp>
-#include <boost/property_tree/ini_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
+#include <filesystem>
 
 #include "config.h"
 
+#include "modules/SimpleIni.h"
+
+std::vector<std::string> Config::splitString(const std::string& str, char delimiter)
+{
+    std::vector<std::string> tokens;
+    std::stringstream ss(str);
+    std::string item;
+    while (std::getline(ss, item, delimiter))
+    {
+        while (!item.empty() && (item.front() == ' ' || item.front() == '\t'))
+            item.erase(item.begin());
+        while (!item.empty() && (item.back() == ' ' || item.back() == '\t'))
+            item.pop_back();
+
+        tokens.push_back(item);
+    }
+    return tokens;
+}
+
+std::string Config::joinStrings(const std::vector<std::string>& vec, const std::string& delimiter)
+{
+    std::ostringstream oss;
+    for (size_t i = 0; i < vec.size(); ++i)
+    {
+        if (i != 0) oss << delimiter;
+        oss << vec[i];
+    }
+    return oss.str();
+}
+
 bool Config::loadConfig(const std::string& filename)
 {
-    if (!boost::filesystem::exists(filename))
+    if (!std::filesystem::exists(filename))
     {
-        std::cerr << "Config file does not exist, creating default config: " << filename << std::endl;
-        // Capture
+        std::cerr << "[Config] Config file does not exist, creating default config: " << filename << std::endl;
+
         capture_method = "duplication_api";
         detection_resolution = 320;
         capture_fps = 60;
@@ -52,15 +79,15 @@ bool Config::loadConfig(const std::string& filename)
         arduino_port = "COM0";
         arduino_16_bit_mouse = false;
         arduino_enable_keys = false;
-        
+
         // Mouse shooting
         auto_shoot = false;
         bScope_multiplier = 1.0f;
-        
+
         // AI
         ai_model = "sunxds_0.5.6.engine";
         confidence_threshold = 0.15f;
-        nms_threshold = 0.50;
+        nms_threshold = 0.50f;
         max_detections = 100;
         postprocess = "yolo10";
         export_enable_fp8 = false;
@@ -89,7 +116,7 @@ bool Config::loadConfig(const std::string& filename)
         overlay_ui_scale = 1.0f;
 
         // Custom classes
-        class_player =  0;
+        class_player = 0;
         class_bot = 1;
         class_weapon = 2;
         class_outline = 3;
@@ -112,121 +139,130 @@ bool Config::loadConfig(const std::string& filename)
         verbose = false;
 
         saveConfig(filename);
+        return true;
     }
 
-    boost::property_tree::ptree pt;
-    try
-    {
-        boost::property_tree::ini_parser::read_ini(filename, pt);
-
-        // Capture
-        capture_method = pt.get<std::string>("capture_method", "duplication_api");
-        detection_resolution = pt.get<int>("detection_resolution", 320);
-        capture_fps = pt.get<int>("capture_fps", 60);
-        monitor_idx = pt.get<int>("monitor_idx", 0);
-        circle_mask = pt.get<bool>("circle_mask", true);
-        capture_borders = pt.get<bool>("capture_borders", true);
-        capture_cursor = pt.get<bool>("capture_cursor", true);
-        virtual_camera_name = pt.get<std::string>("virtual_camera_name", "None");
-
-        // Target
-        disable_headshot = pt.get<bool>("disable_headshot", false);
-        body_y_offset = pt.get<float>("body_y_offset", 0.15f);
-        ignore_third_person = pt.get<bool>("ignore_third_person", false);
-        shooting_range_targets = pt.get<bool>("shooting_range_targets", false);
-        auto_aim = pt.get<bool>("auto_aiming", false);
-
-        // Mouse
-        dpi = pt.get<int>("dpi", 1000);
-        sensitivity = pt.get<float>("sensitivity", 4.0f);
-        fovX = pt.get<int>("fovX", 50);
-        fovY = pt.get<int>("fovY", 50);
-        minSpeedMultiplier = pt.get<float>("minSpeedMultiplier", 1.0f);
-        maxSpeedMultiplier = pt.get<float>("maxSpeedMultiplier", 4.0f);
-        predictionInterval = pt.get<float>("predictionInterval", 0.5f);
-        easynorecoil = pt.get<bool>("easynorecoil", false);
-        easynorecoilstrength = pt.get<float>("easynorecoilstrength", 0.0f);
-        input_method = pt.get<std::string>("input_method", "WIN32");
-
-        // Arduino
-        arduino_baudrate = pt.get<int>("arduino_baudrate", 115200);
-        arduino_port = pt.get<std::string>("arduino_port", "COM0");
-        arduino_16_bit_mouse = pt.get<bool>("arduino_16_bit_mouse", false);
-        arduino_enable_keys = pt.get<bool>("arduino_enable_keys", false);
-
-        // Mouse shooting
-        auto_shoot = pt.get<bool>("auto_shoot", false);
-        bScope_multiplier = pt.get<float>("bScope_multiplier", 1.2f);
-
-        // AI
-        ai_model = pt.get<std::string>("ai_model", "sunxds_0.5.6.engine");
-        confidence_threshold = pt.get<float>("confidence_threshold", 0.15f);
-        nms_threshold = pt.get<float>("nms_threshold", 0.50);
-        max_detections = pt.get<int>("max_detections", 20);
-        postprocess = pt.get<std::string>("postprocess", "yolo11");
-        export_enable_fp8 = pt.get<bool>("export_enable_fp8", true);
-        export_enable_fp16 = pt.get<bool>("export_enable_fp16", true);
-
-        // Optical Flow
-        enable_optical_flow = pt.get<bool>("enable_optical_flow", false);
-        draw_optical_flow = pt.get<bool>("draw_optical_flow", true);
-        draw_optical_flow_steps = pt.get<int>("draw_optical_flow_steps", 16);
-        optical_flow_alpha_cpu = pt.get<float>("optical_flow_alpha_cpu", 0.06f);
-        optical_flow_magnitudeThreshold = pt.get<double>("optical_flow_magnitudeThreshold", 2.08);
-        staticFrameThreshold = pt.get<float>("staticFrameThreshold", 4.0f);
-
-        // Buttons
-        button_targeting = splitString(pt.get<std::string>("button_targeting", "RightMouseButton"));
-        button_shoot = splitString(pt.get<std::string>("button_shoot", "LeftMouseButton"));
-        button_zoom = splitString(pt.get<std::string>("button_zoom", "RightMouseButton"));
-        button_exit = splitString(pt.get<std::string>("button_exit", "F2"));
-        button_pause = splitString(pt.get<std::string>("button_pause", "F3"));
-        button_reload_config = splitString(pt.get<std::string>("button_reload_config", "F4"));
-        button_open_overlay = splitString(pt.get<std::string>("button_open_overlay", "Home"));
-
-        // Overlay
-        overlay_opacity = pt.get<int>("overlay_opacity", 225);
-        overlay_snow_theme = pt.get<bool>("overlay_snow_theme", true);
-        overlay_ui_scale = pt.get<float>("overlay_ui_scale", 1.0f);
-
-        // Custom Classes
-        class_player = pt.get<int>("class_player", 0);
-        class_bot = pt.get<int>("class_bot", 1);
-        class_weapon = pt.get<int>("class_weapon", 2);
-        class_outline = pt.get<int>("class_outline", 3);
-        class_dead_body = pt.get<int>("class_dead_body", 4);
-        class_hideout_target_human = pt.get<int>("class_hideout_target_human", 5);
-        class_hideout_target_balls = pt.get<int>("class_hideout_target_balls", 6);
-        class_head = pt.get<int>("class_head", 7);
-        class_smoke = pt.get<int>("class_smoke", 8);
-        class_fire = pt.get<int>("class_fire", 9);
-        class_third_person = pt.get<int>("class_third_person", 10);
-
-        // Debug window
-        show_window = pt.get<bool>("show_window", true);
-        show_fps = pt.get<bool>("show_fps", true);
-        window_name = pt.get<std::string>("window_name", "Debug");
-        window_size = pt.get<int>("window_size", 80);
-        screenshot_button = splitString(pt.get<std::string>("screenshot_button", "None"));
-        screenshot_delay = pt.get<int>("screenshot_delay", 500);
-        always_on_top = pt.get<bool>("always_on_top", true);
-        verbose = pt.get<bool>("verbose", false);
-    }
-    catch (boost::property_tree::ini_parser_error& e)
-    {
-        std::cerr << "Error parsing config file: " << e.what() << std::endl;
+    CSimpleIniA ini;
+    ini.SetUnicode();
+    SI_Error rc = ini.LoadFile(filename.c_str());
+    if (rc < 0) {
+        std::cerr << "[Config] Error parsing INI file: " << filename << std::endl;
         return false;
     }
-    catch (boost::property_tree::ptree_bad_path& e)
+
+    auto get_string = [&](const char* key, const char* defval)
     {
-        std::cerr << "Error reading config value: " << e.what() << std::endl;
-        return false;
-    }
-    catch (boost::property_tree::ptree_bad_data& e)
+        const char* val = ini.GetValue("", key, defval);
+        return std::string(val ? val : "");
+    };
+
+    auto get_bool = [&](const char* key, bool defval)
     {
-        std::cerr << "Error converting config value: " << e.what() << std::endl;
-        return false;
-    }
+        return ini.GetBoolValue("", key, defval);
+    };
+
+    auto get_long = [&](const char* key, long defval)
+    {
+        return (int)ini.GetLongValue("", key, defval);
+    };
+
+    auto get_double = [&](const char* key, double defval)
+    {
+        return ini.GetDoubleValue("", key, defval);
+    };
+
+    // Capture
+    capture_method = get_string("capture_method", "duplication_api");
+    detection_resolution = get_long("detection_resolution", 320);
+    capture_fps = get_long("capture_fps", 60);
+    monitor_idx = get_long("monitor_idx", 0);
+    circle_mask = get_bool("circle_mask", true);
+    capture_borders = get_bool("capture_borders", true);
+    capture_cursor = get_bool("capture_cursor", true);
+    virtual_camera_name = get_string("virtual_camera_name", "None");
+
+    // Target
+    disable_headshot = get_bool("disable_headshot", false);
+    body_y_offset = (float)get_double("body_y_offset", 0.15);
+    ignore_third_person = get_bool("ignore_third_person", false);
+    shooting_range_targets = get_bool("shooting_range_targets", false);
+    auto_aim = get_bool("auto_aim", false);
+
+    // Mouse
+    dpi = get_long("dpi", 1000);
+    sensitivity = (float)get_double("sensitivity", 4.0);
+    fovX = get_long("fovX", 50);
+    fovY = get_long("fovY", 50);
+    minSpeedMultiplier = (float)get_double("minSpeedMultiplier", 1.0);
+    maxSpeedMultiplier = (float)get_double("maxSpeedMultiplier", 4.0);
+    predictionInterval = (float)get_double("predictionInterval", 0.2);
+    easynorecoil = get_bool("easynorecoil", false);
+    easynorecoilstrength = (float)get_double("easynorecoilstrength", 0.0);
+    input_method = get_string("input_method", "WIN32");
+
+    // Arduino
+    arduino_baudrate = get_long("arduino_baudrate", 115200);
+    arduino_port = get_string("arduino_port", "COM0");
+    arduino_16_bit_mouse = get_bool("arduino_16_bit_mouse", false);
+    arduino_enable_keys = get_bool("arduino_enable_keys", false);
+
+    // Mouse shooting
+    auto_shoot = get_bool("auto_shoot", false);
+    bScope_multiplier = (float)get_double("bScope_multiplier", 1.2);
+
+    // AI
+    ai_model = get_string("ai_model", "sunxds_0.5.6.engine");
+    confidence_threshold = (float)get_double("confidence_threshold", 0.15);
+    nms_threshold = (float)get_double("nms_threshold", 0.50);
+    max_detections = get_long("max_detections", 20);
+    postprocess = get_string("postprocess", "yolo11");
+    export_enable_fp8 = get_bool("export_enable_fp8", true);
+    export_enable_fp16 = get_bool("export_enable_fp16", true);
+
+    // Optical Flow
+    enable_optical_flow = get_bool("enable_optical_flow", false);
+    draw_optical_flow = get_bool("draw_optical_flow", true);
+    draw_optical_flow_steps = get_long("draw_optical_flow_steps", 16);
+    optical_flow_alpha_cpu = (float)get_double("optical_flow_alpha_cpu", 0.06);
+    optical_flow_magnitudeThreshold = get_double("optical_flow_magnitudeThreshold", 2.08);
+    staticFrameThreshold = (float)get_double("staticFrameThreshold", 4.0);
+
+    // Buttons
+    button_targeting = splitString(get_string("button_targeting", "RightMouseButton"));
+    button_shoot = splitString(get_string("button_shoot", "LeftMouseButton"));
+    button_zoom = splitString(get_string("button_zoom", "RightMouseButton"));
+    button_exit = splitString(get_string("button_exit", "F2"));
+    button_pause = splitString(get_string("button_pause", "F3"));
+    button_reload_config = splitString(get_string("button_reload_config", "F4"));
+    button_open_overlay = splitString(get_string("button_open_overlay", "Home"));
+
+    // Overlay
+    overlay_opacity = get_long("overlay_opacity", 225);
+    overlay_snow_theme = get_bool("overlay_snow_theme", true);
+    overlay_ui_scale = (float)get_double("overlay_ui_scale", 1.0);
+
+    // Custom Classes
+    class_player = get_long("class_player", 0);
+    class_bot = get_long("class_bot", 1);
+    class_weapon = get_long("class_weapon", 2);
+    class_outline = get_long("class_outline", 3);
+    class_dead_body = get_long("class_dead_body", 4);
+    class_hideout_target_human = get_long("class_hideout_target_human", 5);
+    class_hideout_target_balls = get_long("class_hideout_target_balls", 6);
+    class_head = get_long("class_head", 7);
+    class_smoke = get_long("class_smoke", 8);
+    class_fire = get_long("class_fire", 9);
+    class_third_person = get_long("class_third_person", 10);
+
+    // Debug window
+    show_window = get_bool("show_window", true);
+    show_fps = get_bool("show_fps", true);
+    window_name = get_string("window_name", "Debug");
+    window_size = get_long("window_size", 80);
+    screenshot_button = splitString(get_string("screenshot_button", "None"));
+    screenshot_delay = get_long("screenshot_delay", 500);
+    always_on_top = get_bool("always_on_top", true);
+    verbose = get_bool("verbose", false);
 
     return true;
 }
@@ -240,128 +276,123 @@ bool Config::saveConfig(const std::string& filename)
         return false;
     }
 
-    file << "# An explanation of the options can be found at the link\n";
+    file << "# An explanation of the options can be found at:\n";
     file << "# https://github.com/SunOner/sunone_aimbot_docs/blob/main/config/config_cpp.md\n\n";
-    file << "# Capture\n";
-    file << "# duplication_api, winrt, virtual_camera\n";
-    file << "capture_method = " << capture_method << "\n";
-    file << "detection_resolution = " << detection_resolution << "\n";
-    file << "capture_fps = " << capture_fps << "\n";
-    file << "monitor_idx = " << monitor_idx << "\n";
-    file << "circle_mask = " << (circle_mask ? "true" : "false") << "\n";
-    file << "capture_borders = " << (capture_borders ? "true" : "false") << "\n";
-    file << "capture_cursor = " << (capture_cursor ? "true" : "false") << "\n";
-    file << "virtual_camera_name = " << virtual_camera_name << "\n\n";
 
-    file << "# Target\n";
-    file << "disable_headshot = " << (disable_headshot ? "true" : "false") << "\n";
-    file << "body_y_offset = " << std::fixed << std::setprecision(2) << body_y_offset << "\n";
-    file << "ignore_third_person = " << (ignore_third_person ? "true" : "false") << "\n";
-    file << "shooting_range_targets = " << (shooting_range_targets ? "true" : "false") << "\n";
-    file << "auto_aim = " << (auto_aim ? "true" : "false") << "\n\n";
+    // Capture
+    file << "# Capture\n"
+        << "capture_method = " << capture_method << "\n"
+        << "detection_resolution = " << detection_resolution << "\n"
+        << "capture_fps = " << capture_fps << "\n"
+        << "monitor_idx = " << monitor_idx << "\n"
+        << "circle_mask = " << (circle_mask ? "true" : "false") << "\n"
+        << "capture_borders = " << (capture_borders ? "true" : "false") << "\n"
+        << "capture_cursor = " << (capture_cursor ? "true" : "false") << "\n"
+        << "virtual_camera_name = " << virtual_camera_name << "\n\n";
 
-    file << "# Mouse move\n";
-    file << "dpi = " << dpi << "\n";
-    file << "sensitivity = " << std::fixed << std::setprecision(1) << sensitivity << "\n";
-    file << "fovX = " << fovX << "\n";
-    file << "fovY = " << fovY << "\n";
-    file << "minSpeedMultiplier = " << std::fixed << std::setprecision(1) << minSpeedMultiplier << "\n";
-    file << "maxSpeedMultiplier = " << std::fixed << std::setprecision(1) << maxSpeedMultiplier << "\n";
-    file << "predictionInterval = " << std::fixed << std::setprecision(2) << predictionInterval << "\n";
-    file << "easynorecoil = " << (easynorecoil ? "true" : "false") << "\n";
-    file << "easynorecoilstrength = " << std::fixed << std::setprecision(1) << easynorecoilstrength << "\n";
-    file << "# WIN32, GHUB, ARDUINO\n";
-    file << "input_method = " << input_method << "\n\n";
+    // Target
+    file << "# Target\n"
+        << "disable_headshot = " << (disable_headshot ? "true" : "false") << "\n"
+        << std::fixed << std::setprecision(2)
+        << "body_y_offset = " << body_y_offset << "\n"
+        << "ignore_third_person = " << (ignore_third_person ? "true" : "false") << "\n"
+        << "shooting_range_targets = " << (shooting_range_targets ? "true" : "false") << "\n"
+        << "auto_aim = " << (auto_aim ? "true" : "false") << "\n\n";
 
-    file << "# Arduino\n";
-    file << "arduino_baudrate = " << arduino_baudrate << "\n";
-    file << "arduino_port = " << arduino_port << "\n";
-    file << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n";
-    file << "arduino_enable_keys = " << (arduino_enable_keys ? "true" : "false") << "\n\n";
+    // Mouse
+    file << "# Mouse move\n"
+        << "dpi = " << dpi << "\n"
+        << std::fixed << std::setprecision(1)
+        << "sensitivity = " << sensitivity << "\n"
+        << "fovX = " << fovX << "\n"
+        << "fovY = " << fovY << "\n"
+        << "minSpeedMultiplier = " << minSpeedMultiplier << "\n"
+        << "maxSpeedMultiplier = " << maxSpeedMultiplier << "\n"
+        << std::fixed << std::setprecision(2)
+        << "predictionInterval = " << predictionInterval << "\n"
+        << "easynorecoil = " << (easynorecoil ? "true" : "false") << "\n"
+        << std::fixed << std::setprecision(1)
+        << "easynorecoilstrength = " << easynorecoilstrength << "\n"
+        << "# WIN32, GHUB, ARDUINO\n"
+        << "input_method = " << input_method << "\n\n";
 
-    file << "# Mouse shooting\n";
-    file << "auto_shoot = " << (auto_shoot ? "true" : "false") << "\n";
-    file << "bScope_multiplier = " << std::fixed << std::setprecision(1) << bScope_multiplier << "\n\n";
+    // Arduino
+    file << "# Arduino\n"
+        << "arduino_baudrate = " << arduino_baudrate << "\n"
+        << "arduino_port = " << arduino_port << "\n"
+        << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n"
+        << "arduino_enable_keys = " << (arduino_enable_keys ? "true" : "false") << "\n\n";
 
-    file << "# AI\n";
-    file << "ai_model = " << ai_model << "\n";
-    file << "confidence_threshold = " << std::fixed << std::setprecision(2) << confidence_threshold << "\n";
-    file << "nms_threshold = " << std::fixed << std::setprecision(2) << nms_threshold << "\n";
-    file << "max_detections = " << max_detections << "\n";
-    file << "postprocess = " << postprocess << "\n";
-    file << "export_enable_fp8 = " << (export_enable_fp8 ? "true" : "false") << "\n";
-    file << "export_enable_fp16 = " << (export_enable_fp16 ? "true" : "false") << "\n\n";
+    // Mouse shooting
+    file << "# Mouse shooting\n"
+        << "auto_shoot = " << (auto_shoot ? "true" : "false") << "\n"
+        << std::fixed << std::setprecision(1)
+        << "bScope_multiplier = " << bScope_multiplier << "\n\n";
 
-    file << "# Optical Flow\n";
-    file << "enable_optical_flow = " << (enable_optical_flow ? "true" : "false") << "\n";
-    file << "draw_optical_flow = " << (draw_optical_flow ? "true" : "false") << "\n";
-    file << "draw_optical_flow_steps = " << draw_optical_flow_steps << "\n";
-    file << "optical_flow_alpha_cpu = " << std::fixed << std::setprecision(2) << optical_flow_alpha_cpu << "\n";
-    file << "optical_flow_magnitudeThreshold = " << std::fixed << std::setprecision(2) << optical_flow_magnitudeThreshold << "\n";
-    file << "staticFrameThreshold = " << std::fixed << std::setprecision(2) << staticFrameThreshold << "\n\n";
+    // AI
+    file << "# AI\n"
+        << "ai_model = " << ai_model << "\n"
+        << std::fixed << std::setprecision(2)
+        << "confidence_threshold = " << confidence_threshold << "\n"
+        << "nms_threshold = " << nms_threshold << "\n"
+        << std::setprecision(0)
+        << "max_detections = " << max_detections << "\n"
+        << "postprocess = " << postprocess << "\n"
+        << "export_enable_fp8 = " << (export_enable_fp8 ? "true" : "false") << "\n"
+        << "export_enable_fp16 = " << (export_enable_fp16 ? "true" : "false") << "\n\n";
 
-    file << "# Buttons\n";
-    file << "button_targeting = " << joinStrings(button_targeting) << "\n";
-    file << "button_shoot = " << joinStrings(button_shoot) << "\n";
-    file << "button_zoom = " << joinStrings(button_zoom) << "\n";
-    file << "button_exit = " << joinStrings(button_exit) << "\n";
-    file << "button_pause = " << joinStrings(button_pause) << "\n";
-    file << "button_reload_config = " << joinStrings(button_reload_config) << "\n";
-    file << "button_open_overlay = " << joinStrings(button_open_overlay) << "\n\n";
+    // Optical Flow
+    file << "# Optical Flow\n"
+        << "enable_optical_flow = " << (enable_optical_flow ? "true" : "false") << "\n"
+        << "draw_optical_flow = " << (draw_optical_flow ? "true" : "false") << "\n"
+        << "draw_optical_flow_steps = " << draw_optical_flow_steps << "\n"
+        << std::fixed << std::setprecision(2)
+        << "optical_flow_alpha_cpu = " << optical_flow_alpha_cpu << "\n"
+        << "optical_flow_magnitudeThreshold = " << optical_flow_magnitudeThreshold << "\n"
+        << "staticFrameThreshold = " << staticFrameThreshold << "\n\n";
 
-    file << "# Overlay\n";
-    file << "overlay_opacity = " << overlay_opacity << "\n";
-    file << "overlay_snow_theme = " << (overlay_snow_theme ? "true" : "false") << "\n";
-    file << "overlay_ui_scale = " << std::fixed << std::setprecision(2) << overlay_ui_scale << "\n\n";
+    // Buttons
+    file << "# Buttons\n"
+        << "button_targeting = " << joinStrings(button_targeting) << "\n"
+        << "button_shoot = " << joinStrings(button_shoot) << "\n"
+        << "button_zoom = " << joinStrings(button_zoom) << "\n"
+        << "button_exit = " << joinStrings(button_exit) << "\n"
+        << "button_pause = " << joinStrings(button_pause) << "\n"
+        << "button_reload_config = " << joinStrings(button_reload_config) << "\n"
+        << "button_open_overlay = " << joinStrings(button_open_overlay) << "\n\n";
 
-    file << "# Custom Classes\n";
-    file << "class_player = " << class_player << "\n";
-    file << "class_bot = " << class_bot << "\n";
-    file << "class_weapon = " << class_weapon << "\n";
-    file << "class_outline = " << class_outline << "\n";
-    file << "class_dead_body = " << class_dead_body << "\n";
-    file << "class_hideout_target_human = " << class_hideout_target_human << "\n";
-    file << "class_hideout_target_balls = " << class_hideout_target_balls << "\n";
-    file << "class_head = " << class_head << "\n";
-    file << "class_smoke = " << class_smoke << "\n";
-    file << "class_fire = " << class_fire << "\n";
-    file << "class_third_person = " << class_third_person << "\n\n";
+    // Overlay
+    file << "# Overlay\n"
+        << "overlay_opacity = " << overlay_opacity << "\n"
+        << "overlay_snow_theme = " << (overlay_snow_theme ? "true" : "false") << "\n"
+        << std::fixed << std::setprecision(2)
+        << "overlay_ui_scale = " << overlay_ui_scale << "\n\n";
 
-    file << "# Debug window\n";
-    file << "show_window = " << (show_window ? "true" : "false") << "\n";
-    file << "show_fps = " << (show_fps ? "true" : "false") << "\n";
-    file << "window_name = " << window_name << "\n";
-    file << "window_size = " << window_size << "\n";
-    file << "screenshot_button = " << joinStrings(screenshot_button) << "\n";
-    file << "screenshot_delay = " << screenshot_delay << "\n";
-    file << "always_on_top = " << (always_on_top ? "true" : "false") << "\n";
-    file << "verbose = " << (verbose ? "true" : "false");
+    // Custom Classes
+    file << "# Custom Classes\n"
+        << "class_player = " << class_player << "\n"
+        << "class_bot = " << class_bot << "\n"
+        << "class_weapon = " << class_weapon << "\n"
+        << "class_outline = " << class_outline << "\n"
+        << "class_dead_body = " << class_dead_body << "\n"
+        << "class_hideout_target_human = " << class_hideout_target_human << "\n"
+        << "class_hideout_target_balls = " << class_hideout_target_balls << "\n"
+        << "class_head = " << class_head << "\n"
+        << "class_smoke = " << class_smoke << "\n"
+        << "class_fire = " << class_fire << "\n"
+        << "class_third_person = " << class_third_person << "\n\n";
+
+    // Debug window
+    file << "# Debug window\n"
+        << "show_window = " << (show_window ? "true" : "false") << "\n"
+        << "show_fps = " << (show_fps ? "true" : "false") << "\n"
+        << "window_name = " << window_name << "\n"
+        << "window_size = " << window_size << "\n"
+        << "screenshot_button = " << joinStrings(screenshot_button) << "\n"
+        << "screenshot_delay = " << screenshot_delay << "\n"
+        << "always_on_top = " << (always_on_top ? "true" : "false") << "\n"
+        << "verbose = " << (verbose ? "true" : "false") << "\n";
 
     file.close();
     return true;
-}
-
-std::vector<std::string> Config::splitString(const std::string& str, char delimiter)
-{
-    std::vector<std::string> tokens;
-    std::stringstream ss(str);
-    std::string item;
-    while (std::getline(ss, item, delimiter))
-    {
-        item.erase(0, item.find_first_not_of(" \t\n\r\f\v"));
-        item.erase(item.find_last_not_of(" \t\n\r\f\v") + 1);
-        tokens.push_back(item);
-    }
-    return tokens;
-}
-
-std::string Config::joinStrings(const std::vector<std::string>& vec, const std::string& delimiter)
-{
-    std::ostringstream oss;
-    for (size_t i = 0; i < vec.size(); ++i)
-    {
-        if (i != 0) oss << delimiter;
-        oss << vec[i];
-    }
-    return oss.str();
 }

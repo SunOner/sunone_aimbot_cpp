@@ -34,15 +34,15 @@ public:
     float predictionInterval;
     bool easynorecoil;
     float easynorecoilstrength;
-    std::string input_method;   // "WIN32", "GHUB", "ARDUINO"
-    
+    std::string input_method; // "WIN32", "GHUB", "ARDUINO"
+
     // Arduino
     int arduino_baudrate;
     std::string arduino_port;
     bool arduino_16_bit_mouse;
     bool arduino_enable_keys;
 
-    //Mouse shooting
+    // Mouse shooting
     bool auto_shoot;
     float bScope_multiplier;
 
@@ -52,7 +52,6 @@ public:
     float nms_threshold;
     int max_detections;
     std::string postprocess;
-    int img_size;
     bool export_enable_fp8;
     bool export_enable_fp16;
 
@@ -90,7 +89,7 @@ public:
     int class_smoke;                   // 8
     int class_fire;                    // 9
     int class_third_person;            // 10
-    
+
     // Debug
     bool show_window;
     bool show_fps;
@@ -103,6 +102,7 @@ public:
 
     bool loadConfig(const std::string& filename = "config.ini");
     bool saveConfig(const std::string& filename = "config.ini");
+
     std::string joinStrings(const std::vector<std::string>& vec, const std::string& delimiter = ",");
 private:
     std::vector<std::string> splitString(const std::string& str, char delimiter = ',');

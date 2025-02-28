@@ -18,8 +18,6 @@
 #include <atomic>
 #include <numeric>
 
-#include <boost/algorithm/string.hpp>
-
 #include "detector.h"
 #include "nvinf.h"
 #include "sunone_aimbot_cpp.h"
