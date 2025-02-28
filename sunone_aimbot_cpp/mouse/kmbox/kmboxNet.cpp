@@ -5,6 +5,7 @@
 #include "my_enc.h"
 #define monitor_ok    2
 #define monitor_exit  0
+unsigned int xbox_mac = 0;  // how to call this globally?
 SOCKET sockClientfd  = 0;				//键鼠网络通信句柄
 SOCKET sockMonitorfd = 0;				//监听网络通信句柄
 client_tx tx;							//发送的内容
