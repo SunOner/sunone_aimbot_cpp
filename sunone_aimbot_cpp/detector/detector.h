@@ -3,7 +3,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/cuda.hpp>
-#include "NvInfer.h"
+#include <NvInfer.h>
 #include <atomic>
 #include <mutex>
 #include <condition_variable>

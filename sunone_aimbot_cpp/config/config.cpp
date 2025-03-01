@@ -395,7 +395,7 @@ bool Config::saveConfig(const std::string& filename)
         << "class_fire = " << class_fire << "\n"
         << "class_third_person = " << class_third_person << "\n\n";
 
-    // Debug window
+    // Debug
     file << "# Debug window\n"
         << "show_window = " << (show_window ? "true" : "false") << "\n"
         << "show_fps = " << (show_fps ? "true" : "false") << "\n"

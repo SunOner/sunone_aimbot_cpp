@@ -77,6 +77,7 @@ void initializeInputMethod()
     else if (config.input_method == "GHUB")
     {
         std::cout << "[Mouse] Using Ghub method input." << std::endl;
+
         gHub = new GhubMouse();
         if (!gHub->mouse_xy(0, 0))
         {

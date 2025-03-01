@@ -13,5 +13,8 @@ extern MouseThread* globalMouseThread;
 extern SerialConnection* arduinoSerial;
 extern std::atomic<bool> input_method_changed;
 extern OpticalFlow opticalFlow;
+extern std::atomic<bool> aiming;
+extern std::atomic<bool> shooting;
+extern std::atomic<bool> zooming;
 
 #endif // SUNONE_AIMBOT_CPP_H

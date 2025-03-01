@@ -10,7 +10,6 @@
 
 SerialConnection::SerialConnection(const std::string& port, unsigned int baud_rate)
     : is_open_(false),
-    timer_running_(false),
     listening_(false),
     aiming_active(false),
     shooting_active(false),
@@ -20,23 +19,22 @@ SerialConnection::SerialConnection(const std::string& port, unsigned int baud_ra
     {
         serial_.setPort(port);
         serial_.setBaudrate(baud_rate);
-        //serial::Flowcontrol fc = serial::flowcontrol_none; 👀
-        // fc = serial::flowcontrol_hardware;
-        //serial_.setFlowcontrol(fc);
         serial_.open();
 
         if (serial_.isOpen())
         {
             is_open_ = true;
             std::cout << "[Arduino] Connected! PORT: " << port << std::endl;
+
+            if (config.arduino_enable_keys)
+            {
+                startListening();
+            }
         }
         else
         {
             std::cerr << "[Arduino] Unable to connect to the port: " << port << std::endl;
         }
-
-        timer_running_ = true;
-        timer_thread_ = std::thread(&SerialConnection::timerThreadFunc, this);
     }
     catch (std::exception& e)
     {
@@ -46,18 +44,15 @@ SerialConnection::SerialConnection(const std::string& port, unsigned int baud_ra
 
 SerialConnection::~SerialConnection()
 {
-    timer_running_ = false;
-    if (timer_thread_.joinable()) {
-        timer_thread_.join();
-    }
-
     listening_ = false;
-    if (listening_thread_.joinable()) {
-        listening_thread_.join();
+    if (serial_.isOpen())
+    {
+        try { serial_.close(); }
+        catch (...) {}
     }
-
-    if (serial_.isOpen()) {
-        serial_.close();
+    if (listening_thread_.joinable())
+    {
+        listening_thread_.join();
     }
     is_open_ = false;
 }
@@ -69,6 +64,7 @@ bool SerialConnection::isOpen() const
 
 void SerialConnection::write(const std::string& data)
 {
+    std::lock_guard<std::mutex> lock(write_mutex_);
     if (is_open_)
     {
         try
@@ -163,6 +159,7 @@ std::vector<int> SerialConnection::splitValue(int value)
         values.push_back(sign * 127);
         absVal -= 127;
     }
+
     if (absVal != 0)
     {
         values.push_back(sign * absVal);
@@ -179,7 +176,12 @@ void SerialConnection::timerThreadFunc()
         if (!is_open_)
             continue;
 
-        if (config.arduino_enable_keys)
+        bool arduino_enable_keys_local;
+        {
+            arduino_enable_keys_local = config.arduino_enable_keys;
+        }
+
+        if (arduino_enable_keys_local)
         {
             if (!listening_)
             {
@@ -202,11 +204,6 @@ void SerialConnection::timerThreadFunc()
 
 void SerialConnection::startListening()
 {
-    // You can send various commands from arduino, parse them and perform functions in the program.
-    // See "onButtonDown" and "onButtonUp" functions in repository
-    // https://github.com/SunOner/usb-host-shield-mouse_for_ai_aimbot/blob/main/hidmousereport/hidmousereport.ino
-    // Use Serial.println() to send commands
-
     listening_ = true;
     if (listening_thread_.joinable())
         listening_thread_.join();
@@ -216,19 +213,29 @@ void SerialConnection::startListening()
 
 void SerialConnection::listeningThreadFunc()
 {
+    std::string buffer;
     while (listening_ && is_open_)
     {
         try
         {
-            std::string line = serial_.readline(65536, "\n");
-            if (!line.empty())
+            size_t available = serial_.available();
+            if (available > 0)
             {
-                if (!line.empty() && (line.back() == '\r' || line.back() == '\n'))
-                    line.pop_back();
-                if (!line.empty() && line.back() == '\r')
-                    line.pop_back();
-
-                processIncomingLine(line);
+                std::string data = serial_.read(available);
+                buffer += data;
+                size_t pos;
+                while ((pos = buffer.find('\n')) != std::string::npos)
+                {
+                    std::string line = buffer.substr(0, pos);
+                    buffer.erase(0, pos + 1);
+                    if (!line.empty() && line.back() == '\r')
+                        line.pop_back();
+                    processIncomingLine(line);
+                }
+            }
+            else
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         }
         catch (...)
@@ -241,26 +248,41 @@ void SerialConnection::listeningThreadFunc()
 
 void SerialConnection::processIncomingLine(const std::string& line)
 {
-    // In this example, we parse mouse button clicks and tell the program that the button
-    // has been pressed and the automatic hover function needs to be activated.
-    if (line.rfind("BD:", 0) == 0)
+    try
     {
-        uint16_t buttonId = static_cast<uint16_t>(std::stoi(line.substr(3)));
-        switch (buttonId)
+        if (line.rfind("BD:", 0) == 0)
         {
-        case 2:
-            aiming_active = true;
-            break;
+            uint16_t buttonId = static_cast<uint16_t>(std::stoi(line.substr(3)));
+            switch (buttonId)
+            {
+            case 2:
+                aiming_active = true;
+                aiming.store(true);
+                break;
+            case 1:
+                shooting_active = true;
+                shooting.store(true);
+                break;
+            }
+        }
+        else if (line.rfind("BU:", 0) == 0)
+        {
+            uint16_t buttonId = static_cast<uint16_t>(std::stoi(line.substr(3)));
+            switch (buttonId)
+            {
+            case 2:
+                aiming_active = false;
+                aiming.store(false);
+                break;
+            case 1:
+                shooting_active = false;
+                shooting.store(false);
+                break;
+            }
         }
     }
-    else if (line.rfind("BU:", 0) == 0)
+    catch (const std::exception& e)
     {
-        uint16_t buttonId = static_cast<uint16_t>(std::stoi(line.substr(3)));
-        switch (buttonId)
-        {
-        case 2:
-            aiming_active = false;
-            break;
-        }
+        std::cerr << "[Arduino] Error processing line '" << line << "': " << e.what() << std::endl;
     }
 }

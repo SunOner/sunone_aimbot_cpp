@@ -8,6 +8,7 @@
 #include <vector>
 #include <thread>
 #include <atomic>
+#include <mutex>
 
 #include "serial/serial.h"
 
@@ -41,6 +42,7 @@ private:
 
     void timerThreadFunc();
     void listeningThreadFunc();
+    std::mutex write_mutex_;
 
 private:
     serial::Serial serial_;
