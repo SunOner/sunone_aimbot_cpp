@@ -40,19 +40,56 @@ Detector::Detector()
     inputBufferDevice(nullptr),
     inputDims(),
     img_scale(1.0f),
-    numClasses(0)
+    numClasses(0),
+    useCudaGraph(false),
+    cudaGraphCaptured(false)
 {
+    // 원래 CUDA 스트림 생성 (TensorRT에서 사용)
     cudaError_t err = cudaStreamCreate(&stream);
+    cudaStreamCreate(&preprocessStream);
+    cudaStreamCreate(&postprocessStream);
 
     if (err != cudaSuccess)
     {
         std::cout << "[Detector] Can't create CUDA stream!" << std::endl;
     }
+
+    // OpenCV CUDA 스트림 초기화
+    cvStream = cv::cuda::Stream();
+    preprocessCvStream = cv::cuda::Stream();
+    postprocessCvStream = cv::cuda::Stream();
+
+    // Initialize CUDA Graph variables
+    cudaGraph = nullptr;
+    cudaGraphExec = nullptr;
+    cudaGraphCaptured = false;
+    
+    // Initialize pinned memory for outputs - this will be done in initialize() method
 }
 
 Detector::~Detector()
 {
+    // 원래 CUDA 스트림 해제
     cudaStreamDestroy(stream);
+    cudaStreamDestroy(preprocessStream);
+    cudaStreamDestroy(postprocessStream);
+
+    // OpenCV CUDA 스트림은 자동으로 정리됨
+
+    // Clean up CUDA Graph resources
+    if (cudaGraphCaptured) {
+        cudaGraphExecDestroy(cudaGraphExec);
+        cudaGraphDestroy(cudaGraph);
+    }
+
+    // Free pinned memory
+    for (auto& buffer : pinnedOutputBuffers) {
+        if (buffer.second != nullptr) {
+            cudaFreeHost(buffer.second);
+            buffer.second = nullptr;
+        }
+    }
+    pinnedOutputBuffers.clear();
 
     for (auto& binding : inputBindings)
     {
@@ -306,6 +343,37 @@ void Detector::initialize(const std::string& modelFile)
     {
         std::cout << "[Detector] Image scale factor: " << img_scale << std::endl;
     }
+    
+    // Enable CUDA Graph if configured
+    useCudaGraph = config.use_cuda_graph;
+    if (useCudaGraph && config.verbose) {
+        std::cout << "[Detector] CUDA Graph optimization enabled" << std::endl;
+    }
+    
+    // Initialize pinned memory if configured
+    bool usePinnedMemory = config.use_pinned_memory;
+    if (usePinnedMemory) {
+        for (const auto& outName : outputNames) {
+            nvinfer1::Dims outDims = context->getTensorShape(outName.c_str());
+            nvinfer1::DataType outType = engine->getTensorDataType(outName.c_str());
+            size_t size = getSizeByDim(outDims) * getElementSize(outType);
+            
+            void* hostBuffer = nullptr;
+            cudaError_t status = cudaMallocHost(&hostBuffer, size);
+            if (status != cudaSuccess) {
+                std::cerr << "[Detector] Failed to allocate pinned memory for output " << outName 
+                          << ": " << cudaGetErrorString(status) << std::endl;
+            } else {
+                pinnedOutputBuffers[outName] = hostBuffer;
+                if (config.verbose) {
+                    std::cout << "[Detector] Allocated pinned memory for output " << outName 
+                              << ": " << size << " bytes" << std::endl;
+                }
+            }
+        }
+    } else if (config.verbose) {
+        std::cout << "[Detector] Pinned memory optimization disabled" << std::endl;
+    }
 }
 
 size_t Detector::getSizeByDim(const nvinfer1::Dims& dims)
@@ -437,6 +505,13 @@ void Detector::inferenceThread()
                 engine.reset();
                 runtime.reset();
 
+                // Clean up CUDA Graph resources if they were captured
+                if (cudaGraphCaptured) {
+                    cudaGraphExecDestroy(cudaGraphExec);
+                    cudaGraphDestroy(cudaGraph);
+                    cudaGraphCaptured = false;
+                }
+
                 for (auto& binding : inputBindings)
                 {
                     cudaFree(binding.second);
@@ -450,7 +525,12 @@ void Detector::inferenceThread()
                 outputBindings.clear();
 
                 cudaStreamDestroy(stream);
+                cudaStreamDestroy(preprocessStream);
+                cudaStreamDestroy(postprocessStream);
+                
                 cudaStreamCreate(&stream);
+                cudaStreamCreate(&preprocessStream);
+                cudaStreamCreate(&postprocessStream);
 
                 initialize("models/" + config.ai_model);
             }
@@ -506,7 +586,34 @@ void Detector::inferenceThread()
             context->setTensorAddress(name.c_str(), outputAddress);
         }
 
-        context->enqueueV3(stream);
+        // Use CUDA Graph for optimized inference if input dimensions are static
+        if (useCudaGraph) {
+            if (!cudaGraphCaptured) {
+                // Capture the CUDA Graph for the first time
+                cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+                
+                // Execute the inference
+                context->enqueueV3(stream);
+                
+                // End the capture
+                cudaStreamEndCapture(stream, &cudaGraph);
+                
+                // Create an executable graph
+                cudaGraphInstantiate(&cudaGraphExec, cudaGraph, 0ULL);
+                
+                cudaGraphCaptured = true;
+                
+                if (config.verbose) {
+                    std::cout << "[Detector] CUDA Graph captured for optimized inference" << std::endl;
+                }
+            } else {
+                // Launch the captured graph
+                cudaGraphLaunch(cudaGraphExec, stream);
+            }
+        } else {
+            // Standard execution without CUDA Graph
+            context->enqueueV3(stream);
+        }
 
         for (const auto& name : outputNames)
         {
@@ -518,14 +625,52 @@ void Detector::inferenceThread()
                 size_t numElements = size / sizeof(__half);
                 std::vector<__half>& outputDataHalf = outputDataBuffersHalf[name];
                 outputDataHalf.resize(numElements);
-                cudaMemcpyAsync(outputDataHalf.data(), outputBindings[name], size, cudaMemcpyDeviceToHost, stream);
+                
+                // Use pinned memory if available
+                void* hostDest = pinnedOutputBuffers.count(name) > 0 ? 
+                                pinnedOutputBuffers[name] : 
+                                outputDataHalf.data();
+                
+                cudaMemcpyAsync(
+                    hostDest,
+                    outputBindings[name],
+                    size,
+                    cudaMemcpyDeviceToHost,
+                    postprocessStream);
+                
+                // If we used pinned memory, copy to the final destination
+                if (pinnedOutputBuffers.count(name) > 0 && hostDest != outputDataHalf.data()) {
+                    // Wait for the async copy to complete
+                    cudaStreamSynchronize(postprocessStream);
+                    // Copy from pinned memory to output vector
+                    memcpy(outputDataHalf.data(), hostDest, size);
+                }
             }
             else if (dtype == nvinfer1::DataType::kFLOAT)
             {
                 size_t numElements = size / sizeof(float);
                 std::vector<float>& outputData = outputDataBuffers[name];
                 outputData.resize(numElements);
-                cudaMemcpyAsync(outputData.data(), outputBindings[name], size, cudaMemcpyDeviceToHost, stream);
+                
+                // Use pinned memory if available
+                void* hostDest = pinnedOutputBuffers.count(name) > 0 ? 
+                                pinnedOutputBuffers[name] : 
+                                outputData.data();
+                
+                cudaMemcpyAsync(
+                    hostDest,
+                    outputBindings[name],
+                    size,
+                    cudaMemcpyDeviceToHost,
+                    postprocessStream);
+                
+                // If we used pinned memory, copy to the final destination
+                if (pinnedOutputBuffers.count(name) > 0 && hostDest != outputData.data()) {
+                    // Wait for the async copy to complete
+                    cudaStreamSynchronize(postprocessStream);
+                    // Copy from pinned memory to output vector
+                    memcpy(outputData.data(), hostDest, size);
+                }
             }
             else
             {
@@ -534,7 +679,8 @@ void Detector::inferenceThread()
             }
         }
         
-        cudaStreamSynchronize(stream);
+        // Ensure all operations are complete
+        cudaStreamSynchronize(postprocessStream);
 
         for (const auto& name : outputNames)
         {
@@ -603,26 +749,36 @@ void Detector::preProcess(const cv::cuda::GpuMat& frame) {
     int h = dims.d[2];
     int w = dims.d[3];
 
-    cv::cuda::GpuMat resized;
-    cv::cuda::resize(frame, resized, cv::Size(w, h));
+    // Reuse existing buffers instead of creating new ones
+    cv::cuda::resize(frame, resizedBuffer, cv::Size(w, h), 0, 0, cv::INTER_LINEAR, preprocessCvStream);
 
-    cv::cuda::GpuMat floatResized;
-    resized.convertTo(floatResized, CV_32F, 1.0f / 255.0f);
+    // Use a precomputed scale factor for normalization
+    static const float normFactor = 1.0f / 255.0f;
+    resizedBuffer.convertTo(floatBuffer, CV_32F, normFactor, 0, preprocessCvStream);
 
-    std::vector<cv::cuda::GpuMat> gpuChannels;
-    cv::cuda::split(floatResized, gpuChannels);
+    // Ensure channelBuffers has the right size
+    if (channelBuffers.size() != c) {
+        channelBuffers.resize(c);
+    }
+    
+    cv::cuda::split(floatBuffer, channelBuffers, preprocessCvStream);
 
+    // OpenCV 스트림과 CUDA 스트림 동기화
+    synchronizeStreams(preprocessCvStream, stream);
+    
+    // 각 채널 데이터를 입력 버퍼로 복사
     for (int cc = 0; cc < c; ++cc) {
         cudaMemcpyAsync(
             static_cast<float*>(inputBuffer) + cc * h * w,
-            gpuChannels[cc].ptr<float>(),
+            channelBuffers[cc].ptr<float>(),
             h * w * sizeof(float),
             cudaMemcpyDeviceToDevice,
             stream
         );
     }
 
-    cudaStreamSynchronize(stream);
+    // TensorRT가 실행되기 전에 전처리가 완료되도록 함
+    preprocessCvStream.waitForCompletion();
 }
 
 void Detector::postProcess(const float* output, const std::string& outputName)
