@@ -9,7 +9,6 @@
 #include <filesystem>
 
 #include "config.h"
-
 #include "modules/SimpleIni.h"
 
 std::vector<std::string> Config::splitString(const std::string& str, char delimiter)
@@ -46,6 +45,7 @@ bool Config::loadConfig(const std::string& filename)
     {
         std::cerr << "[Config] Config file does not exist, creating default config: " << filename << std::endl;
 
+        // Capture
         capture_method = "duplication_api";
         detection_resolution = 320;
         capture_fps = 60;
@@ -92,6 +92,10 @@ bool Config::loadConfig(const std::string& filename)
         postprocess = "yolo10";
         export_enable_fp8 = false;
         export_enable_fp16 = true;
+
+        // CUDA
+        use_cuda_graph = true;
+        use_pinned_memory = true;
 
         // optical flow
         enable_optical_flow = false;
@@ -219,6 +223,10 @@ bool Config::loadConfig(const std::string& filename)
     export_enable_fp8 = get_bool("export_enable_fp8", true);
     export_enable_fp16 = get_bool("export_enable_fp16", true);
 
+    // CUDA
+    use_cuda_graph = get_bool("use_cuda_graph", true);
+    use_pinned_memory = get_bool("use_pinned_memory", true);
+
     // Optical Flow
     enable_optical_flow = get_bool("enable_optical_flow", false);
     draw_optical_flow = get_bool("draw_optical_flow", true);
@@ -340,6 +348,11 @@ bool Config::saveConfig(const std::string& filename)
         << "postprocess = " << postprocess << "\n"
         << "export_enable_fp8 = " << (export_enable_fp8 ? "true" : "false") << "\n"
         << "export_enable_fp16 = " << (export_enable_fp16 ? "true" : "false") << "\n\n";
+
+    // CUDA
+    file << "# CUDA\n"
+        << "use_cuda_graph = " << (use_cuda_graph ? "true" : "false") << "\n"
+        << "use_pinned_memory = " << (use_pinned_memory ? "true" : "false") << "\n\n";
 
     // Optical Flow
     file << "# Optical Flow\n"

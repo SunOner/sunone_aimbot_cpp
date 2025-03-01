@@ -18,8 +18,6 @@
 #include <opencv2/cudaarithm.hpp>
 #include <cuda_runtime_api.h>
 
-#include "../config/config.h"
-
 class Detector
 {
 public:
@@ -52,24 +50,20 @@ private:
     std::unique_ptr<nvinfer1::IExecutionContext> context;
     nvinfer1::Dims inputDims;
 
-    // OpenCV CUDA streams
     cv::cuda::Stream cvStream;
     cv::cuda::Stream preprocessCvStream;
     cv::cuda::Stream postprocessCvStream;
 
-    // Native CUDA streams (for TensorRT)
     cudaStream_t stream;
     cudaStream_t preprocessStream;
     cudaStream_t postprocessStream;
 
-    // CUDA Graph variables
     cudaGraph_t cudaGraph;
     cudaGraphExec_t cudaGraphExec;
     bool cudaGraphCaptured;
     bool capturedBefore;
     bool useCudaGraph;
 
-    // Pinned memory for outputs
     std::unordered_map<std::string, void*> pinnedOutputBuffers;
     bool usePinnedMemory;
 
@@ -105,25 +99,20 @@ private:
     std::vector<float> confidences;
     std::vector<int> classes;
     
-    // Reusable GPU buffers for preprocessing
     cv::cuda::GpuMat resizedBuffer;
     cv::cuda::GpuMat floatBuffer;
     std::vector<cv::cuda::GpuMat> channelBuffers;
     
-    // Helper function to synchronize OpenCV CUDA stream with CUDA stream
-    void synchronizeStreams(cv::cuda::Stream& cvStream, cudaStream_t cudaStream) {
+    void synchronizeStreams(cv::cuda::Stream& cvStream, cudaStream_t cudaStream)
+    {
         cudaEvent_t event;
         cudaEventCreate(&event);
         
-        // Record event when OpenCV stream completes
-        cvStream.enqueueHostCallback([](int, void* userData) {
+        cvStream.enqueueHostCallback([](int, void* userData){
             cudaEventRecord(static_cast<cudaEvent_t>(userData));
         }, &event);
         
-        // Make CUDA stream wait for the event
         cudaStreamWaitEvent(cudaStream, event, 0);
-        
-        // Clean up
         cudaEventDestroy(event);
     }
 };

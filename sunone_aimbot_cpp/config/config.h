@@ -55,6 +55,10 @@ public:
     bool export_enable_fp8;
     bool export_enable_fp16;
 
+    // CUDA
+    bool use_cuda_graph;
+    bool use_pinned_memory;
+
     // Optical Flow
     bool enable_optical_flow;
     bool draw_optical_flow;
