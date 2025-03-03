@@ -270,11 +270,12 @@ void Detector::initialize(const std::string& modelFile)
 
     img_scale = static_cast<float>(config.detection_resolution) / 640;
     
-    useCudaGraph = false;
-    if (config.use_cuda_graph && config.verbose)
-    {
-        std::cout << "[Detector] CUDA Graph disabled due to OpenCV texture compatibility issues" << std::endl;
-    }
+    // TODO
+    //useCudaGraph = false;
+    //if (config.use_cuda_graph && config.verbose)
+    //{
+    //    std::cout << "[Detector] CUDA Graph disabled due to OpenCV texture compatibility issues" << std::endl;
+    //}
     
     nvinfer1::Dims dims = context->getTensorShape(inputName.c_str());
     int c = dims.d[1];
