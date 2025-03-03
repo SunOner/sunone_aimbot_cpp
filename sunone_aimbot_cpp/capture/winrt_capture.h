@@ -29,35 +29,42 @@ class WinRTScreenCapture : public IScreenCapture
 public:
     WinRTScreenCapture(int desiredWidth, int desiredHeight);
     ~WinRTScreenCapture();
-    cv::cuda::GpuMat GetNextFrame();
+
+    cv::cuda::GpuMat GetNextFrame() override;
 
 private:
-    winrt::com_ptr<ID3D11Device> d3dDevice;
-    winrt::com_ptr<ID3D11DeviceContext> d3dContext;
-    winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice device{ nullptr };
-    winrt::Windows::Graphics::Capture::GraphicsCaptureItem captureItem{ nullptr };
-    winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool framePool{ nullptr };
-    winrt::Windows::Graphics::Capture::GraphicsCaptureSession session{ nullptr };
-    winrt::com_ptr<ID3D11Texture2D> stagingTexture;
+    winrt::com_ptr<ID3D11Device>            d3dDevice;
+    winrt::com_ptr<ID3D11DeviceContext>     d3dContext;
 
-    bool interopInitialized = false;
+    winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice device{ nullptr };
+
+    winrt::Windows::Graphics::Capture::GraphicsCaptureItem              captureItem{ nullptr };
+    winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool       framePool{ nullptr };
+    winrt::Windows::Graphics::Capture::GraphicsCaptureSession           session{ nullptr };
+
     winrt::com_ptr<ID3D11Texture2D> sharedTexture;
     cudaGraphicsResource* cudaResource = nullptr;
-    cudaStream_t cudaStream = nullptr;
+    cudaStream_t                    cudaStream = nullptr;
+
+    bool                            interopInitialized = false;
 
     int screenWidth = 0;
     int screenHeight = 0;
     int regionWidth = 0;
     int regionHeight = 0;
-
     int regionX = 0;
     int regionY = 0;
 
-    winrt::Windows::Graphics::Capture::GraphicsCaptureItem CreateCaptureItemForMonitor(HMONITOR hMonitor);
-    winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice CreateDirect3DDevice(IDXGIDevice* dxgiDevice);
+private:
+    winrt::Windows::Graphics::Capture::GraphicsCaptureItem
+        CreateCaptureItemForMonitor(HMONITOR hMonitor);
+
+    winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice
+        CreateDirect3DDevice(IDXGIDevice* dxgiDevice);
 
     template<typename T>
-    winrt::com_ptr<T> GetDXGIInterfaceFromObject(winrt::Windows::Foundation::IInspectable const& object);
+    winrt::com_ptr<T> GetDXGIInterfaceFromObject(
+        winrt::Windows::Foundation::IInspectable const& object);
 };
 
 #endif // WINRT_CAPTURE_H

@@ -12,43 +12,42 @@ WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
     regionHeight = desiredHeight;
 
     D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
-    winrt::check_hresult(D3D11CreateDevice(
-        nullptr,
-        D3D_DRIVER_TYPE_HARDWARE,
-        0,
-        D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-        featureLevels,
-        ARRAYSIZE(featureLevels),
-        D3D11_SDK_VERSION,
-        d3dDevice.put(),
-        nullptr,
-        d3dContext.put()
-    ));
+    UINT createDeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+
+    winrt::check_hresult(
+        D3D11CreateDevice(
+            nullptr,
+            D3D_DRIVER_TYPE_HARDWARE,
+            0,
+            createDeviceFlags,
+            featureLevels,
+            ARRAYSIZE(featureLevels),
+            D3D11_SDK_VERSION,
+            d3dDevice.put(),
+            nullptr,
+            d3dContext.put()
+        )
+    );
 
     winrt::com_ptr<IDXGIDevice> dxgiDevice;
     winrt::check_hresult(d3dDevice->QueryInterface(IID_PPV_ARGS(dxgiDevice.put())));
-    device = CreateDirect3DDevice(dxgiDevice.get());
 
+    device = CreateDirect3DDevice(dxgiDevice.get());
     if (!device)
     {
-        std::cerr << "[Capture] Can't create Direct3DDevice!" << std::endl;
-        return;
+        throw std::runtime_error("[WinRTCapture] Failed to create IDirect3DDevice");
     }
 
     HMONITOR hMonitor = GetMonitorHandleByIndex(config.monitor_idx);
-
     if (!hMonitor)
     {
-        std::cerr << "[Capture] Failed to get monitor handle for index: " << config.monitor_idx << std::endl;
-        return;
+        throw std::runtime_error("[WinRTCapture] Failed to get HMONITOR for monitor_idx");
     }
 
     captureItem = CreateCaptureItemForMonitor(hMonitor);
-
     if (!captureItem)
     {
-        std::cerr << "[Capture] GraphicsCaptureItem not created!" << std::endl;
-        return;
+        throw std::runtime_error("[WinRTCapture] Can't create GraphicsCaptureItem for monitor.");
     }
 
     screenWidth = captureItem.Size().Width;
@@ -60,11 +59,20 @@ WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
     framePool = winrt::Windows::Graphics::Capture::Direct3D11CaptureFramePool::CreateFreeThreaded(
         device,
         winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized,
-        1,
+        3,
         captureItem.Size()
     );
 
     session = framePool.CreateCaptureSession(captureItem);
+
+    if (!config.capture_borders)
+    {
+        session.IsBorderRequired(false);
+    }
+    if (!config.capture_cursor)
+    {
+        session.IsCursorCaptureEnabled(false);
+    }
 
     D3D11_TEXTURE2D_DESC sharedTexDesc = {};
     sharedTexDesc.Width = regionWidth;
@@ -81,30 +89,16 @@ WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
     HRESULT hr = d3dDevice->CreateTexture2D(&sharedTexDesc, nullptr, sharedTexture.put());
     if (FAILED(hr))
     {
-        std::cerr << "[Capture] Failed to create shared texture." << std::endl;
-        return;
+        throw std::runtime_error("[WinRTCapture] Failed to create sharedTexture for subresource copy.");
     }
 
     cudaError_t err = cudaGraphicsD3D11RegisterResource(&cudaResource, sharedTexture.get(), cudaGraphicsRegisterFlagsNone);
     if (err != cudaSuccess)
     {
-        std::cerr << "[Capture] Failed to register shared texture with CUDA." << std::endl;
-        return;
+        throw std::runtime_error("[WinRTCapture] cudaGraphicsD3D11RegisterResource failed.");
     }
 
     cudaStreamCreate(&cudaStream);
-
-    interopInitialized = false;
-
-    if (!config.capture_borders)
-    {
-        session.IsBorderRequired(false);
-    }
-
-    if (!config.capture_cursor)
-    {
-        session.IsCursorCaptureEnabled(false);
-    }
 
     session.StartCapture();
 }
@@ -116,7 +110,6 @@ WinRTScreenCapture::~WinRTScreenCapture()
         cudaGraphicsUnregisterResource(cudaResource);
         cudaResource = nullptr;
     }
-
     if (cudaStream)
     {
         cudaStreamDestroy(cudaStream);
@@ -128,14 +121,13 @@ WinRTScreenCapture::~WinRTScreenCapture()
         session.Close();
         session = nullptr;
     }
-
     if (framePool)
     {
         framePool.Close();
         framePool = nullptr;
     }
 
-    stagingTexture = nullptr;
+    sharedTexture = nullptr;
     d3dContext = nullptr;
     d3dDevice = nullptr;
 }
@@ -144,28 +136,24 @@ cv::cuda::GpuMat WinRTScreenCapture::GetNextFrame()
 {
     try
     {
-        winrt::Windows::Graphics::Capture::Direct3D11CaptureFrame frame = nullptr;
-
-        while (true)
+        winrt::Windows::Graphics::Capture::Direct3D11CaptureFrame lastFrame{ nullptr };
+        while (auto tempFrame = framePool.TryGetNextFrame())
         {
-            auto tempFrame = framePool.TryGetNextFrame();
-            if (!tempFrame)
-                break;
-            frame = tempFrame;
+            lastFrame = tempFrame;
         }
 
-        if (!frame)
+        if (!lastFrame)
         {
             return cv::cuda::GpuMat();
         }
 
-        auto surface = frame.Surface();
-
-        winrt::com_ptr<ID3D11Texture2D> frameTexture = GetDXGIInterfaceFromObject<ID3D11Texture2D>(surface);
+        auto frameSurface = lastFrame.Surface();
+        winrt::com_ptr<ID3D11Texture2D> frameTexture =
+            GetDXGIInterfaceFromObject<ID3D11Texture2D>(frameSurface);
 
         if (!frameTexture)
         {
-            throw std::runtime_error("[Capture] Failed to get ID3D11Texture2D from frame surface.");
+            throw std::runtime_error("[WinRTCapture] Can't query ID3D11Texture2D from frame surface.");
         }
 
         D3D11_BOX sourceRegion;
@@ -176,65 +164,87 @@ cv::cuda::GpuMat WinRTScreenCapture::GetNextFrame()
         sourceRegion.bottom = regionY + regionHeight;
         sourceRegion.back = 1;
 
-        d3dContext->CopySubresourceRegion(sharedTexture.get(), 0, 0, 0, 0, frameTexture.get(), 0, &sourceRegion);
+        d3dContext->CopySubresourceRegion(
+            sharedTexture.get(),  // pDstResource
+            0,                    // DstSubresource
+            0, 0, 0,             // DstX, DstY, DstZ
+            frameTexture.get(),   // pSrcResource
+            0,                    // SrcSubresource
+            &sourceRegion
+        );
 
         cudaGraphicsMapResources(1, &cudaResource, cudaStream);
 
-        cudaArray_t cuArray;
+        cudaArray_t cuArray = nullptr;
         cudaGraphicsSubResourceGetMappedArray(&cuArray, cudaResource, 0, 0);
 
-        int width = regionWidth;
-        int height = regionHeight;
-        cv::cuda::GpuMat frameGpu(height, width, CV_8UC4);
+        cv::cuda::GpuMat frameGpu(regionHeight, regionWidth, CV_8UC4);
 
-        cudaMemcpy2DFromArrayAsync(frameGpu.data, frameGpu.step, cuArray, 0, 0, width * sizeof(uchar4), height,
-            cudaMemcpyDeviceToDevice, cudaStream);
+        size_t rowBytes = regionWidth * sizeof(uchar4);
+        cudaMemcpy2DFromArrayAsync(
+            frameGpu.data,     // dst
+            frameGpu.step,     // dpitch
+            cuArray,           // src
+            0, 0,              // wOffset, hOffset
+            rowBytes,          // width in bytes
+            regionHeight,      // height
+            cudaMemcpyDeviceToDevice,
+            cudaStream
+        );
 
         cudaGraphicsUnmapResources(1, &cudaResource, cudaStream);
-
         cudaStreamSynchronize(cudaStream);
 
         return frameGpu;
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[Capture] Error in GetNextFrame: " << e.what() << std::endl;
+        std::cerr << "[WinRTCapture] Exception in GetNextFrame(): " << e.what() << std::endl;
         return cv::cuda::GpuMat();
     }
 }
 
-winrt::Windows::Graphics::Capture::GraphicsCaptureItem WinRTScreenCapture::CreateCaptureItemForMonitor(HMONITOR hMonitor)
+winrt::Windows::Graphics::Capture::GraphicsCaptureItem
+WinRTScreenCapture::CreateCaptureItemForMonitor(HMONITOR hMonitor)
 {
-    try
+    auto interopFactory = winrt::get_activation_factory<
+        winrt::Windows::Graphics::Capture::GraphicsCaptureItem,
+        IGraphicsCaptureItemInterop
+    >();
+
+    winrt::Windows::Graphics::Capture::GraphicsCaptureItem item{ nullptr };
+    HRESULT hr = interopFactory->CreateForMonitor(
+        hMonitor,
+        winrt::guid_of<winrt::Windows::Graphics::Capture::GraphicsCaptureItem>(),
+        winrt::put_abi(item)
+    );
+    if (FAILED(hr))
     {
-        auto interopFactory = winrt::get_activation_factory<winrt::Windows::Graphics::Capture::GraphicsCaptureItem, IGraphicsCaptureItemInterop>();
-        winrt::Windows::Graphics::Capture::GraphicsCaptureItem item{ nullptr };
-        HRESULT hr = interopFactory->CreateForMonitor(hMonitor, winrt::guid_of<winrt::Windows::Graphics::Capture::GraphicsCaptureItem>(), winrt::put_abi(item));
-        if (FAILED(hr))
-        {
-            throw std::runtime_error("[Capture] Can't create GraphicsCaptureItem for monitor. HRESULT: " + std::to_string(hr));
-        }
-        return item;
+        throw std::runtime_error("[WinRTCapture] CreateForMonitor failed. HR=" + std::to_string(hr));
     }
-    catch (const std::exception& e)
-    {
-        std::cerr << "[Capture] Error in CreateCaptureItemForMonitor: " << e.what() << std::endl;
-        return nullptr;
-    }
+    return item;
 }
 
-winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice WinRTScreenCapture::CreateDirect3DDevice(IDXGIDevice* dxgiDevice)
+winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice
+WinRTScreenCapture::CreateDirect3DDevice(IDXGIDevice* dxgiDevice)
 {
     winrt::com_ptr<::IInspectable> inspectable;
-    winrt::check_hresult(CreateDirect3D11DeviceFromDXGIDevice(dxgiDevice, inspectable.put()));
+    winrt::check_hresult(
+        CreateDirect3D11DeviceFromDXGIDevice(dxgiDevice, inspectable.put())
+    );
     return inspectable.as<winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice>();
 }
 
 template<typename T>
-winrt::com_ptr<T> WinRTScreenCapture::GetDXGIInterfaceFromObject(winrt::Windows::Foundation::IInspectable const& object)
+winrt::com_ptr<T>
+WinRTScreenCapture::GetDXGIInterfaceFromObject(winrt::Windows::Foundation::IInspectable const& object)
 {
-    auto access = object.as<Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();
-    winrt::com_ptr<T> result;
-    winrt::check_hresult(access->GetInterface(winrt::guid_of<T>(), result.put_void()));
+    auto dxgiInterfaceAccess = object.as<Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();
+    winrt::com_ptr<T> result = nullptr;
+
+    winrt::check_hresult(
+        dxgiInterfaceAccess->GetInterface(winrt::guid_of<T>(), result.put_void())
+    );
+
     return result;
 }
