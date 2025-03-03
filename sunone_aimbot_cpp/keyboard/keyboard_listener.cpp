@@ -24,6 +24,16 @@ extern std::atomic<bool> detectionPaused;
 
 extern MouseThread* globalMouseThread;
 
+// Offset adjustment global variables
+std::atomic<bool> upArrowPressed(false);
+std::atomic<bool> downArrowPressed(false);
+const float OFFSET_STEP = 0.01f;
+
+// Arrow key vectors
+const std::vector<std::string> upArrowKeys = { "UpArrow" };
+const std::vector<std::string> downArrowKeys = { "DownArrow" };
+const std::vector<std::string> shiftKeys = { "LeftShift", "RightShift" };
+
 bool isAnyKeyPressed(const std::vector<std::string>& keys)
 {
     for (const auto& key_name : keys)
@@ -90,7 +100,7 @@ void keyboardListener()
             if (!reloadPressed)
             {
                 config.loadConfig();
-
+                
                 if (globalMouseThread)
                 {
                     globalMouseThread->updateConfig(
@@ -114,6 +124,42 @@ void keyboardListener()
             reloadPressed = false;
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        // Arrow key detection logic using isAnyKeyPressed
+        bool upArrow = isAnyKeyPressed(upArrowKeys);
+        bool downArrow = isAnyKeyPressed(downArrowKeys);
+        bool shiftKey = isAnyKeyPressed(shiftKeys);
+
+        // Adjust offsets based on arrow keys and shift combination
+        if (upArrow) {
+            if (!upArrowPressed) { // Only process when key is first detected
+                if (shiftKey) {
+                    // Shift + Up Arrow: Decrease head offset
+                    config.head_y_offset = std::max(0.0f, config.head_y_offset - OFFSET_STEP);
+                } else {
+                    // Up Arrow: Decrease body offset
+                    config.body_y_offset = std::max(0.0f, config.body_y_offset - OFFSET_STEP);
+                }
+                upArrowPressed = true;
+            }
+        } else {
+            upArrowPressed = false;
+        }
+
+        if (downArrow) {
+            if (!downArrowPressed) { // Only process when key is first detected
+                if (shiftKey) {
+                    // Shift + Down Arrow: Increase head offset
+                    config.head_y_offset = std::min(1.0f, config.head_y_offset + OFFSET_STEP);
+                } else {
+                    // Down Arrow: Increase body offset
+                    config.body_y_offset = std::min(1.0f, config.body_y_offset + OFFSET_STEP);
+                }
+                downArrowPressed = true;
+            }
+        } else {
+            downArrowPressed = false;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }

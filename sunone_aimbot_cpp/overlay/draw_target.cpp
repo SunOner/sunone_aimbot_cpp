@@ -21,7 +21,16 @@ void draw_target()
 
     ImGui::Separator();
 
+    // Instructions for keyboard controls
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Arrow keys: Adjust body offset");
+    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Shift+Arrow keys: Adjust head offset");
+
+    // Body offset slider
     ImGui::SliderFloat("Approximate Body Y Offset", &config.body_y_offset, 0.0f, 1.0f, "%.2f");
+    
+    // Head offset slider
+    ImGui::SliderFloat("Approximate Head Y Offset", &config.head_y_offset, 0.0f, 1.0f, "%.2f");
+    
     if (bodyTexture)
     {
         ImGui::Image((void*)bodyTexture, bodyImageSize);
@@ -31,14 +40,27 @@ void draw_target()
 
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-        float normalized_value = (config.body_y_offset - 1.0f) / 1.0f;
-
-        float line_y = image_pos.y + (1.0f + normalized_value) * image_size.y;
-
-        ImVec2 line_start = ImVec2(image_pos.x, line_y);
-        ImVec2 line_end = ImVec2(image_pos.x + image_size.x, line_y);
-
-        draw_list->AddLine(line_start, line_end, IM_COL32(255, 0, 0, 255), 2.0f);
+        // Draw body offset line
+        float normalized_body_value = (config.body_y_offset - 1.0f) / 1.0f;
+        float body_line_y = image_pos.y + (1.0f + normalized_body_value) * image_size.y;
+        ImVec2 body_line_start = ImVec2(image_pos.x, body_line_y);
+        ImVec2 body_line_end = ImVec2(image_pos.x + image_size.x, body_line_y);
+        draw_list->AddLine(body_line_start, body_line_end, IM_COL32(255, 0, 0, 255), 2.0f);
+        
+        // Draw head offset line - modified calculation
+        // When head_y_offset is 0.0, the line is at the top of the image
+        // When head_y_offset is 1.0, the line is at the position where body_y_offset is 0.15
+        float body_y_pos_at_015 = image_pos.y + (1.0f + (0.15f - 1.0f) / 1.0f) * image_size.y;
+        float head_top_pos = image_pos.y;
+        float head_line_y = head_top_pos + (config.head_y_offset * (body_y_pos_at_015 - head_top_pos));
+        
+        ImVec2 head_line_start = ImVec2(image_pos.x, head_line_y);
+        ImVec2 head_line_end = ImVec2(image_pos.x + image_size.x, head_line_y);
+        draw_list->AddLine(head_line_start, head_line_end, IM_COL32(0, 255, 0, 255), 2.0f);
+        
+        // Add labels for the lines
+        draw_list->AddText(ImVec2(body_line_end.x + 5, body_line_y - 7), IM_COL32(255, 0, 0, 255), "Body");
+        draw_list->AddText(ImVec2(head_line_end.x + 5, head_line_y - 7), IM_COL32(0, 255, 0, 255), "Head");
     }
     else
     {

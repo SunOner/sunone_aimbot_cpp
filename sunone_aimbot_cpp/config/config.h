@@ -20,6 +20,7 @@ public:
     // Target
     bool disable_headshot;
     float body_y_offset;
+    float head_y_offset;
     bool ignore_third_person;
     bool shooting_range_targets;
     bool auto_aim;

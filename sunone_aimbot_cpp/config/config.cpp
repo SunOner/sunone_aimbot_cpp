@@ -58,6 +58,7 @@ bool Config::loadConfig(const std::string& filename)
         // Target
         disable_headshot = false;
         body_y_offset = 0.15f;
+        head_y_offset = 0.05f;  // Default head offset
         ignore_third_person = false;
         shooting_range_targets = false;
         auto_aim = false;
@@ -188,6 +189,7 @@ bool Config::loadConfig(const std::string& filename)
     // Target
     disable_headshot = get_bool("disable_headshot", false);
     body_y_offset = (float)get_double("body_y_offset", 0.15);
+    head_y_offset = (float)get_double("head_y_offset", 0.05);  // Load head offset
     ignore_third_person = get_bool("ignore_third_person", false);
     shooting_range_targets = get_bool("shooting_range_targets", false);
     auto_aim = get_bool("auto_aim", false);
@@ -303,6 +305,7 @@ bool Config::saveConfig(const std::string& filename)
         << "disable_headshot = " << (disable_headshot ? "true" : "false") << "\n"
         << std::fixed << std::setprecision(2)
         << "body_y_offset = " << body_y_offset << "\n"
+        << "head_y_offset = " << head_y_offset << "\n"
         << "ignore_third_person = " << (ignore_third_person ? "true" : "false") << "\n"
         << "shooting_range_targets = " << (shooting_range_targets ? "true" : "false") << "\n"
         << "auto_aim = " << (auto_aim ? "true" : "false") << "\n\n";
