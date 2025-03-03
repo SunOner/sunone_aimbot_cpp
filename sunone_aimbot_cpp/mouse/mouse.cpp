@@ -222,23 +222,13 @@ void MouseThread::moveMouse(const AimbotTarget& target)
     }
 }
 
-int mouse_press_iter = 0;
+bool mouse_pressed = false;
 
 void MouseThread::pressMouse(const AimbotTarget& target)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
 
     auto bScope = check_target_in_scope(target.x, target.y, target.w, target.h, bScope_multiplier);
-
-    if (mouse_pressed == true)
-    {
-        mouse_press_iter++;
-        if (mouse_press_iter >= 2)
-        {
-            mouse_press_iter = 0;
-            mouse_pressed = false;
-        }
-    }
 
     if (bScope && !mouse_pressed)
     {
@@ -259,27 +249,24 @@ void MouseThread::pressMouse(const AimbotTarget& target)
         }
         mouse_pressed = true;
     }
-    else
+    else if (!bScope && mouse_pressed)
     {
-        if (mouse_pressed)
+        if (serial)
         {
-            if (serial)
-            {
-                serial->release();
-            }
-            else if (gHub)
-            {
-                gHub->mouse_up();
-            }
-            else
-            {
-                INPUT input = { 0 };
-                input.type = INPUT_MOUSE;
-                input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-                SendInput(1, &input, sizeof(INPUT));
-            }
-            mouse_pressed = false;
+            serial->release();
         }
+        else if (gHub)
+        {
+            gHub->mouse_up();
+        }
+        else
+        {
+            INPUT input = { 0 };
+            input.type = INPUT_MOUSE;
+            input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+            SendInput(1, &input, sizeof(INPUT));
+        }
+        mouse_pressed = false;
     }
 }
 
