@@ -283,6 +283,8 @@ void OverlayThread()
     float prev_minSpeedMultiplier = config.minSpeedMultiplier;
     float prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
     float prev_predictionInterval = config.predictionInterval;
+    bool prev_easynorecoil = config.easynorecoil;
+    float prev_easynorecoilstrength = config.easynorecoilstrength;
 
     //Mouse shooting
     bool prev_auto_shoot = config.auto_shoot;
@@ -303,16 +305,6 @@ void OverlayThread()
     int prev_screenshot_delay = config.screenshot_delay;
     bool prev_always_on_top = config.always_on_top;
     bool prev_verbose = config.verbose;
-
-    // Save variable states for detecting changes
-    static bool prev_disable_headshot = config.disable_headshot;
-    static float prev_body_y_offset = config.body_y_offset;
-    static float prev_head_y_offset = config.head_y_offset;
-    static bool prev_ignore_third_person = config.ignore_third_person;
-    static bool prev_shooting_range_targets = config.shooting_range_targets;
-    static bool prev_auto_aim = config.auto_aim;
-    static bool prev_easynorecoil = config.easynorecoil;
-    static float prev_easynorecoilstrength = config.easynorecoilstrength;
 
     for (const auto& pair : KeyCodes::key_code_map)
     {

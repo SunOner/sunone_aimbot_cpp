@@ -9,8 +9,6 @@ void draw_optical_flow();
 void draw_buttons();
 void draw_overlay();
 void draw_debug();
-void draw_arduino_settings();
-void draw_ghub_settings();
 void load_body_texture();
 void release_body_texture();
 

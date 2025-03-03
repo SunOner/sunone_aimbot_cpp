@@ -138,20 +138,28 @@ void keyboardListener()
         bool shiftKey = isAnyKeyPressed(shiftKeys);
 
         // Adjust offsets based on arrow keys and shift combination
-        if (upArrow && !prevUpArrow) {
-            if (shiftKey) {
+        if (upArrow && !prevUpArrow)
+        {
+            if (shiftKey)
+            {
                 // Shift + Up Arrow: Decrease head offset
                 config.head_y_offset = std::max(0.0f, config.head_y_offset - OFFSET_STEP);
-                } else {
-                    // Up Arrow: Decrease body offset
-                    config.body_y_offset = std::max(0.0f, config.body_y_offset - OFFSET_STEP);
+            }
+            else
+            {
+                // Up Arrow: Decrease body offset
+                config.body_y_offset = std::max(0.0f, config.body_y_offset - OFFSET_STEP);
             }
         }
-        if (downArrow && !prevDownArrow) {
-            if (shiftKey) {
+        if (downArrow && !prevDownArrow)
+        {
+            if (shiftKey)
+            {
                 // Shift + Down Arrow: Increase head offset
                 config.head_y_offset = std::min(1.0f, config.head_y_offset + OFFSET_STEP);
-            } else {
+            }
+            else
+            {
                 // Down Arrow: Increase body offset
                 config.body_y_offset = std::min(1.0f, config.body_y_offset + OFFSET_STEP);
             }
@@ -159,11 +167,13 @@ void keyboardListener()
 
 
         // Adjust norecoil strength based on left and right arrow keys
-        if (leftArrow && !prevLeftArrow) {
+        if (leftArrow && !prevLeftArrow)
+        {
             config.easynorecoilstrength = std::max(0.1f, config.easynorecoilstrength - NORECOIL_STEP);
         }
 
-        if (rightArrow && !prevRightArrow) {
+        if (rightArrow && !prevRightArrow)
+        {
             config.easynorecoilstrength = std::min(500.0f, config.easynorecoilstrength + NORECOIL_STEP);
         }
         
