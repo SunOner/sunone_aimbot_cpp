@@ -270,6 +270,7 @@ void OverlayThread()
     // Target
     bool prev_disable_headshot = config.disable_headshot;
     float prev_body_y_offset = config.body_y_offset;
+    float prev_head_y_offset = config.head_y_offset;
     bool prev_ignore_third_person = config.ignore_third_person;
     bool prev_shooting_range_targets = config.shooting_range_targets;
     bool prev_auto_aim = config.auto_aim;
@@ -302,6 +303,16 @@ void OverlayThread()
     int prev_screenshot_delay = config.screenshot_delay;
     bool prev_always_on_top = config.always_on_top;
     bool prev_verbose = config.verbose;
+
+    // Save variable states for detecting changes
+    static bool prev_disable_headshot = config.disable_headshot;
+    static float prev_body_y_offset = config.body_y_offset;
+    static float prev_head_y_offset = config.head_y_offset;
+    static bool prev_ignore_third_person = config.ignore_third_person;
+    static bool prev_shooting_range_targets = config.shooting_range_targets;
+    static bool prev_auto_aim = config.auto_aim;
+    static bool prev_easynorecoil = config.easynorecoil;
+    static float prev_easynorecoilstrength = config.easynorecoilstrength;
 
     for (const auto& pair : KeyCodes::key_code_map)
     {
@@ -505,18 +516,24 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                    // DISABLE_HEADSHOT / BODY_Y_OFFSET / IGNORE_THIRD_PERSON / SHOOTING_RANGE_TARGETS / AUTO_AIM
+                    // DISABLE_HEADSHOT / BODY_Y_OFFSET / HEAD_Y_OFFSET / IGNORE_THIRD_PERSON / SHOOTING_RANGE_TARGETS / AUTO_AIM / EASYNORECOIL / EASYNORECOILSTRENGTH
                     if (prev_disable_headshot != config.disable_headshot ||
                         prev_body_y_offset != config.body_y_offset ||
+                        prev_head_y_offset != config.head_y_offset ||
                         prev_ignore_third_person != config.ignore_third_person ||
                         prev_shooting_range_targets != config.shooting_range_targets ||
-                        prev_auto_aim != config.auto_aim)
+                        prev_auto_aim != config.auto_aim ||
+                        prev_easynorecoil != config.easynorecoil ||
+                        prev_easynorecoilstrength != config.easynorecoilstrength)
                     {
                         prev_disable_headshot = config.disable_headshot;
                         prev_body_y_offset = config.body_y_offset;
+                        prev_head_y_offset = config.head_y_offset;
                         prev_ignore_third_person = config.ignore_third_person;
                         prev_shooting_range_targets = config.shooting_range_targets;
                         prev_auto_aim = config.auto_aim;
+                        prev_easynorecoil = config.easynorecoil;
+                        prev_easynorecoilstrength = config.easynorecoilstrength;
                         config.saveConfig();
                     }
 

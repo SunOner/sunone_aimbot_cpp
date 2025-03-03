@@ -32,7 +32,9 @@ AimbotTarget* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<
         {
             if (classes[i] == config.class_head)
             {
-                cv::Point targetPoint(boxes[i].x + boxes[i].width / 2, boxes[i].y + boxes[i].height / 2);
+                // Apply head_y_offset to head targets
+                int headOffsetY = static_cast<int>(boxes[i].height * config.head_y_offset);
+                cv::Point targetPoint(boxes[i].x + boxes[i].width / 2, boxes[i].y + headOffsetY);
                 double distance = std::pow(targetPoint.x - center.x, 2) + std::pow(targetPoint.y - center.y, 2);
 
                 if (distance < minDistance)
@@ -83,7 +85,9 @@ AimbotTarget* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<
     int y;
     if (classes[nearestIdx] == config.class_head)
     {
-        y = boxes[nearestIdx].y;
+        // Calculate final Y position for head targets using head_y_offset
+        int headOffsetY = static_cast<int>(boxes[nearestIdx].height * config.head_y_offset);
+        y = boxes[nearestIdx].y + headOffsetY - boxes[nearestIdx].height / 2;
     }
     else
     {
