@@ -270,12 +270,7 @@ void Detector::initialize(const std::string& modelFile)
 
     img_scale = static_cast<float>(config.detection_resolution) / 640;
     
-    // TODO
-    //useCudaGraph = false;
-    //if (config.use_cuda_graph && config.verbose)
-    //{
-    //    std::cout << "[Detector] CUDA Graph disabled due to OpenCV texture compatibility issues" << std::endl;
-    //}
+    useCudaGraph = true;
     
     nvinfer1::Dims dims = context->getTensorShape(inputName.c_str());
     int c = dims.d[1];
@@ -312,6 +307,38 @@ void Detector::initialize(const std::string& modelFile)
             {
                 pinnedOutputBuffers[outName] = hostBuffer;
             }
+        }
+    }
+
+    // Initialize CUDA Graph
+    if (useCudaGraph)
+    {
+        cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+        
+        // Perform a dummy inference to capture the graph
+        context->enqueueV3(stream);
+        
+        cudaStreamEndCapture(stream, &cudaGraph);
+        
+        // Create graph executable
+        cudaGraphExec_t graphExec;
+        cudaError_t status = cudaGraphInstantiate(&graphExec, cudaGraph, 0);
+        if (status == cudaSuccess)
+        {
+            cudaGraphExec = graphExec;
+            cudaGraphCaptured = true;
+            
+            if (config.verbose)
+            {
+                std::cout << "[Detector] CUDA Graph captured successfully" << std::endl;
+            }
+        }
+        else
+        {
+            std::cerr << "[Detector] Failed to instantiate CUDA Graph: " << cudaGetErrorString(status) << std::endl;
+            cudaGraphDestroy(cudaGraph);
+            cudaGraph = nullptr;
+            cudaGraphCaptured = false;
         }
     }
 }
@@ -415,6 +442,13 @@ void Detector::inferenceThread()
             {
                 std::unique_lock<std::mutex> lock(inferenceMutex);
                 
+                if (cudaGraphCaptured)
+                {
+                    cudaGraphExecDestroy(cudaGraphExec);
+                    cudaGraphDestroy(cudaGraph);
+                    cudaGraphCaptured = false;
+                }
+                
                 context.reset();
                 engine.reset();
                 
@@ -481,7 +515,14 @@ void Detector::inferenceThread()
                 
                 cudaStreamSynchronize(stream);
                 
-                context->enqueueV3(stream);
+                if (cudaGraphCaptured)
+                {
+                    cudaGraphLaunch(cudaGraphExec, stream);
+                }
+                else
+                {
+                    context->enqueueV3(stream);
+                }
                 
                 cudaStreamSynchronize(stream);
                 
