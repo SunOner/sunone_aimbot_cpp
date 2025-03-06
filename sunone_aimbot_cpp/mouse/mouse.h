@@ -7,10 +7,12 @@
 #include <Windows.h>
 #include "../modules/eigen/include/Eigen/Dense"
 #include <shared_mutex>
+#include <memory>
 
 #include "AimbotTarget.h"
 #include "SerialConnection.h"
 #include "ghub.h"
+#include "InputMethod.h"
 
 // 2D Kalman Filter for position and velocity tracking
 class KalmanFilter2D
@@ -56,8 +58,13 @@ class MouseThread
 private:
     std::unique_ptr<KalmanFilter2D> kalman_filter;
     std::unique_ptr<PIDController2D> pid_controller;
-    SerialConnection *serial;
-    GhubMouse *gHub;
+
+    // 기존 포인터 제거
+    // SerialConnection *serial;
+    // GhubMouse *gHub;
+
+    // InputMethod 사용으로 변경
+    std::unique_ptr<InputMethod> input_method;
 
     double screen_width;
     double screen_height;
@@ -104,8 +111,9 @@ public:
     void applyRecoilCompensation(float strength);
 
     std::mutex input_method_mutex;
-    void setSerialConnection(SerialConnection *newSerial);
-    void setGHubMouse(GhubMouse *newGHub);
+
+    // 단일 setter 메서드만 유지
+    void setInputMethod(std::unique_ptr<InputMethod> new_method);
 };
 
 #endif // MOUSE_H

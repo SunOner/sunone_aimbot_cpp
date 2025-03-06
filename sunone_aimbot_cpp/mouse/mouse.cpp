@@ -288,22 +288,35 @@ MouseThread::MouseThread(
     bool auto_shoot,
     float bScope_multiplier,
     SerialConnection *serialConnection,
-    GhubMouse *ghubMouse)
-    : screen_width(resolution),
-      screen_height(resolution),
-      dpi(dpi),
-      mouse_sensitivity(sensitivity),
-      fov_x(fovX),
-      fov_y(fovY),
-      auto_shoot(auto_shoot),
-      bScope_multiplier(bScope_multiplier),
-      serial(serialConnection),
-      gHub(ghubMouse),
-      center_x(resolution / 2),
-      center_y(resolution / 2)
+    GhubMouse *gHub) : screen_width(static_cast<double>(resolution * 16) / 9.0),
+                       screen_height(static_cast<double>(resolution)),
+                       dpi(static_cast<double>(dpi)),
+                       mouse_sensitivity(sensitivity),
+                       fov_x(static_cast<double>(fovX)),
+                       fov_y(static_cast<double>(fovY)),
+                       center_x(screen_width / 2),
+                       center_y(screen_height / 2),
+                       auto_shoot(auto_shoot),
+                       bScope_multiplier(bScope_multiplier),
+                       current_target(nullptr)
 {
+    // Kalman 필터와 PID 컨트롤러 초기화 (기존 코드와 동일)
     kalman_filter = std::make_unique<KalmanFilter2D>(process_noise_q, measurement_noise_r, estimation_error_p);
     pid_controller = std::make_unique<PIDController2D>(kp, ki, kd, pid_max_output, pid_min_output);
+
+    // InputMethod 초기화 (새로운 코드)
+    if (serialConnection && serialConnection->isOpen())
+    {
+        input_method = std::make_unique<SerialInputMethod>(serialConnection);
+    }
+    else if (gHub)
+    {
+        input_method = std::make_unique<GHubInputMethod>(gHub);
+    }
+    else
+    {
+        input_method = std::make_unique<Win32InputMethod>();
+    }
 }
 
 void MouseThread::updateConfig(
@@ -529,26 +542,12 @@ void MouseThread::moveMouse(const AimbotTarget &target)
     // Calculate movement based on predicted position
     Eigen::Vector2d movement = calculateMovement(predicted_pos);
 
-    // Apply mouse movement with appropriate input method
-    // Use lock for thread safety
+    // InputMethod를 사용하여 마우스 이동
     {
         std::lock_guard<std::mutex> lock(input_method_mutex);
-        if (serial)
+        if (input_method)
         {
-            serial->move(static_cast<int>(movement[0]), static_cast<int>(movement[1]));
-        }
-        else if (gHub)
-        {
-            gHub->mouse_xy(static_cast<int>(movement[0]), static_cast<int>(movement[1]));
-        }
-        else
-        {
-            INPUT input = {0};
-            input.type = INPUT_MOUSE;
-            input.mi.dx = static_cast<int>(movement[0]);
-            input.mi.dy = static_cast<int>(movement[1]);
-            input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
-            SendInput(1, &input, sizeof(INPUT));
+            input_method->move(static_cast<int>(movement[0]), static_cast<int>(movement[1]));
         }
     }
 
@@ -565,20 +564,9 @@ void MouseThread::pressMouse(const AimbotTarget &target)
 
     if (bScope && !mouse_pressed)
     {
-        if (serial)
+        if (input_method)
         {
-            serial->press();
-        }
-        else if (gHub)
-        {
-            gHub->mouse_down();
-        }
-        else
-        {
-            INPUT input = {0};
-            input.type = INPUT_MOUSE;
-            input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-            SendInput(1, &input, sizeof(INPUT));
+            input_method->press();
         }
         mouse_pressed = true;
     }
@@ -592,20 +580,9 @@ void MouseThread::releaseMouse()
 
     std::lock_guard<std::mutex> lock(input_method_mutex);
 
-    if (serial)
+    if (input_method)
     {
-        serial->release();
-    }
-    else if (gHub)
-    {
-        gHub->mouse_up();
-    }
-    else
-    {
-        INPUT input = {0};
-        input.type = INPUT_MOUSE;
-        input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-        SendInput(1, &input, sizeof(INPUT));
+        input_method->release();
     }
     mouse_pressed = false;
 }
@@ -638,16 +615,10 @@ void MouseThread::checkAndResetPredictions()
     }
 }
 
-void MouseThread::setSerialConnection(SerialConnection *newSerial)
+void MouseThread::setInputMethod(std::unique_ptr<InputMethod> new_method)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
-    serial = newSerial;
-}
-
-void MouseThread::setGHubMouse(GhubMouse *newGHub)
-{
-    std::lock_guard<std::mutex> lock(input_method_mutex);
-    gHub = newGHub;
+    input_method = std::move(new_method);
 }
 
 void MouseThread::applyRecoilCompensation(float strength)
@@ -660,22 +631,8 @@ void MouseThread::applyRecoilCompensation(float strength)
     // Apply strength with pre-computed scale
     int compensation = static_cast<int>(strength * vertical_scale);
 
-    // Use pointer to appropriate input method to avoid conditionals
-    if (serial)
+    if (input_method)
     {
-        serial->move(0, compensation);
-    }
-    else if (gHub)
-    {
-        gHub->mouse_xy(0, compensation);
-    }
-    else
-    {
-        INPUT input = {0};
-        input.type = INPUT_MOUSE;
-        input.mi.dx = 0;
-        input.mi.dy = compensation;
-        input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
-        SendInput(1, &input, sizeof(INPUT));
+        input_method->move(0, compensation);
     }
 }
