@@ -23,11 +23,11 @@ class Detector
 public:
     Detector();
     ~Detector();
-    void initialize(const std::string& modelFile);
-    void processFrame(const cv::cuda::GpuMat& frame);
+    void initialize(const std::string &modelFile);
+    void processFrame(const cv::cuda::GpuMat &frame);
     void inferenceThread();
     void releaseDetections();
-    bool getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int>& classes);
+    bool getLatestDetections(std::vector<cv::Rect> &boxes, std::vector<int> &classes);
 
     std::mutex detectionMutex;
 
@@ -63,8 +63,9 @@ private:
     bool cudaGraphCaptured;
     bool capturedBefore;
     bool useCudaGraph;
+    int cudaGraphCaptureAttempts; // Track failed capture attempts
 
-    std::unordered_map<std::string, void*> pinnedOutputBuffers;
+    std::unordered_map<std::string, void *> pinnedOutputBuffers;
     bool usePinnedMemory;
 
     std::mutex inferenceMutex;
@@ -73,24 +74,24 @@ private:
     cv::cuda::GpuMat currentFrame;
     bool frameReady;
 
-    void loadEngine(const std::string& engineFile);
-    void preProcess(const cv::cuda::GpuMat& frame);
-    void postProcess(const float* output, const std::string& outputName);
+    void loadEngine(const std::string &engineFile);
+    void preProcess(const cv::cuda::GpuMat &frame);
+    void postProcess(const float *output, const std::string &outputName);
     void getInputNames();
     void getOutputNames();
     void getBindings();
 
     std::unordered_map<std::string, size_t> inputSizes;
-    std::unordered_map<std::string, void*> inputBindings;
-    std::unordered_map<std::string, void*> outputBindings;
+    std::unordered_map<std::string, void *> inputBindings;
+    std::unordered_map<std::string, void *> outputBindings;
     std::unordered_map<std::string, std::vector<int64_t>> outputShapes;
     int numClasses;
 
-    size_t getSizeByDim(const nvinfer1::Dims& dims);
+    size_t getSizeByDim(const nvinfer1::Dims &dims);
     size_t getElementSize(nvinfer1::DataType dtype);
 
     std::string inputName;
-    void* inputBufferDevice;
+    void *inputBufferDevice;
     std::unordered_map<std::string, std::vector<float>> outputDataBuffers;
     std::unordered_map<std::string, std::vector<__half>> outputDataBuffersHalf;
     std::unordered_map<std::string, nvinfer1::DataType> outputTypes;
@@ -98,20 +99,19 @@ private:
     std::vector<cv::Rect> boxes;
     std::vector<float> confidences;
     std::vector<int> classes;
-    
+
     cv::cuda::GpuMat resizedBuffer;
     cv::cuda::GpuMat floatBuffer;
     std::vector<cv::cuda::GpuMat> channelBuffers;
-    
-    void synchronizeStreams(cv::cuda::Stream& cvStream, cudaStream_t cudaStream)
+
+    void synchronizeStreams(cv::cuda::Stream &cvStream, cudaStream_t cudaStream)
     {
         cudaEvent_t event;
         cudaEventCreate(&event);
-        
-        cvStream.enqueueHostCallback([](int, void* userData){
-            cudaEventRecord(static_cast<cudaEvent_t>(userData));
-        }, &event);
-        
+
+        cvStream.enqueueHostCallback([](int, void *userData)
+                                     { cudaEventRecord(static_cast<cudaEvent_t>(userData)); }, &event);
+
         cudaStreamWaitEvent(cudaStream, event, 0);
         cudaEventDestroy(event);
     }

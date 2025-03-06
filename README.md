@@ -107,6 +107,7 @@
 	- [serial](https://github.com/wjwwood/serial)
 	- [TensorRT-10.8.0.43](https://developer.nvidia.com/tensorrt/download/10x)
 	- [GLWF Windows pre-compiled binaries](https://www.glfw.org/download.html)
+	- [Eigen](https://gitlab.com/libeigen/eigen/-/releases) (Download the latest stable release)
 	
 7. **Extract Libraries**  
 	Place the downloaded libraries into the respective directories:
@@ -114,6 +115,9 @@
 	- `serial` -> `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/serial`
 	- `TensorRT-10.8.0.43` -> `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/TensorRT-10.8.0.43`
 	- `GLWF` -> `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/glfw-3.4.bin.WIN64`
+	- `Eigen` -> `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/eigen`
+	  - Extract the Eigen archive and rename the folder to `include`
+	  - Verify that the header files are located at `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/eigen/include/Eigen/`
 	
 8. **Compile serial**
 	- Navigate to the serial directory `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/serial/visual_studio/`

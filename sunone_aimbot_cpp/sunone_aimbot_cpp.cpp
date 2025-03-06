@@ -20,7 +20,7 @@
 #include "SerialConnection.h"
 #include "ghub.h"
 #include "other_tools.h"
-#include "optical_flow.h"
+#include "mouse/InputMethod.h"
 
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
@@ -29,13 +29,11 @@ std::atomic<bool> detectionPaused(false);
 std::mutex configMutex;
 
 Detector detector;
-MouseThread* globalMouseThread = nullptr;
+MouseThread *globalMouseThread = nullptr;
 Config config;
 
-GhubMouse* gHub = nullptr;
-SerialConnection* arduinoSerial = nullptr;
-
-OpticalFlow opticalFlow;
+GhubMouse *gHub = nullptr;
+SerialConnection *arduinoSerial = nullptr;
 
 std::atomic<bool> detection_resolution_changed(false);
 std::atomic<bool> capture_method_changed(false);
@@ -69,10 +67,17 @@ void initializeInputMethod()
         }
     }
 
+    std::unique_ptr<InputMethod> input_method;
+
     if (config.input_method == "ARDUINO")
     {
         std::cout << "[Mouse] Using Arduino method input." << std::endl;
         arduinoSerial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
+
+        if (arduinoSerial && arduinoSerial->isOpen())
+        {
+            input_method = std::make_unique<SerialInputMethod>(arduinoSerial);
+        }
     }
     else if (config.input_method == "GHUB")
     {
@@ -85,44 +90,30 @@ void initializeInputMethod()
             delete gHub;
             gHub = nullptr;
         }
+        else
+        {
+            input_method = std::make_unique<GHubInputMethod>(gHub);
+        }
     }
-    else
+
+    if (!input_method)
     {
         std::cout << "[Mouse] Using default Win32 method input." << std::endl;
+        input_method = std::make_unique<Win32InputMethod>();
     }
 
-    globalMouseThread->setSerialConnection(arduinoSerial);
-    globalMouseThread->setGHubMouse(gHub);
+    globalMouseThread->setInputMethod(std::move(input_method));
 }
 
-void handleEasyNoRecoil(MouseThread& mouseThread)
+void handleEasyNoRecoil(MouseThread &mouseThread)
 {
     if (config.easynorecoil && shooting.load() && zooming.load())
     {
-        std::lock_guard<std::mutex> lock(mouseThread.input_method_mutex);
-        int recoil_compensation = static_cast<int>(config.easynorecoilstrength);
-        
-        if (arduinoSerial)
-        {
-            arduinoSerial->move(0, recoil_compensation);
-        }
-        else if (gHub)
-        {
-            gHub->mouse_xy(0, recoil_compensation);
-        }
-        else
-        {
-            INPUT input = { 0 };
-            input.type = INPUT_MOUSE;
-            input.mi.dx = 0;
-            input.mi.dy = recoil_compensation;
-            input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
-            SendInput(1, &input, sizeof(INPUT));
-        }
+        mouseThread.applyRecoilCompensation(config.easynorecoilstrength);
     }
 }
 
-void mouseThreadFunction(MouseThread& mouseThread)
+void mouseThreadFunction(MouseThread &mouseThread)
 {
     int lastDetectionVersion = -1;
 
@@ -135,11 +126,14 @@ void mouseThreadFunction(MouseThread& mouseThread)
 
         std::unique_lock<std::mutex> lock(detector.detectionMutex);
 
-        detector.detectionCV.wait_for(lock, timeout, [&]() { return detector.detectionVersion > lastDetectionVersion || shouldExit; });
+        detector.detectionCV.wait_for(lock, timeout, [&]()
+                                      { return detector.detectionVersion > lastDetectionVersion || shouldExit; });
 
-        if (shouldExit) break;
+        if (shouldExit)
+            break;
 
-        if (detector.detectionVersion <= lastDetectionVersion) continue;
+        if (detector.detectionVersion <= lastDetectionVersion)
+            continue;
 
         lastDetectionVersion = detector.detectionVersion;
 
@@ -162,17 +156,21 @@ void mouseThreadFunction(MouseThread& mouseThread)
                     config.sensitivity,
                     config.fovX,
                     config.fovY,
-                    config.minSpeedMultiplier,
-                    config.maxSpeedMultiplier,
-                    config.predictionInterval,
+                    config.kp,
+                    config.ki,
+                    config.kd,
+                    config.pid_max_output,
+                    config.pid_min_output,
+                    config.process_noise_q,
+                    config.measurement_noise_r,
+                    config.estimation_error_p,
                     config.auto_shoot,
-                    config.bScope_multiplier
-                );
+                    config.bScope_multiplier);
             }
             detection_resolution_changed.store(false);
         }
 
-        AimbotTarget* target = sortTargets(boxes, classes, config.detection_resolution, config.detection_resolution, config.disable_headshot);
+        AimbotTarget *target = sortTargets(boxes, classes, config.detection_resolution, config.detection_resolution, config.disable_headshot);
 
         if (aiming)
         {
@@ -278,14 +276,18 @@ int main()
             config.sensitivity,
             config.fovX,
             config.fovY,
-            config.minSpeedMultiplier,
-            config.maxSpeedMultiplier,
-            config.predictionInterval,
+            config.kp,
+            config.ki,
+            config.kd,
+            config.pid_max_output,
+            config.pid_min_output,
+            config.process_noise_q,
+            config.measurement_noise_r,
+            config.estimation_error_p,
             config.auto_shoot,
             config.bScope_multiplier,
             arduinoSerial,
-            gHub
-        );
+            gHub);
 
         globalMouseThread = &mouseThread;
 
@@ -338,7 +340,6 @@ int main()
         std::thread detThread(&Detector::inferenceThread, &detector);
         std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
         std::thread overlayThread(OverlayThread);
-        opticalFlow.startOpticalFlowThread();
 
         welcome_message();
 
@@ -361,11 +362,9 @@ int main()
             delete gHub;
         }
 
-        opticalFlow.stopOpticalFlowThread();
-
         return 0;
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
         std::cerr << "[MAIN] An error has occurred in the main stream: " << e.what() << std::endl;
         std::cout << "Press Enter to exit...";

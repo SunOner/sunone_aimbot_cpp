@@ -8,7 +8,7 @@
 #pragma comment(lib, "dxgi.lib")
 
 template <typename T>
-inline void SafeRelease(T** ppInterface)
+inline void SafeRelease(T **ppInterface)
 {
     if (*ppInterface)
     {
@@ -19,7 +19,7 @@ inline void SafeRelease(T** ppInterface)
 
 struct FrameContext
 {
-    ID3D11Texture2D* texture = nullptr;
+    ID3D11Texture2D *texture = nullptr;
     std::vector<DXGI_OUTDUPL_MOVE_RECT> moveRects;
     std::vector<RECT> dirtyRects;
 };
@@ -28,13 +28,7 @@ class DDAManager
 {
 public:
     DDAManager()
-        : m_device(nullptr)
-        , m_context(nullptr)
-        , m_duplication(nullptr)
-        , m_output1(nullptr)
-        , m_sharedTexture(nullptr)
-        , m_cudaResource(nullptr)
-        , m_cudaStream(nullptr)
+        : m_device(nullptr), m_context(nullptr), m_duplication(nullptr), m_output1(nullptr), m_sharedTexture(nullptr), m_cudaResource(nullptr), m_cudaStream(nullptr), m_framePool(5) // Pre-allocate 5 frames in the pool
     {
         ZeroMemory(&m_duplDesc, sizeof(m_duplDesc));
     }
@@ -48,22 +42,22 @@ public:
         int monitorIndex,
         int captureWidth,
         int captureHeight,
-        int& outScreenWidth,
-        int& outScreenHeight,
-        ID3D11Device** outDevice = nullptr,
-        ID3D11DeviceContext** outContext = nullptr)
+        int &outScreenWidth,
+        int &outScreenHeight,
+        ID3D11Device **outDevice = nullptr,
+        ID3D11DeviceContext **outContext = nullptr)
     {
         HRESULT hr = S_OK;
 
-        IDXGIFactory1* factory = nullptr;
-        hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&factory);
+        IDXGIFactory1 *factory = nullptr;
+        hr = CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void **)&factory);
         if (FAILED(hr))
         {
             std::cerr << "[DDA] Failed to create DXGIFactory1 (hr = " << std::hex << hr << ")." << std::endl;
             return hr;
         }
 
-        IDXGIAdapter1* adapter = nullptr;
+        IDXGIAdapter1 *adapter = nullptr;
         hr = factory->EnumAdapters1(monitorIndex, &adapter);
         if (hr == DXGI_ERROR_NOT_FOUND)
         {
@@ -78,7 +72,7 @@ public:
             return hr;
         }
 
-        IDXGIOutput* output = nullptr;
+        IDXGIOutput *output = nullptr;
         hr = adapter->EnumOutputs(0, &output);
         if (hr == DXGI_ERROR_NOT_FOUND)
         {
@@ -96,9 +90,9 @@ public:
         }
 
         {
-            D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
+            D3D_FEATURE_LEVEL featureLevels[] = {D3D_FEATURE_LEVEL_11_0};
             UINT createDeviceFlags = 0;
-      
+
             hr = D3D11CreateDevice(
                 adapter,
                 D3D_DRIVER_TYPE_UNKNOWN,
@@ -121,7 +115,7 @@ public:
             }
         }
 
-        hr = output->QueryInterface(__uuidof(IDXGIOutput1), (void**)&m_output1);
+        hr = output->QueryInterface(__uuidof(IDXGIOutput1), (void **)&m_output1);
         if (FAILED(hr))
         {
             std::cerr << "[DDA] QueryInterface on IDXGIOutput1 failed (hr = " << std::hex << hr << ")." << std::endl;
@@ -156,7 +150,7 @@ public:
         if (config.verbose)
         {
             std::wcout << L"[DDA] Monitor: " << outputDesc.DeviceName
-                << L", Resolution: " << outScreenWidth << L"x" << outScreenHeight << std::endl;
+                       << L", Resolution: " << outScreenWidth << L"x" << outScreenHeight << std::endl;
         }
 
         {
@@ -192,7 +186,7 @@ public:
             if (err != cudaSuccess)
             {
                 std::cerr << "[DDA] Error registering sharedTexture in CUDA: "
-                    << cudaGetErrorString(err) << std::endl;
+                          << cudaGetErrorString(err) << std::endl;
                 Release();
                 SafeRelease(&output);
                 SafeRelease(&adapter);
@@ -207,36 +201,40 @@ public:
         SafeRelease(&adapter);
         SafeRelease(&factory);
 
-        if (outDevice)  *outDevice = m_device;
-        if (outContext) *outContext = m_context;
+        if (outDevice)
+            *outDevice = m_device;
+        if (outContext)
+            *outContext = m_context;
 
         return hr;
     }
 
-    HRESULT AcquireFrame(FrameContext& frameCtx, UINT timeout = 100)
+    HRESULT AcquireFrame(FrameContext &frameCtx, UINT timeout = 100)
     {
-        if (!m_duplication) return E_FAIL;
+        if (!m_duplication)
+            return E_FAIL;
 
         DXGI_OUTDUPL_FRAME_INFO frameInfo{};
-        IDXGIResource* resource = nullptr;
+        IDXGIResource *resource = nullptr;
 
         HRESULT hr = m_duplication->AcquireNextFrame(timeout, &frameInfo, &resource);
-        if (FAILED(hr)) return hr;
+        if (FAILED(hr))
+            return hr;
 
         if (frameInfo.TotalMetadataBufferSize > 0)
         {
             UINT moveCount = frameInfo.TotalMetadataBufferSize;
             frameCtx.moveRects.resize(moveCount / sizeof(DXGI_OUTDUPL_MOVE_RECT));
             hr = m_duplication->GetFrameMoveRects(moveCount,
-                frameCtx.moveRects.data(), &moveCount);
+                                                  frameCtx.moveRects.data(), &moveCount);
 
             UINT dirtyCount = frameInfo.TotalMetadataBufferSize - moveCount;
             frameCtx.dirtyRects.resize(dirtyCount / sizeof(RECT));
             hr = m_duplication->GetFrameDirtyRects(dirtyCount,
-                frameCtx.dirtyRects.data(), &dirtyCount);
+                                                   frameCtx.dirtyRects.data(), &dirtyCount);
         }
 
-        hr = resource->QueryInterface(__uuidof(ID3D11Texture2D), (void**)&frameCtx.texture);
+        hr = resource->QueryInterface(__uuidof(ID3D11Texture2D), (void **)&frameCtx.texture);
         resource->Release();
 
         return (SUCCEEDED(hr)) ? S_OK : hr;
@@ -248,9 +246,10 @@ public:
             m_duplication->ReleaseFrame();
     }
 
-    HRESULT CopyFromDesktopTexture(ID3D11Texture2D* srcTexture, int fullWidth, int fullHeight, int regionWidth, int regionHeight)
+    HRESULT CopyFromDesktopTexture(ID3D11Texture2D *srcTexture, int fullWidth, int fullHeight, int regionWidth, int regionHeight)
     {
-        if (!m_context || !m_sharedTexture) return E_FAIL;
+        if (!m_context || !m_sharedTexture)
+            return E_FAIL;
 
         D3D11_BOX sourceRegion;
         sourceRegion.left = (fullWidth - regionWidth) / 2;
@@ -266,15 +265,13 @@ public:
             0, 0, 0,
             srcTexture,
             0,
-            &sourceRegion
-        );
+            &sourceRegion);
         return S_OK;
     }
 
     cv::cuda::GpuMat CopySharedTextureToCudaMat(int regionWidth, int regionHeight)
     {
-        if (!m_cudaResource) return cv::cuda::GpuMat();
-
+        // Map the shared texture to CUDA
         cudaError_t err = cudaGraphicsMapResources(1, &m_cudaResource, m_cudaStream);
         if (err != cudaSuccess)
         {
@@ -282,6 +279,7 @@ public:
             return cv::cuda::GpuMat();
         }
 
+        // Get the mapped array
         cudaArray_t cuArray;
         err = cudaGraphicsSubResourceGetMappedArray(&cuArray, m_cudaResource, 0, 0);
         if (err != cudaSuccess)
@@ -291,31 +289,48 @@ public:
             return cv::cuda::GpuMat();
         }
 
-        cv::cuda::GpuMat frameGpu(regionHeight, regionWidth, CV_8UC4);
-
-        size_t numBytesPerRow = regionWidth * sizeof(uchar4);
-        err = cudaMemcpy2DFromArrayAsync(
-            frameGpu.data,                // dst
-            frameGpu.step,                // dstPitch
-            cuArray,                      // src
-            0,                            // wOffset
-            0,                            // hOffset
-            numBytesPerRow,               // width in bytes
-            regionHeight,                 // height
-            cudaMemcpyDeviceToDevice,
-            m_cudaStream
-        );
-
-        if (err != cudaSuccess)
+        // Get a frame from the pool or create a new one if needed
+        cv::cuda::GpuMat frameGpu;
+        if (!m_framePool.empty())
         {
-            std::cerr << "[DDA] cudaMemcpy2DFromArrayAsync error: " << cudaGetErrorString(err) << std::endl;
+            frameGpu = m_framePool.back();
+            m_framePool.pop_back();
+
+            // Ensure the frame has the correct size
+            if (frameGpu.rows != regionHeight || frameGpu.cols != regionWidth)
+            {
+                frameGpu.release();
+                frameGpu = cv::cuda::GpuMat(regionHeight, regionWidth, CV_8UC4);
+            }
+        }
+        else
+        {
+            frameGpu = cv::cuda::GpuMat(regionHeight, regionWidth, CV_8UC4);
         }
 
+        // Copy from the CUDA array to the GpuMat
+        cudaMemcpy2DFromArrayAsync(
+            frameGpu.data, frameGpu.step,
+            cuArray, 0, 0,
+            regionWidth * 4, regionHeight,
+            cudaMemcpyDeviceToDevice, m_cudaStream);
+
+        // Unmap the resource
         cudaGraphicsUnmapResources(1, &m_cudaResource, m_cudaStream);
 
+        // Ensure the copy is complete
         cudaStreamSynchronize(m_cudaStream);
 
         return frameGpu;
+    }
+
+    // Return a frame to the pool for reuse
+    void RecycleFrame(cv::cuda::GpuMat &frame)
+    {
+        if (m_framePool.size() < 10) // Limit pool size
+        {
+            m_framePool.push_back(frame);
+        }
     }
 
     void Release()
@@ -345,30 +360,20 @@ public:
     }
 
 public:
-    ID3D11Device* m_device;
-    ID3D11DeviceContext* m_context;
-    IDXGIOutputDuplication* m_duplication;
-    IDXGIOutput1* m_output1;
+    ID3D11Device *m_device;
+    ID3D11DeviceContext *m_context;
+    IDXGIOutputDuplication *m_duplication;
+    IDXGIOutput1 *m_output1;
     DXGI_OUTDUPL_DESC m_duplDesc;
 
-    ID3D11Texture2D* m_sharedTexture;
-    cudaGraphicsResource* m_cudaResource;
+    ID3D11Texture2D *m_sharedTexture;
+    cudaGraphicsResource *m_cudaResource;
     cudaStream_t m_cudaStream;
+    std::vector<cv::cuda::GpuMat> m_framePool;
 };
 
 DuplicationAPIScreenCapture::DuplicationAPIScreenCapture(int desiredWidth, int desiredHeight)
-    : d3dDevice(nullptr)
-    , d3dContext(nullptr)
-    , deskDupl(nullptr)
-    , stagingTexture(nullptr)
-    , output1(nullptr)
-    , sharedTexture(nullptr)
-    , cudaResource(nullptr)
-    , cudaStream(nullptr)
-    , regionWidth(desiredWidth)
-    , regionHeight(desiredHeight)
-    , screenWidth(0)
-    , screenHeight(0)
+    : d3dDevice(nullptr), d3dContext(nullptr), deskDupl(nullptr), stagingTexture(nullptr), output1(nullptr), sharedTexture(nullptr), cudaResource(nullptr), cudaStream(nullptr), regionWidth(desiredWidth), regionHeight(desiredHeight), screenWidth(0), screenHeight(0)
 {
     m_ddaManager = std::make_unique<DDAManager>();
 
@@ -379,12 +384,11 @@ DuplicationAPIScreenCapture::DuplicationAPIScreenCapture(int desiredWidth, int d
         screenWidth,
         screenHeight,
         &d3dDevice,
-        &d3dContext
-    );
+        &d3dContext);
     if (FAILED(hr))
     {
         std::cerr << "[Capture] Error initializing DuplicationAPIScreenCapture: hr=0x"
-            << std::hex << hr << std::endl;
+                  << std::hex << hr << std::endl;
         return;
     }
 }
@@ -446,6 +450,15 @@ cv::cuda::GpuMat DuplicationAPIScreenCapture::GetNextFrame()
 
     frameCtx.texture->Release();
     frameCtx.texture = nullptr;
+
+    // Recycle the previous frame if we have one
+    if (!m_previousFrame.empty())
+    {
+        m_ddaManager->RecycleFrame(m_previousFrame);
+    }
+
+    // Store the current frame for recycling next time
+    m_previousFrame = frameGpu;
 
     return frameGpu;
 }
