@@ -28,7 +28,7 @@
 #include "other_tools.h"
 #include "postProcess.h"
 
-cudaStream_t getStreamFromOpenCVStream(const cv::cuda::Stream&)
+cudaStream_t getStreamFromOpenCVStream(const cv::cuda::Stream &)
 {
     return 0;
 }
@@ -44,13 +44,14 @@ static bool error_logged = false;
 
 Detector::Detector()
     : frameReady(false),
-    shouldExit(false),
-    detectionVersion(0),
-    inputBufferDevice(nullptr),
-    img_scale(1.0f),
-    numClasses(0),
-    useCudaGraph(false),
-    cudaGraphCaptured(false)
+      shouldExit(false),
+      detectionVersion(0),
+      inputBufferDevice(nullptr),
+      img_scale(1.0f),
+      numClasses(0),
+      useCudaGraph(false),
+      cudaGraphCaptured(false),
+      cudaGraphCaptureAttempts(0)
 {
     cudaStreamCreate(&stream);
 
@@ -65,26 +66,29 @@ Detector::Detector()
 Detector::~Detector()
 {
     cudaStreamDestroy(stream);
-    
+
     if (cudaGraphCaptured)
     {
         cudaGraphExecDestroy(cudaGraphExec);
         cudaGraphDestroy(cudaGraph);
     }
 
-    for (auto& buffer : pinnedOutputBuffers)
+    for (auto &buffer : pinnedOutputBuffers)
     {
-        if (buffer.second) cudaFreeHost(buffer.second);
+        if (buffer.second)
+            cudaFreeHost(buffer.second);
     }
 
-    for (auto& binding : inputBindings)
+    for (auto &binding : inputBindings)
     {
-        if (binding.second) cudaFree(binding.second);
+        if (binding.second)
+            cudaFree(binding.second);
     }
 
-    for (auto& binding : outputBindings)
+    for (auto &binding : outputBindings)
     {
-        if (binding.second) cudaFree(binding.second);
+        if (binding.second)
+            cudaFree(binding.second);
     }
 
     if (inputBufferDevice)
@@ -100,7 +104,7 @@ void Detector::getInputNames()
 
     for (int i = 0; i < engine->getNbIOTensors(); ++i)
     {
-        const char* name = engine->getIOTensorName(i);
+        const char *name = engine->getIOTensorName(i);
         if (engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kINPUT)
         {
             inputNames.emplace_back(name);
@@ -121,12 +125,12 @@ void Detector::getOutputNames()
 
     for (int i = 0; i < engine->getNbIOTensors(); ++i)
     {
-        const char* name = engine->getIOTensorName(i);
+        const char *name = engine->getIOTensorName(i);
         if (engine->getTensorIOMode(name) == nvinfer1::TensorIOMode::kOUTPUT)
         {
             outputNames.emplace_back(name);
             outputTypes[name] = engine->getTensorDataType(name);
-            
+
             if (config.verbose)
             {
                 std::cout << "[Detector] Detected output: " << name << std::endl;
@@ -137,24 +141,26 @@ void Detector::getOutputNames()
 
 void Detector::getBindings()
 {
-    for (auto& binding : inputBindings)
+    for (auto &binding : inputBindings)
     {
-        if (binding.second) cudaFree(binding.second);
+        if (binding.second)
+            cudaFree(binding.second);
     }
     inputBindings.clear();
 
-    for (auto& binding : outputBindings)
+    for (auto &binding : outputBindings)
     {
-        if (binding.second) cudaFree(binding.second);
+        if (binding.second)
+            cudaFree(binding.second);
     }
     outputBindings.clear();
 
-    for (const auto& name : inputNames)
+    for (const auto &name : inputNames)
     {
         size_t size = inputSizes[name];
         if (size > 0)
         {
-            void* ptr = nullptr;
+            void *ptr = nullptr;
 
             cudaError_t err = cudaMalloc(&ptr, size);
             if (err == cudaSuccess)
@@ -172,11 +178,12 @@ void Detector::getBindings()
         }
     }
 
-    for (const auto& name : outputNames)
+    for (const auto &name : outputNames)
     {
         size_t size = outputSizes[name];
-        if (size > 0) {
-            void* ptr = nullptr;
+        if (size > 0)
+        {
+            void *ptr = nullptr;
             cudaError_t err = cudaMalloc(&ptr, size);
             if (err == cudaSuccess)
             {
@@ -185,7 +192,8 @@ void Detector::getBindings()
                 {
                     std::cout << "[Detector] Allocated " << size << " bytes for output " << name << std::endl;
                 }
-            } else
+            }
+            else
             {
                 std::cerr << "[Detector] Failed to allocate output memory: " << cudaGetErrorString(err) << std::endl;
             }
@@ -193,7 +201,7 @@ void Detector::getBindings()
     }
 }
 
-void Detector::initialize(const std::string& modelFile)
+void Detector::initialize(const std::string &modelFile)
 {
     runtime.reset(nvinfer1::createInferRuntime(gLogger));
     loadEngine(modelFile);
@@ -230,19 +238,19 @@ void Detector::initialize(const std::string& modelFile)
         return;
     }
 
-    for (const auto& inName : inputNames)
+    for (const auto &inName : inputNames)
     {
         nvinfer1::Dims dims = context->getTensorShape(inName.c_str());
         nvinfer1::DataType dtype = engine->getTensorDataType(inName.c_str());
         inputSizes[inName] = getSizeByDim(dims) * getElementSize(dtype);
     }
 
-    for (const auto& outName : outputNames)
+    for (const auto &outName : outputNames)
     {
         nvinfer1::Dims dims = context->getTensorShape(outName.c_str());
         nvinfer1::DataType dtype = engine->getTensorDataType(outName.c_str());
         outputSizes[outName] = getSizeByDim(dims) * getElementSize(dtype);
-        
+
         std::vector<int64_t> shape;
         for (int j = 0; j < dims.nbDims; j++)
         {
@@ -256,51 +264,52 @@ void Detector::initialize(const std::string& modelFile)
 
     if (!outputNames.empty())
     {
-        const std::string& mainOut = outputNames[0];
+        const std::string &mainOut = outputNames[0];
         nvinfer1::Dims outDims = context->getTensorShape(mainOut.c_str());
 
         if (config.postprocess == "yolo10")
         {
             numClasses = 11;
-        } else
+        }
+        else
         {
             numClasses = outDims.d[1] - 4;
         }
     }
 
     img_scale = static_cast<float>(config.detection_resolution) / 640;
-    
+
     useCudaGraph = true;
-    
+
     nvinfer1::Dims dims = context->getTensorShape(inputName.c_str());
     int c = dims.d[1];
     int h = dims.d[2];
     int w = dims.d[3];
-    
+
     resizedBuffer.create(h, w, CV_8UC3);
     floatBuffer.create(h, w, CV_32FC3);
-    
+
     channelBuffers.resize(c);
     for (int i = 0; i < c; ++i)
     {
         channelBuffers[i].create(h, w, CV_32F);
     }
-    
-    for (const auto& name : inputNames)
+
+    for (const auto &name : inputNames)
     {
         context->setTensorAddress(name.c_str(), inputBindings[name]);
     }
-    for (const auto& name : outputNames)
+    for (const auto &name : outputNames)
     {
         context->setTensorAddress(name.c_str(), outputBindings[name]);
     }
 
     if (config.use_pinned_memory)
     {
-        for (const auto& outName : outputNames)
+        for (const auto &outName : outputNames)
         {
             size_t size = outputSizes[outName];
-            void* hostBuffer = nullptr;
+            void *hostBuffer = nullptr;
 
             cudaError_t status = cudaMallocHost(&hostBuffer, size);
             if (status == cudaSuccess)
@@ -313,42 +322,60 @@ void Detector::initialize(const std::string& modelFile)
     // Initialize CUDA Graph
     if (useCudaGraph)
     {
+        // Start CUDA graph capture
         cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
-        
-        // Perform a dummy inference to capture the graph
+
+        // Execute the model
         context->enqueueV3(stream);
-        
-        cudaStreamEndCapture(stream, &cudaGraph);
-        
-        // Create graph executable
-        cudaGraphExec_t graphExec;
-        cudaError_t status = cudaGraphInstantiate(&graphExec, cudaGraph, 0);
-        if (status == cudaSuccess)
+
+        // End capture and create executable graph
+        cudaError_t captureStatus = cudaStreamEndCapture(stream, &cudaGraph);
+
+        if (captureStatus == cudaSuccess)
         {
-            cudaGraphExec = graphExec;
-            cudaGraphCaptured = true;
-            
-            if (config.verbose)
+            cudaGraphExec_t graphExec;
+            cudaError_t status = cudaGraphInstantiate(&graphExec, cudaGraph, 0);
+
+            if (status == cudaSuccess)
             {
-                std::cout << "[Detector] CUDA Graph captured successfully" << std::endl;
+                cudaGraphExec = graphExec;
+                cudaGraphCaptured = true;
+                cudaGraphCaptureAttempts = 0;
+                std::cout << "[Detector] CUDA graph captured successfully" << std::endl;
+            }
+            else
+            {
+                std::cerr << "[Detector] CUDA graph instantiation failed: " << cudaGetErrorString(status) << std::endl;
+                cudaGraphDestroy(cudaGraph);
+                cudaGraph = nullptr;
+                cudaGraphCaptured = false;
+                cudaGraphCaptureAttempts++;
             }
         }
         else
         {
-            std::cerr << "[Detector] Failed to instantiate CUDA Graph: " << cudaGetErrorString(status) << std::endl;
-            cudaGraphDestroy(cudaGraph);
+            std::cerr << "[Detector] CUDA graph capture failed: " << cudaGetErrorString(captureStatus) << std::endl;
             cudaGraph = nullptr;
             cudaGraphCaptured = false;
+            cudaGraphCaptureAttempts++;
+
+            // If we've failed multiple times, disable CUDA graph
+            if (cudaGraphCaptureAttempts >= 3)
+            {
+                std::cerr << "[Detector] Disabling CUDA graph after multiple failures" << std::endl;
+                useCudaGraph = false;
+            }
         }
     }
 }
 
-size_t Detector::getSizeByDim(const nvinfer1::Dims& dims)
+size_t Detector::getSizeByDim(const nvinfer1::Dims &dims)
 {
     size_t size = 1;
     for (int i = 0; i < dims.nbDims; ++i)
     {
-        if (dims.d[i] < 0) return 0;
+        if (dims.d[i] < 0)
+            return 0;
         size *= dims.d[i];
     }
     return size;
@@ -358,15 +385,20 @@ size_t Detector::getElementSize(nvinfer1::DataType dtype)
 {
     switch (dtype)
     {
-        case nvinfer1::DataType::kFLOAT: return 4;
-        case nvinfer1::DataType::kHALF: return 2;
-        case nvinfer1::DataType::kINT32: return 4;
-        case nvinfer1::DataType::kINT8: return 1;
-        default: return 0;
+    case nvinfer1::DataType::kFLOAT:
+        return 4;
+    case nvinfer1::DataType::kHALF:
+        return 2;
+    case nvinfer1::DataType::kINT32:
+        return 4;
+    case nvinfer1::DataType::kINT8:
+        return 1;
+    default:
+        return 0;
     }
 }
 
-void Detector::loadEngine(const std::string& modelFile)
+void Detector::loadEngine(const std::string &modelFile)
 {
     std::string engineFilePath;
     std::filesystem::path modelPath(modelFile);
@@ -384,22 +416,22 @@ void Detector::loadEngine(const std::string& modelFile)
         {
             std::cout << "[Detector] Building engine from ONNX model" << std::endl;
 
-            nvinfer1::ICudaEngine* builtEngine = buildEngineFromOnnx(modelFile, gLogger);
+            nvinfer1::ICudaEngine *builtEngine = buildEngineFromOnnx(modelFile, gLogger);
             if (builtEngine)
             {
-                nvinfer1::IHostMemory* serializedEngine = builtEngine->serialize();
+                nvinfer1::IHostMemory *serializedEngine = builtEngine->serialize();
 
                 if (serializedEngine)
                 {
                     std::ofstream engineFile(engineFilePath, std::ios::binary);
                     if (engineFile)
                     {
-                        engineFile.write(reinterpret_cast<const char*>(serializedEngine->data()), serializedEngine->size());
+                        engineFile.write(reinterpret_cast<const char *>(serializedEngine->data()), serializedEngine->size());
                         engineFile.close();
-                        
+
                         config.ai_model = std::filesystem::path(engineFilePath).filename().string();
                         config.saveConfig("config.ini");
-                        
+
                         std::cout << "[Detector] Engine saved to: " << engineFilePath << std::endl;
                     }
                     delete serializedEngine;
@@ -418,7 +450,7 @@ void Detector::loadEngine(const std::string& modelFile)
     engine.reset(loadEngineFromFile(engineFilePath, runtime.get()));
 }
 
-void Detector::processFrame(const cv::cuda::GpuMat& frame)
+void Detector::processFrame(const cv::cuda::GpuMat &frame)
 {
     if (detectionPaused)
     {
@@ -438,52 +470,57 @@ void Detector::inferenceThread()
 {
     while (!shouldExit)
     {
-        if (detector_model_changed.load()) {
+        if (detector_model_changed.load())
+        {
             {
                 std::unique_lock<std::mutex> lock(inferenceMutex);
-                
+
                 if (cudaGraphCaptured)
                 {
                     cudaGraphExecDestroy(cudaGraphExec);
                     cudaGraphDestroy(cudaGraph);
                     cudaGraphCaptured = false;
                 }
-                
+
                 context.reset();
                 engine.reset();
-                
-                for (auto& binding : inputBindings)
+
+                for (auto &binding : inputBindings)
                 {
-                    if (binding.second) cudaFree(binding.second);
+                    if (binding.second)
+                        cudaFree(binding.second);
                 }
                 inputBindings.clear();
-                
-                for (auto& binding : outputBindings)
+
+                for (auto &binding : outputBindings)
                 {
-                    if (binding.second) cudaFree(binding.second);
+                    if (binding.second)
+                        cudaFree(binding.second);
                 }
                 outputBindings.clear();
             }
-            
+
             initialize("models/" + config.ai_model);
-            
+
             detection_resolution_changed.store(true);
             detector_model_changed.store(false);
         }
-        
+
         cv::cuda::GpuMat frame;
         bool hasNewFrame = false;
-        
+
         {
             std::unique_lock<std::mutex> lock(inferenceMutex);
-            
+
             if (!frameReady && !shouldExit)
             {
-                inferenceCV.wait(lock, [this] { return frameReady || shouldExit; });
+                inferenceCV.wait(lock, [this]
+                                 { return frameReady || shouldExit; });
             }
-            
-            if (shouldExit) break;
-            
+
+            if (shouldExit)
+                break;
+
             if (frameReady)
             {
                 frame = std::move(currentFrame);
@@ -491,7 +528,7 @@ void Detector::inferenceThread()
                 hasNewFrame = true;
             }
         }
-        
+
         if (!context)
         {
             if (!error_logged)
@@ -506,67 +543,80 @@ void Detector::inferenceThread()
         {
             error_logged = false;
         }
-        
+
         if (hasNewFrame && !frame.empty())
         {
             try
             {
                 preProcess(frame);
-                
+
                 cudaStreamSynchronize(stream);
-                
+
                 if (cudaGraphCaptured)
                 {
-                    cudaGraphLaunch(cudaGraphExec, stream);
+                    // Launch the CUDA graph
+                    cudaError_t launchStatus = cudaGraphLaunch(cudaGraphExec, stream);
+                    if (launchStatus != cudaSuccess)
+                    {
+                        std::cerr << "[Detector] CUDA graph launch failed: " << cudaGetErrorString(launchStatus) << std::endl;
+
+                        // Fall back to regular execution
+                        context->enqueueV3(stream);
+
+                        // Try to recapture the graph
+                        cudaGraphExecDestroy(cudaGraphExec);
+                        cudaGraphDestroy(cudaGraph);
+                        cudaGraphCaptured = false;
+                    }
                 }
                 else
                 {
                     context->enqueueV3(stream);
                 }
-                
+
                 cudaStreamSynchronize(stream);
-                
-                for (const auto& name : outputNames)
+
+                for (const auto &name : outputNames)
                 {
                     size_t size = outputSizes[name];
                     nvinfer1::DataType dtype = outputTypes[name];
-                    
+
                     if (dtype == nvinfer1::DataType::kHALF)
                     {
                         size_t numElements = size / sizeof(__half);
-                        std::vector<__half>& outputDataHalf = outputDataBuffersHalf[name];
+                        std::vector<__half> &outputDataHalf = outputDataBuffersHalf[name];
                         outputDataHalf.resize(numElements);
-                        
+
                         cudaMemcpy(
                             outputDataHalf.data(),
                             outputBindings[name],
                             size,
-                            cudaMemcpyDeviceToHost
-                        );
-                        
+                            cudaMemcpyDeviceToHost);
+
                         std::vector<float> outputDataFloat(outputDataHalf.size());
-                        for (size_t i = 0; i < outputDataHalf.size(); ++i) {
+                        for (size_t i = 0; i < outputDataHalf.size(); ++i)
+                        {
                             outputDataFloat[i] = __half2float(outputDataHalf[i]);
                         }
-                        
+
                         postProcess(outputDataFloat.data(), name);
                     }
                     else if (dtype == nvinfer1::DataType::kFLOAT)
                     {
-                        std::vector<float>& outputData = outputDataBuffers[name];
+                        std::vector<float> &outputData = outputDataBuffers[name];
                         outputData.resize(size / sizeof(float));
-                        
+
                         cudaMemcpy(
                             outputData.data(),
                             outputBindings[name],
                             size,
-                            cudaMemcpyDeviceToHost
-                        );
-                            
+                            cudaMemcpyDeviceToHost);
+
                         postProcess(outputData.data(), name);
                     }
                 }
-            } catch (const std::exception& e)
+            }
+            catch (const std::exception &e)
             {
                 std::cerr << "[Detector] Error during inference: " << e.what() << std::endl;
             }
@@ -581,7 +631,7 @@ void Detector::releaseDetections()
     detectedClasses.clear();
 }
 
-bool Detector::getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int>& classes)
+bool Detector::getLatestDetections(std::vector<cv::Rect> &boxes, std::vector<int> &classes)
 {
     std::lock_guard<std::mutex> lock(detectionMutex);
 
@@ -594,13 +644,15 @@ bool Detector::getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int
     return false;
 }
 
-void Detector::preProcess(const cv::cuda::GpuMat& frame)
+void Detector::preProcess(const cv::cuda::GpuMat &frame)
 {
-    if (frame.empty()) return;
+    if (frame.empty())
+        return;
 
-    void* inputBuffer = inputBindings[inputName];
+    void *inputBuffer = inputBindings[inputName];
 
-    if (!inputBuffer) return;
+    if (!inputBuffer)
+        return;
 
     nvinfer1::Dims dims = context->getTensorShape(inputName.c_str());
 
@@ -613,49 +665,48 @@ void Detector::preProcess(const cv::cuda::GpuMat& frame)
         cv::cuda::resize(frame, resizedBuffer, cv::Size(w, h), 0, 0, cv::INTER_LINEAR, preprocessCvStream);
         resizedBuffer.convertTo(floatBuffer, CV_32F, 1.0f / 255.0f, 0, preprocessCvStream);
         cv::cuda::split(floatBuffer, channelBuffers, preprocessCvStream);
-        
+
         preprocessCvStream.waitForCompletion();
-        
+
         size_t channelSize = h * w * sizeof(float);
         for (int i = 0; i < c; ++i)
         {
             cudaMemcpyAsync(
-                static_cast<float*>(inputBuffer) + i * h * w,
+                static_cast<float *>(inputBuffer) + i * h * w,
                 channelBuffers[i].ptr<float>(),
                 channelSize,
                 cudaMemcpyDeviceToDevice,
-                stream
-            );
+                stream);
         }
-    } catch (const cv::Exception& e)
+    }
+    catch (const cv::Exception &e)
     {
         std::cerr << "[Detector] OpenCV error in preProcess: " << e.what() << std::endl;
     }
 }
 
-void Detector::postProcess(const float* output, const std::string& outputName)
+void Detector::postProcess(const float *output, const std::string &outputName)
 {
-    if (numClasses <= 0) return;
+    if (numClasses <= 0)
+        return;
 
     std::vector<Detection> detections;
 
     if (config.postprocess == "yolo10")
     {
-        const std::vector<int64_t>& shape = outputShapes[outputName];
+        const std::vector<int64_t> &shape = outputShapes[outputName];
         detections = postProcessYolo10(
             output,
             shape,
             numClasses,
             config.confidence_threshold,
-            config.nms_threshold
-        );
+            config.nms_threshold);
     }
-    else if(
+    else if (
         config.postprocess == "yolo8" ||
         config.postprocess == "yolo9" ||
         config.postprocess == "yolo11" ||
-        config.postprocess == "yolo12"
-        )
+        config.postprocess == "yolo12")
     {
         auto shape = context->getTensorShape(outputName.c_str());
         std::vector<int64_t> engineShape;
@@ -669,15 +720,14 @@ void Detector::postProcess(const float* output, const std::string& outputName)
             engineShape,
             numClasses,
             config.confidence_threshold,
-            config.nms_threshold
-        );
+            config.nms_threshold);
     }
 
     {
         std::lock_guard<std::mutex> lock(detectionMutex);
         detectedBoxes.clear();
         detectedClasses.clear();
-        for (const auto& det : detections)
+        for (const auto &det : detections)
         {
             detectedBoxes.push_back(det.box);
             detectedClasses.push_back(det.classId);
