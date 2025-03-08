@@ -5,12 +5,14 @@
 #include "detector.h"
 #include "mouse.h"
 #include "SerialConnection.h"
+#include "KmboxConnection.h"
 #include "optical_flow.h"
 
 extern Config config;
 extern Detector detector;
 extern MouseThread* globalMouseThread;
 extern SerialConnection* arduinoSerial;
+extern KmboxConnection* kmboxSerial;
 extern std::atomic<bool> input_method_changed;
 extern OpticalFlow opticalFlow;
 extern std::atomic<bool> aiming;

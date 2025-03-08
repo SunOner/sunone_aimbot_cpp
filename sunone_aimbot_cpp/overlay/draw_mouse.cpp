@@ -51,7 +51,8 @@ void draw_mouse()
 
     // INPUT METHODS
     ImGui::Separator();
-    std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO" };
+    std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX" };
+
     std::vector<const char*> method_items;
     method_items.reserve(input_methods.size());
     for (const auto& item : input_methods)
@@ -196,5 +197,63 @@ void draw_mouse()
     {
         ImGui::TextColored(ImVec4(255, 255, 255, 255), "This is a standard mouse input method, it may not work in most games. Use GHUB or ARDUINO.");
         ImGui::TextColored(ImVec4(255, 0, 0, 255), "Use at your own risk, the method is detected in some games.");
+    }
+    else if (config.input_method == "KMBOX")
+    {
+        std::vector<std::string> port_list;
+        for (int i = 1; i <= 30; ++i)
+        {
+            port_list.push_back("COM" + std::to_string(i));
+        }
+        std::vector<const char*> port_items;
+        port_items.reserve(port_list.size());
+        for (auto& p : port_list) port_items.push_back(p.c_str());
+
+        int port_index = 0;
+        for (size_t i = 0; i < port_list.size(); ++i)
+        {
+            if (port_list[i] == config.kmbox_port)
+            {
+                port_index = (int)i;
+                break;
+            }
+        }
+
+        if (ImGui::Combo("kmbox Port", &port_index, port_items.data(), (int)port_items.size()))
+        {
+            config.kmbox_port = port_list[port_index];
+            config.saveConfig();
+            input_method_changed.store(true);
+        }
+
+        std::vector<int> baud_list = { 9600, 19200, 38400, 57600, 115200 };
+        std::vector<std::string> baud_str_list;
+        for (int b : baud_list) baud_str_list.push_back(std::to_string(b));
+        std::vector<const char*> baud_items;
+        baud_items.reserve(baud_str_list.size());
+        for (auto& bs : baud_str_list) baud_items.push_back(bs.c_str());
+
+        int baud_index = 0;
+        for (size_t i = 0; i < baud_list.size(); ++i)
+        {
+            if (baud_list[i] == config.kmbox_baudrate)
+            {
+                baud_index = (int)i;
+                break;
+            }
+        }
+
+        if (ImGui::Combo("kmbox Baudrate", &baud_index, baud_items.data(), (int)baud_items.size()))
+        {
+            config.kmbox_baudrate = baud_list[baud_index];
+            config.saveConfig();
+            input_method_changed.store(true);
+        }
+
+        if (ImGui::Checkbox("kmbox Enable Keys", &config.kmbox_enable_keys))
+        {
+            config.saveConfig();
+            input_method_changed.store(true);
+        }
     }
 }

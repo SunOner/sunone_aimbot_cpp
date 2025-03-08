@@ -8,6 +8,7 @@
 
 #include "AimbotTarget.h"
 #include "SerialConnection.h"
+#include "KmboxConnection.h"
 #include "ghub.h"
 
 class MouseThread
@@ -17,6 +18,7 @@ private:
     std::chrono::time_point<std::chrono::steady_clock> prev_time;
 
     SerialConnection* serial;
+    KmboxConnection* kmbox;
     GhubMouse* gHub;
 
     double screen_width;
@@ -60,6 +62,7 @@ public:
     void checkAndResetPredictions();
     std::mutex input_method_mutex;
     void setSerialConnection(SerialConnection* newSerial);
+    void setKmboxConnection(KmboxConnection* newKmbox);
     void setGHubMouse(GhubMouse* newGHub);
 };
 

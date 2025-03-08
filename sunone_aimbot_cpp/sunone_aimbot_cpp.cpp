@@ -21,6 +21,7 @@
 #include "ghub.h"
 #include "other_tools.h"
 #include "optical_flow.h"
+#include "KmboxConnection.h"
 
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
@@ -34,6 +35,7 @@ Config config;
 
 GhubMouse* gHub = nullptr;
 SerialConnection* arduinoSerial = nullptr;
+KmboxConnection* kmboxSerial = nullptr;
 
 OpticalFlow opticalFlow;
 
@@ -67,6 +69,12 @@ void initializeInputMethod()
             delete gHub;
             gHub = nullptr;
         }
+
+        if (kmboxSerial)
+        {
+            delete kmboxSerial;
+            kmboxSerial = nullptr;
+        }
     }
 
     if (config.input_method == "ARDUINO")
@@ -77,13 +85,24 @@ void initializeInputMethod()
     else if (config.input_method == "GHUB")
     {
         std::cout << "[Mouse] Using Ghub method input." << std::endl;
-
         gHub = new GhubMouse();
         if (!gHub->mouse_xy(0, 0))
         {
             std::cerr << "[Ghub] Error with opening mouse." << std::endl;
             delete gHub;
             gHub = nullptr;
+        }
+    }
+    else if (config.input_method == "KMBOX")
+    {
+        std::cout << "[Mouse] Using Kmbox method input." << std::endl;
+        kmboxSerial = new KmboxConnection(config.kmbox_port, config.kmbox_baudrate);
+
+        if (!kmboxSerial->isOpen())
+        {
+            std::cerr << "[Kmbox] Error connecting to Kmbox serial." << std::endl;
+            delete kmboxSerial;
+            kmboxSerial = nullptr;
         }
     }
     else
@@ -93,6 +112,7 @@ void initializeInputMethod()
 
     globalMouseThread->setSerialConnection(arduinoSerial);
     globalMouseThread->setGHubMouse(gHub);
+    globalMouseThread->setKmboxConnection(kmboxSerial);
 }
 
 void handleEasyNoRecoil(MouseThread& mouseThread)

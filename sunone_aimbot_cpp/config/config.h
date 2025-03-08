@@ -35,13 +35,18 @@ public:
     float predictionInterval;
     bool easynorecoil;
     float easynorecoilstrength;
-    std::string input_method; // "WIN32", "GHUB", "ARDUINO"
+    std::string input_method; // "WIN32", "GHUB", "ARDUINO", "KMBOX"
 
     // Arduino
     int arduino_baudrate;
     std::string arduino_port;
     bool arduino_16_bit_mouse;
     bool arduino_enable_keys;
+
+    // Kmbox
+    int kmbox_baudrate;
+    std::string kmbox_port;
+    bool kmbox_enable_keys;
 
     // Mouse shooting
     bool auto_shoot;

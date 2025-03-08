@@ -35,6 +35,7 @@
     <ClCompile Include="overlay\draw_buttons.cpp" />
     <ClCompile Include="overlay\draw_overlay.cpp" />
     <ClCompile Include="overlay\draw_debug.cpp" />
+    <ClCompile Include="mouse\KmboxConnection.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -75,6 +76,7 @@
     <ClInclude Include="capture\virtual_camera.h" />
     <ClInclude Include="sunone_aimbot_cpp.h" />
     <ClInclude Include="overlay\draw_settings.h" />
+    <ClInclude Include="mouse\KmboxConnection.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -51,6 +51,7 @@ MouseThread::MouseThread(
     center_x(resolution / 2),
     center_y(resolution / 2),
     serial(serialConnection),
+    kmbox(nullptr),
     gHub(ghubMouse),
     last_target_time(std::chrono::steady_clock::now())
 {
@@ -82,6 +83,12 @@ void MouseThread::setSerialConnection(SerialConnection* newSerial)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
     serial = newSerial;
+}
+
+void MouseThread::setKmboxConnection(KmboxConnection* newKmbox)
+{
+    std::lock_guard<std::mutex> lock(input_method_mutex);
+    kmbox = newKmbox;
 }
 
 void MouseThread::setGHubMouse(GhubMouse* newGHub)
@@ -203,9 +210,13 @@ void MouseThread::moveMouse(const AimbotTarget& target)
     int move_x = static_cast<INT>(movement.first);
     int move_y = static_cast<INT>(movement.second);
 
-    if (serial)
+    if (kmbox)
     {
-        serial->move(move_x, move_y);
+        kmbox->move(move_x, move_y);
+    }
+    else if (arduinoSerial)
+    {
+        arduinoSerial->move(move_x, move_y);
     }
     else if (gHub)
     {
@@ -232,9 +243,13 @@ void MouseThread::pressMouse(const AimbotTarget& target)
 
     if (bScope && !mouse_pressed)
     {
-        if (serial)
+        if (kmbox)
         {
-            serial->press();
+            kmbox->press();
+        }
+        else if (arduinoSerial)
+        {
+            arduinoSerial->press();
         }
         else if (gHub)
         {
@@ -276,9 +291,13 @@ void MouseThread::releaseMouse()
 
     if (mouse_pressed)
     {
-        if (serial)
+        if (kmbox)
         {
-            serial->release();
+            kmbox->release();
+        }
+        else if (arduinoSerial)
+        {
+            arduinoSerial->release();
         }
         else if (gHub)
         {

@@ -81,6 +81,11 @@ bool Config::loadConfig(const std::string& filename)
         arduino_16_bit_mouse = false;
         arduino_enable_keys = false;
 
+        // Kmbox
+        kmbox_baudrate = 115200;
+        kmbox_port = "COM0";
+        kmbox_enable_keys = false;
+
         // Mouse shooting
         auto_shoot = false;
         bScope_multiplier = 1.0f;
@@ -212,6 +217,11 @@ bool Config::loadConfig(const std::string& filename)
     arduino_16_bit_mouse = get_bool("arduino_16_bit_mouse", false);
     arduino_enable_keys = get_bool("arduino_enable_keys", false);
 
+    // Kmbox
+    kmbox_baudrate = get_long("kmbox_baudrate", 115200);
+    kmbox_port = get_string("kmbox_port", "COM0");
+    kmbox_enable_keys = get_bool("kmbox_enable_keys", false);
+
     // Mouse shooting
     auto_shoot = get_bool("auto_shoot", false);
     bScope_multiplier = (float)get_double("bScope_multiplier", 1.2);
@@ -333,6 +343,12 @@ bool Config::saveConfig(const std::string& filename)
         << "arduino_port = " << arduino_port << "\n"
         << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n"
         << "arduino_enable_keys = " << (arduino_enable_keys ? "true" : "false") << "\n\n";
+
+    // Kmbox
+    file << "# Kmbox\n"
+        << "kmbox_baudrate = " << kmbox_baudrate << "\n"
+        << "kmbox_port = " << kmbox_port << "\n"
+        << "kmbox_enable_keys = " << (kmbox_enable_keys ? "true" : "false") << "\n\n";
 
     // Mouse shooting
     file << "# Mouse shooting\n"
