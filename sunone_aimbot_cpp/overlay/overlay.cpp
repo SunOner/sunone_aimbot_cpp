@@ -25,7 +25,6 @@
 #include "keyboard_listener.h"
 #include "other_tools.h"
 #include "virtual_camera.h"
-#include "Snowflake.hpp"
 
 ID3D11Device* g_pd3dDevice = NULL;
 ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
@@ -43,6 +42,12 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 
 ID3D11BlendState* g_pBlendState = nullptr;
+
+// Variables for dragging
+bool g_dragging = false;
+POINT g_dragStart = { 0, 0 };
+const int TITLE_BAR_HEIGHT = 20; // Draggable area at the top
+
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -179,6 +184,29 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         shouldExit = true;
         ::PostQuitMessage(0);
         return 0;
+    case WM_LBUTTONDOWN:
+        {
+            int x = LOWORD(lParam);
+            int y = HIWORD(lParam);
+            if (y < TITLE_BAR_HEIGHT) { // Only drag if clicking in the top 20 pixels
+                g_dragging = true;
+                g_dragStart.x = x;
+                g_dragStart.y = y;
+                SetCapture(hWnd);
+            }
+        }
+        return 0;
+    case WM_LBUTTONUP:
+        g_dragging = false;
+        ReleaseCapture();
+        return 0;
+    case WM_MOUSEMOVE:
+        if (g_dragging) {
+            POINT p;
+            GetCursorPos(&p);
+            SetWindowPos(hWnd, HWND_TOPMOST, p.x - g_dragStart.x, p.y - g_dragStart.y, 0, 0, SWP_NOSIZE);
+        }
+        return 0;
     default:
         return ::DefWindowProc(hWnd, msg, wParam, lParam);
     }
@@ -286,7 +314,7 @@ void OverlayThread()
     bool prev_easynorecoil = config.easynorecoil;
     float prev_easynorecoilstrength = config.easynorecoilstrength;
 
-    //Mouse shooting
+    // Mouse shooting
     bool prev_auto_shoot = config.auto_shoot;
     float prev_bScope_multiplier = config.bScope_multiplier;
 
@@ -329,23 +357,6 @@ void OverlayThread()
         input_method_index = 0;
     
     std::vector<std::string> availableModels = getAvailableModels();
-
-    std::vector<Snowflake::Snowflake> snow;
-    static auto lastTime = std::chrono::high_resolution_clock::now();
-    POINT mouse;
-
-    Snowflake::CreateSnowFlakes(
-        snow,
-        80,
-        2.f,
-        5.f,
-        0,
-        0,
-        overlayWidth,
-        overlayHeight,
-        Snowflake::vec3(0.f, 0.005f),
-        IM_COL32(255, 255, 255, 255)
-    );
 
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
@@ -392,82 +403,62 @@ void OverlayThread()
             {
                 std::lock_guard<std::mutex> lock(configMutex);
 
-                if (config.overlay_snow_theme)
-                {
-                    auto currentTime = std::chrono::high_resolution_clock::now();
-                    float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
-                    lastTime = currentTime;
-
-                    Snowflake::Update(snow, Snowflake::vec3(0, 0), deltaTime);
-                }
-
                 if (ImGui::BeginTabBar("Options tab bar"))
                 {
                     if (ImGui::BeginTabItem("Capture"))
                     {
                         draw_capture_settings();
-
                         ImGui::EndTabItem();
                     }
 
                     if (ImGui::BeginTabItem("Target"))
                     {
                         draw_target();
-
                         ImGui::EndTabItem();
                     }
 
                     if (ImGui::BeginTabItem("Mouse"))
                     {
                         draw_mouse();
-
                         ImGui::EndTabItem();
                     }
 
                     if (ImGui::BeginTabItem("AI"))
                     {
                         draw_ai();
-
                         ImGui::EndTabItem();
                     }
 
                     if (ImGui::BeginTabItem("Optical flow"))
                     {
                         draw_optical_flow();
-
                         ImGui::EndTabItem();
                     }
 
                     if (ImGui::BeginTabItem("Buttons"))
                     {
                         draw_buttons();
-
                         ImGui::EndTabItem();
                     }
 
                     if (ImGui::BeginTabItem("Overlay"))
                     {
                         draw_overlay();
-
                         ImGui::EndTabItem();
                     }
 
                     if (ImGui::BeginTabItem("Debug"))
                     {
                         draw_debug();
-
                         ImGui::EndTabItem();
                     }
 
                     // ******************************************* APPLY VARS *******************************************
-                    // DETECTION RESOLUTION
                     if (prev_detection_resolution != config.detection_resolution)
                     {
                         prev_detection_resolution = config.detection_resolution;
                         detection_resolution_changed.store(true);
-                        detector_model_changed.store(true); // reboot vars for visuals
-
-                        // apply new detection_resolution
+                        detector_model_changed.store(true);
                         globalMouseThread->updateConfig(
                             config.detection_resolution,
                             config.dpi,
@@ -482,7 +473,6 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                    // CAPTURE CURSOR
                     if (prev_capture_cursor != config.capture_cursor && config.capture_method == "winrt")
                     {
                         capture_cursor_changed.store(true);
@@ -490,7 +480,6 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                    // CAPTURE BORDERS
                     if (prev_capture_borders != config.capture_borders && config.capture_method == "winrt")
                     {
                         capture_borders_changed.store(true);
@@ -498,7 +487,6 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                    // CAPTURE_FPS
                     if (prev_capture_fps != config.capture_fps ||
                         prev_monitor_idx != config.monitor_idx)
                     {
@@ -508,7 +496,6 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                    // DISABLE_HEADSHOT / BODY_Y_OFFSET / HEAD_Y_OFFSET / IGNORE_THIRD_PERSON / SHOOTING_RANGE_TARGETS / AUTO_AIM / EASYNORECOIL / EASYNORECOILSTRENGTH
                     if (prev_disable_headshot != config.disable_headshot ||
                         prev_body_y_offset != config.body_y_offset ||
                         prev_head_y_offset != config.head_y_offset ||
@@ -529,7 +516,6 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                    // DPI / SENSITIVITY / FOVX / FOVY / MINSPEEDMULTIPLIER / MAXSPEEDMULTIPLIER / PREDICTIONINTERVAL
                     if (prev_dpi != config.dpi ||
                         prev_sensitivity != config.sensitivity ||
                         prev_fovX != config.fovX ||
@@ -561,7 +547,6 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                    // AUTO_SHOOT / BSCOPE_MULTIPLIER / AUTO_SHOOT_REPLAY
                     if (prev_auto_shoot != config.auto_shoot ||
                         prev_bScope_multiplier != config.bScope_multiplier)
                     {
@@ -583,7 +568,6 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                    // OVERLAY OPACITY
                     if (prev_opacity != config.overlay_opacity)
                     {
                         BYTE opacity = config.overlay_opacity;
@@ -591,7 +575,6 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                    // CONFIDENCE THERSHOLD / NMS THRESHOLD / MAX DETECTIONS
                     if (prev_confidence_threshold != config.confidence_threshold ||
                         prev_nms_threshold != config.nms_threshold ||
                         prev_max_detections != config.max_detections)
@@ -602,7 +585,6 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                    // SHOW WINDOW / ALWAYS_ON_TOP
                     if (prev_show_window != config.show_window ||
                         prev_always_on_top != config.always_on_top)
                     {
@@ -612,7 +594,6 @@ void OverlayThread()
                         config.saveConfig();
                     }
                     
-                    // SHOW_FPS / WINDOW_SIZE / SCREENSHOT_DELAY / VERBOSE
                     if (prev_show_fps != config.show_fps ||
                         prev_window_size != config.window_size ||
                         prev_screenshot_delay != config.screenshot_delay ||
@@ -625,7 +606,7 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                ImGui::EndTabBar();
+                    ImGui::EndTabBar();
                 }
             }
 
