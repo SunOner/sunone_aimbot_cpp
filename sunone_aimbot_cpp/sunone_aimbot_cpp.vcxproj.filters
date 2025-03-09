@@ -4,7 +4,6 @@
     <ClCompile Include="scr\other_tools.cpp" />
     <ClCompile Include="capture\capture.cpp" />
     <ClCompile Include="overlay\overlay.cpp" />
-    <ClCompile Include="overlay\Snowflake.cpp" />
     <ClCompile Include="mouse\ghub.cpp" />
     <ClCompile Include="mouse\mouse.cpp" />
     <ClCompile Include="mouse\SerialConnection.cpp" />
@@ -50,7 +49,6 @@
     <ClInclude Include="include\memory_images.h" />
     <ClInclude Include="capture\capture.h" />
     <ClInclude Include="overlay\overlay.h" />
-    <ClInclude Include="overlay\Snowflake.hpp" />
     <ClInclude Include="mouse\ghub.h" />
     <ClInclude Include="mouse\mouse.h" />
     <ClInclude Include="mouse\SerialConnection.h" />

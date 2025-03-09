@@ -11,11 +11,6 @@ void draw_overlay()
 {
     ImGui::SliderInt("Overlay Opacity", &config.overlay_opacity, 40, 255);
 
-    if (ImGui::Checkbox("Enable snow theme", &config.overlay_snow_theme))
-    {
-        config.saveConfig();
-    }
-
     static float ui_scale = config.overlay_ui_scale;
 
     if (ImGui::SliderFloat("UI Scale", &ui_scale, 0.5f, 3.0f, "%.2f"))

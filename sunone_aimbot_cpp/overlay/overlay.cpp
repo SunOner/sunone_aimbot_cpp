@@ -25,7 +25,6 @@
 #include "keyboard_listener.h"
 #include "other_tools.h"
 #include "virtual_camera.h"
-#include "Snowflake.hpp"
 
 ID3D11Device* g_pd3dDevice = NULL;
 ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
@@ -330,23 +329,6 @@ void OverlayThread()
     
     std::vector<std::string> availableModels = getAvailableModels();
 
-    std::vector<Snowflake::Snowflake> snow;
-    static auto lastTime = std::chrono::high_resolution_clock::now();
-    POINT mouse;
-
-    Snowflake::CreateSnowFlakes(
-        snow,
-        80,
-        2.f,
-        5.f,
-        0,
-        0,
-        overlayWidth,
-        overlayHeight,
-        Snowflake::vec3(0.f, 0.005f),
-        IM_COL32(255, 255, 255, 255)
-    );
-
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
     while (!shouldExit)
@@ -391,15 +373,6 @@ void OverlayThread()
             ImGui::Begin("Options", &show_overlay, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
             {
                 std::lock_guard<std::mutex> lock(configMutex);
-
-                if (config.overlay_snow_theme)
-                {
-                    auto currentTime = std::chrono::high_resolution_clock::now();
-                    float deltaTime = std::chrono::duration<float>(currentTime - lastTime).count();
-                    lastTime = currentTime;
-
-                    Snowflake::Update(snow, Snowflake::vec3(0, 0), deltaTime);
-                }
 
                 if (ImGui::BeginTabBar("Options tab bar"))
                 {
