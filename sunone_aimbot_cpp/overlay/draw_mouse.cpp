@@ -13,12 +13,12 @@ std::string ghub_version = get_ghub_version();
 
 void draw_mouse()
 {
-    ImGui::SliderInt("DPI", &config.dpi, 800, 5000);
+    ImGui::SliderInt("DPI", &config.dpi, 400, 5000);
     ImGui::SliderFloat("Sensitivity", &config.sensitivity, 0.1f, 10.0f, "%.1f");
-    ImGui::SliderInt("FOV X", &config.fovX, 60, 120);
-    ImGui::SliderInt("FOV Y", &config.fovY, 40, 100);
-    ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 5.0f, "%.1f");
-    ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 5.0f, "%.1f");
+    ImGui::SliderInt("FOV X", &config.fovX, 10, 120);
+    ImGui::SliderInt("FOV Y", &config.fovY, 10, 120);
+    ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 30.0f, "%.1f");
+    ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 30.0f, "%.1f");
     ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.00f, 3.00f, "%.2f");
     if (config.predictionInterval == 0.00f)
     {
