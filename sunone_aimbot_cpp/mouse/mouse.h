@@ -1,11 +1,11 @@
 #ifndef MOUSE_H
 #define MOUSE_H
 
-#define WIN32_LEAN_AND_MEAN
-#define _WINSOCKAPI_
-#include <winsock2.h>
-#include <Windows.h>
-
+#include <mutex>
+#include <atomic>
+#include <chrono>
+#include <vector>
+#include <utility>
 #include "AimbotTarget.h"
 #include "SerialConnection.h"
 #include "KmboxConnection.h"
@@ -14,7 +14,8 @@
 class MouseThread
 {
 private:
-    double prev_x, prev_y, prev_velocity_x, prev_velocity_y;
+    double prev_x, prev_y;
+    double prev_velocity_x, prev_velocity_y;
     std::chrono::time_point<std::chrono::steady_clock> prev_time;
 
     SerialConnection* serial;
@@ -40,26 +41,52 @@ private:
     std::atomic<bool> target_detected{ false };
     std::atomic<bool> mouse_pressed{ false };
 
+    std::vector<std::pair<double, double>> futurePositions;
+    std::mutex futurePositionsMutex;
+
 public:
-    MouseThread(int resolution, int dpi, double sensitivity, int fovX, int fovY,
-        double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval,
-        bool auto_shoot, float bScope_multiplier,
+    MouseThread(
+        int resolution,
+        int dpi,
+        double sensitivity,
+        int fovX,
+        int fovY,
+        double minSpeedMultiplier,
+        double maxSpeedMultiplier,
+        double predictionInterval,
+        bool auto_shoot,
+        float bScope_multiplier,
         SerialConnection* serialConnection = nullptr,
-        GhubMouse* gHub = nullptr);
+        GhubMouse* gHub = nullptr
+    );
 
     void updateConfig(int resolution, double dpi, double sensitivity, int fovX, int fovY,
-        double minSpeedMultiplier, double maxSpeedMultiplier, double predictionInterval,
-        bool auto_shoot, float bScope_multiplier);
+        double minSpeedMultiplier, double maxSpeedMultiplier,
+        double predictionInterval, bool auto_shoot, float bScope_multiplier);
 
     std::pair<double, double> predict_target_position(double target_x, double target_y);
+
     std::pair<double, double> calc_movement(double target_x, double target_y);
+
     double calculate_speed_multiplier(double distance);
+
     bool check_target_in_scope(double target_x, double target_y, double target_w, double target_h, double reduction_factor);
+
     void moveMouse(const AimbotTarget& target);
+    void moveMousePivot(double pivotX, double pivotY);
+
     void pressMouse(const AimbotTarget& target);
     void releaseMouse();
+
     void resetPrediction();
     void checkAndResetPredictions();
+
+    std::vector<std::pair<double, double>> predictFuturePositions(double pivotX, double pivotY, int frames);
+
+    void storeFuturePositions(const std::vector<std::pair<double, double>>& positions);
+    void clearFuturePositions();
+    std::vector<std::pair<double, double>> getFuturePositions();
+
     std::mutex input_method_mutex;
     void setSerialConnection(SerialConnection* newSerial);
     void setKmboxConnection(KmboxConnection* newKmbox);

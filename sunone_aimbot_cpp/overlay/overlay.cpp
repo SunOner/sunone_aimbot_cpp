@@ -472,8 +472,7 @@ void OverlayThread()
                     }
 
                     // CAPTURE_FPS
-                    if (prev_capture_fps != config.capture_fps ||
-                        prev_monitor_idx != config.monitor_idx)
+                    if (prev_capture_fps != config.capture_fps || prev_monitor_idx != config.monitor_idx)
                     {
                         capture_fps_changed.store(true);
                         prev_monitor_idx = config.monitor_idx;

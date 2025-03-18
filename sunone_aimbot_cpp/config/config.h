@@ -81,6 +81,7 @@ public:
     std::vector<std::string> button_pause;
     std::vector<std::string> button_reload_config;
     std::vector<std::string> button_open_overlay;
+    bool enable_arrows_settings;
 
     // Overlay
     int overlay_opacity;

@@ -11,9 +11,17 @@
 #include "AimbotTarget.h"
 #include "config.h"
 
-AimbotTarget::AimbotTarget(int x, int y, int w, int h, int cls) : x(x), y(y), w(w), h(h), classId(cls) {}
+AimbotTarget::AimbotTarget(int x_, int y_, int w_, int h_, int cls, double px, double py)
+    : x(x_), y(y_), w(w_), h(h_), classId(cls), pivotX(px), pivotY(py)
+{
+}
 
-AimbotTarget* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<int>& classes, int screenWidth, int screenHeight, bool disableHeadshot)
+AimbotTarget* sortTargets(
+    const std::vector<cv::Rect>& boxes,
+    const std::vector<int>& classes,
+    int screenWidth,
+    int screenHeight,
+    bool disableHeadshot)
 {
     if (boxes.empty() || classes.empty())
     {
@@ -35,11 +43,10 @@ AimbotTarget* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<
                 int headOffsetY = static_cast<int>(boxes[i].height * config.head_y_offset);
                 cv::Point targetPoint(boxes[i].x + boxes[i].width / 2, boxes[i].y + headOffsetY);
                 double distance = std::pow(targetPoint.x - center.x, 2) + std::pow(targetPoint.y - center.y, 2);
-
                 if (distance < minDistance)
                 {
                     minDistance = distance;
-                    nearestIdx = i;
+                    nearestIdx = static_cast<int>(i);
                     targetY = targetPoint.y;
                 }
             }
@@ -52,24 +59,21 @@ AimbotTarget* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<
         for (size_t i = 0; i < boxes.size(); i++)
         {
             if (disableHeadshot && classes[i] == config.class_head)
-            {
                 continue;
-            }
 
             if (classes[i] == config.class_player ||
                 classes[i] == config.class_bot ||
-                classes[i] == config.class_hideout_target_human && config.shooting_range_targets ||
-                classes[i] == config.class_hideout_target_balls && config.shooting_range_targets ||
+                (classes[i] == config.class_hideout_target_human && config.shooting_range_targets) ||
+                (classes[i] == config.class_hideout_target_balls && config.shooting_range_targets) ||
                 (classes[i] == config.class_third_person && !config.ignore_third_person))
             {
                 int offsetY = static_cast<int>(boxes[i].height * config.body_y_offset);
                 cv::Point targetPoint(boxes[i].x + boxes[i].width / 2, boxes[i].y + offsetY);
                 double distance = std::pow(targetPoint.x - center.x, 2) + std::pow(targetPoint.y - center.y, 2);
-
                 if (distance < minDistance)
                 {
                     minDistance = distance;
-                    nearestIdx = i;
+                    nearestIdx = static_cast<int>(i);
                     targetY = targetPoint.y;
                 }
             }
@@ -81,22 +85,24 @@ AimbotTarget* sortTargets(const std::vector<cv::Rect>& boxes, const std::vector<
         return nullptr;
     }
 
-    int y;
+    int finalY = 0;
     if (classes[nearestIdx] == config.class_head)
     {
         int headOffsetY = static_cast<int>(boxes[nearestIdx].height * config.head_y_offset);
-        y = boxes[nearestIdx].y + headOffsetY - boxes[nearestIdx].height / 2;
+        finalY = boxes[nearestIdx].y + headOffsetY - boxes[nearestIdx].height / 2;
     }
     else
     {
-        y = targetY - boxes[nearestIdx].height / 2;
+        finalY = targetY - boxes[nearestIdx].height / 2;
     }
 
-    return new AimbotTarget(
-        boxes[nearestIdx].x,
-        y,
-        boxes[nearestIdx].width,
-        boxes[nearestIdx].height,
-        classes[nearestIdx]
-    );
+    int finalX = boxes[nearestIdx].x;
+    int finalW = boxes[nearestIdx].width;
+    int finalH = boxes[nearestIdx].height;
+    int finalClass = classes[nearestIdx];
+
+    double pivotX = finalX + (finalW / 2.0);
+    double pivotY = finalY + (finalH / 2.0);
+
+    return new AimbotTarget(finalX, finalY, finalW, finalH, finalClass, pivotX, pivotY);
 }
