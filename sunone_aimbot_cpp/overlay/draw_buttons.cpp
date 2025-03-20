@@ -402,4 +402,11 @@ void draw_buttons()
         config.button_open_overlay.push_back("None");
         config.saveConfig();
     }
+
+    ImGui::Separator();
+
+    if (ImGui::Checkbox("Enable arrows keys options", &config.enable_arrows_settings))
+    {
+        config.saveConfig();
+    }
 }

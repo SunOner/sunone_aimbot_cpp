@@ -119,6 +119,7 @@ bool Config::loadConfig(const std::string& filename)
         button_pause = splitString("F3");
         button_reload_config = splitString("F4");
         button_open_overlay = splitString("Home");
+        enable_arrows_settings = false;
 
         // Overlay
         overlay_opacity = 225;
@@ -255,6 +256,7 @@ bool Config::loadConfig(const std::string& filename)
     button_pause = splitString(get_string("button_pause", "F3"));
     button_reload_config = splitString(get_string("button_reload_config", "F4"));
     button_open_overlay = splitString(get_string("button_open_overlay", "Home"));
+    enable_arrows_settings = get_bool("enable_arrows_settings", false);
 
     // Overlay
     overlay_opacity = get_long("overlay_opacity", 225);
@@ -391,7 +393,8 @@ bool Config::saveConfig(const std::string& filename)
         << "button_exit = " << joinStrings(button_exit) << "\n"
         << "button_pause = " << joinStrings(button_pause) << "\n"
         << "button_reload_config = " << joinStrings(button_reload_config) << "\n"
-        << "button_open_overlay = " << joinStrings(button_open_overlay) << "\n\n";
+        << "button_open_overlay = " << joinStrings(button_open_overlay) << "\n"
+        << "enable_arrows_settings = " << (enable_arrows_settings ? "true" : "false") << "\n\n";
 
     // Overlay
     file << "# Overlay\n"

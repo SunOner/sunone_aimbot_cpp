@@ -28,15 +28,10 @@ void displayThread()
     if (config.show_window)
     {
         cv::namedWindow(config.window_name, cv::WINDOW_NORMAL);
-
         if (config.always_on_top)
-        {
             cv::setWindowProperty(config.window_name, cv::WND_PROP_TOPMOST, 1);
-        }
         else
-        {
             cv::setWindowProperty(config.window_name, cv::WND_PROP_TOPMOST, 0);
-        }
     }
 
     int currentSize = 0;
@@ -49,13 +44,9 @@ void displayThread()
             {
                 cv::namedWindow(config.window_name, cv::WINDOW_NORMAL);
                 if (config.always_on_top)
-                {
                     cv::setWindowProperty(config.window_name, cv::WND_PROP_TOPMOST, 1);
-                }
                 else
-                {
                     cv::setWindowProperty(config.window_name, cv::WND_PROP_TOPMOST, 0);
-                }
             }
             else
             {
@@ -75,9 +66,6 @@ void displayThread()
             }
 
             cv::Mat displayFrame;
-            int desiredWidth = frame.cols;
-            int desiredHeight = frame.rows;
-
             if (config.window_size != 100)
             {
                 int desiredSize = static_cast<int>((640 * config.window_size) / 100);
@@ -86,7 +74,6 @@ void displayThread()
                     cv::resizeWindow(config.window_name, desiredSize, desiredSize);
                     currentSize = desiredSize;
                 }
-
                 cv::resize(frame, displayFrame, cv::Size(desiredSize, desiredSize));
             }
             else
@@ -105,7 +92,6 @@ void displayThread()
                 for (size_t i = 0; i < boxes.size(); ++i)
                 {
                     cv::Rect box = boxes[i];
-
                     box.x = static_cast<int>(box.x * box_scale_x);
                     box.y = static_cast<int>(box.y * box_scale_y);
                     box.width = static_cast<int>(box.width * box_scale_x);
@@ -116,14 +102,8 @@ void displayThread()
                     box.width = static_cast<int>(box.width * resize_scale_x);
                     box.height = static_cast<int>(box.height * resize_scale_y);
 
-                    box.x = std::max(0, box.x);
-                    box.y = std::max(0, box.y);
-                    box.width = std::min(displayFrame.cols - box.x, box.width);
-                    box.height = std::min(displayFrame.rows - box.y, box.height);
-
                     cv::rectangle(displayFrame, box, cv::Scalar(0, 255, 0), 2);
-                    std::string className = std::to_string(classes[i]);
-                    cv::putText(displayFrame, className, cv::Point(box.x, box.y - 5),
+                    cv::putText(displayFrame, std::to_string(classes[i]), cv::Point(box.x, box.y - 5),
                         cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
                 }
             }
@@ -133,10 +113,39 @@ void displayThread()
                 opticalFlow.drawOpticalFlow(displayFrame);
             }
 
+            if (globalMouseThread)
+            {
+                auto futurePts = globalMouseThread->getFuturePositions();
+                if (!futurePts.empty())
+                {
+                    float scale_x = static_cast<float>(displayFrame.cols) / config.detection_resolution;
+                    float scale_y = static_cast<float>(displayFrame.rows) / config.detection_resolution;
+
+                    cv::Point prevPt(-1, -1);
+                    for (size_t i = 0; i < futurePts.size(); i++)
+                    {
+                        int px = static_cast<int>(futurePts[i].first * scale_x);
+                        int py = static_cast<int>(futurePts[i].second * scale_y);
+                        cv::Point pt(px, py);
+
+                        cv::circle(displayFrame, pt, 5, cv::Scalar(0, 0, 255), -1);
+                        cv::putText(displayFrame, std::to_string(i + 1), cv::Point(px + 5, py + 5),
+                            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 1);
+
+                        if (prevPt.x != -1)
+                        {
+                            cv::line(displayFrame, prevPt, pt, cv::Scalar(0, 0, 255), 2);
+                        }
+                        prevPt = pt;
+                    }
+                }
+            }
+
             if (config.show_fps)
             {
-                cv::putText(displayFrame, "FPS: " + std::to_string(static_cast<int>(captureFps)), cv::Point(10, 30),
-                    cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(255, 255, 0), 2);
+                cv::putText(displayFrame, "FPS: " + std::to_string(static_cast<int>(captureFps)),
+                    cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX,
+                    1.0, cv::Scalar(255, 255, 0), 2);
             }
 
             try
@@ -149,7 +158,8 @@ void displayThread()
                 break;
             }
 
-            if (cv::waitKey(1) == 27) shouldExit = true;
+            if (cv::waitKey(1) == 27)
+                shouldExit = true;
         }
         else
         {

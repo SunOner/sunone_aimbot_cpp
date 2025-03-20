@@ -145,7 +145,6 @@ void handleEasyNoRecoil(MouseThread& mouseThread)
 void mouseThreadFunction(MouseThread& mouseThread)
 {
     int lastDetectionVersion = -1;
-
     std::chrono::milliseconds timeout(30);
 
     while (!shouldExit)
@@ -154,11 +153,11 @@ void mouseThreadFunction(MouseThread& mouseThread)
         std::vector<int> classes;
 
         std::unique_lock<std::mutex> lock(detector.detectionMutex);
-
-        detector.detectionCV.wait_for(lock, timeout, [&]() { return detector.detectionVersion > lastDetectionVersion || shouldExit; });
+        detector.detectionCV.wait_for(lock, timeout, [&]() {
+            return detector.detectionVersion > lastDetectionVersion || shouldExit;
+            });
 
         if (shouldExit) break;
-
         if (detector.detectionVersion <= lastDetectionVersion) continue;
 
         lastDetectionVersion = detector.detectionVersion;
@@ -192,13 +191,20 @@ void mouseThreadFunction(MouseThread& mouseThread)
             detection_resolution_changed.store(false);
         }
 
-        AimbotTarget* target = sortTargets(boxes, classes, config.detection_resolution, config.detection_resolution, config.disable_headshot);
+        AimbotTarget* target = sortTargets(
+            boxes, classes,
+            config.detection_resolution, config.detection_resolution,
+            config.disable_headshot
+        );
 
         if (aiming)
         {
             if (target)
             {
-                mouseThread.moveMouse(*target);
+                mouseThread.moveMousePivot(target->pivotX, target->pivotY);
+
+                auto futurePositions = mouseThread.predictFuturePositions(target->pivotX, target->pivotY, 20);
+                mouseThread.storeFuturePositions(futurePositions);
 
                 if (config.auto_shoot)
                 {
@@ -207,6 +213,8 @@ void mouseThreadFunction(MouseThread& mouseThread)
             }
             else
             {
+                mouseThread.clearFuturePositions();
+
                 if (config.auto_shoot)
                 {
                     mouseThread.releaseMouse();
@@ -215,6 +223,8 @@ void mouseThreadFunction(MouseThread& mouseThread)
         }
         else
         {
+            mouseThread.clearFuturePositions();
+
             if (config.auto_shoot)
             {
                 mouseThread.releaseMouse();
@@ -224,6 +234,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
         handleEasyNoRecoil(mouseThread);
 
         mouseThread.checkAndResetPredictions();
+
         delete target;
     }
 }
