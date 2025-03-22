@@ -19,7 +19,7 @@ void draw_mouse()
     ImGui::SliderInt("FOV Y", &config.fovY, 10, 120);
     ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 30.0f, "%.1f");
     ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 30.0f, "%.1f");
-    ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.00f, 3.00f, "%.2f");
+    ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.00f, 0.10f, "%.2f");
     if (config.predictionInterval == 0.00f)
     {
         ImGui::SameLine();

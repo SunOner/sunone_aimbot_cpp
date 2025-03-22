@@ -203,7 +203,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
             {
                 mouseThread.moveMousePivot(target->pivotX, target->pivotY);
 
-                auto futurePositions = mouseThread.predictFuturePositions(target->pivotX, target->pivotY, 20);
+                auto futurePositions = mouseThread.predictFuturePositions(target->pivotX, target->pivotY, 5);
                 mouseThread.storeFuturePositions(futurePositions);
 
                 if (config.auto_shoot)
