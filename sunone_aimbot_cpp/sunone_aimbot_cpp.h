@@ -3,6 +3,7 @@
 
 #include "config.h"
 #include "detector.h"
+#include "directml_detector.h"
 #include "mouse.h"
 #include "SerialConnection.h"
 #include "KmboxConnection.h"
@@ -10,6 +11,7 @@
 
 extern Config config;
 extern Detector detector;
+extern DirectMLDetector* dml_detector;
 extern MouseThread* globalMouseThread;
 extern SerialConnection* arduinoSerial;
 extern KmboxConnection* kmboxSerial;

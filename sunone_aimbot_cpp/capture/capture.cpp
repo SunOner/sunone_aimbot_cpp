@@ -197,89 +197,119 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 capture_borders_changed.store(false);
             }
 
-            cv::cuda::GpuMat screenshotGpu = capturer->GetNextFrame();
+            cv::cuda::GpuMat processedFrame;
 
-            if (!screenshotGpu.empty())
+            if (config.backend == "TRT")
             {
-                cv::cuda::GpuMat processedFrame;
+                cv::cuda::GpuMat screenshotGpu = capturer->GetNextFrame();
 
-                if (config.circle_mask)
+                if (!screenshotGpu.empty())
                 {
-                    cv::Mat mask = cv::Mat::zeros(screenshotGpu.size(), CV_8UC1);
-                    cv::Point center(mask.cols / 2, mask.rows / 2);
-                    int radius = std::min(mask.cols, mask.rows) / 2;
-                    cv::circle(mask, center, radius, cv::Scalar(255), -1);
-                    cv::cuda::GpuMat maskGpu;
-                    maskGpu.upload(mask);
-                    cv::cuda::GpuMat maskedImageGpu;
-                    screenshotGpu.copyTo(maskedImageGpu, maskGpu);
-                    cv::cuda::resize(maskedImageGpu, processedFrame, cv::Size(640, 640), 0, 0, cv::INTER_LINEAR);
-                }
-                else
-                {
-                    cv::cuda::resize(screenshotGpu, processedFrame, cv::Size(640, 640));
-                }
+                    cv::cuda::GpuMat processedFrame;
 
-                {
-                    std::lock_guard<std::mutex> lock(frameMutex);
-                    latestFrameGpu = processedFrame.clone();
-                }
-
-                detector.processFrame(processedFrame);
-
-                if (config.enable_optical_flow)
-                {
-                    cv::cuda::GpuMat opticFrame = processedFrame.clone();
-                    if (opticFrame.channels() == 4)
+                    if (config.circle_mask)
                     {
-                        cv::cuda::cvtColor(opticFrame, opticFrame, cv::COLOR_BGRA2BGR);
-                    }
-                    if (opticFrame.channels() == 3)
-                    {
-                        cv::cuda::GpuMat opticGray;
-                        cv::cuda::cvtColor(opticFrame, opticGray, cv::COLOR_BGR2GRAY);
-                        opticalFlow.enqueueFrame(opticGray);
+                        cv::Mat mask = cv::Mat::zeros(screenshotGpu.size(), CV_8UC1);
+                        cv::Point center(mask.cols / 2, mask.rows / 2);
+                        int radius = std::min(mask.cols, mask.rows) / 2;
+                        cv::circle(mask, center, radius, cv::Scalar(255), -1);
+                        cv::cuda::GpuMat maskGpu;
+                        maskGpu.upload(mask);
+                        cv::cuda::GpuMat maskedImageGpu;
+                        screenshotGpu.copyTo(maskedImageGpu, maskGpu);
+                        cv::cuda::resize(maskedImageGpu, processedFrame, cv::Size(640, 640), 0, 0, cv::INTER_LINEAR);
                     }
                     else
                     {
-                        opticalFlow.enqueueFrame(opticFrame);
+                        cv::cuda::resize(screenshotGpu, processedFrame, cv::Size(640, 640));
                     }
-                }
 
-                processedFrame.download(latestFrameCpu);
+                    {
+                        std::lock_guard<std::mutex> lock(frameMutex);
+                        latestFrameGpu = processedFrame.clone();
+                    }
+
+                    detector.processFrame(processedFrame);
+
+                    if (config.enable_optical_flow)
+                    {
+                        cv::cuda::GpuMat opticFrame = processedFrame.clone();
+                        if (opticFrame.channels() == 4)
+                        {
+                            cv::cuda::cvtColor(opticFrame, opticFrame, cv::COLOR_BGRA2BGR);
+                        }
+                        if (opticFrame.channels() == 3)
+                        {
+                            cv::cuda::GpuMat opticGray;
+                            cv::cuda::cvtColor(opticFrame, opticGray, cv::COLOR_BGR2GRAY);
+                            opticalFlow.enqueueFrame(opticGray);
+                        }
+                        else
+                        {
+                            opticalFlow.enqueueFrame(opticFrame);
+                        }
+                    }
+
+                    processedFrame.download(latestFrameCpu);
+                    {
+                        std::lock_guard<std::mutex> lock(frameMutex);
+                        latestFrameCpu = latestFrameCpu.clone();
+                    }
+
+                    frameCV.notify_one();
+                }
+            }
+            else
+            {
+                cv::Mat screenshotCpu;
+                capturer->GetNextFrame().download(screenshotCpu);
+
+                cv::Mat processedFrameCpu;
+                cv::resize(screenshotCpu, processedFrameCpu, cv::Size(640, 640), 0, 0, cv::INTER_LINEAR);
+
                 {
                     std::lock_guard<std::mutex> lock(frameMutex);
-                    latestFrameCpu = latestFrameCpu.clone();
+                    latestFrameCpu = processedFrameCpu.clone();
                 }
-                frameCV.notify_one();
 
-                if (!config.screenshot_button.empty() && config.screenshot_button[0] != "None")
+                if (dml_detector)
                 {
-                    bool buttonPressed = isAnyKeyPressed(config.screenshot_button);
-                    auto now = std::chrono::steady_clock::now();
-                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count();
-
-                    if (buttonPressed && elapsed >= config.screenshot_delay)
-                    {
-                        cv::Mat resizedCpu;
-                        processedFrame.download(resizedCpu);
-                        auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            std::chrono::system_clock::now().time_since_epoch()).count();
-                        std::string filename = std::to_string(epoch_time) + ".jpg";
-                        cv::imwrite("screenshots/" + filename, resizedCpu);
-                        lastSaveTime = now;
-                    }
+                    auto detections = dml_detector->detect(processedFrameCpu);
+                    detector.detectedBoxes = detections;
+                    detector.detectedClasses.resize(detections.size(), 0);
+                    detector.detectionVersion++;
+                    detector.detectionCV.notify_one();
                 }
 
-                captureFrameCount++;
-                auto currentTime = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> elapsedTime = currentTime - captureFpsStartTime;
-                if (elapsedTime.count() >= 1.0)
+                processedFrame.upload(processedFrameCpu);
+            }
+
+            if (!config.screenshot_button.empty() && config.screenshot_button[0] != "None")
+            {
+                bool buttonPressed = isAnyKeyPressed(config.screenshot_button);
+                auto now = std::chrono::steady_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count();
+            
+                if (buttonPressed && elapsed >= config.screenshot_delay)
                 {
-                    captureFps = static_cast<int>(captureFrameCount / elapsedTime.count());
-                    captureFrameCount = 0;
-                    captureFpsStartTime = currentTime;
+                    cv::Mat resizedCpu;
+                    processedFrame.download(resizedCpu);
+                    auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::system_clock::now().time_since_epoch()).count();
+                    std::string filename = std::to_string(epoch_time) + ".jpg";
+                    cv::imwrite("screenshots/" + filename, resizedCpu);
+                    lastSaveTime = now;
                 }
+            }
+
+            captureFrameCount++;
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsedTime = currentTime - captureFpsStartTime;
+            if (elapsedTime.count() >= 1.0)
+            {
+                captureFps = static_cast<int>(captureFrameCount / elapsedTime.count());
+                captureFrameCount = 0;
+                captureFpsStartTime = currentTime;
             }
 
             if (frame_duration.has_value())

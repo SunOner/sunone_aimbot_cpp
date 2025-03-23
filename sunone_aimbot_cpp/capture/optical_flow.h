@@ -26,6 +26,8 @@ public:
 
     bool isOpticalFlowValid() const;
 
+    std::pair<double, double> getAverageGlobalFlow();
+
 private:
     void computeOpticalFlow(const cv::cuda::GpuMat& frame);
     void opticalFlowLoop();
@@ -55,6 +57,8 @@ private:
     double prevAngularVelocityY = 0.0;
     double angularAccelerationX = 0.0;
     double angularAccelerationY = 0.0;
+    double prevPixelFlowX = 0.0;
+    double prevPixelFlowY = 0.0;
 
     cv::Ptr<cv::cuda::NvidiaOpticalFlow_2_0> opticalFlow;
 

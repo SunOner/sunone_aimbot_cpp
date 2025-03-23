@@ -400,13 +400,21 @@ std::vector<std::pair<double, double>> MouseThread::predictFuturePositions(doubl
     double vx = prev_velocity_x;
     double vy = prev_velocity_y;
 
+    auto [camFlowX, camFlowY] = opticalFlow.getAverageGlobalFlow();
+
+    vx -= camFlowX;
+    vy -= camFlowY;
+    
     for (int i = 1; i <= frames; i++)
     {
         double t = frame_time * i;
+
         double px = pivotX + vx * t;
         double py = pivotY + vy * t;
+
         result.push_back({ px, py });
     }
+
     return result;
 }
 

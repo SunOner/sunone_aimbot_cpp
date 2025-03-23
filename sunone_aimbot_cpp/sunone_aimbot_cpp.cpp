@@ -13,6 +13,7 @@
 #include "capture.h"
 #include "visuals.h"
 #include "detector.h"
+#include "directml_detector.h"
 #include "mouse.h"
 #include "sunone_aimbot_cpp.h"
 #include "keyboard_listener.h"
@@ -30,6 +31,7 @@ std::atomic<bool> detectionPaused(false);
 std::mutex configMutex;
 
 Detector detector;
+DirectMLDetector* dml_detector = nullptr;
 MouseThread* globalMouseThread = nullptr;
 Config config;
 
@@ -161,7 +163,6 @@ void mouseThreadFunction(MouseThread& mouseThread)
         if (detector.detectionVersion <= lastDetectionVersion) continue;
 
         lastDetectionVersion = detector.detectionVersion;
-
         boxes = detector.detectedBoxes;
         classes = detector.detectedClasses;
 
@@ -174,7 +175,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
         if (detection_resolution_changed.load())
         {
             {
-                std::lock_guard<std::mutex> lock(configMutex);
+                std::lock_guard<std::mutex> cfgLock(configMutex);
                 mouseThread.updateConfig(
                     config.detection_resolution,
                     config.dpi,
@@ -192,19 +193,32 @@ void mouseThreadFunction(MouseThread& mouseThread)
         }
 
         AimbotTarget* target = sortTargets(
-            boxes, classes,
-            config.detection_resolution, config.detection_resolution,
+            boxes,
+            classes,
+            config.detection_resolution,
+            config.detection_resolution,
             config.disable_headshot
         );
+
+        if (target)
+        {
+            mouseThread.setLastTargetTime(std::chrono::steady_clock::now());
+            mouseThread.setTargetDetected(true);
+
+            auto futurePositions = mouseThread.predictFuturePositions(target->pivotX, target->pivotY, 20);
+            mouseThread.storeFuturePositions(futurePositions);
+        }
+        else
+        {
+            mouseThread.clearFuturePositions();
+            mouseThread.setTargetDetected(false);
+        }
 
         if (aiming)
         {
             if (target)
             {
                 mouseThread.moveMousePivot(target->pivotX, target->pivotY);
-
-                auto futurePositions = mouseThread.predictFuturePositions(target->pivotX, target->pivotY, 5);
-                mouseThread.storeFuturePositions(futurePositions);
 
                 if (config.auto_shoot)
                 {
@@ -213,8 +227,6 @@ void mouseThreadFunction(MouseThread& mouseThread)
             }
             else
             {
-                mouseThread.clearFuturePositions();
-
                 if (config.auto_shoot)
                 {
                     mouseThread.releaseMouse();
@@ -223,8 +235,6 @@ void mouseThreadFunction(MouseThread& mouseThread)
         }
         else
         {
-            mouseThread.clearFuturePositions();
-
             if (config.auto_shoot)
             {
                 mouseThread.releaseMouse();
@@ -268,6 +278,7 @@ int main()
         }
 
         std::string modelPath = "models/" + config.ai_model;
+
         if (!std::filesystem::exists(modelPath))
         {
             std::cerr << "[MAIN] Specified model does not exist: " << modelPath << std::endl;
@@ -359,7 +370,15 @@ int main()
             }
         }
 
-        detector.initialize("models/" + config.ai_model);
+        if (config.backend == "DML")
+        {
+            dml_detector = new DirectMLDetector("models/" + config.ai_model);
+        }
+        else
+        {
+            detector.initialize("models/" + config.ai_model);
+        }
+
         detection_resolution_changed.store(true);
 
         initializeInputMethod();
@@ -393,6 +412,12 @@ int main()
         }
 
         opticalFlow.stopOpticalFlowThread();
+
+        if (dml_detector)
+        {
+            delete dml_detector;
+            dml_detector = nullptr;
+        }
 
         return 0;
     }

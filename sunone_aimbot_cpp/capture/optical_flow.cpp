@@ -142,7 +142,11 @@ void OpticalFlow::computeOpticalFlow(const cv::cuda::GpuMat& frame)
 
         double sumAngularVelocityX = 0.0;
         double sumAngularVelocityY = 0.0;
-        int validPoints = 0;
+        int validPointsAngular = 0;
+
+        double sumFlowX = 0.0;
+        double sumFlowY = 0.0;
+        int validPointsFlow = 0;
 
         for (int y = 0; y < height; y++)
         {
@@ -155,37 +159,55 @@ void OpticalFlow::computeOpticalFlow(const cv::cuda::GpuMat& frame)
                     std::abs(flowAtPoint.y) < height)
                 {
                     double flowMagnitude = cv::norm(flowAtPoint);
+
                     if (flowMagnitude > dynamicThreshold)
                     {
                         double normalizedX = flowAtPoint.x / width;
                         double normalizedY = flowAtPoint.y / height;
-
                         double angularVelocityX = normalizedX * config.fovX;
                         double angularVelocityY = normalizedY * config.fovY;
 
                         sumAngularVelocityX += angularVelocityX;
                         sumAngularVelocityY += angularVelocityY;
-                        validPoints++;
+                        validPointsAngular++;
+
+                        sumFlowX += flowAtPoint.x;
+                        sumFlowY += flowAtPoint.y;
+                        validPointsFlow++;
                     }
                 }
             }
         }
 
-        if (validPoints > 0)
         {
             std::lock_guard<std::mutex> lock(flowMutex);
-
             double currentTime = cv::getTickCount() / cv::getTickFrequency();
             double deltaTime = currentTime - prevTime;
 
-            double newAngularVelocityX = sumAngularVelocityX / validPoints;
-            double newAngularVelocityY = sumAngularVelocityY / validPoints;
+            if (validPointsAngular > 0)
+            {
+                double newAngularVelocityX = sumAngularVelocityX / validPointsAngular;
+                double newAngularVelocityY = sumAngularVelocityY / validPointsAngular;
 
-            prevAngularVelocityX = 0.7 * prevAngularVelocityX + 0.3 * newAngularVelocityX;
-            prevAngularVelocityY = 0.7 * prevAngularVelocityY + 0.3 * newAngularVelocityY;
+                prevAngularVelocityX = 0.7 * prevAngularVelocityX + 0.3 * newAngularVelocityX;
+                prevAngularVelocityY = 0.7 * prevAngularVelocityY + 0.3 * newAngularVelocityY;
 
-            prevAngularVelocityX = std::clamp(prevAngularVelocityX, -10.0, 10.0);
-            prevAngularVelocityY = std::clamp(prevAngularVelocityY, -10.0, 10.0);
+                prevAngularVelocityX = std::clamp(prevAngularVelocityX, -10.0, 10.0);
+                prevAngularVelocityY = std::clamp(prevAngularVelocityY, -10.0, 10.0);
+            }
+
+            if (validPointsFlow > 0)
+            {
+                double newFlowX = sumFlowX / validPointsFlow;
+                double newFlowY = sumFlowY / validPointsFlow;
+
+                prevPixelFlowX = 0.7 * prevPixelFlowX + 0.3 * newFlowX;
+                prevPixelFlowY = 0.7 * prevPixelFlowY + 0.3 * newFlowY;
+
+                double maxFlow = 100.0;
+                prevPixelFlowX = std::clamp(prevPixelFlowX, -maxFlow, maxFlow);
+                prevPixelFlowY = std::clamp(prevPixelFlowY, -maxFlow, maxFlow);
+            }
 
             prevTime = currentTime;
         }
@@ -206,6 +228,12 @@ void OpticalFlow::getAngularAcceleration(double& angularAccelerationXOut, double
     std::lock_guard<std::mutex> lock(flowMutex);
     angularAccelerationXOut = angularAccelerationX;
     angularAccelerationYOut = angularAccelerationY;
+}
+
+std::pair<double, double> OpticalFlow::getAverageGlobalFlow()
+{
+    std::lock_guard<std::mutex> lock(flowMutex);
+    return { prevPixelFlowX, prevPixelFlowY };
 }
 
 void OpticalFlow::getMotion(int& xShiftOut, int& yShiftOut)

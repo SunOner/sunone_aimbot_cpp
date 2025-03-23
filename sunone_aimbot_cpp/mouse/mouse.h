@@ -88,6 +88,16 @@ public:
     void setSerialConnection(SerialConnection* newSerial);
     void setKmboxConnection(KmboxConnection* newKmbox);
     void setGHubMouse(GhubMouse* newGHub);
+
+    void setTargetDetected(bool detected)
+    {
+        target_detected.store(detected);
+    }
+
+    void setLastTargetTime(const std::chrono::steady_clock::time_point& time)
+    {
+        last_target_time = time;
+    }
 };
 
 #endif // MOUSE_H

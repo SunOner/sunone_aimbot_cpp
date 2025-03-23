@@ -290,6 +290,7 @@ void OverlayThread()
     float prev_bScope_multiplier = config.bScope_multiplier;
 
     // AI
+    std::string prev_backend = config.backend;
     float prev_confidence_threshold = config.confidence_threshold;
     float prev_nms_threshold = config.nms_threshold;
     int prev_max_detections = config.max_detections;
@@ -594,6 +595,14 @@ void OverlayThread()
                         prev_window_size = config.window_size;
                         prev_screenshot_delay = config.screenshot_delay;
                         prev_verbose = config.verbose;
+                        config.saveConfig();
+                    }
+
+                    // BACKEND (AI)
+                    if (prev_backend != config.backend)
+                    {
+                        prev_backend = config.backend;
+                        detector_model_changed.store(true);
                         config.saveConfig();
                     }
 

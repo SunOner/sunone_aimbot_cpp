@@ -21,8 +21,8 @@ extern std::atomic<int> captureFrameCount;
 extern std::atomic<int> captureFps;
 extern std::chrono::time_point<std::chrono::high_resolution_clock> captureFpsStartTime;
 
-extern cv::cuda::GpuMat latestFrameGpu;
-extern cv::Mat latestFrameCpu;
+extern cv::cuda::GpuMat latestFrameGpu; // TRT
+extern cv::Mat latestFrameCpu;          // DML or CPU fallback
 
 extern std::mutex frameMutex;
 extern std::condition_variable frameCV;

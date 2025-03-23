@@ -53,6 +53,7 @@ public:
     float bScope_multiplier;
 
     // AI
+    std::string backend;
     std::string ai_model;
     float confidence_threshold;
     float nms_threshold;

@@ -103,8 +103,12 @@ void displayThread()
                     box.height = static_cast<int>(box.height * resize_scale_y);
 
                     cv::rectangle(displayFrame, box, cv::Scalar(0, 255, 0), 2);
-                    cv::putText(displayFrame, std::to_string(classes[i]), cv::Point(box.x, box.y - 5),
-                        cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+                    cv::putText(displayFrame,
+                        std::to_string(classes[i]),
+                        cv::Point(box.x, box.y - 5),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                        cv::Scalar(0, 255, 0),
+                        1);
                 }
             }
 
@@ -128,13 +132,13 @@ void displayThread()
                         int py = static_cast<int>(futurePts[i].second * scale_y);
                         cv::Point pt(px, py);
 
-                        cv::circle(displayFrame, pt, 5, cv::Scalar(0, 0, 255), -1);
-                        cv::putText(displayFrame, std::to_string(i + 1), cv::Point(px + 5, py + 5),
-                            cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 1);
-
                         if (prevPt.x != -1)
                         {
-                            cv::line(displayFrame, prevPt, pt, cv::Scalar(0, 0, 255), 2);
+                            cv::line(displayFrame,
+                                prevPt,
+                                pt,
+                                cv::Scalar(255, 0, 255),
+                                2);
                         }
                         prevPt = pt;
                     }
@@ -143,9 +147,13 @@ void displayThread()
 
             if (config.show_fps)
             {
-                cv::putText(displayFrame, "FPS: " + std::to_string(static_cast<int>(captureFps)),
-                    cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX,
-                    1.0, cv::Scalar(255, 255, 0), 2);
+                cv::putText(displayFrame,
+                    "FPS: " + std::to_string(static_cast<int>(captureFps)),
+                    cv::Point(10, 30),
+                    cv::FONT_HERSHEY_SIMPLEX,
+                    1.0,
+                    cv::Scalar(255, 255, 0),
+                    2);
             }
 
             try

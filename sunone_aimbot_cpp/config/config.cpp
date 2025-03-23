@@ -91,6 +91,7 @@ bool Config::loadConfig(const std::string& filename)
         bScope_multiplier = 1.0f;
 
         // AI
+        backend = "TRT";
         ai_model = "sunxds_0.5.6.engine";
         confidence_threshold = 0.15f;
         nms_threshold = 0.50f;
@@ -228,6 +229,7 @@ bool Config::loadConfig(const std::string& filename)
     bScope_multiplier = (float)get_double("bScope_multiplier", 1.2);
 
     // AI
+    backend = get_string("backend", "TRT");
     ai_model = get_string("ai_model", "sunxds_0.5.6.engine");
     confidence_threshold = (float)get_double("confidence_threshold", 0.15);
     nms_threshold = (float)get_double("nms_threshold", 0.50);
@@ -360,6 +362,7 @@ bool Config::saveConfig(const std::string& filename)
 
     // AI
     file << "# AI\n"
+        << "backend = " << backend << "\n"
         << "ai_model = " << ai_model << "\n"
         << std::fixed << std::setprecision(2)
         << "confidence_threshold = " << confidence_threshold << "\n"

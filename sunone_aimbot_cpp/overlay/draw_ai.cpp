@@ -46,6 +46,24 @@ void draw_ai()
 
     ImGui::Separator();
 
+    std::vector<std::string> backendOptions = { "TRT", "DML" };
+    std::vector<const char*> backendItems = { "TensorRT (CUDA)", "DirectML (CPU/GPU)" };
+
+    int currentBackendIndex = config.backend == "DML" ? 1 : 0;
+
+    if (ImGui::Combo("Backend", &currentBackendIndex, backendItems.data(), static_cast<int>(backendItems.size())))
+    {
+        std::string newBackend = backendOptions[currentBackendIndex];
+        if (config.backend != newBackend)
+        {
+            config.backend = newBackend;
+            config.saveConfig();
+            detector_model_changed.store(true);
+        }
+    }
+
+    ImGui::Separator();
+
     std::vector<std::string> postprocessOptions = { "yolo8", "yolo9", "yolo10", "yolo11", "yolo12" };
     std::vector<const char*> postprocessItems;
     for (const auto& option : postprocessOptions)

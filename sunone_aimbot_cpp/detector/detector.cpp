@@ -393,6 +393,9 @@ void Detector::loadEngine(const std::string& modelFile)
 
 void Detector::processFrame(const cv::cuda::GpuMat& frame)
 {
+    if (config.backend == "DML")
+        return;
+
     if (detectionPaused)
     {
         std::lock_guard<std::mutex> lock(detectionMutex);
