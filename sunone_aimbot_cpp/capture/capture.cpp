@@ -275,9 +275,20 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 if (dml_detector)
                 {
                     auto detections = dml_detector->detect(processedFrameCpu);
-                    detector.detectedBoxes = detections;
-                    detector.detectedClasses.resize(detections.size(), 0);
-                    detector.detectionVersion++;
+
+                    {
+                        std::lock_guard<std::mutex> lock(detector.detectionMutex);
+                        detector.detectedBoxes.clear();
+                        detector.detectedClasses.clear();
+
+                        for (auto& detection : detections)
+                        {
+                            detector.detectedBoxes.push_back(detection.box);
+                            detector.detectedClasses.push_back(detection.classId);
+                        }
+
+                        detector.detectionVersion++;
+                    }
                     detector.detectionCV.notify_one();
                 }
 

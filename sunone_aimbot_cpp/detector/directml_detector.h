@@ -5,14 +5,16 @@
 #include <opencv2/opencv.hpp>
 #include <mutex>
 
+#include "postProcess.h"
+
 class DirectMLDetector
 {
 public:
     DirectMLDetector(const std::string& model_path);
     ~DirectMLDetector();
 
-    std::vector<cv::Rect> detect(const cv::Mat& input_frame);
-
+    std::vector<Detection> detect(const cv::Mat& input_frame);
+    int getNumberOfClasses();
 private:
     Ort::Env env;
     Ort::Session session{ nullptr };

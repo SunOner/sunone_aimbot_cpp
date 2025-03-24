@@ -373,6 +373,7 @@ int main()
         if (config.backend == "DML")
         {
             dml_detector = new DirectMLDetector("models/" + config.ai_model);
+            std::cout << "[MAIN] DML detector initialized." << std::endl;
         }
         else
         {

@@ -35,7 +35,7 @@ void DirectMLDetector::initializeModel(const std::string& model_path)
     input_shape = input_tensor_info.GetShape();
 }
 
-std::vector<cv::Rect> DirectMLDetector::detect(const cv::Mat& input_frame)
+std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
 {
     std::lock_guard<std::mutex> lock(inference_mutex);
 
@@ -96,8 +96,8 @@ std::vector<cv::Rect> DirectMLDetector::detect(const cv::Mat& input_frame)
 
     const float conf_threshold = config.confidence_threshold;
     const float nms_threshold = config.nms_threshold;
-    const float img_scale_x = input_frame.cols / (float)width;
-    const float img_scale_y = input_frame.rows / (float)height;
+    const float img_scale_x = input_frame.cols / static_cast<float>(width);
+    const float img_scale_y = input_frame.rows / static_cast<float>(height);
 
     for (int i = 0; i < cols; ++i)
     {
@@ -114,11 +114,12 @@ std::vector<cv::Rect> DirectMLDetector::detect(const cv::Mat& input_frame)
             float ow = det_output.at<float>(2, i) * img_scale_x;
             float oh = det_output.at<float>(3, i) * img_scale_y;
 
-            cv::Rect box;
-            box.x = static_cast<int>(cx - 0.5f * ow);
-            box.y = static_cast<int>(cy - 0.5f * oh);
-            box.width = static_cast<int>(ow);
-            box.height = static_cast<int>(oh);
+            cv::Rect box(
+                static_cast<int>(cx - 0.5f * ow),
+                static_cast<int>(cy - 0.5f * oh),
+                static_cast<int>(ow),
+                static_cast<int>(oh)
+            );
 
             detections.push_back(Detection{ box, static_cast<float>(score), class_id_point.y });
         }
@@ -126,11 +127,23 @@ std::vector<cv::Rect> DirectMLDetector::detect(const cv::Mat& input_frame)
 
     NMS(detections, nms_threshold);
 
-    std::vector<cv::Rect> final_boxes;
-    for (const auto& detection : detections)
-    {
-        final_boxes.push_back(detection.box);
-    }
+    return detections;
+}
 
-    return final_boxes;
+int DirectMLDetector::getNumberOfClasses()
+{
+    Ort::TypeInfo output_type_info = session.GetOutputTypeInfo(0);
+    auto tensor_info = output_type_info.GetTensorTypeAndShapeInfo();
+    std::vector<int64_t> output_shape = tensor_info.GetShape();
+
+    if (output_shape.size() == 3)
+    {
+        int num_classes = static_cast<int>(output_shape[1]) - 4;
+        return num_classes;
+    }
+    else
+    {
+        std::cerr << "[DirectMLDetector] Unexpected output tensor shape." << std::endl;
+        return -1;
+    }
 }
