@@ -12,7 +12,6 @@
 DirectMLDetector::DirectMLDetector(const std::string& model_path)
     : env(ORT_LOGGING_LEVEL_WARNING, "DML_Detector")
 {
-    Ort::SessionOptions session_options;
     session_options.DisableMemPattern();
     session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
     Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_DML(session_options, 0));
