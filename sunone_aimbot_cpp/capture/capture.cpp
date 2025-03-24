@@ -272,6 +272,8 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     latestFrameCpu = processedFrameCpu.clone();
                 }
 
+                frameCV.notify_one();
+
                 if (dml_detector)
                 {
                     auto detections = dml_detector->detect(processedFrameCpu);
