@@ -49,6 +49,7 @@ bool Config::loadConfig(const std::string& filename)
         capture_method = "duplication_api";
         detection_resolution = 320;
         capture_fps = 60;
+        capture_use_cuda = true;
         monitor_idx = 0;
         circle_mask = true;
         capture_borders = true;
@@ -187,6 +188,7 @@ bool Config::loadConfig(const std::string& filename)
     capture_method = get_string("capture_method", "duplication_api");
     detection_resolution = get_long("detection_resolution", 320);
     capture_fps = get_long("capture_fps", 60);
+    capture_use_cuda = get_bool("capture_use_cuda", true);
     monitor_idx = get_long("monitor_idx", 0);
     circle_mask = get_bool("circle_mask", true);
     capture_borders = get_bool("capture_borders", true);
@@ -308,6 +310,7 @@ bool Config::saveConfig(const std::string& filename)
         << "capture_method = " << capture_method << "\n"
         << "detection_resolution = " << detection_resolution << "\n"
         << "capture_fps = " << capture_fps << "\n"
+        << "capture_use_cuda = " << (capture_use_cuda ? "true" : "false") << "\n"
         << "monitor_idx = " << monitor_idx << "\n"
         << "circle_mask = " << (circle_mask ? "true" : "false") << "\n"
         << "capture_borders = " << (capture_borders ? "true" : "false") << "\n"

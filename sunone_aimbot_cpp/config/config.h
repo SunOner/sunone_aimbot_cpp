@@ -11,6 +11,7 @@ public:
     std::string capture_method; // "duplication_api", "winrt", "virtual_camera"
     int detection_resolution;
     int capture_fps;
+    bool capture_use_cuda;
     int monitor_idx;
     bool circle_mask;
     bool capture_borders;

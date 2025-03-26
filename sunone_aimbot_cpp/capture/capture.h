@@ -2,6 +2,8 @@
 #define CAPTURE_H
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/cudaarithm.hpp>
 #include <atomic>
 #include <chrono>
 #include <mutex>
@@ -21,8 +23,8 @@ extern std::atomic<int> captureFrameCount;
 extern std::atomic<int> captureFps;
 extern std::chrono::time_point<std::chrono::high_resolution_clock> captureFpsStartTime;
 
-extern cv::cuda::GpuMat latestFrameGpu; // TRT
-extern cv::Mat latestFrameCpu;          // DML or CPU fallback
+extern cv::cuda::GpuMat latestFrameGpu;
+extern cv::Mat          latestFrameCpu;
 
 extern std::mutex frameMutex;
 extern std::condition_variable frameCV;
@@ -33,7 +35,9 @@ class IScreenCapture
 {
 public:
     virtual ~IScreenCapture() {}
-    virtual cv::cuda::GpuMat GetNextFrame() = 0;
+
+    virtual cv::cuda::GpuMat GetNextFrameGpu() = 0;
+    virtual cv::Mat GetNextFrameCpu() = 0;
 };
 
 #endif // CAPTURE_H

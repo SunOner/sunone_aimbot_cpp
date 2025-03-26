@@ -58,11 +58,35 @@ void displayThread()
         if (config.show_window)
         {
             cv::Mat frame;
+
+            if (config.capture_use_cuda)
+            {
+                {
+                    std::unique_lock<std::mutex> lock(frameMutex);
+                    while (latestFrameGpu.empty() && !shouldExit)
+                    {
+                        lock.unlock();
+                        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+                        lock.lock();
+                    }
+                    if (shouldExit) break;
+
+                    latestFrameGpu.download(frame);
+                }
+            }
+            else
             {
                 std::unique_lock<std::mutex> lock(frameMutex);
                 frameCV.wait(lock, [] { return !latestFrameCpu.empty() || shouldExit; });
                 if (shouldExit) break;
+
                 frame = latestFrameCpu.clone();
+            }
+
+            if (frame.empty())
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                continue;
             }
 
             cv::Mat displayFrame;
@@ -83,11 +107,8 @@ void displayThread()
 
             if (detector.getLatestDetections(boxes, classes))
             {
-                float box_scale_x = static_cast<float>(frame.cols) / config.detection_resolution;
-                float box_scale_y = static_cast<float>(frame.rows) / config.detection_resolution;
-
-                float resize_scale_x = static_cast<float>(displayFrame.cols) / frame.cols;
-                float resize_scale_y = static_cast<float>(displayFrame.rows) / frame.rows;
+                float box_scale_x = static_cast<float>(displayFrame.cols) / config.detection_resolution;
+                float box_scale_y = static_cast<float>(displayFrame.rows) / config.detection_resolution;
 
                 for (size_t i = 0; i < boxes.size(); ++i)
                 {
@@ -97,16 +118,12 @@ void displayThread()
                     box.width = static_cast<int>(box.width * box_scale_x);
                     box.height = static_cast<int>(box.height * box_scale_y);
 
-                    box.x = static_cast<int>(box.x * resize_scale_x);
-                    box.y = static_cast<int>(box.y * resize_scale_y);
-                    box.width = static_cast<int>(box.width * resize_scale_x);
-                    box.height = static_cast<int>(box.height * resize_scale_y);
-
                     cv::rectangle(displayFrame, box, cv::Scalar(0, 255, 0), 2);
                     cv::putText(displayFrame,
                         std::to_string(classes[i]),
                         cv::Point(box.x, box.y - 5),
-                        cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                        cv::FONT_HERSHEY_SIMPLEX,
+                        0.5,
                         cv::Scalar(0, 255, 0),
                         1);
                 }
@@ -156,16 +173,8 @@ void displayThread()
                     2);
             }
 
-            try
-            {
-                cv::imshow(config.window_name, displayFrame);
-            }
-            catch (cv::Exception& e)
-            {
-                std::cerr << "[Visuals]: " << e.what() << std::endl;
-                break;
-            }
-
+            cv::imshow(config.window_name, displayFrame);
+            
             if (cv::waitKey(1) == 27)
                 shouldExit = true;
         }

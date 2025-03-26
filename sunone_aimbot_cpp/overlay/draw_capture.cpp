@@ -43,6 +43,12 @@ void draw_capture_settings()
         config.saveConfig();
     }
 
+    if (ImGui::Checkbox("Use Cuda in capture", &config.capture_use_cuda))
+    {
+        capture_method_changed.store(true);
+        config.saveConfig();
+    }
+
     std::vector<std::string> captureMethodOptions = { "duplication_api", "winrt", "virtual_camera" };
     std::vector<const char*> captureMethodItems;
     for (const auto& option : captureMethodOptions)

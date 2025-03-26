@@ -8,12 +8,12 @@
 void NMS(std::vector<Detection>& detections, float nmsThreshold)
 {
     if (detections.empty()) return;
-    
-    std::sort(detections.begin(), detections.end(), [](const Detection& a, const Detection& b)
+
+    std::sort(detections.begin(), detections.end(),
+        [](const Detection& a, const Detection& b)
         {
             return a.confidence > b.confidence;
-        }
-    );
+        });
 
     std::vector<bool> suppress(detections.size(), false);
     std::vector<Detection> result;
@@ -22,23 +22,24 @@ void NMS(std::vector<Detection>& detections, float nmsThreshold)
     for (size_t i = 0; i < detections.size(); ++i)
     {
         if (suppress[i]) continue;
-        
+
         result.push_back(detections[i]);
-        
+
         const cv::Rect& box_i = detections[i].box;
         const float area_i = static_cast<float>(box_i.area());
-        
+
         for (size_t j = i + 1; j < detections.size(); ++j)
         {
-            if (suppress[j]) break;
-            
+            if (suppress[j]) continue;
+
             const cv::Rect& box_j = detections[j].box;
             const cv::Rect intersection = box_i & box_j;
-            
+
             if (intersection.width > 0 && intersection.height > 0)
             {
                 const float intersection_area = static_cast<float>(intersection.area());
                 const float union_area = area_i + static_cast<float>(box_j.area()) - intersection_area;
+
                 if (intersection_area / union_area > nmsThreshold)
                 {
                     suppress[j] = true;
@@ -46,7 +47,7 @@ void NMS(std::vector<Detection>& detections, float nmsThreshold)
             }
         }
     }
-    
+
     detections = std::move(result);
 }
 
