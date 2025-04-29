@@ -253,14 +253,20 @@ int main()
 {
     try
     {
-        int cuda_devices = 0;
-        cudaError_t err = cudaGetDeviceCount(&cuda_devices);
+        bool needCuda =
+            config.backend == "TRT" ||   // TensorRT
+            config.capture_use_cuda ||   // cv::cuda::GpuMat
+            config.enable_optical_flow;  // Nvidia Optical Flow
 
-        if (err != cudaSuccess)
+        if (needCuda)
         {
-            std::cout << "[MAIN] No GPU devices with CUDA support available." << std::endl;
-            std::cin.get();
-            return -1;
+            int cuda_devices = 0;
+            if (cudaGetDeviceCount(&cuda_devices) != cudaSuccess || cuda_devices == 0)
+            {
+                std::cerr << "[MAIN] CUDA required but no devices found." << std::endl;
+                std::cin.get();
+                return -1;
+            }
         }
 
         if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
