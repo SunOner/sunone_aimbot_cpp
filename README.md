@@ -160,6 +160,7 @@
 - [CppWinRT](https://github.com/microsoft/cppwinrt)
 - [Python AI AIMBOT](https://github.com/SunOner/sunone_aimbot)
 - [GLFW](https://www.glfw.org/)
+- [WindMouse](https://ben.land/post/2021/04/25/windmouse-human-mouse-movement/)
 
 ## 📄 Licenses
 

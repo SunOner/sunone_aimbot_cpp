@@ -1,4 +1,4 @@
-#define WIN32_LEAN_AND_MEAN
+﻿#define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
@@ -29,8 +29,7 @@ MouseThread::MouseThread(
     float bScope_multiplier,
     SerialConnection* serialConnection,
     GhubMouse* gHubMouse,
-    KmboxConnection* kmboxConnection
-)
+    KmboxConnection* kmboxConnection)
     : screen_width(resolution),
     screen_height(resolution),
     dpi(dpi),
@@ -38,7 +37,7 @@ MouseThread::MouseThread(
     mouse_sensitivity(sensitivity),
     fov_x(fovX),
     fov_y(fovY),
-    max_distance(std::sqrt(resolution * 1.0 * resolution + resolution * 1.0 * resolution) / 2),
+    max_distance(std::hypot(resolution, resolution) / 2.0),
     min_speed_multiplier(minSpeedMultiplier),
     max_speed_multiplier(maxSpeedMultiplier),
     center_x(resolution / 2.0),
@@ -47,34 +46,131 @@ MouseThread::MouseThread(
     bScope_multiplier(bScope_multiplier),
     serial(serialConnection),
     kmbox(kmboxConnection),
-    gHub(gHubMouse)
+    gHub(gHubMouse),
+
+    prev_velocity_x(0.0),
+    prev_velocity_y(0.0),
+    prev_x(0.0),
+    prev_y(0.0)
 {
-    prev_x = 0.0;
-    prev_y = 0.0;
-    prev_velocity_x = 0.0;
-    prev_velocity_y = 0.0;
     prev_time = std::chrono::steady_clock::time_point();
     last_target_time = std::chrono::steady_clock::now();
+
+    wind_mouse_enabled = config.wind_mouse_enabled;
+    wind_G = config.wind_G;
+    wind_W = config.wind_W;
+    wind_M = config.wind_M;
+    wind_D = config.wind_D;
+
+    moveWorker = std::thread(&MouseThread::moveWorkerLoop, this);
 }
 
-void MouseThread::updateConfig(int resolution, double dpi, double sensitivity, int fovX, int fovY,
+void MouseThread::updateConfig(int resolution, double dpi, double sensitivity,
+    int fovX, int fovY,
     double minSpeedMultiplier, double maxSpeedMultiplier,
     double predictionInterval, bool auto_shoot, float bScope_multiplier)
 {
-    this->screen_width = resolution;
-    this->screen_height = resolution;
+    screen_width = screen_height = resolution;
     this->dpi = dpi;
-    this->mouse_sensitivity = sensitivity;
-    this->fov_x = fovX;
-    this->fov_y = fovY;
-    this->min_speed_multiplier = minSpeedMultiplier;
-    this->max_speed_multiplier = maxSpeedMultiplier;
-    this->prediction_interval = predictionInterval;
+    mouse_sensitivity = sensitivity;
+    fov_x = fovX;  fov_y = fovY;
+    min_speed_multiplier = minSpeedMultiplier;
+    max_speed_multiplier = maxSpeedMultiplier;
+    prediction_interval = predictionInterval;
     this->auto_shoot = auto_shoot;
     this->bScope_multiplier = bScope_multiplier;
-    this->center_x = resolution / 2;
-    this->center_y = resolution / 2;
-    this->max_distance = std::sqrt(resolution * resolution + resolution * resolution) / 2;
+    center_x = center_y = resolution / 2.0;
+    max_distance = std::hypot(resolution, resolution) / 2.0;
+
+    wind_mouse_enabled = config.wind_mouse_enabled;
+    wind_G = config.wind_G; wind_W = config.wind_W;
+    wind_M = config.wind_M; wind_D = config.wind_D;
+}
+
+MouseThread::~MouseThread()
+{
+    workerStop = true;
+    queueCv.notify_all();
+    if (moveWorker.joinable()) moveWorker.join();
+}
+
+void MouseThread::queueMove(int dx, int dy)
+{
+    std::lock_guard lg(queueMtx);
+    if (moveQueue.size() >= queueLimit) moveQueue.pop();
+    moveQueue.push({ dx,dy });
+    queueCv.notify_one();
+}
+
+void MouseThread::moveWorkerLoop()
+{
+    while (!workerStop)
+    {
+        std::unique_lock ul(queueMtx);
+        queueCv.wait(ul, [&] { return workerStop || !moveQueue.empty(); });
+
+        while (!moveQueue.empty())
+        {
+            Move m = moveQueue.front();
+            moveQueue.pop();
+            ul.unlock();
+            sendMovementToDriver(m.dx, m.dy);
+            ul.lock();
+        }
+    }
+}
+
+void MouseThread::windMouseMoveRelative(int dx, int dy)
+{
+    if (dx == 0 && dy == 0) return;
+
+    constexpr double SQRT3 = 1.7320508075688772;
+    constexpr double SQRT5 = 2.23606797749979;
+
+    double sx = 0, sy = 0;
+    double dxF = static_cast<double>(dx);
+    double dyF = static_cast<double>(dy);
+    double vx = 0, vy = 0, wX = 0, wY = 0;
+    int    cx = 0, cy = 0;
+
+    while (std::hypot(dxF - sx, dyF - sy) >= 1.0)
+    {
+        double dist = std::hypot(dxF - sx, dyF - sy);
+        double wMag = std::min(wind_W, dist);
+
+        if (dist >= wind_D)
+        {
+            wX = wX / SQRT3 + ((double)rand() / RAND_MAX * 2.0 - 1.0) * wMag / SQRT5;
+            wY = wY / SQRT3 + ((double)rand() / RAND_MAX * 2.0 - 1.0) * wMag / SQRT5;
+        }
+        else
+        {
+            wX /= SQRT3;  wY /= SQRT3;
+            wind_M = wind_M < 3.0 ? ((double)rand() / RAND_MAX) * 3.0 + 3.0 : wind_M / SQRT5;
+        }
+
+        vx += wX + wind_G * (dxF - sx) / dist;
+        vy += wY + wind_G * (dyF - sy) / dist;
+
+        double vMag = std::hypot(vx, vy);
+        if (vMag > wind_M)
+        {
+            double vClip = wind_M / 2.0 + ((double)rand() / RAND_MAX) * wind_M / 2.0;
+            vx = (vx / vMag) * vClip;
+            vy = (vy / vMag) * vClip;
+        }
+
+        sx += vx;  sy += vy;
+        int rx = static_cast<int>(std::round(sx));
+        int ry = static_cast<int>(std::round(sy));
+        int step_x = rx - cx;
+        int step_y = ry - cy;
+        if (step_x || step_y)
+        {
+            queueMove(step_x, step_y);
+            cx = rx; cy = ry;
+        }
+    }
 }
 
 std::pair<double, double> MouseThread::predict_target_position(double target_x, double target_y)
@@ -116,66 +212,57 @@ std::pair<double, double> MouseThread::predict_target_position(double target_x, 
     return { predictedX, predictedY };
 }
 
-void MouseThread::sendMovementToDriver(int move_x, int move_y)
+void MouseThread::sendMovementToDriver(int dx, int dy)
 {
-    if (this->kmbox)
+    if (kmbox)
     {
-        this->kmbox->move(move_x, move_y);
+        kmbox->move(dx, dy);
     }
-    else if (this->serial)
+    else if (serial)
     {
-        this->serial->move(move_x, move_y);
+        serial->move(dx, dy);
     }
-    else if (this->gHub)
+    else if (gHub)
     {
-        this->gHub->mouse_xy(move_x, move_y);
+        gHub->mouse_xy(dx, dy);
     }
     else
     {
-        INPUT input = { 0 };
-        input.type = INPUT_MOUSE;
-        input.mi.dx = move_x;
-        input.mi.dy = move_y;
-        input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
-        SendInput(1, &input, sizeof(INPUT));
+        INPUT in{ 0 };
+        in.type = INPUT_MOUSE;
+        in.mi.dx = dx;  in.mi.dy = dy;
+        in.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
+        SendInput(1, &in, sizeof(INPUT));
     }
 }
 
-std::pair<double, double> MouseThread::calc_movement(double target_x, double target_y)
+std::pair<double, double> MouseThread::calc_movement(double tx, double ty)
 {
-    double offset_x = target_x - center_x;
-    double offset_y = target_y - center_y;
+    double offx = tx - center_x;
+    double offy = ty - center_y;
+    double dist = std::hypot(offx, offy);
+    double speed = calculate_speed_multiplier(dist);
 
-    double distance = std::sqrt(offset_x * offset_x + offset_y * offset_y);
-    double speed_multiplier = calculate_speed_multiplier(distance);
+    double degPerPxX = fov_x / screen_width;
+    double degPerPxY = fov_y / screen_height;
 
-    double degrees_per_pixel_x = fov_x / screen_width;
-    double degrees_per_pixel_y = fov_y / screen_height;
+    double mmx = offx * degPerPxX;
+    double mmy = offy * degPerPxY;
 
-    double mouse_move_x = offset_x * degrees_per_pixel_x;
-    double mouse_move_y = offset_y * degrees_per_pixel_y;
+    double corr = 1.0;
+    double fps = static_cast<double>(captureFps.load());
+    if (fps > 30.0) corr = 30.0 / fps;
 
-    double correction_factor = 1.0;
-    double currentFps = static_cast<double>(captureFps.load());
-    if (currentFps > 30.0)
-    {
-        correction_factor = 30.0 / currentFps;
-    }
-
-    double move_x = (mouse_move_x / 360.0) * (dpi * (1.0 / mouse_sensitivity))
-        * speed_multiplier * correction_factor;
-    double move_y = (mouse_move_y / 360.0) * (dpi * (1.0 / mouse_sensitivity))
-        * speed_multiplier * correction_factor;
+    double move_x = (mmx / 360.0) * (dpi / mouse_sensitivity) * speed * corr;
+    double move_y = (mmy / 360.0) * (dpi / mouse_sensitivity) * speed * corr;
 
     return { move_x, move_y };
 }
 
 double MouseThread::calculate_speed_multiplier(double distance)
 {
-    double normalized_distance = std::min(distance / max_distance, 1.0);
-    double speed_multiplier = min_speed_multiplier +
-        (max_speed_multiplier - min_speed_multiplier) * (1.0 - normalized_distance);
-    return speed_multiplier;
+    double norm = std::min(distance / max_distance, 1.0);
+    return min_speed_multiplier + (max_speed_multiplier - min_speed_multiplier) * (1.0 - norm);
 }
 
 bool MouseThread::check_target_in_scope(double target_x, double target_y, double target_w, double target_h, double reduction_factor)
@@ -196,86 +283,51 @@ bool MouseThread::check_target_in_scope(double target_x, double target_y, double
 
 void MouseThread::moveMouse(const AimbotTarget& target)
 {
-    std::lock_guard<std::mutex> lock(input_method_mutex);
+    std::lock_guard lg(input_method_mutex);
 
-    std::pair<double, double> predicted_position = predict_target_position(
+    auto predicted = predict_target_position(
         target.x + target.w / 2.0,
-        target.y + target.h / 2.0
-    );
+        target.y + target.h / 2.0);
 
-    auto movement = calc_movement(predicted_position.first, predicted_position.second);
-    int move_x = static_cast<int>(movement.first);
-    int move_y = static_cast<int>(movement.second);
-
-    if (kmbox)
-    {
-        kmbox->move(move_x, move_y);
-    }
-    else if (serial)
-    {
-        serial->move(move_x, move_y);
-    }
-    else if (gHub)
-    {
-        gHub->mouse_xy(move_x, move_y);
-    }
-    else
-    {
-        INPUT input = { 0 };
-        input.type = INPUT_MOUSE;
-        input.mi.dx = move_x;
-        input.mi.dy = move_y;
-        input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
-        SendInput(1, &input, sizeof(INPUT));
-    }
+    auto mv = calc_movement(predicted.first, predicted.second);
+    queueMove(static_cast<int>(mv.first), static_cast<int>(mv.second));
 }
 
 void MouseThread::moveMousePivot(double pivotX, double pivotY)
 {
-    std::lock_guard<std::mutex> lock(input_method_mutex);
+    std::lock_guard lg(input_method_mutex);
+
     auto current_time = std::chrono::steady_clock::now();
 
     if (prev_time.time_since_epoch().count() == 0 || !target_detected.load())
     {
         prev_time = current_time;
-        prev_x = pivotX;
-        prev_y = pivotY;
-        prev_velocity_x = 0.0;
-        prev_velocity_y = 0.0;
+        prev_x = pivotX; prev_y = pivotY;
+        prev_velocity_x = prev_velocity_y = 0.0;
 
-        auto movementZero = calc_movement(pivotX, pivotY);
-        sendMovementToDriver(static_cast<int>(movementZero.first),
-            static_cast<int>(movementZero.second));
+        auto m0 = calc_movement(pivotX, pivotY);
+        queueMove(static_cast<int>(m0.first), static_cast<int>(m0.second));
         return;
     }
 
     double dt = std::chrono::duration<double>(current_time - prev_time).count();
     prev_time = current_time;
-    if (dt < 1e-8) dt = 1e-8;
+    dt = std::max(dt, 1e-8);
 
-    double vx = (pivotX - prev_x) / dt;
-    double vy = (pivotY - prev_y) / dt;
+    double vx = std::clamp((pivotX - prev_x) / dt, -20000.0, 20000.0);
+    double vy = std::clamp((pivotY - prev_y) / dt, -20000.0, 20000.0);
+    prev_x = pivotX; prev_y = pivotY;
+    prev_velocity_x = vx;  prev_velocity_y = vy;
 
-    const double MAX_VEL = 20000.0;
-    vx = std::clamp(vx, -MAX_VEL, MAX_VEL);
-    vy = std::clamp(vy, -MAX_VEL, MAX_VEL);
+    double predX = pivotX + vx * prediction_interval + vx * 0.002;
+    double predY = pivotY + vy * prediction_interval + vy * 0.002;
 
-    prev_x = pivotX;
-    prev_y = pivotY;
-    prev_velocity_x = vx;
-    prev_velocity_y = vy;
+    auto mv = calc_movement(predX, predY);
+    int mx = static_cast<int>(mv.first);
+    int my = static_cast<int>(mv.second);
 
-    double predictedX = pivotX + vx * prediction_interval;
-    double predictedY = pivotY + vy * prediction_interval;
-
-    double detectionDelay = 0.002;
-    predictedX += vx * detectionDelay;
-    predictedY += vy * detectionDelay;
-
-    auto movement = calc_movement(predictedX, predictedY);
-
-    sendMovementToDriver(static_cast<int>(movement.first),
-        static_cast<int>(movement.second));
+    if (wind_mouse_enabled)  windMouseMoveRelative(mx, my);
+    else                     queueMove(mx, my);
 }
 
 void MouseThread::pressMouse(const AimbotTarget& target)

@@ -256,4 +256,45 @@ void draw_mouse()
             input_method_changed.store(true);
         }
     }
+
+    ImGui::Separator();
+
+    // Wind mouse
+    if (ImGui::Checkbox("Enable WindMouse", &config.wind_mouse_enabled))
+    {
+        config.saveConfig();
+        input_method_changed.store(true);
+    }
+    
+    if (config.wind_mouse_enabled)
+    {
+        if (ImGui::SliderFloat("Gravity force", &config.wind_G, 4.00f, 40.00f, "%.2f"))
+        {
+            config.saveConfig();
+        }
+
+        if (ImGui::SliderFloat("Wind fluctuation", &config.wind_W, 1.00f, 40.00f, "%.2f"))
+        {
+            config.saveConfig();
+        }
+
+        if (ImGui::SliderFloat("Max step (velocity clip)", &config.wind_M, 1.00f, 40.00f, "%.2f"))
+        {
+            config.saveConfig();
+        }
+
+        if (ImGui::SliderFloat("Distance where behaviour changes", &config.wind_D, 1.00f, 40.00f, "%.2f"))
+        {
+            config.saveConfig();
+        }
+
+        if (ImGui::Button("Reset Wind Mouse to default settings"))
+        {
+            config.wind_G = 18.0f;
+            config.wind_W = 15.0f;
+            config.wind_M = 10.0f;
+            config.wind_D = 8.0f;
+            config.saveConfig();
+        }
+    }
 }

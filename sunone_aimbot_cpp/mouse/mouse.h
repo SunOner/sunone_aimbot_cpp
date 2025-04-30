@@ -1,11 +1,19 @@
-#ifndef MOUSE_H
+﻿#ifndef MOUSE_H
 #define MOUSE_H
+
+#define WIN32_LEAN_AND_MEAN
+#define _WINSOCKAPI_
+#include <winsock2.h>
+#include <Windows.h>
 
 #include <mutex>
 #include <atomic>
 #include <chrono>
 #include <vector>
 #include <utility>
+#include <queue>
+#include <thread>
+#include <condition_variable>
 
 #include "AimbotTarget.h"
 #include "SerialConnection.h"
@@ -41,31 +49,49 @@ private:
     KmboxConnection* kmbox;
     GhubMouse* gHub;
 
+    void sendMovementToDriver(int dx, int dy);
+
+    struct Move { int dx; int dy; };
+
+    std::queue<Move>              moveQueue;
+    std::mutex                    queueMtx;
+    std::condition_variable       queueCv;
+    const size_t                  queueLimit = 5;
+    std::thread                   moveWorker;
+    std::atomic<bool>             workerStop{ false };
+
     std::vector<std::pair<double, double>> futurePositions;
-    std::mutex futurePositionsMutex;
+    std::mutex                    futurePositionsMutex;
+
+    void moveWorkerLoop();
+    void queueMove(int dx, int dy);
+
+    bool   wind_mouse_enabled = true;
+    double wind_G, wind_W, wind_M, wind_D;
+    void   windMouseMoveRelative(int dx, int dy);
 
     std::pair<double, double> calc_movement(double target_x, double target_y);
     double calculate_speed_multiplier(double distance);
-    void sendMovementToDriver(int move_x, int move_y);
 
 public:
     std::mutex input_method_mutex;
 
     MouseThread(
-        int resolution,
-        int dpi,
+        int  resolution,
+        int  dpi,
         double sensitivity,
-        int fovX,
-        int fovY,
+        int  fovX,
+        int  fovY,
         double minSpeedMultiplier,
         double maxSpeedMultiplier,
         double predictionInterval,
         bool auto_shoot,
         float bScope_multiplier,
         SerialConnection* serialConnection = nullptr,
-        GhubMouse* gHub = nullptr,
+        GhubMouse* gHubMouse = nullptr,
         KmboxConnection* kmboxConnection = nullptr
     );
+    ~MouseThread();
 
     void updateConfig(int resolution, double dpi, double sensitivity, int fovX, int fovY,
         double minSpeedMultiplier, double maxSpeedMultiplier,
@@ -78,7 +104,8 @@ public:
     void releaseMouse();
     void resetPrediction();
     void checkAndResetPredictions();
-    bool check_target_in_scope(double target_x, double target_y, double target_w, double target_h, double reduction_factor);
+    bool check_target_in_scope(double target_x, double target_y,
+        double target_w, double target_h, double reduction_factor);
 
     std::vector<std::pair<double, double>> predictFuturePositions(double pivotX, double pivotY, int frames);
     void storeFuturePositions(const std::vector<std::pair<double, double>>& positions);
@@ -89,15 +116,8 @@ public:
     void setKmboxConnection(KmboxConnection* newKmbox);
     void setGHubMouse(GhubMouse* newGHub);
 
-    void setTargetDetected(bool detected)
-    {
-        target_detected.store(detected);
-    }
-
-    void setLastTargetTime(const std::chrono::steady_clock::time_point& time)
-    {
-        last_target_time = time;
-    }
+    void setTargetDetected(bool detected) { target_detected.store(detected); }
+    void setLastTargetTime(const std::chrono::steady_clock::time_point& t) { last_target_time = t; }
 };
 
 #endif // MOUSE_H

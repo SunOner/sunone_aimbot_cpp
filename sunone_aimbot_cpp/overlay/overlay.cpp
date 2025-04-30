@@ -285,6 +285,13 @@ void OverlayThread()
     bool prev_easynorecoil = config.easynorecoil;
     float prev_easynorecoilstrength = config.easynorecoilstrength;
 
+    // Wind mouse
+    bool  prev_wind_mouse_enabled = config.wind_mouse_enabled;
+    float prev_wind_G = config.wind_G;
+    float prev_wind_W = config.wind_W;
+    float prev_wind_M = config.wind_M;
+    float prev_wind_D = config.wind_D;
+
     //Mouse shooting
     bool prev_auto_shoot = config.auto_shoot;
     float prev_bScope_multiplier = config.bScope_multiplier;
@@ -518,6 +525,34 @@ void OverlayThread()
                         prev_minSpeedMultiplier = config.minSpeedMultiplier;
                         prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
                         prev_predictionInterval = config.predictionInterval;
+
+                        globalMouseThread->updateConfig(
+                            config.detection_resolution,
+                            config.dpi,
+                            config.sensitivity,
+                            config.fovX,
+                            config.fovY,
+                            config.minSpeedMultiplier,
+                            config.maxSpeedMultiplier,
+                            config.predictionInterval,
+                            config.auto_shoot,
+                            config.bScope_multiplier);
+
+                        config.saveConfig();
+                    }
+
+                    // WIND-MOUSE
+                    if (prev_wind_mouse_enabled != config.wind_mouse_enabled ||
+                        prev_wind_G != config.wind_G ||
+                        prev_wind_W != config.wind_W ||
+                        prev_wind_M != config.wind_M ||
+                        prev_wind_D != config.wind_D)
+                    {
+                        prev_wind_mouse_enabled = config.wind_mouse_enabled;
+                        prev_wind_G = config.wind_G;
+                        prev_wind_W = config.wind_W;
+                        prev_wind_M = config.wind_M;
+                        prev_wind_D = config.wind_D;
 
                         globalMouseThread->updateConfig(
                             config.detection_resolution,

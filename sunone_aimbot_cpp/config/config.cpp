@@ -76,6 +76,13 @@ bool Config::loadConfig(const std::string& filename)
         easynorecoilstrength = 0.0f;
         input_method = "WIN32";
 
+        // Wind mouse
+        wind_mouse_enabled = false;
+        wind_G = 18.0f;
+        wind_W = 15.0f;
+        wind_M = 10.0f;
+        wind_D = 8.0f;
+
         // Arduino
         arduino_baudrate = 115200;
         arduino_port = "COM0";
@@ -215,6 +222,13 @@ bool Config::loadConfig(const std::string& filename)
     easynorecoilstrength = (float)get_double("easynorecoilstrength", 0.0);
     input_method = get_string("input_method", "WIN32");
 
+    // Wind mouse
+    wind_mouse_enabled = get_bool("wind_mouse_enabled", false);
+    wind_G = (float)get_double("wind_G", 18.0f);
+    wind_W = (float)get_double("wind_W", 15.0f);
+    wind_M = (float)get_double("wind_M", 10.0f);
+    wind_D = (float)get_double("wind_D", 8.0f);
+
     // Arduino
     arduino_baudrate = get_long("arduino_baudrate", 115200);
     arduino_port = get_string("arduino_port", "COM0");
@@ -343,6 +357,14 @@ bool Config::saveConfig(const std::string& filename)
         << "easynorecoilstrength = " << easynorecoilstrength << "\n"
         << "# WIN32, GHUB, ARDUINO\n"
         << "input_method = " << input_method << "\n\n";
+
+    // Wind mouse
+    file << "# Wind mouse\n"
+        << "wind_mouse_enabled = " << (wind_mouse_enabled ? "true" : "false") << "\n"
+        << "wind_G = " << wind_G << "\n"
+        << "wind_W = " << wind_W << "\n"
+        << "wind_M = " << wind_M << "\n"
+        << "wind_D = " << wind_D << "\n\n";
 
     // Arduino
     file << "# Arduino\n"

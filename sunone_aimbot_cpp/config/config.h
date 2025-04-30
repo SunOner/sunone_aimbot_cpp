@@ -38,6 +38,13 @@ public:
     float easynorecoilstrength;
     std::string input_method; // "WIN32", "GHUB", "ARDUINO", "KMBOX"
 
+    // Wind mouse
+    bool wind_mouse_enabled;
+    float wind_G;
+    float wind_W;
+    float wind_M;
+    float wind_D;
+
     // Arduino
     int arduino_baudrate;
     std::string arduino_port;
