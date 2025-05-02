@@ -282,6 +282,10 @@ void OverlayThread()
     float prev_minSpeedMultiplier = config.minSpeedMultiplier;
     float prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
     float prev_predictionInterval = config.predictionInterval;
+    float prev_snapRadius = config.snapRadius;
+    float prev_nearRadius = config.nearRadius;
+    float prev_speedCurveExponent = config.speedCurveExponent;
+    float prev_snapBoostFactor = config.snapBoostFactor;
     bool prev_easynorecoil = config.easynorecoil;
     float prev_easynorecoilstrength = config.easynorecoilstrength;
 
@@ -509,14 +513,18 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                    // DPI / SENSITIVITY / FOVX / FOVY / MINSPEEDMULTIPLIER / MAXSPEEDMULTIPLIER / PREDICTIONINTERVAL
+                    // MOUSE
                     if (prev_dpi != config.dpi ||
                         prev_sensitivity != config.sensitivity ||
                         prev_fovX != config.fovX ||
                         prev_fovY != config.fovY ||
                         prev_minSpeedMultiplier != config.minSpeedMultiplier ||
                         prev_maxSpeedMultiplier != config.maxSpeedMultiplier ||
-                        prev_predictionInterval != config.predictionInterval)
+                        prev_predictionInterval != config.predictionInterval ||
+                        prev_snapRadius != config.snapRadius ||
+                        prev_nearRadius != config.nearRadius ||
+                        prev_speedCurveExponent != config.speedCurveExponent ||
+                        prev_snapBoostFactor != config.snapBoostFactor)
                     {
                         prev_dpi = config.dpi;
                         prev_sensitivity = config.sensitivity;
@@ -525,6 +533,10 @@ void OverlayThread()
                         prev_minSpeedMultiplier = config.minSpeedMultiplier;
                         prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
                         prev_predictionInterval = config.predictionInterval;
+                        prev_snapRadius = config.snapRadius;
+                        prev_nearRadius = config.nearRadius;
+                        prev_speedCurveExponent = config.speedCurveExponent;
+                        prev_snapBoostFactor = config.snapBoostFactor;
 
                         globalMouseThread->updateConfig(
                             config.detection_resolution,

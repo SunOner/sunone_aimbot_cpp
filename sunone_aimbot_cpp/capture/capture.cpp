@@ -91,6 +91,11 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         }
 
         captureFpsStartTime = std::chrono::high_resolution_clock::now();
+        
+        cv::cuda::GpuMat circleMaskGpu;
+        cv::cuda::GpuMat workGpu;
+        cv::Mat pinnedCpuBuf;
+
         auto start_time = std::chrono::high_resolution_clock::now();
         auto lastSaveTime = std::chrono::steady_clock::now();
 
@@ -174,41 +179,60 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     continue;
                 }
 
-                cv::cuda::GpuMat maskedGpu;
                 if (config.circle_mask)
                 {
-                    cv::Mat maskHost = cv::Mat::zeros(screenshotGpu.size(), CV_8UC1);
-                    cv::Point center(maskHost.cols / 2, maskHost.rows / 2);
-                    int radius = std::min(maskHost.cols, maskHost.rows) / 2;
-                    cv::circle(maskHost, center, radius, cv::Scalar(255), -1);
+                    if (circleMaskGpu.empty() || circleMaskGpu.size() != screenshotGpu.size())
+                    {
+                        cv::Mat maskHost(screenshotGpu.size(), CV_8UC1, cv::Scalar::all(0));
+                        cv::circle(
+                            maskHost,
+                            {
+                                maskHost.cols / 2, maskHost.rows / 2
+                            },
+                            std::min(maskHost.cols, maskHost.rows) / 2,
+                            cv::Scalar::all(255), -1
+                        );
+                        circleMaskGpu.upload(maskHost);
+                    }
 
-                    cv::cuda::GpuMat maskGpu;
-                    maskGpu.upload(maskHost);
+                    screenshotGpu.copyTo(workGpu, circleMaskGpu);
 
-                    cv::cuda::GpuMat maskedTemp;
-                    screenshotGpu.copyTo(maskedTemp, maskGpu);
+                    cv::cuda::resize(
+                        workGpu,
+                        workGpu,
+                        {
+                            config.detection_resolution,
+                            config.detection_resolution
+                        }
+                    );
+                 }
+                 else
+                 {
+                    cv::cuda::resize(
+                        screenshotGpu,
+                        workGpu,
+                        {
+                            config.detection_resolution,
+                            config.detection_resolution
+                        }
+                    );
+                 }
+ 
 
-                    cv::cuda::resize(maskedTemp, maskedGpu, cv::Size(640, 640), 0, 0, cv::INTER_LINEAR);
-                }
-                else
                 {
-                    cv::cuda::resize(screenshotGpu, maskedGpu, cv::Size(640, 640), 0, 0, cv::INTER_LINEAR);
-                }
-
-                {
-                    std::lock_guard<std::mutex> lock(frameMutex);
-                    latestFrameGpu = maskedGpu.clone();
+                    std::lock_guard<std::mutex> lk(frameMutex);
+                    workGpu.swap(latestFrameGpu);
                     latestFrameCpu.release();
                 }
 
                 if (config.backend == "TRT")
                 {
-                    detector.processFrame(maskedGpu);
+                    detector.processFrame(workGpu);
                 }
                 else if (dml_detector)
                 {
                     cv::Mat cpuMat;
-                    maskedGpu.download(cpuMat);
+                    workGpu.download(cpuMat);
 
                     auto detections = dml_detector->detect(cpuMat);
                     {
@@ -227,7 +251,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
                 if (config.enable_optical_flow)
                 {
-                    cv::cuda::GpuMat flowFrame = maskedGpu;
+                    cv::cuda::GpuMat flowFrame = workGpu;
 
                     if (flowFrame.channels() == 4)
                         cv::cuda::cvtColor(flowFrame, flowFrame, cv::COLOR_BGRA2BGR);
@@ -245,10 +269,25 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 }
 
                 {
-                    cv::Mat tmpCpu;
-                    maskedGpu.download(tmpCpu);
-                    std::lock_guard<std::mutex> lock(frameMutex);
-                    latestFrameCpu = tmpCpu.clone();
+                    bool needCpu = (config.backend == "DML") ||
+                        (!config.screenshot_button.empty() && config.screenshot_button[0] != "None");
+                    
+                    if (needCpu)
+                    {
+                        if (pinnedCpuBuf.empty())
+                        {
+                            pinnedCpuBuf.create(
+                                workGpu.rows,
+                                workGpu.cols,
+                                workGpu.type()
+                            );
+                        }
+                    
+                        workGpu.download(pinnedCpuBuf);
+                    
+                        std::lock_guard<std::mutex> lk(frameMutex);
+                        pinnedCpuBuf.copyTo(latestFrameCpu);
+                    }
                 }
             }
             else

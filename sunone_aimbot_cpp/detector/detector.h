@@ -58,11 +58,13 @@ private:
     cudaStream_t preprocessStream;
     cudaStream_t postprocessStream;
 
+    bool useCudaGraph;
+    bool cudaGraphCaptured;
     cudaGraph_t cudaGraph;
     cudaGraphExec_t cudaGraphExec;
-    bool cudaGraphCaptured;
-    bool capturedBefore;
-    bool useCudaGraph;
+    void captureCudaGraph();
+    void launchCudaGraph();
+    void destroyCudaGraph();
 
     std::unordered_map<std::string, void*> pinnedOutputBuffers;
     bool usePinnedMemory;

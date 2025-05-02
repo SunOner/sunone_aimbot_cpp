@@ -65,10 +65,18 @@ MouseThread::MouseThread(
     moveWorker = std::thread(&MouseThread::moveWorkerLoop, this);
 }
 
-void MouseThread::updateConfig(int resolution, double dpi, double sensitivity,
-    int fovX, int fovY,
-    double minSpeedMultiplier, double maxSpeedMultiplier,
-    double predictionInterval, bool auto_shoot, float bScope_multiplier)
+void MouseThread::updateConfig(
+    int resolution,
+    double dpi,
+    double sensitivity,
+    int fovX,
+    int fovY,
+    double minSpeedMultiplier,
+    double maxSpeedMultiplier,
+    double predictionInterval,
+    bool auto_shoot,
+    float bScope_multiplier
+)
 {
     screen_width = screen_height = resolution;
     this->dpi = dpi;
@@ -79,6 +87,7 @@ void MouseThread::updateConfig(int resolution, double dpi, double sensitivity,
     prediction_interval = predictionInterval;
     this->auto_shoot = auto_shoot;
     this->bScope_multiplier = bScope_multiplier;
+
     center_x = center_y = resolution / 2.0;
     max_distance = std::hypot(resolution, resolution) / 2.0;
 
@@ -261,8 +270,20 @@ std::pair<double, double> MouseThread::calc_movement(double tx, double ty)
 
 double MouseThread::calculate_speed_multiplier(double distance)
 {
-    double norm = std::min(distance / max_distance, 1.0);
-    return min_speed_multiplier + (max_speed_multiplier - min_speed_multiplier) * (1.0 - norm);
+    if (distance < config.snapRadius)
+        return min_speed_multiplier * config.snapBoostFactor;
+
+    if (distance < config.nearRadius)
+    {
+        double t = distance / config.nearRadius;
+        double curve = 1.0 - std::pow(1.0 - t, config.speedCurveExponent);
+        return min_speed_multiplier +
+            (max_speed_multiplier - min_speed_multiplier) * curve;
+    }
+
+    double norm = std::clamp(distance / max_distance, 0.0, 1.0);
+    return min_speed_multiplier +
+        (max_speed_multiplier - min_speed_multiplier) * norm;
 }
 
 bool MouseThread::check_target_in_scope(double target_x, double target_y, double target_w, double target_h, double reduction_factor)

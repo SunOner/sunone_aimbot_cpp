@@ -34,6 +34,11 @@ public:
     float minSpeedMultiplier;
     float maxSpeedMultiplier;
     float predictionInterval;
+    float snapRadius;
+    float nearRadius;
+    float speedCurveExponent;
+    float snapBoostFactor;
+
     bool easynorecoil;
     float easynorecoilstrength;
     std::string input_method; // "WIN32", "GHUB", "ARDUINO", "KMBOX"

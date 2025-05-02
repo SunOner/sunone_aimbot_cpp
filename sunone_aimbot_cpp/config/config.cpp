@@ -49,7 +49,7 @@ bool Config::loadConfig(const std::string& filename)
         capture_method = "duplication_api";
         detection_resolution = 320;
         capture_fps = 60;
-        capture_use_cuda = true;
+        capture_use_cuda = false;
         monitor_idx = 0;
         circle_mask = true;
         capture_borders = true;
@@ -72,6 +72,10 @@ bool Config::loadConfig(const std::string& filename)
         minSpeedMultiplier = 1.0f;
         maxSpeedMultiplier = 4.0f;
         predictionInterval = 0.20f;
+        snapRadius = 1.5f;
+        nearRadius = 25.0f;
+        speedCurveExponent = 3.0f;
+        snapBoostFactor = 1.15f;
         easynorecoil = false;
         easynorecoilstrength = 0.0f;
         input_method = "WIN32";
@@ -109,7 +113,7 @@ bool Config::loadConfig(const std::string& filename)
         export_enable_fp16 = true;
 
         // CUDA
-        use_cuda_graph = true;
+        use_cuda_graph = false;
         use_pinned_memory = true;
 
         // optical flow
@@ -195,7 +199,7 @@ bool Config::loadConfig(const std::string& filename)
     capture_method = get_string("capture_method", "duplication_api");
     detection_resolution = get_long("detection_resolution", 320);
     capture_fps = get_long("capture_fps", 60);
-    capture_use_cuda = get_bool("capture_use_cuda", true);
+    capture_use_cuda = get_bool("capture_use_cuda", false);
     monitor_idx = get_long("monitor_idx", 0);
     circle_mask = get_bool("circle_mask", true);
     capture_borders = get_bool("capture_borders", true);
@@ -218,6 +222,11 @@ bool Config::loadConfig(const std::string& filename)
     minSpeedMultiplier = (float)get_double("minSpeedMultiplier", 1.0);
     maxSpeedMultiplier = (float)get_double("maxSpeedMultiplier", 4.0);
     predictionInterval = (float)get_double("predictionInterval", 0.2);
+    snapRadius = (float)get_double("snapRadius", 1.5);
+    nearRadius = (float)get_double("nearRadius", 25.0);
+    speedCurveExponent = (float)get_double("speedCurveExponent", 3.0);
+    snapBoostFactor = (float)get_double("snapBoostFactor", 1.15);
+
     easynorecoil = get_bool("easynorecoil", false);
     easynorecoilstrength = (float)get_double("easynorecoilstrength", 0.0);
     input_method = get_string("input_method", "WIN32");
@@ -255,7 +264,7 @@ bool Config::loadConfig(const std::string& filename)
     export_enable_fp16 = get_bool("export_enable_fp16", true);
 
     // CUDA
-    use_cuda_graph = get_bool("use_cuda_graph", true);
+    use_cuda_graph = get_bool("use_cuda_graph", false);
     use_pinned_memory = get_bool("use_pinned_memory", true);
 
     // Optical Flow
@@ -352,6 +361,11 @@ bool Config::saveConfig(const std::string& filename)
         << "maxSpeedMultiplier = " << maxSpeedMultiplier << "\n"
         << std::fixed << std::setprecision(2)
         << "predictionInterval = " << predictionInterval << "\n"
+        << "snapRadius = " << snapRadius << "\n"
+        << "nearRadius = " << nearRadius << "\n"
+        << "speedCurveExponent = " << speedCurveExponent << "\n"
+        << std::fixed << std::setprecision(2)
+        << "snapBoostFactor = " << snapBoostFactor << "\n"
         << "easynorecoil = " << (easynorecoil ? "true" : "false") << "\n"
         << std::fixed << std::setprecision(1)
         << "easynorecoilstrength = " << easynorecoilstrength << "\n"

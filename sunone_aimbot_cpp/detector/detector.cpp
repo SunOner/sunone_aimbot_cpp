@@ -60,17 +60,16 @@ Detector::Detector()
 
     cudaGraph = nullptr;
     cudaGraphExec = nullptr;
+    useCudaGraph = config.use_cuda_graph;
+    cudaGraphCaptured = false;
+    cudaGraph = nullptr;
+    cudaGraphExec = nullptr;
 }
 
 Detector::~Detector()
 {
     cudaStreamDestroy(stream);
-    
-    if (cudaGraphCaptured)
-    {
-        cudaGraphExecDestroy(cudaGraphExec);
-        cudaGraphDestroy(cudaGraph);
-    }
+    destroyCudaGraph();
 
     for (auto& buffer : pinnedOutputBuffers)
     {
@@ -90,6 +89,66 @@ Detector::~Detector()
     if (inputBufferDevice)
     {
         cudaFree(inputBufferDevice);
+    }
+}
+
+void Detector::destroyCudaGraph()
+{
+    if (cudaGraphCaptured)
+    {
+        cudaGraphExecDestroy(cudaGraphExec);
+        cudaGraphDestroy(cudaGraph);
+        cudaGraphCaptured = false;
+    }
+}
+
+void Detector::captureCudaGraph()
+{
+    if (!useCudaGraph || cudaGraphCaptured) return;
+
+    cudaStreamSynchronize(stream);
+
+    cudaError_t st = cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+    if (st != cudaSuccess) {
+        std::cerr << "[Detector] BeginCapture failed: "
+            << cudaGetErrorString(st) << std::endl;
+        return;
+    }
+
+    context->enqueueV3(stream);
+
+    for (const auto& name : outputNames)
+        if (pinnedOutputBuffers.count(name))
+            cudaMemcpyAsync(pinnedOutputBuffers[name],
+                outputBindings[name],
+                outputSizes[name],
+                cudaMemcpyDeviceToHost,
+                stream);
+
+    st = cudaStreamEndCapture(stream, &cudaGraph);
+    if (st != cudaSuccess) {
+        std::cerr << "[Detector] EndCapture failed: "
+            << cudaGetErrorString(st) << std::endl;
+        return;
+    }
+
+    st = cudaGraphInstantiate(&cudaGraphExec, cudaGraph, 0);
+    if (st != cudaSuccess) {
+        std::cerr << "[Detector] GraphInstantiate failed: "
+            << cudaGetErrorString(st) << std::endl;
+        return;
+    }
+
+    cudaGraphCaptured = true;
+}
+
+
+inline void Detector::launchCudaGraph()
+{
+    auto err = cudaGraphLaunch(cudaGraphExec, stream);
+    if (err != cudaSuccess)
+    {
+        std::cerr << "[Detector] GraphLaunch failed: " << cudaGetErrorString(err) << std::endl;
     }
 }
 
@@ -262,20 +321,14 @@ void Detector::initialize(const std::string& modelFile)
         if (config.postprocess == "yolo10")
         {
             numClasses = 11;
-        } else
+        }
+        else
         {
             numClasses = outDims.d[1] - 4;
         }
     }
 
     img_scale = static_cast<float>(config.detection_resolution) / 640;
-    
-    // TODO
-    //useCudaGraph = false;
-    //if (config.use_cuda_graph && config.verbose)
-    //{
-    //    std::cout << "[Detector] CUDA Graph disabled due to OpenCV texture compatibility issues" << std::endl;
-    //}
     
     nvinfer1::Dims dims = context->getTensorShape(inputName.c_str());
     int c = dims.d[1];
@@ -414,7 +467,9 @@ void Detector::inferenceThread()
 {
     while (!shouldExit)
     {
-        if (detector_model_changed.load()) {
+        if (detector_model_changed.load())
+        {
+            destroyCudaGraph();
             {
                 std::unique_lock<std::mutex> lock(inferenceMutex);
                 
@@ -482,9 +537,21 @@ void Detector::inferenceThread()
             {
                 preProcess(frame);
                 
-                cudaStreamSynchronize(stream);
-                
-                context->enqueueV3(stream);
+                if (useCudaGraph)
+                {
+                    if (!cudaGraphCaptured)
+                    {
+                        captureCudaGraph();
+                    }
+                    else
+                    {
+                        launchCudaGraph();
+                    }
+                }
+                else
+                {
+                    context->enqueueV3(stream);
+                }
                 
                 cudaStreamSynchronize(stream);
                 

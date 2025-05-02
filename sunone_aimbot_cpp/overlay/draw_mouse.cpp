@@ -25,6 +25,10 @@ void draw_mouse()
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(255, 0, 0, 255), "-> Disabled");
     }
+    ImGui::SliderFloat("Snap Radius", &config.snapRadius, 0.1f, 5.0f, "%.1f");
+    ImGui::SliderFloat("Near Radius", &config.nearRadius, 1.0f, 40.0f, "%.1f");
+    ImGui::SliderFloat("Speed Curve Exponent", &config.speedCurveExponent, 0.1f, 10.0f, "%.1f");
+    ImGui::SliderFloat("Snap Boost Factor", &config.snapBoostFactor, 0.01f, 4.00f, "%.2f");
 
     ImGui::Separator();
 
