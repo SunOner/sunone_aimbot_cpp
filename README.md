@@ -24,7 +24,7 @@
 
 2. **Download the Latest Release**  
 	- Download the latest release from [here](https://disk.yandex.ru/d/DR3RHMqOSbqy2w) v3.2 (Updated 03.03.2025).
-	- You can find and download early builds on the [Discord server](https://badgen.net/discord/online-members/sunone)](https://discord.gg/37WVp6sNEh) in the pre-releases channel.
+	- You can find and download early builds on the [Discord server](https://discord.gg/37WVp6sNEh) in the pre-releases channel.
 
 3. **Unpack Aimbot**
    - Extract the contents of the Aimbot.
