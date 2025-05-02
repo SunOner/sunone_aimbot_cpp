@@ -71,7 +71,7 @@ bool Config::loadConfig(const std::string& filename)
         fovY = 50;
         minSpeedMultiplier = 1.0f;
         maxSpeedMultiplier = 4.0f;
-        predictionInterval = 0.20f;
+        predictionInterval = 0.01f;
         snapRadius = 1.5f;
         nearRadius = 25.0f;
         speedCurveExponent = 3.0f;
@@ -221,7 +221,7 @@ bool Config::loadConfig(const std::string& filename)
     fovY = get_long("fovY", 50);
     minSpeedMultiplier = (float)get_double("minSpeedMultiplier", 1.0);
     maxSpeedMultiplier = (float)get_double("maxSpeedMultiplier", 4.0);
-    predictionInterval = (float)get_double("predictionInterval", 0.2);
+    predictionInterval = (float)get_double("predictionInterval", 0.01);
     snapRadius = (float)get_double("snapRadius", 1.5);
     nearRadius = (float)get_double("nearRadius", 25.0);
     speedCurveExponent = (float)get_double("speedCurveExponent", 3.0);
