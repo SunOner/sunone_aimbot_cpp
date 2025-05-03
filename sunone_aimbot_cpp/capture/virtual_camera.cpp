@@ -33,8 +33,7 @@ VirtualCameraCapture::VirtualCameraCapture(int width, int height)
     {
         std::vector<int> backends = {
             cv::CAP_DSHOW,
-            cv::CAP_MSMF,
-            cv::CAP_ANY
+            cv::CAP_MSMF
         };
 
         bool cameraOpened = false;
@@ -122,24 +121,7 @@ cv::cuda::GpuMat VirtualCameraCapture::GetNextFrameGpu()
             return cv::cuda::GpuMat();
         }
 
-        cv::Mat resizedFrame;
-        cv::resize(processedFrame, resizedFrame,
-            cv::Size(captureWidth, captureHeight),
-            0, 0, cv::INTER_LINEAR);
-
-        if (resizedFrame.cols % 2 != 0 || resizedFrame.rows % 2 != 0)
-        {
-            cv::Mat evenFrame;
-            cv::resize(resizedFrame, evenFrame,
-                cv::Size(
-                    resizedFrame.cols + (resizedFrame.cols % 2),
-                    resizedFrame.rows + (resizedFrame.rows % 2)
-                ),
-                0, 0, cv::INTER_LINEAR);
-            resizedFrame = evenFrame;
-        }
-
-        frameGpu.upload(resizedFrame);
+        frameGpu.upload(frame);
         return frameGpu;
     }
     catch (const cv::Exception& e)
@@ -189,24 +171,28 @@ cv::Mat VirtualCameraCapture::GetNextFrameCpu()
         }
 
         cv::Mat resizedFrame;
-        cv::resize(processedFrame, resizedFrame,
+        cv::resize(
+            processedFrame,
+            resizedFrame,
             cv::Size(captureWidth, captureHeight),
-            0, 0, cv::INTER_LINEAR);
+            0,
+            0,
+            cv::INTER_LINEAR
+        );
 
-        if (resizedFrame.cols % 2 != 0 || resizedFrame.rows % 2 != 0)
-        {
-            cv::Mat evenFrame;
-            cv::resize(
-                resizedFrame,
-                evenFrame,
-                cv::Size(
-                    resizedFrame.cols + (resizedFrame.cols % 2),
-                    resizedFrame.rows + (resizedFrame.rows % 2)
-                ),
-                0, 0, cv::INTER_LINEAR
-            );
-            resizedFrame = evenFrame;
-        }
+        cv::Mat evenFrame;
+        cv::resize(
+            resizedFrame,
+            evenFrame,
+            cv::Size(
+                resizedFrame.cols + (resizedFrame.cols % 2),
+                resizedFrame.rows + (resizedFrame.rows % 2)
+            ),
+            0,
+            0,
+            cv::INTER_LINEAR
+        );
+        resizedFrame = evenFrame;
 
         frameCpu = resizedFrame.clone();
         return frameCpu;

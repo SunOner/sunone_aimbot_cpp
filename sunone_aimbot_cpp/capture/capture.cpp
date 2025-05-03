@@ -308,11 +308,31 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
                     cv::Mat maskedCpu;
                     screenshotCpu.copyTo(maskedCpu, mask);
-                    cv::resize(maskedCpu, screenshotCpu, cv::Size(640, 640), 0, 0, cv::INTER_LINEAR);
+
+                    cv::resize(
+                        maskedCpu,
+                        screenshotCpu,
+                        cv::Size(
+                            CAPTURE_WIDTH,
+                            CAPTURE_HEIGHT),
+                        0,
+                        0,
+                        cv::INTER_LINEAR
+                    );
                 }
                 else
                 {
-                    cv::resize(screenshotCpu, screenshotCpu, cv::Size(640, 640), 0, 0, cv::INTER_LINEAR);
+                    cv::resize(
+                        screenshotCpu,
+                        screenshotCpu,
+                        cv::Size(
+                            CAPTURE_WIDTH,
+                            CAPTURE_HEIGHT
+                        ),
+                        0,
+                        0,
+                        cv::INTER_LINEAR
+                    );
                 }
 
                 {

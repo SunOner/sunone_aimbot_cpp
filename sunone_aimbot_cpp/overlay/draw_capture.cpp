@@ -3,19 +3,30 @@
 #include <winsock2.h>
 #include <Windows.h>
 
+#include <string.h>
+#include <algorithm>
+
 #include <imgui/imgui.h>
 #include "imgui/imgui_internal.h"
 
 #include "config.h"
 #include "sunone_aimbot_cpp.h"
 #include "capture.h"
-#include "include/other_tools.h"
-#include "capture/virtual_camera.h"
+#include "other_tools.h"
+#include "virtual_camera.h"
 #include "draw_settings.h"
 
 bool disable_winrt_futures = checkwin1903();
 int monitors = get_active_monitors();
-std::vector<std::string> virtual_cameras = { };
+
+static std::vector<std::string> virtual_cameras;
+static char virtual_camera_filter_buf[128] = "";
+
+void ensureVirtualCamerasLoaded() {
+    if (virtual_cameras.empty()) {
+        virtual_cameras = VirtualCameraCapture::GetAvailableVirtualCameras();
+    }
+}
 
 void draw_capture_settings()
 {
@@ -120,45 +131,68 @@ void draw_capture_settings()
 
     if (config.capture_method == "virtual_camera")
     {
-        if (!virtual_cameras.empty())
+        ensureVirtualCamerasLoaded();
+        ImGui::Text("Select virtual camera:");
+
+        // Filter
+        ImGui::Text("Filter:");
+        if (ImGui::InputText("##VCFilter", virtual_camera_filter_buf, IM_ARRAYSIZE(virtual_camera_filter_buf)))
         {
-            int currentCameraIndex = 0;
-            for (size_t i = 0; i < virtual_cameras.size(); i++)
+
+        }
+
+        std::string filter_lower = virtual_camera_filter_buf;
+        std::transform(filter_lower.begin(), filter_lower.end(), filter_lower.begin(), ::tolower);
+
+        // Filter list
+        std::vector<int> filtered_indices;
+        for (int i = 0; i < static_cast<int>(virtual_cameras.size()); ++i)
+        {
+            std::string name_lower = virtual_cameras[i];
+            std::transform(name_lower.begin(), name_lower.end(), name_lower.begin(), ::tolower);
+            if (filter_lower.empty() || name_lower.find(filter_lower) != std::string::npos)
             {
-                if (virtual_cameras[i] == config.virtual_camera_name)
+                filtered_indices.push_back(i);
+            }
+        }
+
+        if (!filtered_indices.empty())
+        {
+            int currentIndex = 0;
+            for (int fi = 0; fi < static_cast<int>(filtered_indices.size()); ++fi)
+            {
+                if (virtual_cameras[filtered_indices[fi]] == config.virtual_camera_name)
                 {
-                    currentCameraIndex = i;
+                    currentIndex = fi;
                     break;
                 }
             }
 
-            std::vector<const char*> cameraItems;
-            for (const auto& cam : virtual_cameras)
+            // Build items
+            std::vector<const char*> items;
+            items.reserve(filtered_indices.size());
+            for (int idx : filtered_indices)
             {
-                cameraItems.push_back(cam.c_str());
+                items.push_back(virtual_cameras[idx].c_str());
             }
 
-            if (ImGui::Combo("Virtual Camera", &currentCameraIndex,
-                cameraItems.data(), static_cast<int>(cameraItems.size())))
+            if (ImGui::Combo("##virtual_camera_combo", &currentIndex, items.data(), static_cast<int>(items.size())))
             {
-                config.virtual_camera_name = virtual_cameras[currentCameraIndex];
+                config.virtual_camera_name = virtual_cameras[filtered_indices[currentIndex]];
                 config.saveConfig();
                 capture_method_changed.store(true);
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Update##update_virtual_cameras"))
-            {
-                virtual_cameras = VirtualCameraCapture::GetAvailableVirtualCameras();
             }
         }
         else
         {
-            ImGui::Text("No virtual cameras found");
-            ImGui::SameLine();
-            if (ImGui::Button("Update##update_virtual_cameras"))
-            {
-                virtual_cameras = VirtualCameraCapture::GetAvailableVirtualCameras();
-            }
+            ImGui::TextDisabled("No matching virtual cameras");
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Refresh"))
+        {
+            virtual_cameras = VirtualCameraCapture::GetAvailableVirtualCameras();
+            virtual_camera_filter_buf[0] = '\0';
         }
     }
 }

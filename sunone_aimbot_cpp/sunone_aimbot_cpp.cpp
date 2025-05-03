@@ -269,6 +269,8 @@ int main()
             }
         }
 
+        cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_FATAL);
+
         if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
         {
             std::cout << "[MAIN] Error with screenshoot folder" << std::endl;
