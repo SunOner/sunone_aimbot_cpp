@@ -22,7 +22,7 @@
 #include "ghub.h"
 #include "other_tools.h"
 #include "optical_flow.h"
-#include "KmboxConnection.h"
+#include "Kmbox_b.h"
 
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
@@ -95,10 +95,10 @@ void initializeInputMethod()
             gHub = nullptr;
         }
     }
-    else if (config.input_method == "KMBOX")
+    else if (config.input_method == "KMBOX_B")
     {
-        std::cout << "[Mouse] Using Kmbox method input." << std::endl;
-        kmboxSerial = new KmboxConnection(config.kmbox_port, config.kmbox_baudrate);
+        std::cout << "[Mouse] Using KMBOX_B method input." << std::endl;
+        kmboxSerial = new KmboxConnection(config.kmbox_b_port, config.kmbox_b_baudrate);
 
         if (!kmboxSerial->isOpen())
         {
@@ -269,6 +269,7 @@ int main()
             }
         }
 
+        SetConsoleOutputCP(CP_UTF8);
         cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_FATAL);
 
         if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)

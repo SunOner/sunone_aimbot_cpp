@@ -55,6 +55,8 @@ bool Config::loadConfig(const std::string& filename)
         capture_borders = true;
         capture_cursor = true;
         virtual_camera_name = "None";
+        virtual_camera_width = 1920;
+        virtual_camera_heigth = 1080;
 
         // Target
         disable_headshot = false;
@@ -93,10 +95,9 @@ bool Config::loadConfig(const std::string& filename)
         arduino_16_bit_mouse = false;
         arduino_enable_keys = false;
 
-        // Kmbox
-        kmbox_baudrate = 115200;
-        kmbox_port = "COM0";
-        kmbox_enable_keys = false;
+        // kmbox_B
+        kmbox_b_baudrate = 115200;
+        kmbox_b_port = "COM0";
 
         // Mouse shooting
         auto_shoot = false;
@@ -205,6 +206,8 @@ bool Config::loadConfig(const std::string& filename)
     capture_borders = get_bool("capture_borders", true);
     capture_cursor = get_bool("capture_cursor", true);
     virtual_camera_name = get_string("virtual_camera_name", "None");
+    virtual_camera_width = get_long("virtual_camera_width", 1920);
+    virtual_camera_heigth = get_long("virtual_camera_heigth", 1080);
 
     // Target
     disable_headshot = get_bool("disable_headshot", false);
@@ -244,10 +247,9 @@ bool Config::loadConfig(const std::string& filename)
     arduino_16_bit_mouse = get_bool("arduino_16_bit_mouse", false);
     arduino_enable_keys = get_bool("arduino_enable_keys", false);
 
-    // Kmbox
-    kmbox_baudrate = get_long("kmbox_baudrate", 115200);
-    kmbox_port = get_string("kmbox_port", "COM0");
-    kmbox_enable_keys = get_bool("kmbox_enable_keys", false);
+    // kmbox_B
+    kmbox_b_baudrate = get_long("kmbox_baudrate", 115200);
+    kmbox_b_port = get_string("kmbox_port", "COM0");
 
     // Mouse shooting
     auto_shoot = get_bool("auto_shoot", false);
@@ -338,7 +340,9 @@ bool Config::saveConfig(const std::string& filename)
         << "circle_mask = " << (circle_mask ? "true" : "false") << "\n"
         << "capture_borders = " << (capture_borders ? "true" : "false") << "\n"
         << "capture_cursor = " << (capture_cursor ? "true" : "false") << "\n"
-        << "virtual_camera_name = " << virtual_camera_name << "\n\n";
+        << "virtual_camera_name = " << virtual_camera_name << "\n"
+        << "virtual_camera_width = " << virtual_camera_width << "\n"
+        << "virtual_camera_heigth = " << virtual_camera_heigth << "\n\n";
 
     // Target
     file << "# Target\n"
@@ -369,7 +373,7 @@ bool Config::saveConfig(const std::string& filename)
         << "easynorecoil = " << (easynorecoil ? "true" : "false") << "\n"
         << std::fixed << std::setprecision(1)
         << "easynorecoilstrength = " << easynorecoilstrength << "\n"
-        << "# WIN32, GHUB, ARDUINO\n"
+        << "# WIN32, GHUB, ARDUINO, KMBOX_B\n"
         << "input_method = " << input_method << "\n\n";
 
     // Wind mouse
@@ -387,11 +391,10 @@ bool Config::saveConfig(const std::string& filename)
         << "arduino_16_bit_mouse = " << (arduino_16_bit_mouse ? "true" : "false") << "\n"
         << "arduino_enable_keys = " << (arduino_enable_keys ? "true" : "false") << "\n\n";
 
-    // Kmbox
-    file << "# Kmbox\n"
-        << "kmbox_baudrate = " << kmbox_baudrate << "\n"
-        << "kmbox_port = " << kmbox_port << "\n"
-        << "kmbox_enable_keys = " << (kmbox_enable_keys ? "true" : "false") << "\n\n";
+    // kmbox_B
+    file << "# Kmbox_B\n"
+        << "kmbox_baudrate = " << kmbox_b_baudrate << "\n"
+        << "kmbox_port = " << kmbox_b_port << "\n\n";
 
     // Mouse shooting
     file << "# Mouse shooting\n"
@@ -460,7 +463,7 @@ bool Config::saveConfig(const std::string& filename)
         << "class_third_person = " << class_third_person << "\n\n";
 
     // Debug
-    file << "# Debug window\n"
+    file << "# Debug\n"
         << "show_window = " << (show_window ? "true" : "false") << "\n"
         << "show_fps = " << (show_fps ? "true" : "false") << "\n"
         << "window_name = " << window_name << "\n"

@@ -40,7 +40,7 @@
     <ClCompile Include="keyboard\keyboard_listener.cpp" />
     <ClCompile Include="keyboard\keycodes.cpp" />
     <ClCompile Include="mouse\ghub.cpp" />
-    <ClCompile Include="mouse\KmboxConnection.cpp" />
+    <ClCompile Include="mouse\Kmbox_b.cpp" />
     <ClCompile Include="mouse\mouse.cpp" />
     <ClCompile Include="mouse\SerialConnection.cpp" />
     <ClCompile Include="mouse\AimbotTarget.cpp" />
@@ -81,7 +81,7 @@
     <ClInclude Include="keyboard\keyboard_listener.h" />
     <ClInclude Include="keyboard\keycodes.h" />
     <ClInclude Include="mouse\ghub.h" />
-    <ClInclude Include="mouse\KmboxConnection.h" />
+    <ClInclude Include="mouse\Kmbox_b.h" />
     <ClInclude Include="mouse\mouse.h" />
     <ClInclude Include="mouse\SerialConnection.h" />
     <ClInclude Include="mouse\AimbotTarget.h" />

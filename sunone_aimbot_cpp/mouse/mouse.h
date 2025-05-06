@@ -17,7 +17,7 @@
 
 #include "AimbotTarget.h"
 #include "SerialConnection.h"
-#include "KmboxConnection.h"
+#include "Kmbox_b.h"
 #include "ghub.h"
 
 class MouseThread

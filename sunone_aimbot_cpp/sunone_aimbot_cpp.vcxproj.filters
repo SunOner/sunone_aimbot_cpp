@@ -34,7 +34,7 @@
     <ClCompile Include="overlay\draw_buttons.cpp" />
     <ClCompile Include="overlay\draw_overlay.cpp" />
     <ClCompile Include="overlay\draw_debug.cpp" />
-    <ClCompile Include="mouse\KmboxConnection.cpp" />
+    <ClCompile Include="mouse\Kmbox_b.cpp" />
     <ClCompile Include="detector\directml_detector.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -75,11 +75,12 @@
     <ClInclude Include="capture\virtual_camera.h" />
     <ClInclude Include="sunone_aimbot_cpp.h" />
     <ClInclude Include="overlay\draw_settings.h" />
-    <ClInclude Include="mouse\KmboxConnection.h" />
+    <ClInclude Include="mouse\Kmbox_b.h" />
     <ClInclude Include="detector\directml_detector.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="$(MSBuildThisFileDirectory)..\..\runtimes\win-x64\native\onnxruntime.dll" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

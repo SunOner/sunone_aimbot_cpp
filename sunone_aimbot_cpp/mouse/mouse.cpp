@@ -360,7 +360,7 @@ void MouseThread::pressMouse(const AimbotTarget& target)
     {
         if (kmbox)
         {
-            kmbox->press();
+            kmbox->press(0);
         }
         else if (serial)
         {
@@ -383,7 +383,7 @@ void MouseThread::pressMouse(const AimbotTarget& target)
     {
         if (kmbox)
         {
-            kmbox->release();
+            kmbox->release(0);
         }
         else if (serial)
         {
@@ -412,7 +412,7 @@ void MouseThread::releaseMouse()
     {
         if (kmbox)
         {
-            kmbox->release();
+            kmbox->release(0);
         }
         else if (serial)
         {

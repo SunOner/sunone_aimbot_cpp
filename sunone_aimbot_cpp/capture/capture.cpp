@@ -69,7 +69,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         }
         else if (config.capture_method == "virtual_camera")
         {
-            capturer = new VirtualCameraCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+            capturer = new VirtualCameraCapture(config.virtual_camera_width, config.virtual_camera_heigth);
             if (config.verbose)
                 std::cout << "[Capture] Using Virtual Camera" << std::endl;
         }

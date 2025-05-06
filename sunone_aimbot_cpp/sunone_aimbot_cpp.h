@@ -6,7 +6,7 @@
 #include "directml_detector.h"
 #include "mouse.h"
 #include "SerialConnection.h"
-#include "KmboxConnection.h"
+#include "Kmbox_b.h"
 #include "optical_flow.h"
 
 extern Config config;

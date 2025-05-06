@@ -1,10 +1,10 @@
-#define WIN32_LEAN_AND_MEAN
+﻿#define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
 #include <windows.h>
 #include <iostream>
 #include <algorithm>
 #include <vector>
-#include "KmboxConnection.h"
+#include "Kmbox_b.h"
 #include "config.h"
 #include "sunone_aimbot_cpp.h"
 
@@ -24,21 +24,17 @@ KmboxConnection::KmboxConnection(const std::string& port, unsigned int baud_rate
         if (serial_.isOpen())
         {
             is_open_ = true;
-            std::cout << "[Kmbox] Connected! PORT: " << port << std::endl;
-
-            if (config.kmbox_enable_keys)
-            {
-                startListening();
-            }
+            std::cout << "[Kmbox_b] Connected! PORT: " << port << std::endl;
+            startListening();
         }
         else
         {
-            std::cerr << "[Kmbox] Unable to connect to the port: " << port << std::endl;
+            std::cerr << "[Kmbox_b] Unable to connect to the port: " << port << std::endl;
         }
     }
     catch (std::exception& e)
     {
-        std::cerr << "[Kmbox] Error: " << e.what() << std::endl;
+        std::cerr << "[Kmbox_b] Error: " << e.what() << std::endl;
     }
 }
 
@@ -112,19 +108,41 @@ void KmboxConnection::move(int x, int y)
     write(cmd);
 }
 
-void KmboxConnection::click()
+void KmboxConnection::click(int button = 0)
 {
-    sendCommand("km.click()");
+    std::string cmd  = "km.click("
+        + std::to_string(button)
+        + ")\r\n";
+    sendCommand(cmd);
 }
 
-void KmboxConnection::press()
+void KmboxConnection::press(int button)
 {
     sendCommand("km.left_down()");
 }
 
-void KmboxConnection::release()
+void KmboxConnection::release(int button)
 {
     sendCommand("km.left_up()");
+}
+
+void KmboxConnection::start_boot()
+{
+    write("\x03\x03");
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    write("exec(open('boot.py').read(),globals())\r\n");
+}
+
+void KmboxConnection::reboot()
+{
+    write("\x03\x03");
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    write("km.reboot()");
+}
+
+void KmboxConnection::send_stop()
+{
+    write("\x03\x03");
 }
 
 void KmboxConnection::sendCommand(const std::string& command)
@@ -163,6 +181,7 @@ void KmboxConnection::listeningThreadFunc()
                 while ((pos = buffer.find('\n')) != std::string::npos)
                 {
                     std::string line = buffer.substr(0, pos);
+                    
                     buffer.erase(0, pos + 1);
                     if (!line.empty() && line.back() == '\r')
                         line.pop_back();
@@ -184,7 +203,6 @@ void KmboxConnection::listeningThreadFunc()
 
 void KmboxConnection::processIncomingLine(const std::string& line)
 {
-    // for custom filmware
     try
     {
         if (line.rfind("BD:", 0) == 0)
@@ -192,13 +210,13 @@ void KmboxConnection::processIncomingLine(const std::string& line)
             int btnId = std::stoi(line.substr(3));
             switch (btnId)
             {
-            case 2:
-                aiming_active = true;
-                aiming.store(true);
-                break;
             case 1:
                 shooting_active = true;
                 shooting.store(true);
+                break;
+            case 2:
+                aiming_active = true;
+                aiming.store(true);
                 break;
             }
         }
@@ -207,19 +225,19 @@ void KmboxConnection::processIncomingLine(const std::string& line)
             int btnId = std::stoi(line.substr(3));
             switch (btnId)
             {
-            case 2:
-                aiming_active = false;
-                aiming.store(false);
-                break;
             case 1:
                 shooting_active = false;
                 shooting.store(false);
+                break;
+            case 2:
+                aiming_active = false;
+                aiming.store(false);
                 break;
             }
         }
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[Kmbox] Error processing line '" << line << "': " << e.what() << std::endl;
+        std::cerr << "[Kmbox_b] Error processing line '" << line << "': " << e.what() << std::endl;
     }
 }

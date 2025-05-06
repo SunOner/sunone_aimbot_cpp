@@ -21,10 +21,14 @@ public:
     void write(const std::string& data);
     std::string read();
 
-    void click();
-    void press();
-    void release();
+    void click(int button);
+    void press(int button);
+    void release(int button);
     void move(int x, int y);
+
+    void start_boot();
+    void reboot();
+    void send_stop();
 
     bool aiming_active;
     bool shooting_active;

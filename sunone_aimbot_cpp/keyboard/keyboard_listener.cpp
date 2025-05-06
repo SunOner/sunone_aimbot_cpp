@@ -61,8 +61,9 @@ void keyboardListener()
         // Aiming
         if (!config.auto_aim)
         {
-        aiming = isAnyKeyPressed(config.button_targeting) ||
-            (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->aiming_active);
+            aiming = isAnyKeyPressed(config.button_targeting) ||
+                (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->aiming_active) ||
+                (kmboxSerial && kmboxSerial->isOpen() && kmboxSerial->aiming_active);
         }
         else
         {
@@ -71,11 +72,13 @@ void keyboardListener()
 
         // Shooting
         shooting = isAnyKeyPressed(config.button_shoot) ||
-            (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->shooting_active);
+            (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->shooting_active) ||
+            (kmboxSerial && kmboxSerial->isOpen() && kmboxSerial->shooting_active);
 
         // Zooming
         zooming = isAnyKeyPressed(config.button_zoom) ||
-            (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->zooming_active);
+            (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->zooming_active) ||
+            (kmboxSerial && kmboxSerial->isOpen() && kmboxSerial->zooming_active);
 
         // Exit
         if (isAnyKeyPressed(config.button_exit))

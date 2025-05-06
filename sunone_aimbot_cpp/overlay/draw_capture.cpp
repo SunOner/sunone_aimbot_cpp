@@ -194,5 +194,17 @@ void draw_capture_settings()
             virtual_cameras = VirtualCameraCapture::GetAvailableVirtualCameras();
             virtual_camera_filter_buf[0] = '\0';
         }
+
+        if (ImGui::SliderInt("Virtual camera width", &config.virtual_camera_width, 128, 3840))
+        {
+            config.saveConfig();
+            capture_method_changed.store(true);
+        }
+
+        if (ImGui::SliderInt("Virtual camera heigth", &config.virtual_camera_heigth, 128, 2160))
+        {
+            config.saveConfig();
+            capture_method_changed.store(true);
+        }
     }
 }

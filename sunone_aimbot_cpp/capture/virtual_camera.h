@@ -2,29 +2,31 @@
 #define VIRTUAL_CAMERA_H
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/core.hpp>
 #include <opencv2/cudawarping.hpp>
 #include "capture.h"
 
-class VirtualCameraCapture : public IScreenCapture
+class VirtualCameraCapture final : public IScreenCapture
 {
 public:
     VirtualCameraCapture(int width, int height);
-    ~VirtualCameraCapture();
+    ~VirtualCameraCapture() override;
 
     cv::cuda::GpuMat GetNextFrameGpu() override;
-
-    cv::Mat GetNextFrameCpu() override;
+    cv::Mat         GetNextFrameCpu() override;
 
     static std::vector<std::string> GetAvailableVirtualCameras();
 
 private:
-    cv::VideoCapture* cap;
-    int captureWidth;
-    int captureHeight;
-    
-    cv::cuda::GpuMat frameGpu;
-    cv::Mat          frameCpu;
+    std::unique_ptr<cv::VideoCapture> cap_;
+    int captureWidth{ 0 }, captureHeight{ 0 };
+
+    int roiW_, roiH_;
+
+    cv::Mat frameCpu;
+    cv::cuda::GpuMat lastGpu;
+    cv::cuda::GpuMat scratchGpu_;
+    cv::cuda::GpuMat bgrGpu_;
+
 };
 
 #endif // VIRTUAL_CAMERA_H

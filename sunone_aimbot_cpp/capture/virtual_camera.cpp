@@ -1,249 +1,155 @@
 ﻿#include "virtual_camera.h"
-#include "sunone_aimbot_cpp.h"
+#include <opencv2/cudaimgproc.hpp>
 #include <iostream>
+#include <algorithm>
 
-VirtualCameraCapture::VirtualCameraCapture(int width, int height)
-    : captureWidth(width)
-    , captureHeight(height)
-    , cap(nullptr)
+namespace {
+
+    inline int even(int v) { return (v % 2 == 0) ? v : v + 1; }
+
+}
+
+VirtualCameraCapture::VirtualCameraCapture(int w, int h)
 {
-    captureWidth = (captureWidth % 2 == 0) ? captureWidth : (captureWidth + 1);
-    captureHeight = (captureHeight % 2 == 0) ? captureHeight : (captureHeight + 1);
+    auto cams = GetAvailableVirtualCameras();
+    if (cams.empty())
+        throw std::runtime_error("[VirtualCamera] No capture devices found");
 
-    std::vector<std::string> cameras = GetAvailableVirtualCameras();
-
-    int cameraIndex = -1;
-    for (int i = 0; i < static_cast<int>(cameras.size()); ++i)
+    cap_ = std::make_unique<cv::VideoCapture>(cams.front(), cv::CAP_MSMF);
+    if (!cap_->isOpened())
     {
-        if (cameras[i] == config.virtual_camera_name)
+        for (int i = 0; i < 5 && !cap_->isOpened(); ++i)
         {
-            cameraIndex = i;
-            break;
+            cap_.reset(new cv::VideoCapture(i, cv::CAP_DSHOW));
+            if (cap_->isOpened())
+                std::cerr << "[VirtualCamera] Opened by index: " << i << '\n';
         }
     }
 
-    if (cameraIndex == -1 && !cameras.empty())
+    if (!cap_->isOpened())
+        throw std::runtime_error("[VirtualCamera] Unable to open any capture device");
+
+    bool autoMode = (w <= 0 || h <= 0);
+
+    if (autoMode)
     {
-        cameraIndex = 0;
-        config.virtual_camera_name = cameras[0];
-        config.saveConfig();
+        w = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_WIDTH));
+        h = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
+    }
+    else
+    {
+        cap_->set(cv::CAP_PROP_FRAME_WIDTH, even(w));
+        cap_->set(cv::CAP_PROP_FRAME_HEIGHT, even(h));
+        w = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_WIDTH));
+        h = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
     }
 
-    if (cameraIndex != -1)
-    {
-        std::vector<int> backends = {
-            cv::CAP_DSHOW,
-            cv::CAP_MSMF
-        };
+    cap_->set(cv::CAP_PROP_FPS, 120);
+    cap_->set(cv::CAP_PROP_BUFFERSIZE, 1);
 
-        bool cameraOpened = false;
-        for (int backend : backends)
-        {
-            cap = new cv::VideoCapture(cameraIndex, backend);
-            if (cap->isOpened())
-            {
-                cameraOpened = true;
-                break;
-            }
-            delete cap;
-            cap = nullptr;
-        }
+    roiW_ = even(w);
+    roiH_ = even(h);
 
-        if (cameraOpened && cap)
-        {
-            cap->set(cv::CAP_PROP_FRAME_WIDTH, captureWidth);
-            cap->set(cv::CAP_PROP_FRAME_HEIGHT, captureHeight);
+    scratchGpu_.create(roiH_, roiW_, CV_8UC2);
+    bgrGpu_.create(roiH_, roiW_, CV_8UC3);
 
-            double actualWidth = cap->get(cv::CAP_PROP_FRAME_WIDTH);
-            double actualHeight = cap->get(cv::CAP_PROP_FRAME_HEIGHT);
-
-            if (config.verbose)
-            {
-                std::cout << "[Virtual camera] Requested size: " << captureWidth
-                    << "x" << captureHeight << std::endl;
-                std::cout << "[Virtual camera] Actual camera size: "
-                    << actualWidth << "x" << actualHeight << std::endl;
-            }
-        }
-        else
-        {
-            std::cerr << "[Virtual camera] Error: Could not open camera with any backend" << std::endl;
-        }
-    }
+    std::cout << "[VirtualCamera] Actual capture: "
+        << roiW_ << 'x' << roiH_ << " @ "
+        << cap_->get(cv::CAP_PROP_FPS) << " FPS\n";
 }
 
 VirtualCameraCapture::~VirtualCameraCapture()
 {
-    if (cap)
+    if (cap_)
     {
-        cap->release();
-        delete cap;
-        cap = nullptr;
+        if (cap_->isOpened())
+        {
+            cap_->release();
+        }
+        cap_.reset();
     }
 }
 
 cv::cuda::GpuMat VirtualCameraCapture::GetNextFrameGpu()
 {
-    if (!cap || !cap->isOpened())
-    {
+    if (!cap_ || !cap_->isOpened())
         return cv::cuda::GpuMat();
-    }
 
     cv::Mat frame;
-    if (!cap->read(frame))
+    if (!cap_->read(frame) || frame.empty())
     {
-        return cv::cuda::GpuMat();
-    }
-    if (frame.empty())
-    {
-        return cv::cuda::GpuMat();
+        return lastGpu;
     }
 
-    try
-    {
-        cv::Mat processedFrame;
-        if (frame.channels() == 1)
-        {
-            cv::cvtColor(frame, processedFrame, cv::COLOR_GRAY2BGR);
-        }
-        else if (frame.channels() == 4)
-        {
-            cv::cvtColor(frame, processedFrame, cv::COLOR_BGRA2BGR);
-        }
-        else if (frame.channels() == 3)
-        {
-            processedFrame = frame;
-        }
-        else
-        {
-            std::cerr << "[VirtualCamera] Unexpected number of channels: "
-                << frame.channels() << std::endl;
-            return cv::cuda::GpuMat();
-        }
+    if (frame.channels() == 1)
+        cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
+    else if (frame.channels() == 4)
+        cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
 
-        frameGpu.upload(frame);
-        return frameGpu;
-    }
-    catch (const cv::Exception& e)
-    {
-        std::cerr << "[VirtualCamera] OpenCV exception: " << e.what() << std::endl;
-        return cv::cuda::GpuMat();
-    }
+    cv::cuda::GpuMat gpuFrame;
+    gpuFrame.upload(frame);
+
+    int side = std::min(gpuFrame.cols, gpuFrame.rows);
+    int x = (gpuFrame.cols - side) / 2;
+    int y = (gpuFrame.rows - side) / 2;
+    cv::Rect  roi(x, y, side, side);
+    cv::cuda::GpuMat roiGpu(gpuFrame, roi);
+
+    lastGpu = roiGpu;
+    return roiGpu;
 }
 
 cv::Mat VirtualCameraCapture::GetNextFrameCpu()
 {
-    if (!cap || !cap->isOpened())
-    {
+    if (!cap_ || !cap_->isOpened())
         return cv::Mat();
-    }
 
     cv::Mat frame;
-    if (!cap->read(frame))
+    if (!cap_->read(frame) || frame.empty())
     {
-        return cv::Mat();
-    }
-    if (frame.empty())
-    {
-        return cv::Mat();
-    }
-
-    try
-    {
-        cv::Mat processedFrame;
-        if (frame.channels() == 1)
-        {
-            cv::cvtColor(frame, processedFrame, cv::COLOR_GRAY2BGR);
-        }
-        else if (frame.channels() == 4)
-        {
-            cv::cvtColor(frame, processedFrame, cv::COLOR_BGRA2BGR);
-        }
-        else if (frame.channels() == 3)
-        {
-            processedFrame = frame;
-        }
-        else
-        {
-            std::cerr << "[VirtualCamera] Unexpected channel count: "
-                << frame.channels() << std::endl;
+        if (frameCpu.empty())
             return cv::Mat();
-        }
 
-        cv::Mat resizedFrame;
-        cv::resize(
-            processedFrame,
-            resizedFrame,
-            cv::Size(captureWidth, captureHeight),
-            0,
-            0,
-            cv::INTER_LINEAR
-        );
-
-        cv::Mat evenFrame;
-        cv::resize(
-            resizedFrame,
-            evenFrame,
-            cv::Size(
-                resizedFrame.cols + (resizedFrame.cols % 2),
-                resizedFrame.rows + (resizedFrame.rows % 2)
-            ),
-            0,
-            0,
-            cv::INTER_LINEAR
-        );
-        resizedFrame = evenFrame;
-
-        frameCpu = resizedFrame.clone();
-        return frameCpu;
+        int side = std::min(frameCpu.cols, frameCpu.rows);
+        int x = (frameCpu.cols - side) / 2;
+        int y = (frameCpu.rows - side) / 2;
+        return frameCpu(cv::Rect(x, y, side, side)).clone();
     }
-    catch (const cv::Exception& e)
+
+    switch (frame.channels())
     {
-        std::cerr << "[VirtualCamera] OpenCV exception: " << e.what() << std::endl;
+    case 1: cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR); break;
+    case 4: cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR); break;
+    case 3:                                                 break;
+    default:
+        std::cerr << "[VirtualCamera] Unexpected channel count: "
+            << frame.channels() << std::endl;
         return cv::Mat();
     }
+
+    int side = std::min(frame.cols, frame.rows);
+    side = (side % 2 == 0) ? side : side - 1;
+    int x = (frame.cols - side) / 2;
+    int y = (frame.rows - side) / 2;
+
+    cv::Mat roi(frame, cv::Rect(x, y, side, side));
+    frameCpu = frame;
+
+    return roi.clone();
 }
 
 std::vector<std::string> VirtualCameraCapture::GetAvailableVirtualCameras()
 {
-    std::vector<std::string> cameras;
+    std::vector<std::string> cams;
 
-    std::vector<int> backends = {
-        cv::CAP_DSHOW,
-        cv::CAP_MSMF,
-        cv::CAP_ANY
-    };
-
-    for (int backend : backends)
+    for (int i = 0; i < 10; ++i)
     {
-        for (int i = 0; i < 10; ++i)
+        cv::VideoCapture test(i, cv::CAP_DSHOW);
+        if (test.isOpened())
         {
-            try
-            {
-                cv::VideoCapture testCap(i, backend);
-                if (testCap.isOpened())
-                {
-                    std::string deviceName =
-                        "Camera " + std::to_string(i) + ":" +
-                        (backend == cv::CAP_DSHOW ? "DirectShow" :
-                            backend == cv::CAP_MSMF ? "MSMF" :
-                            "Any");
-                    cameras.push_back(deviceName);
-                    testCap.release();
-                }
-            }
-            catch (...)
-            {
-                
-            }
+            cams.push_back(std::to_string(i));
+            test.release();
         }
     }
-
-    std::cout << "[Virtual camera] Available cameras:" << std::endl;
-    for (const auto& camera : cameras)
-    {
-        std::cout << "  " << camera << std::endl;
-    }
-
-    return cameras;
+    return cams;
 }

@@ -55,7 +55,7 @@ void draw_mouse()
 
     // INPUT METHODS
     ImGui::Separator();
-    std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX" };
+    std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX_B" };
 
     std::vector<const char*> method_items;
     method_items.reserve(input_methods.size());
@@ -202,7 +202,7 @@ void draw_mouse()
         ImGui::TextColored(ImVec4(255, 255, 255, 255), "This is a standard mouse input method, it may not work in most games. Use GHUB or ARDUINO.");
         ImGui::TextColored(ImVec4(255, 0, 0, 255), "Use at your own risk, the method is detected in some games.");
     }
-    else if (config.input_method == "KMBOX")
+    else if (config.input_method == "KMBOX_B")
     {
         std::vector<std::string> port_list;
         for (int i = 1; i <= 30; ++i)
@@ -216,7 +216,7 @@ void draw_mouse()
         int port_index = 0;
         for (size_t i = 0; i < port_list.size(); ++i)
         {
-            if (port_list[i] == config.kmbox_port)
+            if (port_list[i] == config.kmbox_b_port)
             {
                 port_index = (int)i;
                 break;
@@ -225,7 +225,7 @@ void draw_mouse()
 
         if (ImGui::Combo("kmbox Port", &port_index, port_items.data(), (int)port_items.size()))
         {
-            config.kmbox_port = port_list[port_index];
+            config.kmbox_b_port = port_list[port_index];
             config.saveConfig();
             input_method_changed.store(true);
         }
@@ -240,7 +240,7 @@ void draw_mouse()
         int baud_index = 0;
         for (size_t i = 0; i < baud_list.size(); ++i)
         {
-            if (baud_list[i] == config.kmbox_baudrate)
+            if (baud_list[i] == config.kmbox_b_baudrate)
             {
                 baud_index = (int)i;
                 break;
@@ -249,15 +249,24 @@ void draw_mouse()
 
         if (ImGui::Combo("kmbox Baudrate", &baud_index, baud_items.data(), (int)baud_items.size()))
         {
-            config.kmbox_baudrate = baud_list[baud_index];
+            config.kmbox_b_baudrate = baud_list[baud_index];
             config.saveConfig();
             input_method_changed.store(true);
         }
 
-        if (ImGui::Checkbox("kmbox Enable Keys", &config.kmbox_enable_keys))
+        if (ImGui::Button("Run boot.py"))
         {
-            config.saveConfig();
-            input_method_changed.store(true);
+            kmboxSerial->start_boot();
+        }
+
+        if (ImGui::Button("Reboot KMBOX"))
+        {
+            kmboxSerial->reboot();
+        }
+
+        if (ImGui::Button("Send Stop"))
+        {
+            kmboxSerial->send_stop();
         }
     }
 

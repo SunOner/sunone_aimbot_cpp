@@ -17,6 +17,8 @@ public:
     bool capture_borders;
     bool capture_cursor;
     std::string virtual_camera_name;
+    int virtual_camera_width;
+    int virtual_camera_heigth;
 
     // Target
     bool disable_headshot;
@@ -41,7 +43,7 @@ public:
 
     bool easynorecoil;
     float easynorecoilstrength;
-    std::string input_method; // "WIN32", "GHUB", "ARDUINO", "KMBOX"
+    std::string input_method; // "WIN32", "GHUB", "ARDUINO", "KMBOX_B"
 
     // Wind mouse
     bool wind_mouse_enabled;
@@ -56,10 +58,9 @@ public:
     bool arduino_16_bit_mouse;
     bool arduino_enable_keys;
 
-    // Kmbox
-    int kmbox_baudrate;
-    std::string kmbox_port;
-    bool kmbox_enable_keys;
+    // kmbox_b
+    int kmbox_b_baudrate;
+    std::string kmbox_b_port;
 
     // Mouse shooting
     bool auto_shoot;
