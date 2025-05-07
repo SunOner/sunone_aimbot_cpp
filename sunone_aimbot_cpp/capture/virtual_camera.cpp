@@ -1,7 +1,8 @@
-﻿#include "virtual_camera.h"
-#include <opencv2/cudaimgproc.hpp>
+﻿#include <opencv2/cudaimgproc.hpp>
 #include <iostream>
 #include <algorithm>
+
+#include "virtual_camera.h"
 
 namespace {
 
@@ -15,12 +16,24 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
     if (cams.empty())
         throw std::runtime_error("[VirtualCamera] No capture devices found");
 
-    cap_ = std::make_unique<cv::VideoCapture>(cams.front(), cv::CAP_MSMF);
+    int camIdx = 0;
+    try
+    {
+        camIdx = std::stoi(config.virtual_camera_name);
+    }
+    catch (...)
+    {
+        camIdx = 0;
+    }
+    
+    cap_ = std::make_unique<cv::VideoCapture>(camIdx, cv::CAP_MSMF);
+    cap_->set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
+
     if (!cap_->isOpened())
     {
         for (int i = 0; i < 5 && !cap_->isOpened(); ++i)
         {
-            cap_.reset(new cv::VideoCapture(i, cv::CAP_DSHOW));
+            cap_.reset(new cv::VideoCapture(i, cv::CAP_MSMF));
             if (cap_->isOpened())
                 std::cerr << "[VirtualCamera] Opened by index: " << i << '\n';
         }
@@ -44,8 +57,8 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
         h = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
     }
 
-    cap_->set(cv::CAP_PROP_FPS, 120);
-    cap_->set(cv::CAP_PROP_BUFFERSIZE, 1);
+    cap_->set(cv::CAP_PROP_FPS, config.capture_fps);
+    cap_->set(cv::CAP_PROP_BUFFERSIZE, 0);
 
     roiW_ = even(w);
     roiH_ = even(h);
@@ -81,22 +94,23 @@ cv::cuda::GpuMat VirtualCameraCapture::GetNextFrameGpu()
         return lastGpu;
     }
 
-    if (frame.channels() == 1)
-        cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
-    else if (frame.channels() == 4)
-        cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
+    if (frame.channels() == 1)        cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
+    else if (frame.channels() == 2)   cv::cvtColor(frame, frame, cv::COLOR_YUV2BGR_YUY2);
+    else if (frame.channels() == 4)   cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
 
     cv::cuda::GpuMat gpuFrame;
     gpuFrame.upload(frame);
 
-    int side = std::min(gpuFrame.cols, gpuFrame.rows);
-    int x = (gpuFrame.cols - side) / 2;
-    int y = (gpuFrame.rows - side) / 2;
-    cv::Rect  roi(x, y, side, side);
-    cv::cuda::GpuMat roiGpu(gpuFrame, roi);
+    int target_width = config.virtual_camera_width;
+    int target_height = config.virtual_camera_heigth;
 
-    lastGpu = roiGpu;
-    return roiGpu;
+    if (target_width > 0 && target_height > 0 && !gpuFrame.empty())
+    {
+        cv::cuda::resize(gpuFrame, gpuFrame, cv::Size(target_width, target_height));
+    }
+
+    lastGpu = gpuFrame;
+    return gpuFrame;
 }
 
 cv::Mat VirtualCameraCapture::GetNextFrameCpu()
@@ -107,13 +121,7 @@ cv::Mat VirtualCameraCapture::GetNextFrameCpu()
     cv::Mat frame;
     if (!cap_->read(frame) || frame.empty())
     {
-        if (frameCpu.empty())
-            return cv::Mat();
-
-        int side = std::min(frameCpu.cols, frameCpu.rows);
-        int x = (frameCpu.cols - side) / 2;
-        int y = (frameCpu.rows - side) / 2;
-        return frameCpu(cv::Rect(x, y, side, side)).clone();
+        return cv::Mat();
     }
 
     switch (frame.channels())
@@ -127,15 +135,17 @@ cv::Mat VirtualCameraCapture::GetNextFrameCpu()
         return cv::Mat();
     }
 
-    int side = std::min(frame.cols, frame.rows);
-    side = (side % 2 == 0) ? side : side - 1;
-    int x = (frame.cols - side) / 2;
-    int y = (frame.rows - side) / 2;
-
-    cv::Mat roi(frame, cv::Rect(x, y, side, side));
     frameCpu = frame;
 
-    return roi.clone();
+    int target_width = config.virtual_camera_width;
+    int target_height = config.virtual_camera_heigth;
+
+    if (target_width > 0 && target_height > 0 && !frameCpu.empty())
+    {
+        cv::resize(frameCpu, frameCpu, cv::Size(target_width, target_height));
+    }
+
+    return frameCpu.clone();
 }
 
 std::vector<std::string> VirtualCameraCapture::GetAvailableVirtualCameras()

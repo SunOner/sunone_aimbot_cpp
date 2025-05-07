@@ -35,6 +35,7 @@
 cv::cuda::GpuMat latestFrameGpu;
 cv::Mat latestFrameCpu;
 std::mutex frameMutex;
+std::mutex capturerMutex;
 
 int screenWidth = 0;
 int screenHeight = 0;
@@ -69,7 +70,11 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         }
         else if (config.capture_method == "virtual_camera")
         {
-            capturer = new VirtualCameraCapture(config.virtual_camera_width, config.virtual_camera_heigth);
+            {
+                std::lock_guard<std::mutex> lock(capturerMutex);
+                capturer = new VirtualCameraCapture(config.virtual_camera_width, config.virtual_camera_heigth);
+            }
+
             if (config.verbose)
                 std::cout << "[Capture] Using Virtual Camera" << std::endl;
         }
@@ -149,7 +154,11 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 }
                 else if (config.capture_method == "virtual_camera")
                 {
-                    capturer = new VirtualCameraCapture(newWidth, newHeight);
+                    {
+                        std::lock_guard<std::mutex> lock(capturerMutex);
+                        capturer = new VirtualCameraCapture(config.virtual_camera_width, config.virtual_camera_heigth);
+                    }
+                    
                     if (config.verbose)
                         std::cout << "[Capture] Re-init with Virtual Camera." << std::endl;
                 }
@@ -172,11 +181,25 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
             if (config.capture_use_cuda)
             {
-                screenshotGpu = capturer->GetNextFrameGpu();
+                {
+                    std::lock_guard<std::mutex> lock(capturerMutex);
+                    screenshotGpu = capturer->GetNextFrameGpu();
+                }
+
                 if (screenshotGpu.empty())
                 {
                     std::this_thread::sleep_for(std::chrono::milliseconds(5));
                     continue;
+                }
+
+                if (config.capture_method == "virtual_camera")
+                {
+                    int x = (screenshotGpu.cols - CAPTURE_WIDTH) / 2;
+                    int y = (screenshotGpu.rows - CAPTURE_HEIGHT) / 2;
+                    x = std::max(x, 0);
+                    y = std::max(y, 0);
+                    cv::cuda::GpuMat roi(screenshotGpu, cv::Rect(x, y, CAPTURE_WIDTH, CAPTURE_HEIGHT));
+                    screenshotGpu = roi;
                 }
 
                 if (config.circle_mask)
@@ -292,11 +315,24 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             }
             else
             {
-                screenshotCpu = capturer->GetNextFrameCpu();
+                {
+                    std::lock_guard<std::mutex> lock(capturerMutex);
+                    screenshotCpu = capturer->GetNextFrameCpu();
+                }
+
                 if (screenshotCpu.empty())
                 {
                     std::this_thread::sleep_for(std::chrono::milliseconds(5));
                     continue;
+                }
+
+                if (config.capture_method == "virtual_camera")
+                {
+                    int x = (screenshotCpu.cols - CAPTURE_WIDTH) / 2;
+                    int y = (screenshotCpu.rows - CAPTURE_HEIGHT) / 2;
+                    x = std::max(x, 0);
+                    y = std::max(y, 0);
+                    screenshotCpu = screenshotCpu(cv::Rect(x, y, CAPTURE_WIDTH, CAPTURE_HEIGHT)).clone();
                 }
 
                 if (config.circle_mask)
@@ -380,7 +416,8 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     }
 
                     auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::system_clock::now().time_since_epoch()).count();
+                        std::chrono::system_clock::now().time_since_epoch()
+                    ).count();
                     std::string filename = std::to_string(epoch_time) + ".jpg";
                     cv::imwrite("screenshots/" + filename, saveMat);
 
@@ -419,8 +456,11 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
         if (capturer)
         {
-            delete capturer;
-            capturer = nullptr;
+            {
+                std::lock_guard<std::mutex> lock(capturerMutex);
+                delete capturer;
+                capturer = nullptr;
+            }
         }
 
         if (config.capture_method == "winrt")

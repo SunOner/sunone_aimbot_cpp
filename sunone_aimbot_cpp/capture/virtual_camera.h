@@ -3,7 +3,9 @@
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudawarping.hpp>
+
 #include "capture.h"
+#include "sunone_aimbot_cpp.h"
 
 class VirtualCameraCapture final : public IScreenCapture
 {
