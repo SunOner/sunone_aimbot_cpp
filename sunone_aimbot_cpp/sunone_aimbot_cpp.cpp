@@ -23,6 +23,7 @@
 #include "other_tools.h"
 #include "optical_flow.h"
 #include "Kmbox_b.h"
+#include <virtual_camera.h>
 
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
@@ -284,6 +285,26 @@ int main()
             std::cerr << "[Config] Error with loading config!" << std::endl;
             std::cin.get();
             return -1;
+        }
+
+        if (config.capture_method == "virtual_camera")
+        {
+            auto cams = VirtualCameraCapture::GetAvailableVirtualCameras();
+            if (!cams.empty())
+            {
+                if (config.virtual_camera_name == "None" ||
+                    std::find(cams.begin(), cams.end(), config.virtual_camera_name) == cams.end())
+                {
+                    config.virtual_camera_name = cams[0];
+                    config.saveConfig("config.ini");
+                    std::cout << "[MAIN] Set virtual_camera_name = " << config.virtual_camera_name << std::endl;
+                }
+                std::cout << "[MAIN] Virtual cameras loaded: " << cams.size() << std::endl;
+            }
+            else
+            {
+                std::cerr << "[MAIN] No virtual cameras found" << std::endl;
+            }
         }
 
         std::string modelPath = "models/" + config.ai_model;

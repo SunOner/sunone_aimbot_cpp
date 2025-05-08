@@ -191,7 +191,8 @@ void draw_capture_settings()
         ImGui::SameLine();
         if (ImGui::Button("Refresh"))
         {
-            virtual_cameras = VirtualCameraCapture::GetAvailableVirtualCameras();
+            VirtualCameraCapture::ClearCachedCameraList();
+            virtual_cameras = VirtualCameraCapture::GetAvailableVirtualCameras(true);
             virtual_camera_filter_buf[0] = '\0';
         }
 

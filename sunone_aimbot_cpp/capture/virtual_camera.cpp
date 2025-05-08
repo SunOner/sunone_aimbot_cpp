@@ -1,6 +1,8 @@
 ﻿#include <opencv2/cudaimgproc.hpp>
 #include <iostream>
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
 
 #include "virtual_camera.h"
 
@@ -8,36 +10,83 @@ namespace {
 
     inline int even(int v) { return (v % 2 == 0) ? v : v + 1; }
 
+    inline std::filesystem::path exe_dir()
+    {
+        char path[MAX_PATH]{};
+        GetModuleFileNameA(nullptr, path, MAX_PATH);
+        return std::filesystem::path(path).parent_path();
+    }
+
+    const std::filesystem::path kCamCachePath =
+        exe_dir() / "virtual_cameras_cache.txt";
+
+    void EnsureCacheDir()
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(kCamCachePath.parent_path(), ec);
+    }
+
+    std::vector<std::string> LoadCamList()
+    {
+        EnsureCacheDir();
+        std::vector<std::string> cams;
+        std::ifstream ifs(kCamCachePath);
+        std::string line;
+        while (std::getline(ifs, line))
+        {
+            while (!line.empty() && (line.back() == '\r' || line.back() == '\n' || line.back() == ' ' || line.back() == '\t'))
+                line.pop_back();
+
+            while (!line.empty() && (line.front() == ' ' || line.front() == '\t'))
+                line.erase(line.begin());
+
+            if (!line.empty())
+            {
+                cams.emplace_back(std::move(line));
+            }
+        }
+        return cams;
+    }
+
+    void SaveCamList(const std::vector<std::string>& cams)
+    {
+        EnsureCacheDir();
+        std::ofstream ofs(kCamCachePath, std::ios::trunc);
+        for (const auto& c : cams) ofs << c << '\n';
+    }
+
+    static std::vector<std::string>& CamCache()
+    {
+        static std::vector<std::string> cache = [] {
+            auto list = LoadCamList();
+            return list;
+            }();
+        return cache;
+    }
 }
 
 VirtualCameraCapture::VirtualCameraCapture(int w, int h)
 {
-    auto cams = GetAvailableVirtualCameras();
-    if (cams.empty())
-        throw std::runtime_error("[VirtualCamera] No capture devices found");
-
     int camIdx = 0;
-    try
+    const auto& cams = VirtualCameraCapture::GetAvailableVirtualCameras();
+    auto it = std::find(cams.begin(), cams.end(), config.virtual_camera_name);
+    if (it != cams.end())
     {
-        camIdx = std::stoi(config.virtual_camera_name);
+        camIdx = static_cast<int>(std::distance(cams.begin(), it));
     }
-    catch (...)
+    else
     {
-        camIdx = 0;
+        std::cerr << "[VirtualCamera] Camera name not found in cache: " << config.virtual_camera_name << std::endl;
+        if (!cams.empty())
+        {
+            camIdx = 0;
+            config.virtual_camera_name = cams[0];
+            config.saveConfig("config.ini");
+        }
     }
     
     cap_ = std::make_unique<cv::VideoCapture>(camIdx, cv::CAP_MSMF);
-    cap_->set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
-
-    if (!cap_->isOpened())
-    {
-        for (int i = 0; i < 5 && !cap_->isOpened(); ++i)
-        {
-            cap_.reset(new cv::VideoCapture(i, cv::CAP_MSMF));
-            if (cap_->isOpened())
-                std::cerr << "[VirtualCamera] Opened by index: " << i << '\n';
-        }
-    }
+    cap_->set(cv::CAP_PROP_FOURCC, 0);
 
     if (!cap_->isOpened())
         throw std::runtime_error("[VirtualCamera] Unable to open any capture device");
@@ -57,8 +106,10 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
         h = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
     }
 
-    cap_->set(cv::CAP_PROP_FPS, config.capture_fps);
-    cap_->set(cv::CAP_PROP_BUFFERSIZE, 0);
+    if (config.capture_fps > 0)
+        cap_->set(cv::CAP_PROP_FPS, config.capture_fps);
+    
+    cap_->set(cv::CAP_PROP_BUFFERSIZE, 1);
 
     roiW_ = even(w);
     roiH_ = even(h);
@@ -66,9 +117,10 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
     scratchGpu_.create(roiH_, roiW_, CV_8UC2);
     bgrGpu_.create(roiH_, roiW_, CV_8UC3);
 
-    std::cout << "[VirtualCamera] Actual capture: "
-        << roiW_ << 'x' << roiH_ << " @ "
-        << cap_->get(cv::CAP_PROP_FPS) << " FPS\n";
+    if (config.verbose)
+        std::cout << "[VirtualCamera] Actual capture: "
+            << roiW_ << 'x' << roiH_ << " @ "
+            << cap_->get(cv::CAP_PROP_FPS) << " FPS\n";
 }
 
 VirtualCameraCapture::~VirtualCameraCapture()
@@ -91,7 +143,7 @@ cv::cuda::GpuMat VirtualCameraCapture::GetNextFrameGpu()
     cv::Mat frame;
     if (!cap_->read(frame) || frame.empty())
     {
-        return lastGpu;
+        return cv::cuda::GpuMat();
     }
 
     if (frame.channels() == 1)        cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
@@ -148,18 +200,37 @@ cv::Mat VirtualCameraCapture::GetNextFrameCpu()
     return frameCpu.clone();
 }
 
-std::vector<std::string> VirtualCameraCapture::GetAvailableVirtualCameras()
+std::vector<std::string> VirtualCameraCapture::GetAvailableVirtualCameras(bool forceRescan)
 {
-    std::vector<std::string> cams;
+    auto& cache = CamCache();
 
-    for (int i = 0; i < 10; ++i)
+    if (!forceRescan)
     {
-        cv::VideoCapture test(i, cv::CAP_DSHOW);
-        if (test.isOpened())
+        auto diskList = LoadCamList();
+        if (!diskList.empty())
         {
-            cams.push_back(std::to_string(i));
-            test.release();
+            cache = std::move(diskList);
+            return cache;
         }
     }
-    return cams;
+
+    if (!forceRescan && !cache.empty())
+        return cache;
+
+    cache.clear();
+    for (int i = 0; i < 10; ++i)
+    {
+        cv::VideoCapture test(i, cv::CAP_MSMF);
+        if (test.isOpened())
+            cache.emplace_back("Camera " + std::to_string(i));
+    }
+    SaveCamList(cache);
+    return cache;
+}
+
+void VirtualCameraCapture::ClearCachedCameraList()
+{
+    CamCache().clear();
+    std::error_code ec;
+    std::filesystem::remove(kCamCachePath, ec);
 }

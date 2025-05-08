@@ -16,7 +16,8 @@ public:
     cv::cuda::GpuMat GetNextFrameGpu() override;
     cv::Mat         GetNextFrameCpu() override;
 
-    static std::vector<std::string> GetAvailableVirtualCameras();
+    static std::vector<std::string> GetAvailableVirtualCameras(bool forceRescan = false);
+    static void ClearCachedCameraList();
 
 private:
     std::unique_ptr<cv::VideoCapture> cap_;
