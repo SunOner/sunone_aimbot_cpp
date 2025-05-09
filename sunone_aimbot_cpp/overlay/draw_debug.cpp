@@ -10,11 +10,15 @@
 
 void draw_debug()
 {
-    ImGui::Checkbox("Show Window", &config.show_window);
-    ImGui::Checkbox("Show FPS", &config.show_fps);
-    ImGui::SliderInt("Window Size", &config.window_size, 10, 350);
+    ImGui::Checkbox("Show Debug Window", &config.show_window);
+    if (config.show_window)
+    {
+        ImGui::Checkbox("Show FPS", &config.show_fps);
+        ImGui::Checkbox("Window Always On Top", &config.always_on_top);
+        ImGui::SliderInt("Debug Window Size", &config.window_size, 10, 350);
+        ImGui::Separator();
+    }
 
-    ImGui::Separator();
     ImGui::Text("Screenshot Buttons");
 
     for (size_t i = 0; i < config.screenshot_button.size(); )
@@ -72,7 +76,6 @@ void draw_debug()
     }
 
     ImGui::InputInt("Screenshot delay", &config.screenshot_delay, 50, 500);
-    ImGui::Checkbox("Always On Top", &config.always_on_top);
     ImGui::Checkbox("Verbose console output", &config.verbose);
 
     ImGui::Separator();
