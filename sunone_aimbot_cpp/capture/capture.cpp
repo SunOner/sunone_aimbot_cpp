@@ -254,10 +254,22 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 }
                 else if (dml_detector)
                 {
-                    cv::Mat cpuMat;
-                    workGpu.download(cpuMat);
+                    const cv::Mat* matToUse = nullptr;
 
-                    auto detections = dml_detector->detect(cpuMat);
+                    if (!latestFrameCpu.empty())
+                    {
+                        matToUse = &latestFrameCpu;
+                    }
+                    else
+                    {
+                        static cv::Mat fallbackMat;
+                        fallbackMat.create(workGpu.rows, workGpu.cols, workGpu.type());
+                        workGpu.download(fallbackMat);
+                        matToUse = &fallbackMat;
+                    }
+
+                    auto detections = dml_detector->detect(*matToUse);
+
                     {
                         std::lock_guard<std::mutex> lock(detector.detectionMutex);
                         detector.detectedBoxes.clear();
