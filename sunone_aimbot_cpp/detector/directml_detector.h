@@ -28,6 +28,7 @@ private:
     std::mutex inference_mutex;
 
     void initializeModel(const std::string& model_path);
+    Ort::MemoryInfo memory_info;
 };
 
 #endif // DIRECTML_DETECTOR_H

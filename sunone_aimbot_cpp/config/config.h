@@ -68,6 +68,7 @@ public:
 
     // AI
     std::string backend;
+    int dml_device_id;
     std::string ai_model;
     float confidence_threshold;
     float nms_threshold;

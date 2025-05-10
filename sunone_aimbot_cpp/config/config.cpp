@@ -105,6 +105,7 @@ bool Config::loadConfig(const std::string& filename)
 
         // AI
         backend = "TRT";
+        dml_device_id = 0;
         ai_model = "sunxds_0.5.6.engine";
         confidence_threshold = 0.15f;
         nms_threshold = 0.50f;
@@ -257,6 +258,7 @@ bool Config::loadConfig(const std::string& filename)
 
     // AI
     backend = get_string("backend", "TRT");
+    dml_device_id = get_long("dml_device_id", 0);
     ai_model = get_string("ai_model", "sunxds_0.5.6.engine");
     confidence_threshold = (float)get_double("confidence_threshold", 0.15);
     nms_threshold = (float)get_double("nms_threshold", 0.50);
@@ -405,6 +407,7 @@ bool Config::saveConfig(const std::string& filename)
     // AI
     file << "# AI\n"
         << "backend = " << backend << "\n"
+        << "dml_device_id = " << dml_device_id << "\n"
         << "ai_model = " << ai_model << "\n"
         << std::fixed << std::setprecision(2)
         << "confidence_threshold = " << confidence_threshold << "\n"

@@ -2,19 +2,45 @@
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
+#include <dxgi1_4.h>
 
 #include "directml_detector.h"
 #include <dml_provider_factory.h>
 
 #include "sunone_aimbot_cpp.h"
 #include "postProcess.h"
+#include <wrl/client.h>
+
+std::string GetDMLDeviceName(int deviceId)
+{
+    Microsoft::WRL::ComPtr<IDXGIFactory1> dxgiFactory;
+    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory))))
+        return "Unknown";
+
+    Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
+    if (FAILED(dxgiFactory->EnumAdapters1(deviceId, &adapter)))
+        return "Invalid device ID";
+
+    DXGI_ADAPTER_DESC1 desc;
+    if (FAILED(adapter->GetDesc1(&desc)))
+        return "Failed to get description";
+
+    std::wstring wname(desc.Description);
+    return std::string(wname.begin(), wname.end());
+}
 
 DirectMLDetector::DirectMLDetector(const std::string& model_path)
-    : env(ORT_LOGGING_LEVEL_WARNING, "DML_Detector")
+    : 
+    env(ORT_LOGGING_LEVEL_WARNING, "DML_Detector"),
+    memory_info(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault))
 {
-    session_options.DisableMemPattern();
-    session_options.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
-    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_DML(session_options, 0));
+    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_DML(session_options, config.dml_device_id));
+    
+    if (config.verbose)
+        std::cout << "[DirectML] Using adapter: " << GetDMLDeviceName(config.dml_device_id) << std::endl;
+
+    session_options.SetExecutionMode(ExecutionMode::ORT_PARALLEL);
+    session_options.SetIntraOpNumThreads(std::thread::hardware_concurrency());
 
     initializeModel(model_path);
 }
@@ -49,6 +75,7 @@ std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
     cv::Mat resized_frame;
     int target_width = 640;
     int target_height = 640;
+
     cv::resize(input_frame, resized_frame, cv::Size(target_width, target_height));
     resized_frame.convertTo(resized_frame, CV_32FC3, 1.0f / 255.0f);
 
@@ -65,10 +92,11 @@ std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
     {
         memcpy(input_tensor_values.data() + c * height * width,
             chw_planes[c].data,
-            height * width * sizeof(float));
+            height * width * sizeof(float)
+        );
     }
 
-    Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
     std::vector<int64_t> dynamic_input_shape = { 1, 3, 640, 640 };
 
