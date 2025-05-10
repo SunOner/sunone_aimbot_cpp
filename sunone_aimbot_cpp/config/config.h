@@ -36,6 +36,7 @@ public:
     float minSpeedMultiplier;
     float maxSpeedMultiplier;
     float predictionInterval;
+    int prediction_futurePositions;
     float snapRadius;
     float nearRadius;
     float speedCurveExponent;

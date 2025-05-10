@@ -206,7 +206,11 @@ void mouseThreadFunction(MouseThread& mouseThread)
             mouseThread.setLastTargetTime(std::chrono::steady_clock::now());
             mouseThread.setTargetDetected(true);
 
-            auto futurePositions = mouseThread.predictFuturePositions(target->pivotX, target->pivotY, 20);
+            auto futurePositions = mouseThread.predictFuturePositions(
+                target->pivotX,
+                target->pivotY,
+                config.prediction_futurePositions
+            );
             mouseThread.storeFuturePositions(futurePositions);
         }
         else

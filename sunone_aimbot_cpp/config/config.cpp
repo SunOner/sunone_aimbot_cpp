@@ -74,6 +74,7 @@ bool Config::loadConfig(const std::string& filename)
         minSpeedMultiplier = 1.0f;
         maxSpeedMultiplier = 4.0f;
         predictionInterval = 0.01f;
+        prediction_futurePositions = 20;
         snapRadius = 1.5f;
         nearRadius = 25.0f;
         speedCurveExponent = 3.0f;
@@ -226,6 +227,7 @@ bool Config::loadConfig(const std::string& filename)
     minSpeedMultiplier = (float)get_double("minSpeedMultiplier", 1.0);
     maxSpeedMultiplier = (float)get_double("maxSpeedMultiplier", 4.0);
     predictionInterval = (float)get_double("predictionInterval", 0.01);
+    prediction_futurePositions = get_long("prediction_futurePositions", 20);
     snapRadius = (float)get_double("snapRadius", 1.5);
     nearRadius = (float)get_double("nearRadius", 25.0);
     speedCurveExponent = (float)get_double("speedCurveExponent", 3.0);
@@ -367,6 +369,7 @@ bool Config::saveConfig(const std::string& filename)
         << "maxSpeedMultiplier = " << maxSpeedMultiplier << "\n"
         << std::fixed << std::setprecision(2)
         << "predictionInterval = " << predictionInterval << "\n"
+        << "prediction_futurePositions = " << prediction_futurePositions << "\n"
         << "snapRadius = " << snapRadius << "\n"
         << "nearRadius = " << nearRadius << "\n"
         << "speedCurveExponent = " << speedCurveExponent << "\n"

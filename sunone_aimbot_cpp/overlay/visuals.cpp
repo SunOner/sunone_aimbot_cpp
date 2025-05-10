@@ -151,11 +151,13 @@ void displayThread()
 
                         if (prevPt.x != -1)
                         {
-                            cv::line(displayFrame,
+                            cv::line(
+                                displayFrame,
                                 prevPt,
                                 pt,
                                 cv::Scalar(255, 0, 255),
-                                2);
+                                2
+                            );
                         }
                         prevPt = pt;
                     }

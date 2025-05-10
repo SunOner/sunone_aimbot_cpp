@@ -19,12 +19,23 @@ void draw_mouse()
     ImGui::SliderInt("FOV Y", &config.fovY, 10, 120);
     ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 30.0f, "%.1f");
     ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 30.0f, "%.1f");
+
     ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.00f, 0.10f, "%.2f");
     if (config.predictionInterval == 0.00f)
     {
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(255, 0, 0, 255), "-> Disabled");
     }
+    else
+    {
+        
+        if (ImGui::SliderInt("Future Positions", &config.prediction_futurePositions, 1, 40))
+        {
+            config.saveConfig();
+            input_method_changed.store(true);
+        }
+    }
+
     ImGui::SliderFloat("Snap Radius", &config.snapRadius, 0.1f, 5.0f, "%.1f");
     ImGui::SliderFloat("Near Radius", &config.nearRadius, 1.0f, 40.0f, "%.1f");
     ImGui::SliderFloat("Speed Curve Exponent", &config.speedCurveExponent, 0.1f, 10.0f, "%.1f");
