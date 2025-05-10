@@ -34,6 +34,12 @@ void draw_mouse()
             config.saveConfig();
             input_method_changed.store(true);
         }
+
+        ImGui::SameLine();
+        if (ImGui::Checkbox("Draw##draw_future_positions_button", &config.draw_futurePositions))
+        {
+            config.saveConfig();
+        }
     }
 
     ImGui::SliderFloat("Snap Radius", &config.snapRadius, 0.1f, 5.0f, "%.1f");

@@ -73,12 +73,16 @@ bool Config::loadConfig(const std::string& filename)
         fovY = 50;
         minSpeedMultiplier = 1.0f;
         maxSpeedMultiplier = 4.0f;
+
         predictionInterval = 0.01f;
         prediction_futurePositions = 20;
+        draw_futurePositions = true;
+
         snapRadius = 1.5f;
         nearRadius = 25.0f;
         speedCurveExponent = 3.0f;
         snapBoostFactor = 1.15f;
+
         easynorecoil = false;
         easynorecoilstrength = 0.0f;
         input_method = "WIN32";
@@ -226,8 +230,11 @@ bool Config::loadConfig(const std::string& filename)
     fovY = get_long("fovY", 50);
     minSpeedMultiplier = (float)get_double("minSpeedMultiplier", 1.0);
     maxSpeedMultiplier = (float)get_double("maxSpeedMultiplier", 4.0);
+
     predictionInterval = (float)get_double("predictionInterval", 0.01);
     prediction_futurePositions = get_long("prediction_futurePositions", 20);
+    draw_futurePositions = get_bool("draw_futurePositions", true);
+    
     snapRadius = (float)get_double("snapRadius", 1.5);
     nearRadius = (float)get_double("nearRadius", 25.0);
     speedCurveExponent = (float)get_double("speedCurveExponent", 3.0);
@@ -367,17 +374,22 @@ bool Config::saveConfig(const std::string& filename)
         << "fovY = " << fovY << "\n"
         << "minSpeedMultiplier = " << minSpeedMultiplier << "\n"
         << "maxSpeedMultiplier = " << maxSpeedMultiplier << "\n"
+
         << std::fixed << std::setprecision(2)
         << "predictionInterval = " << predictionInterval << "\n"
         << "prediction_futurePositions = " << prediction_futurePositions << "\n"
+        << "draw_futurePositions = " << (draw_futurePositions ? "true" : "false") << "\n"
+
         << "snapRadius = " << snapRadius << "\n"
         << "nearRadius = " << nearRadius << "\n"
         << "speedCurveExponent = " << speedCurveExponent << "\n"
         << std::fixed << std::setprecision(2)
         << "snapBoostFactor = " << snapBoostFactor << "\n"
+
         << "easynorecoil = " << (easynorecoil ? "true" : "false") << "\n"
         << std::fixed << std::setprecision(1)
         << "easynorecoilstrength = " << easynorecoilstrength << "\n"
+
         << "# WIN32, GHUB, ARDUINO, KMBOX_B\n"
         << "input_method = " << input_method << "\n\n";
 

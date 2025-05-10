@@ -35,8 +35,11 @@ public:
     int fovY;
     float minSpeedMultiplier;
     float maxSpeedMultiplier;
+
     float predictionInterval;
     int prediction_futurePositions;
+    bool draw_futurePositions;
+
     float snapRadius;
     float nearRadius;
     float speedCurveExponent;

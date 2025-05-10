@@ -136,30 +136,37 @@ void displayThread()
 
             if (globalMouseThread)
             {
-                auto futurePts = globalMouseThread->getFuturePositions();
-                if (!futurePts.empty())
+                if (config.draw_futurePositions)
                 {
-                    float scale_x = static_cast<float>(displayFrame.cols) / config.detection_resolution;
-                    float scale_y = static_cast<float>(displayFrame.rows) / config.detection_resolution;
-
-                    cv::Point prevPt(-1, -1);
-                    for (size_t i = 0; i < futurePts.size(); i++)
+                    auto futurePts = globalMouseThread->getFuturePositions();
+                    if (!futurePts.empty())
                     {
-                        int px = static_cast<int>(futurePts[i].first * scale_x);
-                        int py = static_cast<int>(futurePts[i].second * scale_y);
-                        cv::Point pt(px, py);
+                        float scale_x = static_cast<float>(displayFrame.cols) / config.detection_resolution;
+                        float scale_y = static_cast<float>(displayFrame.rows) / config.detection_resolution;
 
-                        if (prevPt.x != -1)
+                        cv::Point prevPt(-1, -1);
+                        for (size_t i = 0; i < futurePts.size(); i++)
                         {
-                            cv::line(
-                                displayFrame,
-                                prevPt,
-                                pt,
-                                cv::Scalar(255, 0, 255),
-                                2
-                            );
+                            int px = static_cast<int>(futurePts[i].first * scale_x);
+                            int py = static_cast<int>(futurePts[i].second * scale_y);
+                            cv::Point pt(px, py);
+
+                            int totalPts = static_cast<int>(futurePts.size());
+                            for (size_t i = 0; i < futurePts.size(); i++)
+                            {
+                                int px = static_cast<int>(futurePts[i].first * scale_x);
+                                int py = static_cast<int>(futurePts[i].second * scale_y);
+                                cv::Point pt(px, py);
+
+                                int b = static_cast<int>(255 - (i * 255.0 / totalPts));
+                                int r = static_cast<int>(i * 255.0 / totalPts);
+                                int g = 50;
+
+                                cv::circle(displayFrame, pt, 4, cv::Scalar(b, g, r), cv::FILLED);
+
+                                cv::circle(displayFrame, pt, 4, cv::Scalar(255, 255, 255), 1);
+                            }
                         }
-                        prevPt = pt;
                     }
                 }
             }
