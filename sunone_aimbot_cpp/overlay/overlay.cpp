@@ -25,6 +25,7 @@
 #include "keyboard_listener.h"
 #include "other_tools.h"
 #include "virtual_camera.h"
+#include "detector.h"
 
 ID3D11Device* g_pd3dDevice = NULL;
 ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
@@ -255,67 +256,7 @@ void OverlayThread()
     SetupImGui();
 
     bool show_overlay = false;
-
-    // Capture
-    std::string prev_capture_method = config.capture_method;
-    int prev_detection_resolution = config.detection_resolution;
-    int prev_capture_fps = config.capture_fps;
-    int prev_monitor_idx = config.monitor_idx;
-    bool prev_circle_mask = config.circle_mask;
-
-    bool prev_capture_borders = config.capture_borders;
-    bool prev_capture_cursor = config.capture_cursor;
-
-    // Target
-    bool prev_disable_headshot = config.disable_headshot;
-    float prev_body_y_offset = config.body_y_offset;
-    float prev_head_y_offset = config.head_y_offset;
-    bool prev_ignore_third_person = config.ignore_third_person;
-    bool prev_shooting_range_targets = config.shooting_range_targets;
-    bool prev_auto_aim = config.auto_aim;
-
-    // Mouse
-    int prev_dpi = config.dpi;
-    float prev_sensitivity = config.sensitivity;
-    int prev_fovX = config.fovX;
-    int prev_fovY = config.fovY;
-    float prev_minSpeedMultiplier = config.minSpeedMultiplier;
-    float prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
-    float prev_predictionInterval = config.predictionInterval;
-    float prev_snapRadius = config.snapRadius;
-    float prev_nearRadius = config.nearRadius;
-    float prev_speedCurveExponent = config.speedCurveExponent;
-    float prev_snapBoostFactor = config.snapBoostFactor;
-    bool prev_easynorecoil = config.easynorecoil;
-    float prev_easynorecoilstrength = config.easynorecoilstrength;
-
-    // Wind mouse
-    bool  prev_wind_mouse_enabled = config.wind_mouse_enabled;
-    float prev_wind_G = config.wind_G;
-    float prev_wind_W = config.wind_W;
-    float prev_wind_M = config.wind_M;
-    float prev_wind_D = config.wind_D;
-
-    //Mouse shooting
-    bool prev_auto_shoot = config.auto_shoot;
-    float prev_bScope_multiplier = config.bScope_multiplier;
-
-    // AI
-    std::string prev_backend = config.backend;
-    float prev_confidence_threshold = config.confidence_threshold;
-    float prev_nms_threshold = config.nms_threshold;
-    int prev_max_detections = config.max_detections;
-
-    // Overlay
     int prev_opacity = config.overlay_opacity;
-
-    // Debug
-    bool prev_show_window = config.show_window;
-    bool prev_show_fps = config.show_fps;
-    int prev_window_size = config.window_size;
-    int prev_screenshot_delay = config.screenshot_delay;
-    bool prev_always_on_top = config.always_on_top;
-    bool prev_verbose = config.verbose;
 
     for (const auto& pair : KeyCodes::key_code_map)
     {
@@ -437,6 +378,13 @@ void OverlayThread()
                         ImGui::EndTabItem();
                     }
 
+                    if (ImGui::BeginTabItem("Stats"))
+                    {
+                        draw_stats();
+
+                        ImGui::EndTabItem();
+                    }
+
                     if (ImGui::BeginTabItem("Debug"))
                     {
                         draw_debug();
@@ -444,166 +392,6 @@ void OverlayThread()
                         ImGui::EndTabItem();
                     }
 
-                    // ******************************************* APPLY VARS *******************************************
-                    // DETECTION RESOLUTION
-                    if (prev_detection_resolution != config.detection_resolution)
-                    {
-                        prev_detection_resolution = config.detection_resolution;
-                        detection_resolution_changed.store(true);
-                        detector_model_changed.store(true); // reboot vars for visuals
-
-                        // apply new detection_resolution
-                        globalMouseThread->updateConfig(
-                            config.detection_resolution,
-                            config.dpi,
-                            config.sensitivity,
-                            config.fovX,
-                            config.fovY,
-                            config.minSpeedMultiplier,
-                            config.maxSpeedMultiplier,
-                            config.predictionInterval,
-                            config.auto_shoot,
-                            config.bScope_multiplier);
-                        config.saveConfig();
-                    }
-
-                    // CAPTURE CURSOR
-                    if (prev_capture_cursor != config.capture_cursor && config.capture_method == "winrt")
-                    {
-                        capture_cursor_changed.store(true);
-                        prev_capture_cursor = config.capture_cursor;
-                        config.saveConfig();
-                    }
-
-                    // CAPTURE BORDERS
-                    if (prev_capture_borders != config.capture_borders && config.capture_method == "winrt")
-                    {
-                        capture_borders_changed.store(true);
-                        prev_capture_borders = config.capture_borders;
-                        config.saveConfig();
-                    }
-
-                    // CAPTURE_FPS
-                    if (prev_capture_fps != config.capture_fps || prev_monitor_idx != config.monitor_idx)
-                    {
-                        capture_fps_changed.store(true);
-                        prev_monitor_idx = config.monitor_idx;
-                        prev_capture_fps = config.capture_fps;
-                        config.saveConfig();
-                    }
-
-                    // DISABLE_HEADSHOT / BODY_Y_OFFSET / HEAD_Y_OFFSET / IGNORE_THIRD_PERSON / SHOOTING_RANGE_TARGETS / AUTO_AIM / EASYNORECOIL / EASYNORECOILSTRENGTH
-                    if (prev_disable_headshot != config.disable_headshot ||
-                        prev_body_y_offset != config.body_y_offset ||
-                        prev_head_y_offset != config.head_y_offset ||
-                        prev_ignore_third_person != config.ignore_third_person ||
-                        prev_shooting_range_targets != config.shooting_range_targets ||
-                        prev_auto_aim != config.auto_aim ||
-                        prev_easynorecoil != config.easynorecoil ||
-                        prev_easynorecoilstrength != config.easynorecoilstrength)
-                    {
-                        prev_disable_headshot = config.disable_headshot;
-                        prev_body_y_offset = config.body_y_offset;
-                        prev_head_y_offset = config.head_y_offset;
-                        prev_ignore_third_person = config.ignore_third_person;
-                        prev_shooting_range_targets = config.shooting_range_targets;
-                        prev_auto_aim = config.auto_aim;
-                        prev_easynorecoil = config.easynorecoil;
-                        prev_easynorecoilstrength = config.easynorecoilstrength;
-                        config.saveConfig();
-                    }
-
-                    // MOUSE
-                    if (prev_dpi != config.dpi ||
-                        prev_sensitivity != config.sensitivity ||
-                        prev_fovX != config.fovX ||
-                        prev_fovY != config.fovY ||
-                        prev_minSpeedMultiplier != config.minSpeedMultiplier ||
-                        prev_maxSpeedMultiplier != config.maxSpeedMultiplier ||
-                        prev_predictionInterval != config.predictionInterval ||
-                        prev_snapRadius != config.snapRadius ||
-                        prev_nearRadius != config.nearRadius ||
-                        prev_speedCurveExponent != config.speedCurveExponent ||
-                        prev_snapBoostFactor != config.snapBoostFactor)
-                    {
-                        prev_dpi = config.dpi;
-                        prev_sensitivity = config.sensitivity;
-                        prev_fovX = config.fovX;
-                        prev_fovY = config.fovY;
-                        prev_minSpeedMultiplier = config.minSpeedMultiplier;
-                        prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
-                        prev_predictionInterval = config.predictionInterval;
-                        prev_snapRadius = config.snapRadius;
-                        prev_nearRadius = config.nearRadius;
-                        prev_speedCurveExponent = config.speedCurveExponent;
-                        prev_snapBoostFactor = config.snapBoostFactor;
-
-                        globalMouseThread->updateConfig(
-                            config.detection_resolution,
-                            config.dpi,
-                            config.sensitivity,
-                            config.fovX,
-                            config.fovY,
-                            config.minSpeedMultiplier,
-                            config.maxSpeedMultiplier,
-                            config.predictionInterval,
-                            config.auto_shoot,
-                            config.bScope_multiplier);
-
-                        config.saveConfig();
-                    }
-
-                    // WIND-MOUSE
-                    if (prev_wind_mouse_enabled != config.wind_mouse_enabled ||
-                        prev_wind_G != config.wind_G ||
-                        prev_wind_W != config.wind_W ||
-                        prev_wind_M != config.wind_M ||
-                        prev_wind_D != config.wind_D)
-                    {
-                        prev_wind_mouse_enabled = config.wind_mouse_enabled;
-                        prev_wind_G = config.wind_G;
-                        prev_wind_W = config.wind_W;
-                        prev_wind_M = config.wind_M;
-                        prev_wind_D = config.wind_D;
-
-                        globalMouseThread->updateConfig(
-                            config.detection_resolution,
-                            config.dpi,
-                            config.sensitivity,
-                            config.fovX,
-                            config.fovY,
-                            config.minSpeedMultiplier,
-                            config.maxSpeedMultiplier,
-                            config.predictionInterval,
-                            config.auto_shoot,
-                            config.bScope_multiplier);
-
-                        config.saveConfig();
-                    }
-
-                    // AUTO_SHOOT / BSCOPE_MULTIPLIER / AUTO_SHOOT_REPLAY
-                    if (prev_auto_shoot != config.auto_shoot ||
-                        prev_bScope_multiplier != config.bScope_multiplier)
-                    {
-                        prev_auto_shoot = config.auto_shoot;
-                        prev_bScope_multiplier = config.bScope_multiplier;
-
-                        globalMouseThread->updateConfig(
-                            config.detection_resolution,
-                            config.dpi,
-                            config.sensitivity,
-                            config.fovX,
-                            config.fovY,
-                            config.minSpeedMultiplier,
-                            config.maxSpeedMultiplier,
-                            config.predictionInterval,
-                            config.auto_shoot,
-                            config.bScope_multiplier);
-
-                        config.saveConfig();
-                    }
-
-                    // OVERLAY OPACITY
                     if (prev_opacity != config.overlay_opacity)
                     {
                         BYTE opacity = config.overlay_opacity;
@@ -611,54 +399,9 @@ void OverlayThread()
                         config.saveConfig();
                     }
 
-                    // CONFIDENCE THERSHOLD / NMS THRESHOLD / MAX DETECTIONS
-                    if (prev_confidence_threshold != config.confidence_threshold ||
-                        prev_nms_threshold != config.nms_threshold ||
-                        prev_max_detections != config.max_detections)
-                    {
-                        prev_nms_threshold = config.nms_threshold;
-                        prev_confidence_threshold = config.confidence_threshold;
-                        prev_max_detections = config.max_detections;
-                        config.saveConfig();
-                    }
-
-                    // SHOW WINDOW / ALWAYS_ON_TOP
-                    if (prev_show_window != config.show_window ||
-                        prev_always_on_top != config.always_on_top)
-                    {
-                        prev_always_on_top = config.always_on_top;
-                        show_window_changed.store(true);
-                        prev_show_window = config.show_window;
-                        config.saveConfig();
-                    }
-                    
-                    // SHOW_FPS / WINDOW_SIZE / SCREENSHOT_DELAY / VERBOSE
-                    if (prev_show_fps != config.show_fps ||
-                        prev_window_size != config.window_size ||
-                        prev_screenshot_delay != config.screenshot_delay ||
-                        prev_verbose != config.verbose)
-                    {
-                        prev_show_fps = config.show_fps;
-                        prev_window_size = config.window_size;
-                        prev_screenshot_delay = config.screenshot_delay;
-                        prev_verbose = config.verbose;
-                        config.saveConfig();
-                    }
-
-                    // BACKEND (AI)
-                    if (prev_backend != config.backend)
-                    {
-                        prev_backend = config.backend;
-                        detector_model_changed.store(true);
-                        config.saveConfig();
-                    }
-
                 ImGui::EndTabBar();
                 }
             }
-
-            ImGui::Separator();
-            ImGui::TextColored(ImVec4(255, 255, 255, 100), "Do not test shooting and aiming with the overlay and debug window is open.");
 
             ImGui::End();
             ImGui::Render();

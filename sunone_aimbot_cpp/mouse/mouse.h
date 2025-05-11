@@ -25,9 +25,7 @@ class MouseThread
 private:
     double screen_width;
     double screen_height;
-    double dpi;
     double prediction_interval;
-    double mouse_sensitivity;
     double fov_x;
     double fov_y;
     double max_distance;
@@ -78,8 +76,6 @@ public:
 
     MouseThread(
         int  resolution,
-        int  dpi,
-        double sensitivity,
         int  fovX,
         int  fovY,
         double minSpeedMultiplier,
@@ -93,9 +89,16 @@ public:
     );
     ~MouseThread();
 
-    void updateConfig(int resolution, double dpi, double sensitivity, int fovX, int fovY,
-        double minSpeedMultiplier, double maxSpeedMultiplier,
-        double predictionInterval, bool auto_shoot, float bScope_multiplier);
+    void updateConfig(
+        int resolution,
+        int fovX,
+        int fovY,
+        double minSpeedMultiplier,
+        double maxSpeedMultiplier,
+        double predictionInterval,
+        bool auto_shoot,
+        float bScope_multiplier
+    );
 
     void moveMousePivot(double pivotX, double pivotY);
     std::pair<double, double> predict_target_position(double target_x, double target_y);

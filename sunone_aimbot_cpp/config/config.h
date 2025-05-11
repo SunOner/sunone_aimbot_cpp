@@ -3,6 +3,8 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <utility>
 
 class Config
 {
@@ -29,8 +31,6 @@ public:
     bool auto_aim;
 
     // Mouse
-    int dpi;
-    float sensitivity;
     int fovX;
     int fovY;
     float minSpeedMultiplier;
@@ -130,6 +130,22 @@ public:
     int screenshot_delay;
     bool always_on_top;
     bool verbose;
+
+    struct GameProfile
+    {
+        std::string name;
+        double sens;
+        double yaw;
+        double pitch;
+        bool fovScaled;
+        double baseFOV;
+    };
+
+    std::unordered_map<std::string, GameProfile> game_profiles;
+    std::string                                  active_game;
+
+    const GameProfile & currentProfile() const;
+    std::pair<double, double> degToCounts(double degX, double degY, double fovNow) const;
 
     bool loadConfig(const std::string& filename = "config.ini");
     bool saveConfig(const std::string& filename = "config.ini");

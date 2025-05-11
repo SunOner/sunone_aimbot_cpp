@@ -36,6 +36,7 @@
     <ClCompile Include="overlay\draw_debug.cpp" />
     <ClCompile Include="mouse\Kmbox_b.cpp" />
     <ClCompile Include="detector\directml_detector.cpp" />
+    <ClCompile Include="overlay\draw_stats.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -81,6 +82,7 @@
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="$(MSBuildThisFileDirectory)..\..\runtimes\win-x64\native\onnxruntime.dll" />
+    <None Include="$(MSBuildThisFileDirectory)..\..\runtimes\win-x64\native\onnxruntime_providers_shared.dll" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

@@ -179,8 +179,6 @@ void mouseThreadFunction(MouseThread& mouseThread)
                 std::lock_guard<std::mutex> cfgLock(configMutex);
                 mouseThread.updateConfig(
                     config.detection_resolution,
-                    config.dpi,
-                    config.sensitivity,
                     config.fovX,
                     config.fovY,
                     config.minSpeedMultiplier,
@@ -350,8 +348,6 @@ int main()
 
         MouseThread mouseThread(
             config.detection_resolution,
-            config.dpi,
-            config.sensitivity,
             config.fovX,
             config.fovY,
             config.minSpeedMultiplier,

@@ -18,8 +18,6 @@
 
 MouseThread::MouseThread(
     int resolution,
-    int dpi,
-    double sensitivity,
     int fovX,
     int fovY,
     double minSpeedMultiplier,
@@ -32,9 +30,7 @@ MouseThread::MouseThread(
     KmboxConnection* kmboxConnection)
     : screen_width(resolution),
     screen_height(resolution),
-    dpi(dpi),
     prediction_interval(predictionInterval),
-    mouse_sensitivity(sensitivity),
     fov_x(fovX),
     fov_y(fovY),
     max_distance(std::hypot(resolution, resolution) / 2.0),
@@ -67,8 +63,6 @@ MouseThread::MouseThread(
 
 void MouseThread::updateConfig(
     int resolution,
-    double dpi,
-    double sensitivity,
     int fovX,
     int fovY,
     double minSpeedMultiplier,
@@ -79,8 +73,6 @@ void MouseThread::updateConfig(
 )
 {
     screen_width = screen_height = resolution;
-    this->dpi = dpi;
-    mouse_sensitivity = sensitivity;
     fov_x = fovX;  fov_y = fovY;
     min_speed_multiplier = minSpeedMultiplier;
     max_speed_multiplier = maxSpeedMultiplier;
@@ -262,8 +254,9 @@ std::pair<double, double> MouseThread::calc_movement(double tx, double ty)
     double fps = static_cast<double>(captureFps.load());
     if (fps > 30.0) corr = 30.0 / fps;
 
-    double move_x = (mmx / 360.0) * (dpi / mouse_sensitivity) * speed * corr;
-    double move_y = (mmy / 360.0) * (dpi / mouse_sensitivity) * speed * corr;
+    auto counts_pair = config.degToCounts(mmx, mmy, fov_x);
+    double move_x = counts_pair.first * speed * corr;
+    double move_y = counts_pair.second * speed * corr;
 
     return { move_x, move_y };
 }

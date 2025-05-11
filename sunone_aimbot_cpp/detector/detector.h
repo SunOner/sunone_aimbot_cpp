@@ -44,6 +44,10 @@ public:
     std::vector<std::string> outputNames;
     std::unordered_map<std::string, size_t> outputSizes;
 
+    std::chrono::duration<double, std::milli> lastInferenceTime;
+    std::chrono::steady_clock::time_point lastInferenceStart;
+    std::chrono::steady_clock::time_point lastInferenceEnd;
+
 private:
     std::unique_ptr<nvinfer1::IRuntime> runtime;
     std::unique_ptr<nvinfer1::ICudaEngine> engine;

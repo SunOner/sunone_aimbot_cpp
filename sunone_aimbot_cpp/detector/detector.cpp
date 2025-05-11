@@ -535,6 +535,7 @@ void Detector::inferenceThread()
         {
             try
             {
+                lastInferenceStart = std::chrono::steady_clock::now();
                 preProcess(frame);
                 
                 if (useCudaGraph)
@@ -555,6 +556,9 @@ void Detector::inferenceThread()
                 
                 cudaStreamSynchronize(stream);
                 
+                lastInferenceEnd = std::chrono::steady_clock::now();
+                lastInferenceTime = lastInferenceEnd - lastInferenceStart;
+
                 for (const auto& name : outputNames)
                 {
                     size_t size = outputSizes[name];

@@ -15,6 +15,7 @@
 #include "other_tools.h"
 #include "virtual_camera.h"
 #include "draw_settings.h"
+#include "overlay.h"
 
 bool disable_winrt_futures = checkwin1903();
 int monitors = get_active_monitors();
@@ -30,13 +31,34 @@ void ensureVirtualCamerasLoaded() {
 
 void draw_capture_settings()
 {
-    ImGui::SliderInt("Detection Resolution", &config.detection_resolution, 50, 1280);
+    if (ImGui::SliderInt("Detection Resolution", &config.detection_resolution, 50, 1280))
+    {
+        detection_resolution_changed.store(true);
+        detector_model_changed.store(true); // reboot vars for visuals
+
+        // apply new detection_resolution
+        globalMouseThread->updateConfig(
+            config.detection_resolution,
+            config.fovX,
+            config.fovY,
+            config.minSpeedMultiplier,
+            config.maxSpeedMultiplier,
+            config.predictionInterval,
+            config.auto_shoot,
+            config.bScope_multiplier);
+        config.saveConfig();
+    }
     if (config.detection_resolution >= 400)
     {
         ImGui::TextColored(ImVec4(255, 255, 0, 255), "WARNING: A large screen capture size can negatively affect performance.");
     }
 
-    ImGui::SliderInt("Lock FPS", &config.capture_fps, 0, 240);
+    if (ImGui::SliderInt("Capture FPS", &config.capture_fps, 0, 240))
+    {
+        capture_fps_changed.store(true);
+        config.saveConfig();
+    }
+
     if (config.capture_fps == 0)
     {
         ImGui::SameLine();
@@ -62,6 +84,7 @@ void draw_capture_settings()
 
     std::vector<std::string> captureMethodOptions = { "duplication_api", "winrt", "virtual_camera" };
     std::vector<const char*> captureMethodItems;
+
     for (const auto& option : captureMethodOptions)
     {
         captureMethodItems.push_back(option.c_str());
@@ -91,8 +114,17 @@ void draw_capture_settings()
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
         }
 
-        ImGui::Checkbox("Capture Borders", &config.capture_borders);
-        ImGui::Checkbox("Capture Cursor", &config.capture_cursor);
+        if (ImGui::Checkbox("Capture Borders", &config.capture_borders))
+        {
+            capture_borders_changed.store(true);
+            config.saveConfig();
+        }
+
+        if (ImGui::Checkbox("Capture Cursor", &config.capture_cursor))
+        {
+            capture_cursor_changed.store(true);
+            config.saveConfig();
+        }
 
         if (disable_winrt_futures)
         {
@@ -122,7 +154,7 @@ void draw_capture_settings()
             monitorItems.push_back(name.c_str());
         }
 
-        if (ImGui::Combo("Capture monitor (CUDA GPU)", &config.monitor_idx, monitorItems.data(), static_cast<int>(monitorItems.size())))
+        if (ImGui::Combo("Capture monitor", &config.monitor_idx, monitorItems.data(), static_cast<int>(monitorItems.size())))
         {
             config.saveConfig();
             capture_method_changed.store(true);

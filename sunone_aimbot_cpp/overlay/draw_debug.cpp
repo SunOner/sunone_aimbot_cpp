@@ -8,6 +8,13 @@
 #include "overlay.h"
 #include "include/other_tools.h"
 
+bool prev_show_window = config.show_window;
+bool prev_show_fps = config.show_fps;
+int prev_window_size = config.window_size;
+int prev_screenshot_delay = config.screenshot_delay;
+bool prev_always_on_top = config.always_on_top;
+bool prev_verbose = config.verbose;
+
 void draw_debug()
 {
     ImGui::Checkbox("Show Debug Window", &config.show_window);
@@ -89,5 +96,26 @@ void draw_debug()
     if (ImGui::Button("Restore terminal"))
     {
         ShowConsole();
+    }
+
+    if (prev_show_window != config.show_window ||
+        prev_always_on_top != config.always_on_top)
+    {
+        prev_always_on_top = config.always_on_top;
+        show_window_changed.store(true);
+        prev_show_window = config.show_window;
+        config.saveConfig();
+    }
+
+    if (prev_show_fps != config.show_fps ||
+        prev_window_size != config.window_size ||
+        prev_screenshot_delay != config.screenshot_delay ||
+        prev_verbose != config.verbose)
+    {
+        prev_show_fps = config.show_fps;
+        prev_window_size = config.window_size;
+        prev_screenshot_delay = config.screenshot_delay;
+        prev_verbose = config.verbose;
+        config.saveConfig();
     }
 }

@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <string>
 #include <filesystem>
+#include <unordered_map>
 
 #include "config.h"
 #include "modules/SimpleIni.h"
@@ -67,12 +68,10 @@ bool Config::loadConfig(const std::string& filename)
         auto_aim = false;
 
         // Mouse
-        dpi = 1000;
-        sensitivity = 4.0f;
-        fovX = 50;
-        fovY = 50;
-        minSpeedMultiplier = 1.0f;
-        maxSpeedMultiplier = 4.0f;
+        fovX = 106;
+        fovY = 74;
+        minSpeedMultiplier = 0.1f;
+        maxSpeedMultiplier = 0.1f;
 
         predictionInterval = 0.01f;
         prediction_futurePositions = 20;
@@ -112,7 +111,7 @@ bool Config::loadConfig(const std::string& filename)
         backend = "TRT";
         dml_device_id = 0;
         ai_model = "sunxds_0.5.6.engine";
-        confidence_threshold = 0.15f;
+        confidence_threshold = 0.10f;
         nms_threshold = 0.50f;
         max_detections = 100;
         postprocess = "yolo10";
@@ -181,26 +180,73 @@ bool Config::loadConfig(const std::string& filename)
         return false;
     }
 
-    auto get_string = [&](const char* key, const char* defval)
+    auto get_string = [&](const char* key, const std::string& defval)
     {
-        const char* val = ini.GetValue("", key, defval);
-        return std::string(val ? val : "");
+        const char* val = ini.GetValue("", key, defval.c_str());
+        return val ? std::string(val) : defval;
     };
 
     auto get_bool = [&](const char* key, bool defval)
-    {
-        return ini.GetBoolValue("", key, defval);
-    };
+        {
+            return ini.GetBoolValue("", key, defval);
+        };
 
     auto get_long = [&](const char* key, long defval)
-    {
-        return (int)ini.GetLongValue("", key, defval);
-    };
+        {
+            return (int)ini.GetLongValue("", key, defval);
+        };
 
     auto get_double = [&](const char* key, double defval)
+        {
+            return ini.GetDoubleValue("", key, defval);
+        };
+
+    game_profiles.clear();
     {
-        return ini.GetDoubleValue("", key, defval);
-    };
+        GameProfile uni;
+        uni.name = "UNIFIED";
+        uni.pitch = uni.yaw;
+        uni.fovScaled = false;
+        uni.baseFOV = 0.0;
+        game_profiles[uni.name] = uni;
+        active_game = uni.name;
+    }
+
+    active_game = get_string("active_game", active_game);
+
+    CSimpleIniA::TNamesDepend keys;
+    ini.GetAllKeys("Games", keys);
+
+    for (const auto& k : keys)
+    {
+        std::string name = k.pItem;
+        std::string val = ini.GetValue("Games", k.pItem, "");
+        auto parts = splitString(val, ',');
+
+        try
+        {
+            if (parts.size() < 2)
+                throw std::runtime_error("not enough values");
+
+            GameProfile gp;
+            gp.name = name;
+            gp.sens = std::stod(parts[0]);
+            gp.yaw = std::stod(parts[1]);
+            gp.pitch = parts.size() > 2 ? std::stod(parts[2]) : gp.yaw;
+            gp.fovScaled = parts.size() > 3 && (parts[3] == "true" || parts[3] == "1");
+            gp.baseFOV = parts.size() > 4 ? std::stod(parts[4]) : 0.0;
+
+            game_profiles[name] = gp;
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << "[Config] Failed to parse profile: " << name
+                << " = " << val << " (" << e.what() << ")" << std::endl;
+        }
+    }
+
+    if (!game_profiles.count(active_game) && !game_profiles.empty())
+        active_game = game_profiles.begin()->first;
 
     // Capture
     capture_method = get_string("capture_method", "duplication_api");
@@ -224,12 +270,10 @@ bool Config::loadConfig(const std::string& filename)
     auto_aim = get_bool("auto_aim", false);
 
     // Mouse
-    dpi = get_long("dpi", 1000);
-    sensitivity = (float)get_double("sensitivity", 4.0);
-    fovX = get_long("fovX", 50);
-    fovY = get_long("fovY", 50);
-    minSpeedMultiplier = (float)get_double("minSpeedMultiplier", 1.0);
-    maxSpeedMultiplier = (float)get_double("maxSpeedMultiplier", 4.0);
+    fovX = get_long("fovX", 106);
+    fovY = get_long("fovY", 74);
+    minSpeedMultiplier = (float)get_double("minSpeedMultiplier", 0.1);
+    maxSpeedMultiplier = (float)get_double("maxSpeedMultiplier", 0.1);
 
     predictionInterval = (float)get_double("predictionInterval", 0.01);
     prediction_futurePositions = get_long("prediction_futurePositions", 20);
@@ -367,9 +411,6 @@ bool Config::saveConfig(const std::string& filename)
 
     // Mouse
     file << "# Mouse move\n"
-        << "dpi = " << dpi << "\n"
-        << std::fixed << std::setprecision(1)
-        << "sensitivity = " << sensitivity << "\n"
         << "fovX = " << fovX << "\n"
         << "fovY = " << fovY << "\n"
         << "minSpeedMultiplier = " << minSpeedMultiplier << "\n"
@@ -489,8 +530,38 @@ bool Config::saveConfig(const std::string& filename)
         << "screenshot_button = " << joinStrings(screenshot_button) << "\n"
         << "screenshot_delay = " << screenshot_delay << "\n"
         << "always_on_top = " << (always_on_top ? "true" : "false") << "\n"
-        << "verbose = " << (verbose ? "true" : "false") << "\n";
+        << "verbose = " << (verbose ? "true" : "false") << "\n\n";
+
+    // Active game
+    file << "# Active game profile\n";
+    file << "active_game = " << active_game << "\n\n";
+    file << "[Games]\n";
+    for (auto& kv : game_profiles)
+    {
+        auto & gp = kv.second;
+        file << gp.name << " = "
+             << gp.sens << "," << gp.yaw;
+        if (gp.pitch != gp.yaw)      file << "," << gp.pitch;
+        if (gp.fovScaled)            file << ",true," << gp.baseFOV;
+        file << "\n";
+    }
 
     file.close();
     return true;
+}
+
+const Config::GameProfile& Config::currentProfile() const
+{
+    auto it = game_profiles.find(active_game);
+    if (it != game_profiles.end()) return it->second;
+    throw std::runtime_error("Active game profile not found: " + active_game);
+}
+
+std::pair<double, double> Config::degToCounts(double degX, double degY, double fovNow) const
+{
+    const auto& gp = currentProfile();
+    double scale = (gp.fovScaled && gp.baseFOV > 1.0) ? (fovNow / gp.baseFOV) : 1.0;
+    double cx = degX / (gp.sens * gp.yaw * scale);
+    double cy = degY / (gp.sens * gp.pitch * scale);
+    return { cx, cy };
 }

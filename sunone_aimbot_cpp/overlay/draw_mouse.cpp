@@ -11,15 +11,36 @@
 
 std::string ghub_version = get_ghub_version();
 
+int prev_fovX = config.fovX;
+int prev_fovY = config.fovY;
+float prev_minSpeedMultiplier = config.minSpeedMultiplier;
+float prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
+float prev_predictionInterval = config.predictionInterval;
+float prev_snapRadius = config.snapRadius;
+float prev_nearRadius = config.nearRadius;
+float prev_speedCurveExponent = config.speedCurveExponent;
+float prev_snapBoostFactor = config.snapBoostFactor;
+
+bool  prev_wind_mouse_enabled = config.wind_mouse_enabled;
+float prev_wind_G = config.wind_G;
+float prev_wind_W = config.wind_W;
+float prev_wind_M = config.wind_M;
+float prev_wind_D = config.wind_D;
+
+bool prev_auto_shoot = config.auto_shoot;
+float prev_bScope_multiplier = config.bScope_multiplier;
+
 void draw_mouse()
 {
-    ImGui::SliderInt("DPI", &config.dpi, 400, 5000);
-    ImGui::SliderFloat("Sensitivity", &config.sensitivity, 0.1f, 10.0f, "%.1f");
+    ImGui::SeparatorText("FOV");
     ImGui::SliderInt("FOV X", &config.fovX, 10, 120);
     ImGui::SliderInt("FOV Y", &config.fovY, 10, 120);
+
+    ImGui::SeparatorText("Speed Multiplier");
     ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 30.0f, "%.1f");
     ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 30.0f, "%.1f");
 
+    ImGui::SeparatorText("Prediction");
     ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.00f, 0.10f, "%.2f");
     if (config.predictionInterval == 0.00f)
     {
@@ -42,14 +63,136 @@ void draw_mouse()
         }
     }
 
+    ImGui::SeparatorText("Target corrention");
     ImGui::SliderFloat("Snap Radius", &config.snapRadius, 0.1f, 5.0f, "%.1f");
     ImGui::SliderFloat("Near Radius", &config.nearRadius, 1.0f, 40.0f, "%.1f");
     ImGui::SliderFloat("Speed Curve Exponent", &config.speedCurveExponent, 0.1f, 10.0f, "%.1f");
     ImGui::SliderFloat("Snap Boost Factor", &config.snapBoostFactor, 0.01f, 4.00f, "%.2f");
 
-    ImGui::Separator();
+    ImGui::SeparatorText("Game Profile");
+    std::vector<std::string> profile_names;
+    for (const auto& kv : config.game_profiles)
+        profile_names.push_back(kv.first);
 
-    // No recoil settings
+    static int selected_index = 0;
+    for (size_t i = 0; i < profile_names.size(); ++i)
+    {
+        if (profile_names[i] == config.active_game)
+        {
+            selected_index = static_cast<int>(i);
+            break;
+        }
+    }
+
+    std::vector<const char*> profile_items;
+    for (const auto& name : profile_names)
+        profile_items.push_back(name.c_str());
+
+    if (ImGui::Combo("Active Game Profile", &selected_index, profile_items.data(), static_cast<int>(profile_items.size())))
+    {
+        config.active_game = profile_names[selected_index];
+        config.saveConfig();
+        globalMouseThread->updateConfig(
+            config.detection_resolution,
+            config.fovX,
+            config.fovY,
+            config.minSpeedMultiplier,
+            config.maxSpeedMultiplier,
+            config.predictionInterval,
+            config.auto_shoot,
+            config.bScope_multiplier
+        );
+        input_method_changed.store(true);
+    }
+
+    const auto& gp = config.currentProfile();
+
+    ImGui::Text("Current profile: %s", gp.name.c_str());
+    ImGui::Text("Sens: %.4f", gp.sens);
+    ImGui::Text("Yaw:  %.4f", gp.yaw);
+    ImGui::Text("Pitch: %.4f", gp.pitch);
+    ImGui::Text("FOV Scaled: %s", gp.fovScaled ? "true" : "false");
+
+    if (gp.name != "UNIFIED")
+    {
+        Config::GameProfile& modifiable = config.game_profiles[gp.name];
+        bool changed = false;
+
+        float sens_f = static_cast<float>(modifiable.sens);
+        float yaw_f = static_cast<float>(modifiable.yaw);
+        float pitch_f = static_cast<float>(modifiable.pitch);
+        float baseFOV_f = static_cast<float>(modifiable.baseFOV);
+
+        changed |= ImGui::SliderFloat("Sensitivity", &sens_f, 0.001f, 10.0f, "%.4f");
+        changed |= ImGui::SliderFloat("Yaw", &yaw_f, 0.001f, 0.1f, "%.4f");
+        changed |= ImGui::SliderFloat("Pitch", &pitch_f, 0.001f, 0.1f, "%.4f");
+
+        changed |= ImGui::Checkbox("FOV Scaled", &modifiable.fovScaled);
+        if (modifiable.fovScaled)
+        {
+            changed |= ImGui::SliderFloat("Base FOV", &baseFOV_f, 10.0f, 180.0f, "%.1f");
+        }
+
+        if (changed)
+        {
+            modifiable.sens = static_cast<double>(sens_f);
+            modifiable.yaw = static_cast<double>(yaw_f);
+
+            if (gp.pitch == 0.0 || !gp.fovScaled)
+                modifiable.pitch = modifiable.yaw;
+            else
+                modifiable.pitch = static_cast<double>(pitch_f);
+
+            modifiable.baseFOV = static_cast<double>(baseFOV_f);
+
+            config.saveConfig();
+            input_method_changed.store(true);
+        }
+    }
+
+    ImGui::SeparatorText("Manage Profiles");
+
+    static char new_profile_name[64] = "";
+    ImGui::InputText("New profile name", new_profile_name, sizeof(new_profile_name));
+    ImGui::SameLine();
+    if (ImGui::Button("Add Profile"))
+    {
+        std::string name = std::string(new_profile_name);
+        if (!name.empty() && config.game_profiles.count(name) == 0)
+        {
+            Config::GameProfile gp;
+            gp.name = name;
+            gp.sens = 1.0;
+            gp.yaw = 0.022;
+            gp.pitch = 0.022;
+            gp.fovScaled = false;
+            gp.baseFOV = 90.0;
+            config.game_profiles[name] = gp;
+            config.active_game = name;
+            config.saveConfig();
+            input_method_changed.store(true);
+            new_profile_name[0] = '\0'; // clear
+        }
+    }
+
+    if (gp.name != "UNIFIED")
+    {
+        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(200, 50, 50, 255));
+        if (ImGui::Button("Delete Current Profile"))
+        {
+            config.game_profiles.erase(gp.name);
+            if (!config.game_profiles.empty())
+                config.active_game = config.game_profiles.begin()->first;
+            else
+                config.active_game = "UNIFIED";
+
+            config.saveConfig();
+            input_method_changed.store(true);
+        }
+        ImGui::PopStyleColor();
+    }
+
+    ImGui::SeparatorText("Easy No Recoil");
     ImGui::Checkbox("Easy No Recoil", &config.easynorecoil);
     if (config.easynorecoil)
     {
@@ -62,7 +205,7 @@ void draw_mouse()
         }
     }
 
-    ImGui::Separator();
+    ImGui::SeparatorText("Auto Shoot");
 
     ImGui::Checkbox("Auto Shoot", &config.auto_shoot);
     if (config.auto_shoot)
@@ -70,8 +213,47 @@ void draw_mouse()
         ImGui::SliderFloat("bScope Multiplier", &config.bScope_multiplier, 0.5f, 2.0f, "%.1f");
     }
 
-    // INPUT METHODS
-    ImGui::Separator();
+    ImGui::SeparatorText("Wind mouse");
+
+    if (ImGui::Checkbox("Enable WindMouse", &config.wind_mouse_enabled))
+    {
+        config.saveConfig();
+        input_method_changed.store(true);
+    }
+
+    if (config.wind_mouse_enabled)
+    {
+        if (ImGui::SliderFloat("Gravity force", &config.wind_G, 4.00f, 40.00f, "%.2f"))
+        {
+            config.saveConfig();
+        }
+
+        if (ImGui::SliderFloat("Wind fluctuation", &config.wind_W, 1.00f, 40.00f, "%.2f"))
+        {
+            config.saveConfig();
+        }
+
+        if (ImGui::SliderFloat("Max step (velocity clip)", &config.wind_M, 1.00f, 40.00f, "%.2f"))
+        {
+            config.saveConfig();
+        }
+
+        if (ImGui::SliderFloat("Distance where behaviour changes", &config.wind_D, 1.00f, 40.00f, "%.2f"))
+        {
+            config.saveConfig();
+        }
+
+        if (ImGui::Button("Reset Wind Mouse to default settings"))
+        {
+            config.wind_G = 18.0f;
+            config.wind_W = 15.0f;
+            config.wind_M = 10.0f;
+            config.wind_D = 8.0f;
+            config.saveConfig();
+        }
+    }
+
+    ImGui::SeparatorText("Input method");
     std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX_B" };
 
     std::vector<const char*> method_items;
@@ -288,43 +470,82 @@ void draw_mouse()
     }
 
     ImGui::Separator();
+    ImGui::TextColored(ImVec4(255, 255, 255, 100), "Do not test shooting and aiming with the overlay and debug window is open.");
 
-    // Wind mouse
-    if (ImGui::Checkbox("Enable WindMouse", &config.wind_mouse_enabled))
+    if (prev_fovX != config.fovX ||
+        prev_fovY != config.fovY ||
+        prev_minSpeedMultiplier != config.minSpeedMultiplier ||
+        prev_maxSpeedMultiplier != config.maxSpeedMultiplier ||
+        prev_predictionInterval != config.predictionInterval ||
+        prev_snapRadius != config.snapRadius ||
+        prev_nearRadius != config.nearRadius ||
+        prev_speedCurveExponent != config.speedCurveExponent ||
+        prev_snapBoostFactor != config.snapBoostFactor)
     {
+        prev_fovX = config.fovX;
+        prev_fovY = config.fovY;
+        prev_minSpeedMultiplier = config.minSpeedMultiplier;
+        prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
+        prev_predictionInterval = config.predictionInterval;
+        prev_snapRadius = config.snapRadius;
+        prev_nearRadius = config.nearRadius;
+        prev_speedCurveExponent = config.speedCurveExponent;
+        prev_snapBoostFactor = config.snapBoostFactor;
+
+        globalMouseThread->updateConfig(
+            config.detection_resolution,
+            config.fovX,
+            config.fovY,
+            config.minSpeedMultiplier,
+            config.maxSpeedMultiplier,
+            config.predictionInterval,
+            config.auto_shoot,
+            config.bScope_multiplier);
+
         config.saveConfig();
-        input_method_changed.store(true);
     }
-    
-    if (config.wind_mouse_enabled)
+
+    if (prev_wind_mouse_enabled != config.wind_mouse_enabled ||
+        prev_wind_G != config.wind_G ||
+        prev_wind_W != config.wind_W ||
+        prev_wind_M != config.wind_M ||
+        prev_wind_D != config.wind_D)
     {
-        if (ImGui::SliderFloat("Gravity force", &config.wind_G, 4.00f, 40.00f, "%.2f"))
-        {
-            config.saveConfig();
-        }
+        prev_wind_mouse_enabled = config.wind_mouse_enabled;
+        prev_wind_G = config.wind_G;
+        prev_wind_W = config.wind_W;
+        prev_wind_M = config.wind_M;
+        prev_wind_D = config.wind_D;
 
-        if (ImGui::SliderFloat("Wind fluctuation", &config.wind_W, 1.00f, 40.00f, "%.2f"))
-        {
-            config.saveConfig();
-        }
+        globalMouseThread->updateConfig(
+            config.detection_resolution,
+            config.fovX,
+            config.fovY,
+            config.minSpeedMultiplier,
+            config.maxSpeedMultiplier,
+            config.predictionInterval,
+            config.auto_shoot,
+            config.bScope_multiplier);
 
-        if (ImGui::SliderFloat("Max step (velocity clip)", &config.wind_M, 1.00f, 40.00f, "%.2f"))
-        {
-            config.saveConfig();
-        }
+        config.saveConfig();
+    }
 
-        if (ImGui::SliderFloat("Distance where behaviour changes", &config.wind_D, 1.00f, 40.00f, "%.2f"))
-        {
-            config.saveConfig();
-        }
+    if (prev_auto_shoot != config.auto_shoot ||
+        prev_bScope_multiplier != config.bScope_multiplier)
+    {
+        prev_auto_shoot = config.auto_shoot;
+        prev_bScope_multiplier = config.bScope_multiplier;
 
-        if (ImGui::Button("Reset Wind Mouse to default settings"))
-        {
-            config.wind_G = 18.0f;
-            config.wind_W = 15.0f;
-            config.wind_M = 10.0f;
-            config.wind_D = 8.0f;
-            config.saveConfig();
-        }
+        globalMouseThread->updateConfig(
+            config.detection_resolution,
+            config.fovX,
+            config.fovY,
+            config.minSpeedMultiplier,
+            config.maxSpeedMultiplier,
+            config.predictionInterval,
+            config.auto_shoot,
+            config.bScope_multiplier);
+
+        config.saveConfig();
     }
 }
