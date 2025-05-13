@@ -6,5 +6,6 @@
 #include "detector.h"
 
 void displayThread();
+void setWindowAlwaysOnTop(const std::string& winName, bool onTop);
 
 #endif // VISUALS_H

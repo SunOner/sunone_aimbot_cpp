@@ -22,106 +22,136 @@
 void setWindowAlwaysOnTop(const std::string& winName, bool onTop)
 {
     HWND hwnd = (HWND)cvGetWindowHandle(winName.c_str());
-    if (hwnd)
-    {
-        SetWindowPos(hwnd, onTop ? HWND_TOPMOST : HWND_NOTOPMOST,
-            0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-    }
+    if (!hwnd) return;
+
+    SetWindowPos(
+        hwnd,
+        onTop ? HWND_TOPMOST : HWND_NOTOPMOST,
+        0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW
+    );
 }
 
 extern std::atomic<bool> show_window_changed;
 
 void displayThread()
 {
+    static bool window_initialized = false;
+    static bool topmost_applied = false;
+    int currentSize = 0;
+    
     std::vector<cv::Rect> boxes;
     std::vector<int> classes;
 
     if (config.show_window)
     {
         if (config.window_name.empty())
-            config.window_name = "Debug";
-
-        cv::namedWindow(config.window_name, cv::WINDOW_NORMAL);
-
         {
+            config.window_name = "Debug";
+        }
+
+        try
+        {
+            cv::namedWindow(config.window_name, cv::WINDOW_NORMAL);
             cv::Mat dummy = cv::Mat::zeros(1, 1, CV_8UC3);
             cv::imshow(config.window_name, dummy);
             cv::waitKey(1);
-        }
 
-        if (cv::getWindowProperty(config.window_name, cv::WND_PROP_VISIBLE) >= 0)
-        {
-            try
+            HWND hwnd = (HWND)cvGetWindowHandle(config.window_name.c_str());
+            if (hwnd && IsWindowVisible(hwnd))
             {
+                SetWindowPos(hwnd,
+                    config.always_on_top ? HWND_TOPMOST : HWND_NOTOPMOST,
+                    0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE);
+
                 setWindowAlwaysOnTop(config.window_name, config.always_on_top);
             }
-            catch (const cv::Exception& e)
-            {
-                std::cerr << "[Visuals] Error setWindowProperty (startup): " << e.what() << std::endl;
-            }
+            window_initialized = true;
+        }
+        catch (const cv::Exception& e)
+        {
+            std::cerr << "[Visuals] Error initializing window: " << e.what() << std::endl;
         }
     }
-
-    int currentSize = 0;
 
     while (!shouldExit)
     {
         if (show_window_changed.load())
         {
+            std::cout << "[DEBUG] Debug window update" << std::endl;
             try
             {
                 if (config.show_window)
                 {
-                    if (config.window_name.empty())
-                    {
-                        config.window_name = "Debug";
-                    }
-
-                    if (cv::getWindowProperty(config.window_name, cv::WND_PROP_VISIBLE) < 0)
+                    if (!window_initialized)
                     {
                         cv::namedWindow(config.window_name, cv::WINDOW_NORMAL);
+                        cv::Mat dummy = cv::Mat::zeros(1, 1, CV_8UC3);
+                        cv::imshow(config.window_name, dummy);
+                        cv::waitKey(1);
+                        window_initialized = true;
+                    }
 
-                        {
-                            cv::Mat dummy = cv::Mat::zeros(1, 1, CV_8UC3);
-                            cv::imshow(config.window_name, dummy);
-                            cv::waitKey(1);
-                        }
+                    HWND hwnd = (HWND)cvGetWindowHandle(config.window_name.c_str());
+                    if (hwnd && IsWindowVisible(hwnd))
+                    {
+                        SetWindowPos(
+                            hwnd,
+                            config.always_on_top ? HWND_TOPMOST : HWND_NOTOPMOST,
+                            0, 0, 0, 0,
+                            SWP_NOMOVE | SWP_NOSIZE
+                        );
+                        setWindowAlwaysOnTop(config.window_name, config.always_on_top);
                     }
 
                     double prop = -1;
-                    try
-                    {
+                    try {
                         prop = cv::getWindowProperty(config.window_name, cv::WND_PROP_VISIBLE);
                     }
-                    catch (...)
-                    {
+                    catch (...) {
                         prop = -1;
                     }
 
                     if (prop >= 0)
                     {
-                        try {
-                            HWND hwnd = (HWND)cvGetWindowHandle(config.window_name.c_str());
-                            if (hwnd)
-                            {
-                                SetWindowPos(
-                                    hwnd,
-                                    config.always_on_top ? HWND_TOPMOST : HWND_NOTOPMOST,
-                                    0, 0, 0, 0,
-                                    SWP_NOMOVE | SWP_NOSIZE
-                                );
-                            }
-                        }
-                        catch (const cv::Exception& e) {
-                            std::cerr << "[Visuals] OpenCV error in setWindowProperty: " << e.what() << std::endl;
+                        HWND hwnd = (HWND)cvGetWindowHandle(config.window_name.c_str());
+                        if (hwnd)
+                        {
+                            SetWindowPos(
+                                hwnd,
+                                config.always_on_top ? HWND_TOPMOST : HWND_NOTOPMOST,
+                                0, 0, 0, 0,
+                                SWP_NOMOVE | SWP_NOSIZE
+                            );
+                            setWindowAlwaysOnTop(config.window_name, config.always_on_top);
                         }
                     }
                 }
                 else
                 {
-                    if (cv::getWindowProperty(config.window_name, cv::WND_PROP_VISIBLE) >= 0)
+                    if (window_initialized)
                     {
-                        cv::destroyWindow(config.window_name);
+                        double prop = -1;
+                        try {
+                            prop = cv::getWindowProperty(config.window_name, cv::WND_PROP_VISIBLE);
+                        }
+                        catch (...) {
+                            prop = -1;
+                        }
+
+                        if (prop >= 0)
+                        {
+                            try
+                            {
+                                cv::destroyWindow(config.window_name);
+                            }
+                            catch (const cv::Exception& e) {
+                                std::cerr << "[Visuals] Error destroying window: " << e.what() << std::endl;
+                            }
+                        }
+
+                        window_initialized = false;
                     }
                 }
             }

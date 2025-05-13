@@ -205,8 +205,8 @@ std::pair<double, double> MouseThread::predict_target_position(double target_x, 
 
     double predictedX = target_x + vx * prediction_interval;
     double predictedY = target_y + vy * prediction_interval;
-
-    double detectionDelay = 0.002;
+    
+    double detectionDelay = detector.lastInferenceTime.count();
     predictedX += vx * detectionDelay;
     predictedY += vy * detectionDelay;
 

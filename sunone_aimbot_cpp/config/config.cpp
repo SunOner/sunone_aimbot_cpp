@@ -202,17 +202,6 @@ bool Config::loadConfig(const std::string& filename)
         };
 
     game_profiles.clear();
-    {
-        GameProfile uni;
-        uni.name = "UNIFIED";
-        uni.pitch = uni.yaw;
-        uni.fovScaled = false;
-        uni.baseFOV = 0.0;
-        game_profiles[uni.name] = uni;
-        active_game = uni.name;
-    }
-
-    active_game = get_string("active_game", active_game);
 
     CSimpleIniA::TNamesDepend keys;
     ini.GetAllKeys("Games", keys);
@@ -245,6 +234,18 @@ bool Config::loadConfig(const std::string& filename)
         }
     }
 
+    if (!game_profiles.count("UNIFIED"))
+    {
+        GameProfile uni;
+        uni.name = "UNIFIED";
+        uni.yaw = 0.022;
+        uni.pitch = uni.yaw;
+        uni.fovScaled = false;
+        uni.baseFOV = 0.0;
+        game_profiles[uni.name] = uni;
+    }
+
+    active_game = get_string("active_game", active_game);
     if (!game_profiles.count(active_game) && !game_profiles.empty())
         active_game = game_profiles.begin()->first;
 
@@ -541,8 +542,9 @@ bool Config::saveConfig(const std::string& filename)
         auto & gp = kv.second;
         file << gp.name << " = "
              << gp.sens << "," << gp.yaw;
-        if (gp.pitch != gp.yaw)      file << "," << gp.pitch;
-        if (gp.fovScaled)            file << ",true," << gp.baseFOV;
+        file << "," << gp.pitch;
+        if (gp.fovScaled)
+            file << ",true," << gp.baseFOV;
         file << "\n";
     }
 

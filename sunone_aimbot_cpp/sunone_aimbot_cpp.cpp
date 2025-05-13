@@ -423,6 +423,7 @@ int main()
 
         welcome_message();
 
+        cv::startWindowThread();
         displayThread();
 
         keyThread.join();

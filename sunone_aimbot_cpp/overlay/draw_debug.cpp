@@ -7,6 +7,7 @@
 #include "sunone_aimbot_cpp.h"
 #include "overlay.h"
 #include "include/other_tools.h"
+#include "visuals.h"
 
 bool prev_show_window = config.show_window;
 bool prev_show_fps = config.show_fps;
@@ -21,7 +22,11 @@ void draw_debug()
     if (config.show_window)
     {
         ImGui::Checkbox("Show FPS", &config.show_fps);
-        ImGui::Checkbox("Window Always On Top", &config.always_on_top);
+        if (ImGui::Checkbox("Always on Top", &config.always_on_top))
+        {
+            config.saveConfig();
+            setWindowAlwaysOnTop(config.window_name, config.always_on_top);
+        }
         ImGui::SliderInt("Debug Window Size", &config.window_size, 10, 350);
         ImGui::Separator();
     }
