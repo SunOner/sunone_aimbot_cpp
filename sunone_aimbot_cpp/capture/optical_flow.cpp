@@ -1,4 +1,4 @@
-#include <opencv2/cudaimgproc.hpp>
+﻿#include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudafilters.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <algorithm>
@@ -57,7 +57,7 @@ void OpticalFlow::computeOpticalFlow(const cv::cuda::GpuMat& frame)
     static cv::cuda::GpuMat prevStaticCheck;
     static float staticThreshold = config.staticFrameThreshold;
 
-    if (!prevStaticCheck.empty())
+    if (!prevStaticCheck.empty() && frameGray.size() == prevStaticCheck.size())
     {
         cv::cuda::GpuMat diffFrame;
         cv::cuda::absdiff(frameGray, prevStaticCheck, diffFrame);
@@ -76,6 +76,11 @@ void OpticalFlow::computeOpticalFlow(const cv::cuda::GpuMat& frame)
     }
 
     prevStaticCheck = frameGray.clone();
+
+    if (!prevFrameGray.empty() && prevFrameGray.size() != frameGray.size())
+    {
+        prevFrameGray.release();
+    }
 
     if (!prevFrameGray.empty())
     {
@@ -246,75 +251,6 @@ void OpticalFlow::getMotion(int& xShiftOut, int& yShiftOut)
 bool OpticalFlow::isOpticalFlowValid() const
 {
     return isFlowValid;
-}
-
-void OpticalFlow::drawOpticalFlow(cv::Mat& frame)
-{
-    if (flow.empty() || !isFlowValid)
-        return;
-
-    cv::Mat flowCpu;
-    flow.download(flowCpu);
-
-    cv::Mat flowFloat;
-    flowCpu.convertTo(flowFloat, CV_32FC2, config.optical_flow_alpha_cpu);
-
-    cv::Mat flowChannels[2];
-    cv::split(flowFloat, flowChannels);
-
-    cv::Mat magnitude;
-    cv::magnitude(flowChannels[0], flowChannels[1], magnitude);
-
-    float scaleX = static_cast<float>(frame.cols) / flowFloat.cols;
-    float scaleY = static_cast<float>(frame.rows) / flowFloat.rows;
-
-    int step = config.draw_optical_flow_steps;
-    double magThreshold = config.optical_flow_magnitudeThreshold;
-
-    for (int y = 0; y < flowFloat.rows; y += step)
-    {
-        for (int x = 0; x < flowFloat.cols; x += step)
-        {
-            float mag = magnitude.at<float>(y, x);
-            if (mag > magThreshold)
-            {
-                const cv::Point2f& fxy = flowFloat.at<cv::Point2f>(y, x);
-
-                cv::Point2f pt1(x * scaleX, y * scaleY);
-                cv::Point2f pt2 = pt1 + cv::Point2f(fxy.x * scaleX, fxy.y * scaleY);
-
-                cv::line(frame, pt1, pt2, cv::Scalar(0, 223, 255), 1);
-                cv::circle(frame, pt1, 1, cv::Scalar(0, 223, 255), -1);
-            }
-        }
-    }
-
-    int centerX = frame.cols / 2;
-    int centerY = frame.rows / 2;
-
-    cv::Point center(centerX, centerY);
-    cv::Point shiftedCenter(centerX + xShift, centerY + yShift);
-
-    cv::line(frame, center, shiftedCenter, cv::Scalar(0, 0, 255), 2);
-
-    float meanMagnitude = 0.0f;
-    int count = 0;
-    for (int y = 0; y < magnitude.rows; y++)
-    {
-        for (int x = 0; x < magnitude.cols; x++)
-        {
-            meanMagnitude += magnitude.at<float>(y, x);
-            count++;
-        }
-    }
-    meanMagnitude /= count;
-
-    std::stringstream ss;
-    ss << "Flow Mag: " << std::fixed << std::setprecision(2) << meanMagnitude;
-    cv::putText(frame, ss.str(), cv::Point(10, 50),
-        cv::FONT_HERSHEY_SIMPLEX, 0.7,
-        cv::Scalar(255, 255, 255), 2);
-
 }
 
 void OpticalFlow::startOpticalFlowThread()

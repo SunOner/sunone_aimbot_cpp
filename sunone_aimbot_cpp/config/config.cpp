@@ -160,12 +160,9 @@ bool Config::loadConfig(const std::string& filename)
 
         // Debug
         show_window = true;
-        show_fps = true;
-        window_name = "Debug";
         window_size = 80;
         screenshot_button = splitString("None");
         screenshot_delay = 500;
-        always_on_top = true;
         verbose = false;
 
         saveConfig(filename);
@@ -363,12 +360,9 @@ bool Config::loadConfig(const std::string& filename)
 
     // Debug window
     show_window = get_bool("show_window", true);
-    show_fps = get_bool("show_fps", true);
-    window_name = get_string("window_name", "Debug");
     window_size = get_long("window_size", 80);
     screenshot_button = splitString(get_string("screenshot_button", "None"));
     screenshot_delay = get_long("screenshot_delay", 500);
-    always_on_top = get_bool("always_on_top", true);
     verbose = get_bool("verbose", false);
 
     return true;
@@ -526,11 +520,9 @@ bool Config::saveConfig(const std::string& filename)
     file << "# Debug\n"
         << "show_window = " << (show_window ? "true" : "false") << "\n"
         << "show_fps = " << (show_fps ? "true" : "false") << "\n"
-        << "window_name = " << window_name << "\n"
         << "window_size = " << window_size << "\n"
         << "screenshot_button = " << joinStrings(screenshot_button) << "\n"
         << "screenshot_delay = " << screenshot_delay << "\n"
-        << "always_on_top = " << (always_on_top ? "true" : "false") << "\n"
         << "verbose = " << (verbose ? "true" : "false") << "\n\n";
 
     // Active game

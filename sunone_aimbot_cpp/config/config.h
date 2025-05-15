@@ -124,11 +124,9 @@ public:
     // Debug
     bool show_window;
     bool show_fps;
-    std::string window_name;
     int window_size;
     std::vector<std::string> screenshot_button;
     int screenshot_delay;
-    bool always_on_top;
     bool verbose;
 
     struct GameProfile

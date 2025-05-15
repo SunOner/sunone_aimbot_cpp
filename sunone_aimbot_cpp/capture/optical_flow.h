@@ -8,6 +8,7 @@
 #include <thread>
 #include <queue>
 #include <condition_variable>
+#include <opencv2/cudaoptflow.hpp>
 
 class OpticalFlow
 {
@@ -19,7 +20,6 @@ public:
 
     void enqueueFrame(const cv::cuda::GpuMat& frame);
     void getMotion(int& xShift, int& yShift);
-    void drawOpticalFlow(cv::Mat& frame);
     void manageOpticalFlowThread();
     void getAngularVelocity(double& angularVelocityXOut, double& angularVelocityYOut);
     void getAngularAcceleration(double& angularAccelerationXOut, double& angularAccelerationYOut);
@@ -27,6 +27,8 @@ public:
     bool isOpticalFlowValid() const;
 
     std::pair<double, double> getAverageGlobalFlow();
+    cv::cuda::GpuMat flow;
+    bool isFlowValid = false;
 
 private:
     void computeOpticalFlow(const cv::cuda::GpuMat& frame);
@@ -41,7 +43,6 @@ private:
     std::mutex frameMutex;
 
     cv::cuda::GpuMat prevFrameGray;
-    cv::cuda::GpuMat flow;
     std::mutex flowMutex;
     int xShift;
     int yShift;
@@ -61,8 +62,6 @@ private:
     double prevPixelFlowY = 0.0;
 
     cv::Ptr<cv::cuda::NvidiaOpticalFlow_2_0> opticalFlow;
-
-    bool isFlowValid = false;
 };
 
 #endif // OPTICAL_FLOW_H

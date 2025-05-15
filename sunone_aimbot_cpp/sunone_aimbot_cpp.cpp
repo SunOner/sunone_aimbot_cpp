@@ -11,7 +11,6 @@
 #include <condition_variable>
 
 #include "capture.h"
-#include "visuals.h"
 #include "detector.h"
 #include "directml_detector.h"
 #include "mouse.h"
@@ -422,9 +421,6 @@ int main()
         opticalFlow.startOpticalFlowThread();
 
         welcome_message();
-
-        cv::startWindowThread();
-        displayThread();
 
         keyThread.join();
         capThread.join();

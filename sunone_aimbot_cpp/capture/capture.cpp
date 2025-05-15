@@ -305,7 +305,8 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
                 {
                     bool needCpu = (config.backend == "DML") ||
-                        (!config.screenshot_button.empty() && config.screenshot_button[0] != "None");
+                        (!config.screenshot_button.empty() && config.screenshot_button[0] != "None") ||
+                        config.draw_optical_flow || config.show_window;
                     
                     if (needCpu)
                     {

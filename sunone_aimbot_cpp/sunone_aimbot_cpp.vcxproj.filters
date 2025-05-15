@@ -13,7 +13,6 @@
     <ClCompile Include="keyboard\keyboard_listener.cpp" />
     <ClCompile Include="keyboard\keycodes.cpp" />
     <ClCompile Include="config\config.cpp" />
-    <ClCompile Include="overlay\visuals.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
     <ClCompile Include="imgui\imgui_impl_dx11.cpp" />
@@ -60,7 +59,6 @@
     <ClInclude Include="keyboard\keyboard_listener.h" />
     <ClInclude Include="keyboard\keycodes.h" />
     <ClInclude Include="config\config.h" />
-    <ClInclude Include="overlay\visuals.h" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui.h" />
     <ClInclude Include="imgui\imgui_impl_dx11.h" />

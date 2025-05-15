@@ -474,6 +474,7 @@ void welcome_message()
     config.joinStrings(config.button_targeting) << " -> Targeting\n" <<
     config.joinStrings(config.button_exit) << " -> Exit\n" <<
     config.joinStrings(config.button_pause) << " -> Pause Aiming\n" <<
+    config.joinStrings(config.button_reload_config) << " -> Reload Config\n" <<
     config.joinStrings(config.button_open_overlay) << " -> Overlay (OPTIONS)" <<
     std::endl;
 }
