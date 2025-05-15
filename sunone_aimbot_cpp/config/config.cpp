@@ -555,6 +555,10 @@ std::pair<double, double> Config::degToCounts(double degX, double degY, double f
 {
     const auto& gp = currentProfile();
     double scale = (gp.fovScaled && gp.baseFOV > 1.0) ? (fovNow / gp.baseFOV) : 1.0;
+
+    if (gp.sens == 0.0 || gp.yaw == 0.0 || gp.pitch == 0.0)
+        return { 0.0, 0.0 };
+
     double cx = degX / (gp.sens * gp.yaw * scale);
     double cy = degY / (gp.sens * gp.pitch * scale);
     return { cx, cy };
