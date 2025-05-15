@@ -1,4 +1,4 @@
-#define WIN32_LEAN_AND_MEAN
+﻿#define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
@@ -54,29 +54,25 @@ std::atomic<bool> input_method_changed(false);
 std::atomic<bool> zooming(false);
 std::atomic<bool> shooting(false);
 
-void initializeInputMethod()
+void createInputDevices()
 {
+    if (arduinoSerial)
     {
-        std::lock_guard<std::mutex> lock(globalMouseThread->input_method_mutex);
+        delete arduinoSerial;
+        arduinoSerial = nullptr;
+    }
 
-        if (arduinoSerial)
-        {
-            delete arduinoSerial;
-            arduinoSerial = nullptr;
-        }
+    if (gHub)
+    {
+        gHub->mouse_close();
+        delete gHub;
+        gHub = nullptr;
+    }
 
-        if (gHub)
-        {
-            gHub->mouse_close();
-            delete gHub;
-            gHub = nullptr;
-        }
-
-        if (kmboxSerial)
-        {
-            delete kmboxSerial;
-            kmboxSerial = nullptr;
-        }
+    if (kmboxSerial)
+    {
+        delete kmboxSerial;
+        kmboxSerial = nullptr;
     }
 
     if (config.input_method == "ARDUINO")
@@ -99,7 +95,6 @@ void initializeInputMethod()
     {
         std::cout << "[Mouse] Using KMBOX_B method input." << std::endl;
         kmboxSerial = new KmboxConnection(config.kmbox_b_port, config.kmbox_b_baudrate);
-
         if (!kmboxSerial->isOpen())
         {
             std::cerr << "[Kmbox] Error connecting to Kmbox serial." << std::endl;
@@ -111,10 +106,16 @@ void initializeInputMethod()
     {
         std::cout << "[Mouse] Using default Win32 method input." << std::endl;
     }
+}
 
-    globalMouseThread->setSerialConnection(arduinoSerial);
-    globalMouseThread->setGHubMouse(gHub);
-    globalMouseThread->setKmboxConnection(kmboxSerial);
+void assignInputDevices()
+{
+    if (globalMouseThread)
+    {
+        globalMouseThread->setSerialConnection(arduinoSerial);
+        globalMouseThread->setGHubMouse(gHub);
+        globalMouseThread->setKmboxConnection(kmboxSerial);
+    }
 }
 
 void handleEasyNoRecoil(MouseThread& mouseThread)
@@ -168,7 +169,8 @@ void mouseThreadFunction(MouseThread& mouseThread)
 
         if (input_method_changed.load())
         {
-            initializeInputMethod();
+            createInputDevices();
+            assignInputDevices();
             input_method_changed.store(false);
         }
 
@@ -330,20 +332,7 @@ int main()
             }
         }
 
-        if (config.input_method == "ARDUINO")
-        {
-            arduinoSerial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
-        }
-        else if (config.input_method == "GHUB")
-        {
-            gHub = new GhubMouse();
-            if (!gHub->mouse_xy(0, 0))
-            {
-                std::cerr << "[Ghub] Error with opening mouse." << std::endl;
-                delete gHub;
-                gHub = nullptr;
-            }
-        }
+        createInputDevices();
 
         MouseThread mouseThread(
             config.detection_resolution,
@@ -359,6 +348,7 @@ int main()
         );
 
         globalMouseThread = &mouseThread;
+        assignInputDevices();
 
         std::vector<std::string> availableModels = getAvailableModels();
 
@@ -410,8 +400,6 @@ int main()
         }
 
         detection_resolution_changed.store(true);
-
-        initializeInputMethod();
 
         std::thread keyThread(keyboardListener);
         std::thread capThread(captureThread, config.detection_resolution, config.detection_resolution);
