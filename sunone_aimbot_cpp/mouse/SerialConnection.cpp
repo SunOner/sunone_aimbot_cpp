@@ -73,7 +73,7 @@ void SerialConnection::write(const std::string& data)
         }
         catch (...)
         {
-            is_open_ = false;
+
         }
     }
 }
