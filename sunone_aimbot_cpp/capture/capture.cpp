@@ -206,41 +206,26 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 {
                     if (circleMaskGpu.empty() || circleMaskGpu.size() != screenshotGpu.size())
                     {
+                        if (screenshotGpu.channels() == 4)
+                        {
+                            cv::cuda::cvtColor(screenshotGpu, screenshotGpu, cv::COLOR_BGRA2BGR);
+                        }
+
                         cv::Mat maskHost(screenshotGpu.size(), CV_8UC1, cv::Scalar::all(0));
                         cv::circle(
                             maskHost,
-                            {
-                                maskHost.cols / 2, maskHost.rows / 2
-                            },
+                            { maskHost.cols / 2, maskHost.rows / 2 },
                             std::min(maskHost.cols, maskHost.rows) / 2,
                             cv::Scalar::all(255), -1
                         );
                         circleMaskGpu.upload(maskHost);
                     }
-
                     screenshotGpu.copyTo(workGpu, circleMaskGpu);
-
-                    cv::cuda::resize(
-                        workGpu,
-                        workGpu,
-                        {
-                            config.detection_resolution,
-                            config.detection_resolution
-                        }
-                    );
-                 }
-                 else
-                 {
-                    cv::cuda::resize(
-                        screenshotGpu,
-                        workGpu,
-                        {
-                            config.detection_resolution,
-                            config.detection_resolution
-                        }
-                    );
-                 }
- 
+                }
+                else
+                {
+                    workGpu = screenshotGpu.clone();
+                }
 
                 {
                     std::lock_guard<std::mutex> lk(frameMutex);
@@ -335,7 +320,6 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
                 if (screenshotCpu.empty())
                 {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
                     continue;
                 }
 
@@ -357,31 +341,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
                     cv::Mat maskedCpu;
                     screenshotCpu.copyTo(maskedCpu, mask);
-
-                    cv::resize(
-                        maskedCpu,
-                        screenshotCpu,
-                        cv::Size(
-                            CAPTURE_WIDTH,
-                            CAPTURE_HEIGHT),
-                        0,
-                        0,
-                        cv::INTER_LINEAR
-                    );
-                }
-                else
-                {
-                    cv::resize(
-                        screenshotCpu,
-                        screenshotCpu,
-                        cv::Size(
-                            CAPTURE_WIDTH,
-                            CAPTURE_HEIGHT
-                        ),
-                        0,
-                        0,
-                        cv::INTER_LINEAR
-                    );
+                    screenshotCpu = maskedCpu;
                 }
 
                 {
