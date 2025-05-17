@@ -64,6 +64,8 @@ void DirectMLDetector::initializeModel(const std::string& model_path)
 
 std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
 {
+    auto dml_infer_start = std::chrono::high_resolution_clock::now();
+
     std::lock_guard<std::mutex> lock(inference_mutex);
 
     if (input_frame.empty())
@@ -156,6 +158,9 @@ std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
     }
 
     NMS(detections, nms_threshold);
+
+    auto dml_infer_end = std::chrono::high_resolution_clock::now();
+    lastInferenceTimeDML = dml_infer_end - dml_infer_start;
 
     return detections;
 }

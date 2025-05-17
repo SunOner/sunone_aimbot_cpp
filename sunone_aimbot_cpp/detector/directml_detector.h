@@ -15,6 +15,8 @@ public:
 
     std::vector<Detection> detect(const cv::Mat& input_frame);
     int getNumberOfClasses();
+
+    std::chrono::duration<double, std::milli> lastInferenceTimeDML;
 private:
     Ort::Env env;
     Ort::Session session{ nullptr };

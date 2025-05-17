@@ -6,7 +6,7 @@
 #include "imgui/imgui.h"
 #include "sunone_aimbot_cpp.h"
 #include "overlay.h"
-#include <capture.h>
+#include "capture.h"
 
 void draw_stats()
 {
@@ -14,7 +14,12 @@ void draw_stats()
     static float inference_times[120] = {};
     static int index_inf = 0;
 
-    float current_time = static_cast<float>(detector.lastInferenceTime.count());
+    float current_time = 0.0f;
+    if (config.backend == "DML" && dml_detector)
+        current_time = static_cast<float>(dml_detector->lastInferenceTimeDML.count());
+    else
+        current_time = static_cast<float>(detector.lastInferenceTime.count());
+
     inference_times[index_inf] = current_time;
     index_inf = (index_inf + 1) % IM_ARRAYSIZE(inference_times);
 
