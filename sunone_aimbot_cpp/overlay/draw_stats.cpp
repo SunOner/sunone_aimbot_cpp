@@ -18,10 +18,17 @@ void draw_stats()
     inference_times[index_inf] = current_time;
     index_inf = (index_inf + 1) % IM_ARRAYSIZE(inference_times);
 
+    float sum_inf = 0.0f;
+    int count_inf = 0;
+    for (float t : inference_times) {
+        if (t > 0.0f) { sum_inf += t; ++count_inf; }
+    }
+    float avg_inf = (count_inf > 0) ? (sum_inf / count_inf) : 0.0f;
+
     ImGui::SeparatorText("Inference Time");
-    ImGui::PlotLines("Inference:", inference_times, IM_ARRAYSIZE(inference_times), index_inf, nullptr, 0.0f, 50.0f, ImVec2(0, 60));
+    ImGui::PlotLines("##inference_plot", inference_times, IM_ARRAYSIZE(inference_times), index_inf, nullptr, 0.0f, 50.0f, ImVec2(0, 60));
     ImGui::SameLine();
-    ImGui::Text("%.2f ms", current_time);
+    ImGui::Text("Now: %.2f ms | Avg: %.2f ms", current_time, avg_inf);
 
     // Capture FPS
     static float capture_fps_vals[120] = {};
@@ -31,8 +38,15 @@ void draw_stats()
     capture_fps_vals[index_fps] = current_fps;
     index_fps = (index_fps + 1) % IM_ARRAYSIZE(capture_fps_vals);
 
+    float sum_fps = 0.0f;
+    int count_fps = 0;
+    for (float f : capture_fps_vals) {
+        if (f > 0.0f) { sum_fps += f; ++count_fps; }
+    }
+    float avg_fps = (count_fps > 0) ? (sum_fps / count_fps) : 0.0f;
+
     ImGui::SeparatorText("Capture FPS");
-    ImGui::PlotLines("FPS:", capture_fps_vals, IM_ARRAYSIZE(capture_fps_vals), index_fps, nullptr, 0.0f, 144.0f, ImVec2(0, 60));
+    ImGui::PlotLines("##fps_plot", capture_fps_vals, IM_ARRAYSIZE(capture_fps_vals), index_fps, nullptr, 0.0f, 144.0f, ImVec2(0, 60));
     ImGui::SameLine();
-    ImGui::Text("%.1f", current_fps);
+    ImGui::Text("Now: %.1f | Avg: %.1f", current_fps, avg_fps);
 }
