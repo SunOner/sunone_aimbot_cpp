@@ -643,7 +643,7 @@ void Detector::preProcess(const cv::cuda::GpuMat& frame)
 
     try
     {
-        cv::cuda::resize(frame, resizedBuffer, cv::Size(w, h), 0, 0, cv::INTER_LINEAR, preprocessCvStream);
+        cv::cuda::resize(frame, resizedBuffer, cv::Size(w, h), 0, 0, cv::INTER_NEAREST, preprocessCvStream);
         resizedBuffer.convertTo(floatBuffer, CV_32F, 1.0f / 255.0f, 0, preprocessCvStream);
         cv::cuda::split(floatBuffer, channelBuffers, preprocessCvStream);
         
