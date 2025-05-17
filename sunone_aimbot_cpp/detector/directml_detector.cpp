@@ -77,6 +77,7 @@ std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
     int target_height = 640;
 
     cv::resize(input_frame, resized_frame, cv::Size(target_width, target_height));
+    cv::cvtColor(resized_frame, resized_frame, cv::COLOR_BGR2RGB);
     resized_frame.convertTo(resized_frame, CV_32FC3, 1.0f / 255.0f);
 
     const size_t channels = 3;
@@ -85,15 +86,15 @@ std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
     const size_t tensor_size = channels * height * width;
 
     std::vector<float> input_tensor_values(tensor_size);
-    std::vector<cv::Mat> chw_planes(channels);
-    cv::split(resized_frame, chw_planes);
+    const float* input_data = reinterpret_cast<const float*>(resized_frame.data);
 
-    for (size_t c = 0; c < channels; ++c)
-    {
-        memcpy(input_tensor_values.data() + c * height * width,
-            chw_planes[c].data,
-            height * width * sizeof(float)
-        );
+    for (size_t h = 0; h < height; ++h) {
+        for (size_t w = 0; w < width; ++w) {
+            for (size_t c = 0; c < channels; ++c) {
+                input_tensor_values[c * height * width + h * width + w] =
+                    input_data[(h * width + w) * channels + c];
+            }
+        }
     }
 
     Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
