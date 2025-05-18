@@ -76,6 +76,7 @@
     <ClInclude Include="overlay\draw_settings.h" />
     <ClInclude Include="mouse\Kmbox_b.h" />
     <ClInclude Include="detector\directml_detector.h" />
+    <ClInclude Include="tensorrt\trt_monitor.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

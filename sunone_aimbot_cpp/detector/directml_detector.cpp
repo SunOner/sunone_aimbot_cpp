@@ -90,9 +90,12 @@ std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
     std::vector<float> input_tensor_values(tensor_size);
     const float* input_data = reinterpret_cast<const float*>(resized_frame.data);
 
-    for (size_t h = 0; h < height; ++h) {
-        for (size_t w = 0; w < width; ++w) {
-            for (size_t c = 0; c < channels; ++c) {
+    for (size_t h = 0; h < height; ++h)
+    {
+        for (size_t w = 0; w < width; ++w)
+        {
+            for (size_t c = 0; c < channels; ++c)
+            {
                 input_tensor_values[c * height * width + h * width + w] =
                     input_data[(h * width + w) * channels + c];
             }

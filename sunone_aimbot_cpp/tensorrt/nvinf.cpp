@@ -10,6 +10,7 @@
 
 #include "nvinf.h"
 #include "sunone_aimbot_cpp.h"
+#include "trt_monitor.h"
 
 Logger gLogger;
 
@@ -100,6 +101,11 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     nvinfer1::IBuilderConfig* cfg = builder->createBuilderConfig();
 
     nvonnxparser::IParser* parser = nvonnxparser::createParser(*network, logger);
+
+    ImGuiProgressMonitor progressMonitor;
+    cfg->setProgressMonitor(&progressMonitor);
+    gIsTrtExporting = true;
+
     if (!parser->parseFromFile(onnxFile.c_str(), static_cast<int>(nvinfer1::ILogger::Severity::kWARNING)))
     {
         std::cerr << "[TensorRT] ERROR: Error parsing the ONNX file: " << onnxFile << std::endl;

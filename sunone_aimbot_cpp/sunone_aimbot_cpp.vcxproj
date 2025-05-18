@@ -89,6 +89,7 @@
     <ClInclude Include="overlay\overlay.h" />
     <ClInclude Include="sunone_aimbot_cpp.h" />
     <ClInclude Include="tensorrt\nvinf.h" />
+    <ClInclude Include="tensorrt\trt_monitor.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
