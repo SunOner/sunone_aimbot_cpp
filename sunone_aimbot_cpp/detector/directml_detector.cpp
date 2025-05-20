@@ -11,6 +11,16 @@
 #include "postProcess.h"
 #include <wrl/client.h>
 
+std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
+{
+    std::vector<cv::Mat> batch = { input_frame };
+    auto batchResult = detectBatch(batch);
+    if (!batchResult.empty())
+        return batchResult[0];
+    else
+        return {};
+}
+
 std::string GetDMLDeviceName(int deviceId)
 {
     Microsoft::WRL::ComPtr<IDXGIFactory1> dxgiFactory;
@@ -62,52 +72,37 @@ void DirectMLDetector::initializeModel(const std::string& model_path)
     input_shape = input_tensor_info.GetShape();
 }
 
-std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
+std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vector<cv::Mat>& frames)
 {
-    auto dml_infer_start = std::chrono::high_resolution_clock::now();
+    int batch_size = frames.size();
+    int target_width = config.detection_resolution;
+    int target_height = config.detection_resolution;
 
-    std::lock_guard<std::mutex> lock(inference_mutex);
+    std::vector<float> input_tensor_values(batch_size * 3 * target_height * target_width);
 
-    if (input_frame.empty())
+    for (int b = 0; b < batch_size; ++b)
     {
-        std::cerr << "[DirectMLDetector] Empty input frame." << std::endl;
-        return {};
+        cv::Mat resized_frame;
+        cv::resize(frames[b], resized_frame, cv::Size(target_width, target_height));
+        cv::cvtColor(resized_frame, resized_frame, cv::COLOR_BGR2RGB);
+        resized_frame.convertTo(resized_frame, CV_32FC3, 1.0f / 255.0f);
+
+        const float* input_data = reinterpret_cast<const float*>(resized_frame.data);
+        for (int h = 0; h < target_height; ++h)
+            for (int w = 0; w < target_width; ++w)
+                for (int c = 0; c < 3; ++c)
+                    input_tensor_values[
+                        b * 3 * target_height * target_width +
+                            c * target_height * target_width +
+                            h * target_width + w
+                    ] = input_data[(h * target_width + w) * 3 + c];
     }
 
-    cv::Mat resized_frame;
-    int target_width = 640;
-    int target_height = 640;
-
-    cv::resize(input_frame, resized_frame, cv::Size(target_width, target_height));
-    cv::cvtColor(resized_frame, resized_frame, cv::COLOR_BGR2RGB);
-    resized_frame.convertTo(resized_frame, CV_32FC3, 1.0f / 255.0f);
-
-    const size_t channels = 3;
-    const size_t height = resized_frame.rows;
-    const size_t width = resized_frame.cols;
-    const size_t tensor_size = channels * height * width;
-
-    std::vector<float> input_tensor_values(tensor_size);
-    const float* input_data = reinterpret_cast<const float*>(resized_frame.data);
-
-    for (size_t h = 0; h < height; ++h)
-    {
-        for (size_t w = 0; w < width; ++w)
-        {
-            for (size_t c = 0; c < channels; ++c)
-            {
-                input_tensor_values[c * height * width + h * width + w] =
-                    input_data[(h * width + w) * channels + c];
-            }
-        }
-    }
-
-    Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-
-    std::vector<int64_t> dynamic_input_shape = { 1, 3, 640, 640 };
+    std::vector<int64_t> input_shape = { batch_size, 3, target_height, target_width };
 
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
-        memory_info, input_tensor_values.data(), tensor_size, dynamic_input_shape.data(), dynamic_input_shape.size());
+        memory_info, input_tensor_values.data(), input_tensor_values.size(),
+        input_shape.data(), input_shape.size());
 
     const char* input_names[] = { input_name.c_str() };
     const char* output_names[] = { output_name.c_str() };
@@ -117,55 +112,59 @@ std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
         output_names, 1);
 
     float* output_data = output_tensors.front().GetTensorMutableData<float>();
-
     Ort::TensorTypeAndShapeInfo output_info = output_tensors.front().GetTensorTypeAndShapeInfo();
     std::vector<int64_t> output_shape = output_info.GetShape();
 
-    std::vector<Detection> detections;
-
-    int num_classes = output_shape[1] - 4;
+    int batch_out = output_shape[0];
     int rows = output_shape[1];
     int cols = output_shape[2];
+    int num_classes = rows - 4;
 
-    cv::Mat det_output(rows, cols, CV_32F, output_data);
+    std::vector<std::vector<Detection>> batchDetections(batch_out);
 
-    const float conf_threshold = config.confidence_threshold;
-    const float nms_threshold = config.nms_threshold;
-    const float img_scale_x = input_frame.cols / static_cast<float>(width);
-    const float img_scale_y = input_frame.rows / static_cast<float>(height);
-
-    for (int i = 0; i < cols; ++i)
+    for (int b = 0; b < batch_out; ++b)
     {
-        cv::Mat classes_scores = det_output.col(i).rowRange(4, 4 + num_classes);
+        const float* out_ptr = output_data + b * rows * cols;
+        std::vector<Detection> detections;
 
-        cv::Point class_id_point;
-        double score;
-        cv::minMaxLoc(classes_scores, nullptr, &score, nullptr, &class_id_point);
+        float img_scale_x = frames[b].cols / static_cast<float>(target_width);
+        float img_scale_y = frames[b].rows / static_cast<float>(target_height);
+        float conf_threshold = config.confidence_threshold;
+        float nms_threshold = config.nms_threshold;
 
-        if (score > conf_threshold)
+        cv::Mat det_output(rows, cols, CV_32F, (void*)out_ptr);
+
+        for (int i = 0; i < cols; ++i)
         {
-            float cx = det_output.at<float>(0, i) * img_scale_x;
-            float cy = det_output.at<float>(1, i) * img_scale_y;
-            float ow = det_output.at<float>(2, i) * img_scale_x;
-            float oh = det_output.at<float>(3, i) * img_scale_y;
+            cv::Mat classes_scores = det_output.col(i).rowRange(4, 4 + num_classes);
 
-            cv::Rect box(
-                static_cast<int>(cx - 0.5f * ow),
-                static_cast<int>(cy - 0.5f * oh),
-                static_cast<int>(ow),
-                static_cast<int>(oh)
-            );
+            cv::Point class_id_point;
+            double score;
+            cv::minMaxLoc(classes_scores, nullptr, &score, nullptr, &class_id_point);
 
-            detections.push_back(Detection{ box, static_cast<float>(score), class_id_point.y });
+            if (score > conf_threshold)
+            {
+                float cx = det_output.at<float>(0, i) * img_scale_x;
+                float cy = det_output.at<float>(1, i) * img_scale_y;
+                float ow = det_output.at<float>(2, i) * img_scale_x;
+                float oh = det_output.at<float>(3, i) * img_scale_y;
+
+                cv::Rect box(
+                    static_cast<int>(cx - 0.5f * ow),
+                    static_cast<int>(cy - 0.5f * oh),
+                    static_cast<int>(ow),
+                    static_cast<int>(oh)
+                );
+
+                detections.push_back(Detection{ box, static_cast<float>(score), class_id_point.y });
+            }
         }
+
+        NMS(detections, nms_threshold);
+        batchDetections[b] = std::move(detections);
     }
 
-    NMS(detections, nms_threshold);
-
-    auto dml_infer_end = std::chrono::high_resolution_clock::now();
-    lastInferenceTimeDML = dml_infer_end - dml_infer_start;
-
-    return detections;
+    return batchDetections;
 }
 
 int DirectMLDetector::getNumberOfClasses()

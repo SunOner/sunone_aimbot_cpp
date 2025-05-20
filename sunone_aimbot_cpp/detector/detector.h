@@ -17,6 +17,7 @@
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <cuda_runtime_api.h>
+#include "postProcess.h"
 
 class Detector
 {
@@ -47,6 +48,8 @@ public:
     std::chrono::duration<double, std::milli> lastInferenceTime;
     std::chrono::steady_clock::time_point lastInferenceStart;
     std::chrono::steady_clock::time_point lastInferenceEnd;
+
+    std::vector<std::vector<Detection>> detectBatch(const std::vector<cv::Mat>& frames);
 
 private:
     std::unique_ptr<nvinfer1::IRuntime> runtime;

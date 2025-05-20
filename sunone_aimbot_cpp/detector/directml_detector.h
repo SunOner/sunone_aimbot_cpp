@@ -14,6 +14,7 @@ public:
     ~DirectMLDetector();
 
     std::vector<Detection> detect(const cv::Mat& input_frame);
+    std::vector<std::vector<Detection>> detectBatch(const std::vector<cv::Mat>& frames);
     int getNumberOfClasses();
 
     std::chrono::duration<double, std::milli> lastInferenceTimeDML;

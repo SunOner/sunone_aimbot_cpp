@@ -4,8 +4,6 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 
-#include "detector.h"
-
 struct Detection
 {
     cv::Rect box;

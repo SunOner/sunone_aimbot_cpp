@@ -121,6 +121,11 @@ void draw_ai()
         config.saveConfig();
         detector_model_changed.store(true);
     }
+    if (ImGui::SliderInt("Batch Size", &config.batch_size, 1, 8))
+    {
+        config.saveConfig();
+        detector_model_changed.store(true);
+    }
 
     ImGui::Separator();
     ImGui::SliderFloat("Confidence Threshold", &config.confidence_threshold, 0.01f, 1.00f, "%.2f");

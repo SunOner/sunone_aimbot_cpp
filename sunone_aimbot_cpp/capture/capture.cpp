@@ -44,6 +44,26 @@ std::atomic<int> captureFrameCount(0);
 std::atomic<int> captureFps(0);
 std::chrono::time_point<std::chrono::high_resolution_clock> captureFpsStartTime;
 
+std::deque<cv::Mat> frameQueue;
+
+std::vector<cv::Mat> getBatchFromQueue(int batch_size)
+{
+    std::vector<cv::Mat> batch;
+    std::lock_guard<std::mutex> lk(frameMutex);
+    int n = std::min((int)frameQueue.size(), batch_size);
+
+    for (int i = 0; i < n; ++i)
+    {
+        batch.push_back(frameQueue[frameQueue.size() - n + i]);
+    }
+
+    while (batch.size() < batch_size && !batch.empty())
+    {
+        batch.push_back(batch.back().clone());
+    }
+    return batch;
+}
+
 void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 {
     try
@@ -235,7 +255,22 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
                 if (config.backend == "TRT")
                 {
-                    detector.processFrame(workGpu);
+                    auto batchFrames = getBatchFromQueue(config.batch_size);
+                    auto detectionsBatch = detector.detectBatch(batchFrames);
+
+                    const std::vector<Detection>& lastDetections = detectionsBatch.back();
+
+                    {
+                        std::lock_guard<std::mutex> lock(detector.detectionMutex);
+                        detector.detectedBoxes.clear();
+                        detector.detectedClasses.clear();
+                        for (const auto& d : lastDetections) {
+                            detector.detectedBoxes.push_back(d.box);
+                            detector.detectedClasses.push_back(d.classId);
+                        }
+                        detector.detectionVersion++;
+                    }
+                    detector.detectionCV.notify_one();
                 }
                 else if (dml_detector)
                 {
@@ -348,17 +383,25 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     std::lock_guard<std::mutex> lock(frameMutex);
                     latestFrameCpu = screenshotCpu.clone();
                     latestFrameGpu.release();
+
+                    if (frameQueue.size() >= config.batch_size)
+                        frameQueue.pop_front();
+                    frameQueue.push_back(latestFrameCpu);
                 }
                 frameCV.notify_one();
 
                 if (config.backend == "DML" && dml_detector)
                 {
-                    auto detections = dml_detector->detect(screenshotCpu);
+                    auto batchFrames = getBatchFromQueue(config.batch_size);
+                    auto detectionsBatch = dml_detector->detectBatch(batchFrames);
+
+                    const std::vector<Detection>& lastDetections = detectionsBatch.back();
+
                     {
                         std::lock_guard<std::mutex> lock(detector.detectionMutex);
                         detector.detectedBoxes.clear();
                         detector.detectedClasses.clear();
-                        for (auto& d : detections)
+                        for (const auto& d : lastDetections)
                         {
                             detector.detectedBoxes.push_back(d.box);
                             detector.detectedClasses.push_back(d.classId);

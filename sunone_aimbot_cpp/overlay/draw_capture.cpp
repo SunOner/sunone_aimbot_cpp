@@ -31,12 +31,19 @@ void ensureVirtualCamerasLoaded() {
 
 void draw_capture_settings()
 {
-    if (ImGui::SliderInt("Detection Resolution", &config.detection_resolution, 50, 1280))
-    {
-        detection_resolution_changed.store(true);
-        detector_model_changed.store(true); // reboot vars for visuals
+    static const int allowed_resolutions[] = { 160, 320, 640 };
+    static int current_resolution_idx = 1;
 
-        // apply new detection_resolution
+    for (int i = 0; i < 3; ++i)
+        if (config.detection_resolution == allowed_resolutions[i])
+            current_resolution_idx = i;
+
+    if (ImGui::Combo("Detection Resolution", &current_resolution_idx, "160\0""320\0""640\0"))
+    {
+        config.detection_resolution = allowed_resolutions[current_resolution_idx];
+        detection_resolution_changed.store(true);
+        detector_model_changed.store(true);
+
         globalMouseThread->updateConfig(
             config.detection_resolution,
             config.fovX,
@@ -47,10 +54,6 @@ void draw_capture_settings()
             config.auto_shoot,
             config.bScope_multiplier);
         config.saveConfig();
-    }
-    if (config.detection_resolution >= 400)
-    {
-        ImGui::TextColored(ImVec4(255, 255, 0, 255), "WARNING: A large screen capture size can negatively affect performance.");
     }
 
     if (ImGui::SliderInt("Capture FPS", &config.capture_fps, 0, 240))

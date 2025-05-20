@@ -115,6 +115,7 @@ bool Config::loadConfig(const std::string& filename)
         nms_threshold = 0.50f;
         max_detections = 100;
         postprocess = "yolo10";
+        batch_size = 1;
         export_enable_fp8 = false;
         export_enable_fp16 = true;
 
@@ -249,6 +250,9 @@ bool Config::loadConfig(const std::string& filename)
     // Capture
     capture_method = get_string("capture_method", "duplication_api");
     detection_resolution = get_long("detection_resolution", 320);
+    if (detection_resolution != 160 && detection_resolution != 320 && detection_resolution != 640)
+        detection_resolution = 320;
+
     capture_fps = get_long("capture_fps", 60);
     capture_use_cuda = get_bool("capture_use_cuda", false);
     monitor_idx = get_long("monitor_idx", 0);
@@ -315,6 +319,10 @@ bool Config::loadConfig(const std::string& filename)
     nms_threshold = (float)get_double("nms_threshold", 0.50);
     max_detections = get_long("max_detections", 20);
     postprocess = get_string("postprocess", "yolo11");
+    batch_size = get_long("batch_size", 1);
+    if (batch_size < 1) batch_size = 1;
+    if (batch_size > 8) batch_size = 8;
+
     export_enable_fp8 = get_bool("export_enable_fp8", true);
     export_enable_fp16 = get_bool("export_enable_fp16", true);
 
@@ -466,6 +474,7 @@ bool Config::saveConfig(const std::string& filename)
         << std::setprecision(0)
         << "max_detections = " << max_detections << "\n"
         << "postprocess = " << postprocess << "\n"
+        << "batch_size = " << batch_size << "\n"
         << "export_enable_fp8 = " << (export_enable_fp8 ? "true" : "false") << "\n"
         << "export_enable_fp16 = " << (export_enable_fp16 ? "true" : "false") << "\n\n";
 

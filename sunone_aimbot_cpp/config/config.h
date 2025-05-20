@@ -78,6 +78,7 @@ public:
     float nms_threshold;
     int max_detections;
     std::string postprocess;
+    int batch_size;
     bool export_enable_fp8;
     bool export_enable_fp16;
 

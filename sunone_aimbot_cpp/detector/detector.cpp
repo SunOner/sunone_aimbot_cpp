@@ -627,6 +627,87 @@ bool Detector::getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int
     return false;
 }
 
+std::vector<std::vector<Detection>> Detector::detectBatch(const std::vector<cv::Mat>& frames)
+{
+    std::vector<std::vector<Detection>> batchDetections;
+    if (frames.empty() || !context) return batchDetections;
+
+    int batch_size = static_cast<int>(frames.size());
+
+    nvinfer1::Dims dims = context->getTensorShape(inputName.c_str());
+    int c = dims.d[1];
+    int h = dims.d[2];
+    int w = dims.d[3];
+
+    if (dims.d[0] != batch_size)
+    {
+        context->setInputShape(inputName.c_str(), nvinfer1::Dims4{ batch_size, c, h, w });
+    }
+
+    std::vector<float> batchInput(batch_size * c * h * w);
+
+    for (int b = 0; b < batch_size; ++b)
+    {
+        cv::Mat resized;
+        cv::resize(frames[b], resized, cv::Size(w, h));
+        resized.convertTo(resized, CV_32FC3, 1.0 / 255.0);
+        std::vector<cv::Mat> channels;
+        cv::split(resized, channels);
+
+        for (int ch = 0; ch < c; ++ch)
+        {
+            float* dst = batchInput.data() + b * c * h * w + ch * h * w;
+            memcpy(dst, channels[ch].ptr<float>(), h * w * sizeof(float));
+        }
+    }
+
+    cudaMemcpy(inputBindings[inputName], batchInput.data(), batchInput.size() * sizeof(float), cudaMemcpyHostToDevice);
+
+    context->enqueueV3(stream);
+    cudaStreamSynchronize(stream);
+
+    std::vector<float> output;
+    const auto& outName = outputNames[0];
+    size_t outputElements = outputSizes[outName] / sizeof(float);
+    output.resize(outputElements);
+    cudaMemcpy(output.data(), outputBindings[outName], outputSizes[outName], cudaMemcpyDeviceToHost);
+
+    const std::vector<int64_t>& shape = outputShapes[outName];
+    int batch_out = static_cast<int>(shape[0]);
+    int rows = static_cast<int>(shape[1]);
+    int cols = static_cast<int>(shape[2]);
+
+    for (int b = 0; b < batch_out; ++b)
+    {
+        const float* out_ptr = output.data() + b * rows * cols;
+        std::vector<Detection> detections;
+
+        if (config.postprocess == "yolo10")
+        {
+            std::vector<int64_t> shape = { batch_out, rows, cols };
+            detections = postProcessYolo10(
+                out_ptr, shape, numClasses, config.confidence_threshold, config.nms_threshold
+            );
+        }
+        else if (
+            config.postprocess == "yolo8" ||
+            config.postprocess == "yolo9" ||
+            config.postprocess == "yolo11" ||
+            config.postprocess == "yolo12"
+        )
+        {
+            std::vector<int64_t> shape = { rows, cols };
+            detections = postProcessYolo11(
+                out_ptr, shape, numClasses, config.confidence_threshold, config.nms_threshold
+            );
+        }
+
+        batchDetections.push_back(std::move(detections));
+    }
+
+    return batchDetections;
+}
+
 void Detector::preProcess(const cv::cuda::GpuMat& frame)
 {
     if (frame.empty()) return;
