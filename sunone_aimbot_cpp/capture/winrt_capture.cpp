@@ -56,7 +56,6 @@ IGraphicsCaptureItemInterop* GetInteropFactory()
 WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
     : regionWidth(desiredWidth)
     , regionHeight(desiredHeight)
-    , useCuda(config.capture_use_cuda)
 {
     D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
     UINT createDeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
@@ -121,37 +120,17 @@ WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
         session.IsCursorCaptureEnabled(false);
     }
 
-    if (useCuda)
+    if (!createStagingTextureCPU())
     {
-        if (!createSharedTextureGPU())
-        {
-            throw std::runtime_error("[WinRTCapture] createSharedTextureGPU() failed.");
-        }
+        throw std::runtime_error("[WinRTCapture] createStagingTextureCPU() failed.");
     }
-    else
-    {
-        if (!createStagingTextureCPU())
-        {
-            throw std::runtime_error("[WinRTCapture] createStagingTextureCPU() failed.");
-        }
-    }
+    
 
     session.StartCapture();
 }
 
 WinRTScreenCapture::~WinRTScreenCapture()
 {
-    if (cudaResource)
-    {
-        cudaGraphicsUnregisterResource(cudaResource);
-        cudaResource = nullptr;
-    }
-    if (cudaStream)
-    {
-        cudaStreamDestroy(cudaStream);
-        cudaStream = nullptr;
-    }
-
     session.Close();
     framePool.Close();
 
@@ -159,39 +138,6 @@ WinRTScreenCapture::~WinRTScreenCapture()
     sharedTexture = nullptr;
     d3dContext = nullptr;
     d3dDevice = nullptr;
-}
-
-bool WinRTScreenCapture::createSharedTextureGPU()
-{
-    D3D11_TEXTURE2D_DESC desc{};
-    desc.Width = regionWidth;
-    desc.Height = regionHeight;
-    desc.MipLevels = 1;
-    desc.ArraySize = 1;
-    desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    desc.SampleDesc.Count = 1;
-    desc.Usage = D3D11_USAGE_DEFAULT;
-    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-    desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
-
-    HRESULT hr = d3dDevice->CreateTexture2D(&desc, nullptr, sharedTexture.put());
-    if (FAILED(hr))
-    {
-        std::cerr << "[WinRTCapture] CreateTexture2D(shared) failed hr=" << std::hex << hr << std::endl;
-        return false;
-    }
-
-    auto texPtr = sharedTexture.get();
-    cudaError_t err = cudaGraphicsD3D11RegisterResource(&cudaResource, texPtr, cudaGraphicsRegisterFlagsNone);
-    if (err != cudaSuccess)
-    {
-        std::cerr << "[WinRTCapture] cudaGraphicsD3D11RegisterResource error: "
-            << cudaGetErrorString(err) << std::endl;
-        return false;
-    }
-
-    cudaStreamCreate(&cudaStream);
-    return true;
 }
 
 bool WinRTScreenCapture::createStagingTextureCPU()
@@ -214,76 +160,6 @@ bool WinRTScreenCapture::createStagingTextureCPU()
         return false;
     }
     return true;
-}
-
-cv::cuda::GpuMat WinRTScreenCapture::GetNextFrameGpu()
-{
-    Direct3D11CaptureFrame lastFrame{ nullptr };
-    while (auto tempFrame = framePool.TryGetNextFrame())
-    {
-        lastFrame = tempFrame;
-    }
-    if (!lastFrame)
-        return cv::cuda::GpuMat();
-
-    auto frameSurface = lastFrame.Surface();
-    auto frameTexture = GetDXGIInterfaceFromObject<ID3D11Texture2D>(frameSurface);
-    if (!frameTexture)
-        return cv::cuda::GpuMat();
-
-    D3D11_BOX sourceRegion;
-    sourceRegion.left = regionX;
-    sourceRegion.top = regionY;
-    sourceRegion.front = 0;
-    sourceRegion.right = regionX + regionWidth;
-    sourceRegion.bottom = regionY + regionHeight;
-    sourceRegion.back = 1;
-
-    d3dContext->CopySubresourceRegion(
-        sharedTexture.get(),
-        0,
-        0, 0, 0,
-        frameTexture.get(),
-        0,
-        &sourceRegion
-    );
-
-    cv::cuda::GpuMat result(regionHeight, regionWidth, CV_8UC4);
-
-    cudaError_t err = cudaGraphicsMapResources(1, &cudaResource, cudaStream);
-    if (err != cudaSuccess)
-    {
-        std::cerr << "[WinRTCapture] cudaGraphicsMapResources error: "
-            << cudaGetErrorString(err) << std::endl;
-        return cv::cuda::GpuMat();
-    }
-
-    cudaArray_t cuArray = nullptr;
-    err = cudaGraphicsSubResourceGetMappedArray(&cuArray, cudaResource, 0, 0);
-    if (err != cudaSuccess)
-    {
-        std::cerr << "[WinRTCapture] cudaGraphicsSubResourceGetMappedArray error: "
-            << cudaGetErrorString(err) << std::endl;
-        cudaGraphicsUnmapResources(1, &cudaResource, cudaStream);
-        return cv::cuda::GpuMat();
-    }
-
-    size_t rowBytes = regionWidth * 4;
-    err = cudaMemcpy2DFromArrayAsync(
-        result.data,
-        result.step,
-        cuArray,
-        0, 0,
-        rowBytes,
-        regionHeight,
-        cudaMemcpyDeviceToDevice,
-        cudaStream
-    );
-
-    cudaGraphicsUnmapResources(1, &cudaResource, cudaStream);
-    cudaStreamSynchronize(cudaStream);
-
-    return result;
 }
 
 cv::Mat WinRTScreenCapture::GetNextFrameCpu()

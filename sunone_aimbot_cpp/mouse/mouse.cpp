@@ -205,8 +205,18 @@ std::pair<double, double> MouseThread::predict_target_position(double target_x, 
 
     double predictedX = target_x + vx * prediction_interval;
     double predictedY = target_y + vy * prediction_interval;
-    
-    double detectionDelay = detector.lastInferenceTime.count();
+
+    double detectionDelay = 0.05;
+    if (config.backend == "DML")
+    {
+        detectionDelay = dml_detector->lastInferenceTimeDML.count();
+    }
+#ifdef USE_CUDA
+    else
+    {
+        detectionDelay = trt_detector.lastInferenceTime.count();
+    }
+#endif
     predictedX += vx * detectionDelay;
     predictedY += vy * detectionDelay;
 
@@ -465,11 +475,6 @@ std::vector<std::pair<double, double>> MouseThread::predictFuturePositions(doubl
 
     double vx = prev_velocity_x;
     double vy = prev_velocity_y;
-
-    auto [camFlowX, camFlowY] = opticalFlow.getAverageGlobalFlow();
-
-    vx -= camFlowX;
-    vy -= camFlowY;
     
     for (int i = 1; i <= frames; i++)
     {

@@ -5,7 +5,6 @@ void draw_capture_settings();
 void draw_target();
 void draw_mouse();
 void draw_ai();
-void draw_optical_flow();
 void draw_buttons();
 void draw_overlay();
 void draw_stats();

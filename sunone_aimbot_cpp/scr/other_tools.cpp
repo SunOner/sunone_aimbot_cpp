@@ -18,8 +18,6 @@
 #include <d3d11.h>
 #include <dxgi.h>
 #include <dxgi1_2.h>
-#include <cuda.h>
-#include <cuda_runtime.h>
 
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
@@ -126,21 +124,6 @@ std::string intToString(int value)
     return std::to_string(value);
 }
 
-std::vector<std::string> getEngineFiles()
-{
-    std::vector<std::string> engineFiles;
-
-    for (const auto& entry : std::filesystem::directory_iterator("models/"))
-    {
-        if (entry.is_regular_file() && entry.path().extension() == ".engine" ||
-            entry.is_regular_file() && entry.path().extension() == ".onnx")
-        {
-            engineFiles.push_back(entry.path().filename().string());
-        }
-    }
-    return engineFiles;
-}
-
 std::vector<std::string> getModelFiles()
 {
     std::vector<std::string> modelsFiles;
@@ -154,6 +137,21 @@ std::vector<std::string> getModelFiles()
         }
     }
     return modelsFiles;
+}
+
+std::vector<std::string> getEngineFiles()
+{
+    std::vector<std::string> engineFiles;
+
+    for (const auto& entry : std::filesystem::directory_iterator("models/"))
+    {
+        if (entry.is_regular_file() && entry.path().extension() == ".engine" ||
+            entry.is_regular_file() && entry.path().extension() == ".onnx")
+        {
+            engineFiles.push_back(entry.path().filename().string());
+        }
+    }
+    return engineFiles;
 }
 
 std::vector<std::string> getOnnxFiles()
@@ -302,56 +300,11 @@ std::string get_ghub_version()
     }
 }
 
-std::string get_environment_vars()
-{
-    const char* env_var_name = "PATH";
-    char* env_var_value = nullptr;
-    size_t len = 0;
-
-    errno_t err = _dupenv_s(&env_var_value, &len, env_var_name);
-
-    std::string path_env;
-    if (err == 0 && env_var_value != nullptr)
-    {
-        path_env = env_var_value;
-        free(env_var_value);
-    }
-    else
-    {
-        std::cout << "Environment variable " << env_var_name << " not found." << std::endl;
-    }
-
-    return path_env;
-}
-
 bool contains_tensorrt(const std::string& path)
 {
     std::string lowercase_path = path;
     std::transform(lowercase_path.begin(), lowercase_path.end(), lowercase_path.begin(), ::tolower);
     return lowercase_path.find("tensorrt") != std::string::npos;
-}
-
-std::string get_tensorrt_path()
-{
-    std::string env_path = get_environment_vars();
-    std::stringstream ss(env_path);
-    std::string token;
-
-    while (std::getline(ss, token, ';'))
-    {
-        if (contains_tensorrt(token))
-        {
-            size_t pos = token.find_last_of("\\/");
-            if (pos != std::string::npos && (token.substr(pos + 1) == "lib" || token.substr(pos + 1) == "bin"))
-            {
-                token = token.substr(0, pos);
-            }
-
-            return token;
-        }
-    }
-
-    return "";
 }
 
 int get_active_monitors()
@@ -362,47 +315,22 @@ int get_active_monitors()
         return -1;
     }
 
-    int monitorsWithCudaSupport = 0;
+    int monitorCount = 0;
 
     IDXGIAdapter1* adapter = nullptr;
     for (UINT i = 0; factory->EnumAdapters1(i, &adapter) != DXGI_ERROR_NOT_FOUND; ++i)
     {
-        DXGI_ADAPTER_DESC1 desc;
-        adapter->GetDesc1(&desc);
-
-        int deviceCount = 0;
-        if (cudaGetDeviceCount(&deviceCount) == cudaSuccess && deviceCount > 0)
+        IDXGIOutput* output = nullptr;
+        for (UINT j = 0; adapter->EnumOutputs(j, &output) != DXGI_ERROR_NOT_FOUND; ++j)
         {
-            CUdevice cuDevice;
-            for (int dev = 0; dev < deviceCount; ++dev)
-            {
-                CUresult cuRes = cuDeviceGet(&cuDevice, dev);
-                if (cuRes == CUDA_SUCCESS)
-                {
-                    int supportsCuda = 0;
-                    CUuuid uuid;
-                    cuRes = cuDeviceGetUuid(&uuid, cuDevice);
-                    if (cuRes == CUDA_SUCCESS && memcmp(&uuid, &desc.AdapterLuid, sizeof(uuid)) == 0)
-                    {
-                        supportsCuda = 1;
-                    }
-                    if (supportsCuda)
-                    {
-                        IDXGIOutput* output = nullptr;
-                        for (UINT j = 0; adapter->EnumOutputs(j, &output) != DXGI_ERROR_NOT_FOUND; ++j)
-                        {
-                            monitorsWithCudaSupport++;
-                            output->Release();
-                        }
-                    }
-                }
-            }
+            monitorCount++;
+            output->Release();
         }
         adapter->Release();
     }
 
     factory->Release();
-    return monitorsWithCudaSupport;
+    return monitorCount;
 }
 
 HMONITOR GetMonitorHandleByIndex(int monitorIndex)

@@ -1,4 +1,5 @@
-﻿#define WIN32_LEAN_AND_MEAN
+﻿#ifdef USE_CUDA
+#define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
@@ -210,3 +211,4 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     std::cout << "[TensorRT] The engine was built and saved to the file: " << engineFile << std::endl;
     return engine;
 }
+#endif

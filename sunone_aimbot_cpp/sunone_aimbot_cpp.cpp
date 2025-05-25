@@ -3,7 +3,6 @@
 #include <winsock2.h>
 #include <Windows.h>
 
-#include <opencv2/opencv.hpp>
 #include <iostream>
 #include <thread>
 #include <atomic>
@@ -11,18 +10,13 @@
 #include <condition_variable>
 
 #include "capture.h"
-#include "detector.h"
-#include "directml_detector.h"
 #include "mouse.h"
 #include "sunone_aimbot_cpp.h"
 #include "keyboard_listener.h"
 #include "overlay.h"
-#include "SerialConnection.h"
 #include "ghub.h"
 #include "other_tools.h"
-#include "optical_flow.h"
-#include "Kmbox_b.h"
-#include <virtual_camera.h>
+#include "virtual_camera.h"
 
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
@@ -30,7 +24,10 @@ std::atomic<bool> aiming(false);
 std::atomic<bool> detectionPaused(false);
 std::mutex configMutex;
 
-Detector detector;
+#ifdef USE_CUDA
+TrtDetector trt_detector;
+#endif
+
 DirectMLDetector* dml_detector = nullptr;
 MouseThread* globalMouseThread = nullptr;
 Config config;
@@ -38,8 +35,6 @@ Config config;
 GhubMouse* gHub = nullptr;
 SerialConnection* arduinoSerial = nullptr;
 KmboxConnection* kmboxSerial = nullptr;
-
-OpticalFlow opticalFlow;
 
 std::atomic<bool> detection_resolution_changed(false);
 std::atomic<bool> capture_method_changed(false);
@@ -147,25 +142,23 @@ void handleEasyNoRecoil(MouseThread& mouseThread)
 
 void mouseThreadFunction(MouseThread& mouseThread)
 {
-    int lastDetectionVersion = -1;
-    std::chrono::milliseconds timeout(30);
+    int lastVersion = -1;
 
     while (!shouldExit)
     {
         std::vector<cv::Rect> boxes;
         std::vector<int> classes;
 
-        std::unique_lock<std::mutex> lock(detector.detectionMutex);
-        detector.detectionCV.wait_for(lock, timeout, [&]() {
-            return detector.detectionVersion > lastDetectionVersion || shouldExit;
-            });
-
-        if (shouldExit) break;
-        if (detector.detectionVersion <= lastDetectionVersion) continue;
-
-        lastDetectionVersion = detector.detectionVersion;
-        boxes = detector.detectedBoxes;
-        classes = detector.detectedClasses;
+        {
+            std::unique_lock<std::mutex> lock(detectionBuffer.mutex);
+            detectionBuffer.cv.wait(lock, [&] {
+                return detectionBuffer.version > lastVersion || shouldExit;
+                });
+            if (shouldExit) break;
+            boxes = detectionBuffer.boxes;
+            classes = detectionBuffer.classes;
+            lastVersion = detectionBuffer.version;
+        }
 
         if (input_method_changed.load())
         {
@@ -257,21 +250,15 @@ int main()
 {
     try
     {
-        bool needCuda =
-            config.backend == "TRT" ||   // TensorRT
-            config.capture_use_cuda ||   // cv::cuda::GpuMat
-            config.enable_optical_flow;  // Nvidia Optical Flow
-
-        if (needCuda)
+#ifdef USE_CUDA
+        int cuda_devices = 0;
+        if (cudaGetDeviceCount(&cuda_devices) != cudaSuccess || cuda_devices == 0)
         {
-            int cuda_devices = 0;
-            if (cudaGetDeviceCount(&cuda_devices) != cudaSuccess || cuda_devices == 0)
-            {
-                std::cerr << "[MAIN] CUDA required but no devices found." << std::endl;
-                std::cin.get();
-                return -1;
-            }
+            std::cerr << "[MAIN] CUDA required but no devices found." << std::endl;
+            std::cin.get();
+            return -1;
         }
+#endif
 
         SetConsoleOutputCP(CP_UTF8);
         cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_FATAL);
@@ -279,6 +266,13 @@ int main()
         if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
         {
             std::cout << "[MAIN] Error with screenshoot folder" << std::endl;
+            std::cin.get();
+            return -1;
+        }
+
+        if (!CreateDirectory(L"models", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+        {
+            std::cout << "[MAIN] Error with models folder" << std::endl;
             std::cin.get();
             return -1;
         }
@@ -389,30 +383,46 @@ int main()
             }
         }
 
+        std::thread dml_detThread;
+
         if (config.backend == "DML")
         {
             dml_detector = new DirectMLDetector("models/" + config.ai_model);
             std::cout << "[MAIN] DML detector initialized." << std::endl;
+            dml_detThread = std::thread(&DirectMLDetector::dmlInferenceThread, dml_detector);
         }
+#ifdef USE_CUDA
         else
         {
-            detector.initialize("models/" + config.ai_model);
+            trt_detector.initialize("models/" + config.ai_model);
         }
+#endif
 
         detection_resolution_changed.store(true);
 
         std::thread keyThread(keyboardListener);
         std::thread capThread(captureThread, config.detection_resolution, config.detection_resolution);
-        std::thread detThread(&Detector::inferenceThread, &detector);
+
+#ifdef USE_CUDA
+        std::thread trt_detThread(&TrtDetector::inferenceThread, &trt_detector);
+#endif
         std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
         std::thread overlayThread(OverlayThread);
-        opticalFlow.startOpticalFlowThread();
 
         welcome_message();
 
         keyThread.join();
         capThread.join();
-        detThread.join();
+        if (dml_detThread.joinable())
+        {
+            dml_detector->shouldExit = true;
+            dml_detector->inferenceCV.notify_all();
+            dml_detThread.join();
+        }
+
+#ifdef USE_CUDA
+        trt_detThread.join();
+#endif
         mouseMovThread.join();
         overlayThread.join();
 
@@ -426,8 +436,6 @@ int main()
             gHub->mouse_close();
             delete gHub;
         }
-
-        opticalFlow.stopOpticalFlowThread();
 
         if (dml_detector)
         {

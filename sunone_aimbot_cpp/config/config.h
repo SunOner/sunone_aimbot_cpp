@@ -13,7 +13,6 @@ public:
     std::string capture_method; // "duplication_api", "winrt", "virtual_camera"
     int detection_resolution;
     int capture_fps;
-    bool capture_use_cuda;
     int monitor_idx;
     bool circle_mask;
     bool capture_borders;
@@ -79,21 +78,15 @@ public:
     int max_detections;
     std::string postprocess;
     int batch_size;
+#ifdef USE_CUDA
     bool export_enable_fp8;
     bool export_enable_fp16;
-
+#endif
     // CUDA
+#ifdef USE_CUDA
     bool use_cuda_graph;
     bool use_pinned_memory;
-
-    // Optical Flow
-    bool enable_optical_flow;
-    bool draw_optical_flow;
-    int draw_optical_flow_steps;
-    float optical_flow_alpha_cpu;
-    double optical_flow_magnitudeThreshold;
-    float staticFrameThreshold;
-
+#endif
     // Buttons
     std::vector<std::string> button_targeting;
     std::vector<std::string> button_shoot;
@@ -125,7 +118,6 @@ public:
     // Debug
     bool show_window;
     bool show_fps;
-    int window_size;
     std::vector<std::string> screenshot_button;
     int screenshot_delay;
     bool verbose;

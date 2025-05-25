@@ -2,21 +2,25 @@
 #define SUNONE_AIMBOT_CPP_H
 
 #include "config.h"
-#include "detector.h"
-#include "directml_detector.h"
+#ifdef USE_CUDA
+#include "trt_detector.h"
+#endif
+#include "dml_detector.h"
 #include "mouse.h"
 #include "SerialConnection.h"
 #include "Kmbox_b.h"
-#include "optical_flow.h"
+#include "detection_buffer.h"
 
 extern Config config;
-extern Detector detector;
+#ifdef USE_CUDA
+extern TrtDetector trt_detector;
+#endif
 extern DirectMLDetector* dml_detector;
+extern DetectionBuffer detectionBuffer;
 extern MouseThread* globalMouseThread;
 extern SerialConnection* arduinoSerial;
 extern KmboxConnection* kmboxSerial;
 extern std::atomic<bool> input_method_changed;
-extern OpticalFlow opticalFlow;
 extern std::atomic<bool> aiming;
 extern std::atomic<bool> shooting;
 extern std::atomic<bool> zooming;

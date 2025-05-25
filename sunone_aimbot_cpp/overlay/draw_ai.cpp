@@ -7,7 +7,9 @@
 #include "sunone_aimbot_cpp.h"
 #include "include/other_tools.h"
 #include "overlay.h"
+#ifdef USE_CUDA
 #include "trt_monitor.h"
+#endif
 
 std::string prev_backend = config.backend;
 float prev_confidence_threshold = config.confidence_threshold;
@@ -18,6 +20,7 @@ static bool wasExporting = false;
 
 void draw_ai()
 {
+#ifdef USE_CUDA
     if (gIsTrtExporting)
     {
         ImGui::OpenPopup("TensorRT Export Progress");
@@ -43,7 +46,7 @@ void draw_ai()
         ImGui::Text("Engine export in progress, please wait...");
         ImGui::EndPopup();
     }
-
+#endif
     std::vector<std::string> availableModels = getAvailableModels();
     if (availableModels.empty())
     {
@@ -80,8 +83,13 @@ void draw_ai()
 
     ImGui::Separator();
 
+#ifdef USE_CUDA
     std::vector<std::string> backendOptions = { "TRT", "DML" };
     std::vector<const char*> backendItems = { "TensorRT (CUDA)", "DirectML (CPU/GPU)" };
+#else
+    std::vector<std::string> backendOptions = { "DML" };
+    std::vector<const char*> backendItems = { "DirectML (CPU/GPU)" };
+#endif
 
     int currentBackendIndex = config.backend == "DML" ? 1 : 0;
 

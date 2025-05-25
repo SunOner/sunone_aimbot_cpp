@@ -2,24 +2,21 @@
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
-#include <dxgi1_4.h>
-
-#include "directml_detector.h"
 #include <dml_provider_factory.h>
+#include <wrl/client.h>
+#include <iostream>
+#include <thread>
+#include <atomic>
+#include <chrono>
+#include <dxgi.h>
 
+#include "dml_detector.h"
 #include "sunone_aimbot_cpp.h"
 #include "postProcess.h"
-#include <wrl/client.h>
+#include "capture.h"
 
-std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
-{
-    std::vector<cv::Mat> batch = { input_frame };
-    auto batchResult = detectBatch(batch);
-    if (!batchResult.empty())
-        return batchResult[0];
-    else
-        return {};
-}
+extern std::atomic<bool> detector_model_changed;
+extern std::atomic<bool> detection_resolution_changed;
 
 std::string GetDMLDeviceName(int deviceId)
 {
@@ -40,12 +37,12 @@ std::string GetDMLDeviceName(int deviceId)
 }
 
 DirectMLDetector::DirectMLDetector(const std::string& model_path)
-    : 
+    :
     env(ORT_LOGGING_LEVEL_WARNING, "DML_Detector"),
     memory_info(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault))
 {
     Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_DML(session_options, config.dml_device_id));
-    
+
     if (config.verbose)
         std::cout << "[DirectML] Using adapter: " << GetDMLDeviceName(config.dml_device_id) << std::endl;
 
@@ -57,6 +54,8 @@ DirectMLDetector::DirectMLDetector(const std::string& model_path)
 
 DirectMLDetector::~DirectMLDetector()
 {
+    shouldExit = true;
+    inferenceCV.notify_all();
 }
 
 void DirectMLDetector::initializeModel(const std::string& model_path)
@@ -70,6 +69,16 @@ void DirectMLDetector::initializeModel(const std::string& model_path)
     Ort::TypeInfo input_type_info = session.GetInputTypeInfo(0);
     auto input_tensor_info = input_type_info.GetTensorTypeAndShapeInfo();
     input_shape = input_tensor_info.GetShape();
+}
+
+std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
+{
+    std::vector<cv::Mat> batch = { input_frame };
+    auto batchResult = detectBatch(batch);
+    if (!batchResult.empty())
+        return batchResult[0];
+    else
+        return {};
 }
 
 std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vector<cv::Mat>& frames)
@@ -122,45 +131,37 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
 
     std::vector<std::vector<Detection>> batchDetections(batch_out);
 
+    float conf_threshold = config.confidence_threshold;
+    float nms_threshold = config.nms_threshold;
+
     for (int b = 0; b < batch_out; ++b)
     {
         const float* out_ptr = output_data + b * rows * cols;
         std::vector<Detection> detections;
 
-        float img_scale_x = frames[b].cols / static_cast<float>(target_width);
-        float img_scale_y = frames[b].rows / static_cast<float>(target_height);
-        float conf_threshold = config.confidence_threshold;
-        float nms_threshold = config.nms_threshold;
-
-        cv::Mat det_output(rows, cols, CV_32F, (void*)out_ptr);
-
-        for (int i = 0; i < cols; ++i)
+        if (config.postprocess == "yolo10")
         {
-            cv::Mat classes_scores = det_output.col(i).rowRange(4, 4 + num_classes);
-
-            cv::Point class_id_point;
-            double score;
-            cv::minMaxLoc(classes_scores, nullptr, &score, nullptr, &class_id_point);
-
-            if (score > conf_threshold)
-            {
-                float cx = det_output.at<float>(0, i) * img_scale_x;
-                float cy = det_output.at<float>(1, i) * img_scale_y;
-                float ow = det_output.at<float>(2, i) * img_scale_x;
-                float oh = det_output.at<float>(3, i) * img_scale_y;
-
-                cv::Rect box(
-                    static_cast<int>(cx - 0.5f * ow),
-                    static_cast<int>(cy - 0.5f * oh),
-                    static_cast<int>(ow),
-                    static_cast<int>(oh)
-                );
-
-                detections.push_back(Detection{ box, static_cast<float>(score), class_id_point.y });
-            }
+            std::vector<int64_t> shape = { batch_out, rows, cols };
+            detections = postProcessYolo10DML(
+                out_ptr,
+                shape,
+                num_classes,
+                conf_threshold,
+                nms_threshold
+            );
+        }
+        else
+        {
+            std::vector<int64_t> shape = { rows, cols };
+            detections = postProcessYolo11DML(
+                out_ptr,
+                shape,
+                num_classes,
+                conf_threshold,
+                nms_threshold
+            );
         }
 
-        NMS(detections, nms_threshold);
         batchDetections[b] = std::move(detections);
     }
 
@@ -182,5 +183,66 @@ int DirectMLDetector::getNumberOfClasses()
     {
         std::cerr << "[DirectMLDetector] Unexpected output tensor shape." << std::endl;
         return -1;
+    }
+}
+
+void DirectMLDetector::processFrame(const cv::Mat& frame)
+{
+    std::unique_lock<std::mutex> lock(inferenceMutex);
+    currentFrame = frame.clone();
+    frameReady = true;
+    inferenceCV.notify_one();
+}
+
+void DirectMLDetector::dmlInferenceThread()
+{
+    while (!shouldExit)
+    {
+        if (detector_model_changed.load())
+        {
+            initializeModel("models/" + config.ai_model);
+            detection_resolution_changed.store(true);
+            detector_model_changed.store(false);
+            std::cout << "[DML] Detector reloaded: " << config.ai_model << std::endl;
+        }
+
+        cv::Mat frame;
+        bool hasNewFrame = false;
+        {
+            std::unique_lock<std::mutex> lock(inferenceMutex);
+            if (!frameReady && !shouldExit)
+                inferenceCV.wait(lock, [this] { return frameReady || shouldExit; });
+
+            if (shouldExit) break;
+
+            if (frameReady)
+            {
+                frame = std::move(currentFrame);
+                frameReady = false;
+                hasNewFrame = true;
+            }
+        }
+
+        if (hasNewFrame && !frame.empty())
+        {
+            auto start = std::chrono::steady_clock::now();
+
+            std::vector<cv::Mat> batchFrames = { frame };
+            auto detectionsBatch = detectBatch(batchFrames);
+            const std::vector<Detection>& detections = detectionsBatch.back();
+
+            auto end = std::chrono::steady_clock::now();
+            lastInferenceTimeDML = end - start;
+
+            std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
+            detectionBuffer.boxes.clear();
+            detectionBuffer.classes.clear();
+            for (const auto& d : detections) {
+                detectionBuffer.boxes.push_back(d.box);
+                detectionBuffer.classes.push_back(d.classId);
+            }
+            detectionBuffer.version++;
+            detectionBuffer.cv.notify_all();
+        }
     }
 }

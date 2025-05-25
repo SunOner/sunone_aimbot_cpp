@@ -1,5 +1,6 @@
-#ifndef DETECTOR_H
-#define DETECTOR_H
+#ifdef USE_CUDA
+#ifndef TRT_DETECTOR_H
+#define TRT_DETECTOR_H
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/cuda.hpp>
@@ -17,37 +18,29 @@
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudaarithm.hpp>
 #include <cuda_runtime_api.h>
+
 #include "postProcess.h"
 
-class Detector
+class TrtDetector
 {
 public:
-    Detector();
-    ~Detector();
+    TrtDetector();
+    ~TrtDetector();
     void initialize(const std::string& modelFile);
-    void processFrame(const cv::cuda::GpuMat& frame);
+    void processFrame(const cv::Mat& frame);
     void inferenceThread();
-    void releaseDetections();
-    bool getLatestDetections(std::vector<cv::Rect>& boxes, std::vector<int>& classes);
 
-    std::mutex detectionMutex;
-
-    int detectionVersion;
-    std::condition_variable detectionCV;
-    std::vector<cv::Rect> detectedBoxes;
-    std::vector<int> detectedClasses;
     float img_scale;
-
-    int getInputHeight() const { return inputDims.d[2]; }
-    int getInputWidth() const { return inputDims.d[3]; }
 
     std::vector<std::string> inputNames;
     std::vector<std::string> outputNames;
     std::unordered_map<std::string, size_t> outputSizes;
 
+    std::chrono::duration<double, std::milli> lastPreprocessTime;
     std::chrono::duration<double, std::milli> lastInferenceTime;
-    std::chrono::steady_clock::time_point lastInferenceStart;
-    std::chrono::steady_clock::time_point lastInferenceEnd;
+    std::chrono::duration<double, std::milli> lastCopyTime;
+    std::chrono::duration<double, std::milli> lastPostprocessTime;
+    std::chrono::duration<double, std::milli> lastNmsTime;
 
     std::vector<std::vector<Detection>> detectBatch(const std::vector<cv::Mat>& frames);
 
@@ -55,15 +48,8 @@ private:
     std::unique_ptr<nvinfer1::IRuntime> runtime;
     std::unique_ptr<nvinfer1::ICudaEngine> engine;
     std::unique_ptr<nvinfer1::IExecutionContext> context;
-    nvinfer1::Dims inputDims;
-
-    cv::cuda::Stream cvStream;
-    cv::cuda::Stream preprocessCvStream;
-    cv::cuda::Stream postprocessCvStream;
 
     cudaStream_t stream;
-    cudaStream_t preprocessStream;
-    cudaStream_t postprocessStream;
 
     bool useCudaGraph;
     bool cudaGraphCaptured;
@@ -74,17 +60,23 @@ private:
     void destroyCudaGraph();
 
     std::unordered_map<std::string, void*> pinnedOutputBuffers;
-    bool usePinnedMemory;
 
     std::mutex inferenceMutex;
     std::condition_variable inferenceCV;
     std::atomic<bool> shouldExit;
-    cv::cuda::GpuMat currentFrame;
+    cv::Mat currentFrame;
     bool frameReady;
 
     void loadEngine(const std::string& engineFile);
-    void preProcess(const cv::cuda::GpuMat& frame);
-    void postProcess(const float* output, const std::string& outputName);
+
+    void preProcess(const cv::Mat& frame);
+
+    void postProcess(
+        const float* output,
+        const std::string& outputName,
+        std::chrono::duration<double, std::milli>* nmsTime
+    );
+
     void getInputNames();
     void getOutputNames();
     void getBindings();
@@ -104,26 +96,10 @@ private:
     std::unordered_map<std::string, std::vector<__half>> outputDataBuffersHalf;
     std::unordered_map<std::string, nvinfer1::DataType> outputTypes;
 
-    std::vector<cv::Rect> boxes;
-    std::vector<float> confidences;
-    std::vector<int> classes;
-    
     cv::cuda::GpuMat resizedBuffer;
     cv::cuda::GpuMat floatBuffer;
     std::vector<cv::cuda::GpuMat> channelBuffers;
-    
-    void synchronizeStreams(cv::cuda::Stream& cvStream, cudaStream_t cudaStream)
-    {
-        cudaEvent_t event;
-        cudaEventCreate(&event);
-        
-        cvStream.enqueueHostCallback([](int, void* userData){
-            cudaEventRecord(static_cast<cudaEvent_t>(userData));
-        }, &event);
-        
-        cudaStreamWaitEvent(cudaStream, event, 0);
-        cudaEventDestroy(event);
-    }
 };
 
-#endif // DETECTOR_H
+#endif // TRT_DETECTOR_H
+#endif

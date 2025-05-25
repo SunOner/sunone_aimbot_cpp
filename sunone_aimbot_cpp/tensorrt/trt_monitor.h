@@ -1,3 +1,4 @@
+#ifdef USE_CUDA
 #pragma once
 #include <atomic>
 #include <string>
@@ -39,3 +40,4 @@ public:
             gIsTrtExporting = false;
     }
 };
+#endif

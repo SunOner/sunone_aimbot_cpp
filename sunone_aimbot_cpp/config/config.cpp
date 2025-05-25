@@ -50,7 +50,6 @@ bool Config::loadConfig(const std::string& filename)
         capture_method = "duplication_api";
         detection_resolution = 320;
         capture_fps = 60;
-        capture_use_cuda = false;
         monitor_idx = 0;
         circle_mask = true;
         capture_borders = true;
@@ -108,28 +107,35 @@ bool Config::loadConfig(const std::string& filename)
         bScope_multiplier = 1.0f;
 
         // AI
+#ifdef USE_CUDA
         backend = "TRT";
+#else
+        backend = "DML";
+#endif
         dml_device_id = 0;
+
+#ifdef USE_CUDA
         ai_model = "sunxds_0.5.6.engine";
+#else
+        ai_model = "sunxds_0.5.6.onnx";
+#endif
+
         confidence_threshold = 0.10f;
         nms_threshold = 0.50f;
         max_detections = 100;
+
         postprocess = "yolo10";
         batch_size = 1;
+#ifdef USE_CUDA
         export_enable_fp8 = false;
         export_enable_fp16 = true;
+#endif
 
         // CUDA
+#ifdef USE_CUDA
         use_cuda_graph = false;
-        use_pinned_memory = true;
-
-        // optical flow
-        enable_optical_flow = false;
-        draw_optical_flow = true;
-        draw_optical_flow_steps = 16;
-        optical_flow_alpha_cpu = 0.01f;
-        optical_flow_magnitudeThreshold = 0.10;
-        staticFrameThreshold = 4.0f;
+        use_pinned_memory = false;
+#endif
 
         // Buttons
         button_targeting = splitString("RightMouseButton");
@@ -161,7 +167,6 @@ bool Config::loadConfig(const std::string& filename)
 
         // Debug
         show_window = true;
-        window_size = 80;
         screenshot_button = splitString("None");
         screenshot_delay = 500;
         verbose = false;
@@ -173,7 +178,8 @@ bool Config::loadConfig(const std::string& filename)
     CSimpleIniA ini;
     ini.SetUnicode();
     SI_Error rc = ini.LoadFile(filename.c_str());
-    if (rc < 0) {
+    if (rc < 0)
+    {
         std::cerr << "[Config] Error parsing INI file: " << filename << std::endl;
         return false;
     }
@@ -236,6 +242,7 @@ bool Config::loadConfig(const std::string& filename)
     {
         GameProfile uni;
         uni.name = "UNIFIED";
+        uni.sens = 1.0;
         uni.yaw = 0.022;
         uni.pitch = uni.yaw;
         uni.fovScaled = false;
@@ -254,7 +261,6 @@ bool Config::loadConfig(const std::string& filename)
         detection_resolution = 320;
 
     capture_fps = get_long("capture_fps", 60);
-    capture_use_cuda = get_bool("capture_use_cuda", false);
     monitor_idx = get_long("monitor_idx", 0);
     circle_mask = get_bool("circle_mask", true);
     capture_borders = get_bool("capture_borders", true);
@@ -312,31 +318,39 @@ bool Config::loadConfig(const std::string& filename)
     bScope_multiplier = (float)get_double("bScope_multiplier", 1.2);
 
     // AI
+#ifdef USE_CUDA
     backend = get_string("backend", "TRT");
+#else
+    backend = get_string("backend", "DML");
+#endif
+
     dml_device_id = get_long("dml_device_id", 0);
+
+#ifdef USE_CUDA
     ai_model = get_string("ai_model", "sunxds_0.5.6.engine");
+#else
+    ai_model = get_string("ai_model", "sunxds_0.5.6.onnx");
+#endif
     confidence_threshold = (float)get_double("confidence_threshold", 0.15);
     nms_threshold = (float)get_double("nms_threshold", 0.50);
     max_detections = get_long("max_detections", 20);
-    postprocess = get_string("postprocess", "yolo11");
+
+    postprocess = get_string("postprocess", "yolo10");
+
     batch_size = get_long("batch_size", 1);
     if (batch_size < 1) batch_size = 1;
     if (batch_size > 8) batch_size = 8;
 
+#ifdef USE_CUDA
     export_enable_fp8 = get_bool("export_enable_fp8", true);
     export_enable_fp16 = get_bool("export_enable_fp16", true);
+#endif
 
     // CUDA
+#ifdef USE_CUDA
     use_cuda_graph = get_bool("use_cuda_graph", false);
     use_pinned_memory = get_bool("use_pinned_memory", true);
-
-    // Optical Flow
-    enable_optical_flow = get_bool("enable_optical_flow", false);
-    draw_optical_flow = get_bool("draw_optical_flow", true);
-    draw_optical_flow_steps = get_long("draw_optical_flow_steps", 16);
-    optical_flow_alpha_cpu = (float)get_double("optical_flow_alpha_cpu", 0.06);
-    optical_flow_magnitudeThreshold = get_double("optical_flow_magnitudeThreshold", 2.08);
-    staticFrameThreshold = (float)get_double("staticFrameThreshold", 4.0);
+#endif
 
     // Buttons
     button_targeting = splitString(get_string("button_targeting", "RightMouseButton"));
@@ -368,7 +382,6 @@ bool Config::loadConfig(const std::string& filename)
 
     // Debug window
     show_window = get_bool("show_window", true);
-    window_size = get_long("window_size", 80);
     screenshot_button = splitString(get_string("screenshot_button", "None"));
     screenshot_delay = get_long("screenshot_delay", 500);
     verbose = get_bool("verbose", false);
@@ -393,7 +406,6 @@ bool Config::saveConfig(const std::string& filename)
         << "capture_method = " << capture_method << "\n"
         << "detection_resolution = " << detection_resolution << "\n"
         << "capture_fps = " << capture_fps << "\n"
-        << "capture_use_cuda = " << (capture_use_cuda ? "true" : "false") << "\n"
         << "monitor_idx = " << monitor_idx << "\n"
         << "circle_mask = " << (circle_mask ? "true" : "false") << "\n"
         << "capture_borders = " << (capture_borders ? "true" : "false") << "\n"
@@ -475,23 +487,19 @@ bool Config::saveConfig(const std::string& filename)
         << "max_detections = " << max_detections << "\n"
         << "postprocess = " << postprocess << "\n"
         << "batch_size = " << batch_size << "\n"
+#ifdef USE_CUDA
         << "export_enable_fp8 = " << (export_enable_fp8 ? "true" : "false") << "\n"
         << "export_enable_fp16 = " << (export_enable_fp16 ? "true" : "false") << "\n\n";
+#else
+        << "\n";
+#endif
 
     // CUDA
+#ifdef USE_CUDA
     file << "# CUDA\n"
         << "use_cuda_graph = " << (use_cuda_graph ? "true" : "false") << "\n"
         << "use_pinned_memory = " << (use_pinned_memory ? "true" : "false") << "\n\n";
-
-    // Optical Flow
-    file << "# Optical Flow\n"
-        << "enable_optical_flow = " << (enable_optical_flow ? "true" : "false") << "\n"
-        << "draw_optical_flow = " << (draw_optical_flow ? "true" : "false") << "\n"
-        << "draw_optical_flow_steps = " << draw_optical_flow_steps << "\n"
-        << std::fixed << std::setprecision(2)
-        << "optical_flow_alpha_cpu = " << optical_flow_alpha_cpu << "\n"
-        << "optical_flow_magnitudeThreshold = " << optical_flow_magnitudeThreshold << "\n"
-        << "staticFrameThreshold = " << staticFrameThreshold << "\n\n";
+#endif
 
     // Buttons
     file << "# Buttons\n"
@@ -529,7 +537,6 @@ bool Config::saveConfig(const std::string& filename)
     file << "# Debug\n"
         << "show_window = " << (show_window ? "true" : "false") << "\n"
         << "show_fps = " << (show_fps ? "true" : "false") << "\n"
-        << "window_size = " << window_size << "\n"
         << "screenshot_button = " << joinStrings(screenshot_button) << "\n"
         << "screenshot_delay = " << screenshot_delay << "\n"
         << "verbose = " << (verbose ? "true" : "false") << "\n\n";

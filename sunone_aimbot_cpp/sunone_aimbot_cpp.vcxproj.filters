@@ -8,7 +8,7 @@
     <ClCompile Include="mouse\mouse.cpp" />
     <ClCompile Include="mouse\SerialConnection.cpp" />
     <ClCompile Include="mouse\AimbotTarget.cpp" />
-    <ClCompile Include="detector\detector.cpp" />
+    <ClCompile Include="detector\trt_detector.cpp" />
     <ClCompile Include="tensorrt\nvinf.cpp" />
     <ClCompile Include="keyboard\keyboard_listener.cpp" />
     <ClCompile Include="keyboard\keycodes.cpp" />
@@ -22,20 +22,20 @@
     <ClCompile Include="detector\postProcess.cpp" />
     <ClCompile Include="capture\winrt_capture.cpp" />
     <ClCompile Include="capture\duplication_api_capture.cpp" />
-    <ClCompile Include="capture\optical_flow.cpp" />
     <ClCompile Include="capture\virtual_camera.cpp" />
     <ClCompile Include="sunone_aimbot_cpp.cpp" />
     <ClCompile Include="overlay\draw_capture.cpp" />
     <ClCompile Include="overlay\draw_target.cpp" />
     <ClCompile Include="overlay\draw_mouse.cpp" />
     <ClCompile Include="overlay\draw_ai.cpp" />
-    <ClCompile Include="overlay\draw_optical_flow.cpp" />
     <ClCompile Include="overlay\draw_buttons.cpp" />
     <ClCompile Include="overlay\draw_overlay.cpp" />
     <ClCompile Include="overlay\draw_debug.cpp" />
     <ClCompile Include="mouse\Kmbox_b.cpp" />
-    <ClCompile Include="detector\directml_detector.cpp" />
+    <ClCompile Include="detector\dml_detector.cpp" />
     <ClCompile Include="overlay\draw_stats.cpp" />
+    <ClCompile Include="capture\capture_utils.cpp" />
+    <ClCompile Include="detector\detection_buffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -54,7 +54,7 @@
     <ClInclude Include="mouse\mouse.h" />
     <ClInclude Include="mouse\SerialConnection.h" />
     <ClInclude Include="mouse\AimbotTarget.h" />
-    <ClInclude Include="detector\detector.h" />
+    <ClInclude Include="detector\trt_detector.h" />
     <ClInclude Include="tensorrt\nvinf.h" />
     <ClInclude Include="keyboard\keyboard_listener.h" />
     <ClInclude Include="keyboard\keycodes.h" />
@@ -70,13 +70,14 @@
     <ClInclude Include="detector\postProcess.h" />
     <ClInclude Include="capture\winrt_capture.h" />
     <ClInclude Include="capture\duplication_api_capture.h" />
-    <ClInclude Include="capture\optical_flow.h" />
     <ClInclude Include="capture\virtual_camera.h" />
     <ClInclude Include="sunone_aimbot_cpp.h" />
     <ClInclude Include="overlay\draw_settings.h" />
     <ClInclude Include="mouse\Kmbox_b.h" />
-    <ClInclude Include="detector\directml_detector.h" />
+    <ClInclude Include="detector\dml_detector.h" />
     <ClInclude Include="tensorrt\trt_monitor.h" />
+    <ClInclude Include="capture\capture_utils.h" />
+    <ClInclude Include="detector\detection_buffer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

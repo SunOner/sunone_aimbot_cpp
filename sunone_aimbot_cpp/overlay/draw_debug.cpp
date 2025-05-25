@@ -80,8 +80,8 @@ void draw_debug_frame()
     cv::Mat frameCopy;
     {
         std::lock_guard<std::mutex> lk(frameMutex);
-        if (!latestFrameCpu.empty())
-            latestFrameCpu.copyTo(frameCopy);
+        if (!latestFrame.empty())
+            latestFrame.copyTo(frameCopy);
     }
 
     uploadDebugFrame(frameCopy);
@@ -97,10 +97,10 @@ void draw_debug_frame()
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
     {
-        std::lock_guard<std::mutex> lock(detector.detectionMutex);
-        for (size_t i = 0; i < detector.detectedBoxes.size(); ++i)
+        std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
+        for (size_t i = 0; i < detectionBuffer.boxes.size(); ++i)
         {
-            const cv::Rect& box = detector.detectedBoxes[i];
+            const cv::Rect& box = detectionBuffer.boxes[i];
 
             ImVec2 p1(image_pos.x + box.x * debug_scale,
                 image_pos.y + box.y * debug_scale);
@@ -111,9 +111,9 @@ void draw_debug_frame()
 
             draw_list->AddRect(p1, p2, color, 0.0f, 0, 2.0f);
 
-            if (i < detector.detectedClasses.size())
+            if (i < detectionBuffer.classes.size())
             {
-                std::string label = "Class " + std::to_string(detector.detectedClasses[i]);
+                std::string label = "Class " + std::to_string(detectionBuffer.classes[i]);
                 draw_list->AddText(ImVec2(p1.x, p1.y - 16), IM_COL32(255, 255, 0, 255), label.c_str());
             }
         }
@@ -153,56 +153,6 @@ void draw_debug_frame()
 
             draw_list->PopClipRect();
         }
-    }
-
-    if (config.draw_optical_flow && !opticalFlow.flow.empty() && opticalFlow.isFlowValid)
-    {
-        cv::Mat flowCpu;
-        opticalFlow.flow.download(flowCpu);
-
-        cv::Mat flowFloat;
-        flowCpu.convertTo(flowFloat, CV_32FC2, config.optical_flow_alpha_cpu);
-
-        cv::Mat flowChannels[2];
-        cv::split(flowFloat, flowChannels);
-
-        cv::Mat magnitude;
-        cv::magnitude(flowChannels[0], flowChannels[1], magnitude);
-
-        float scaleX = static_cast<float>(texW) / flowFloat.cols;
-        float scaleY = static_cast<float>(texH) / flowFloat.rows;
-        float visualScaleX = debug_scale * scaleX;
-        float visualScaleY = debug_scale * scaleY;
-
-        int step = config.draw_optical_flow_steps;
-        double magThreshold = config.optical_flow_magnitudeThreshold;
-
-        draw_list->PushClipRect(image_pos,
-            ImVec2(image_pos.x + texW * debug_scale,
-                image_pos.y + texH * debug_scale),
-            true);
-
-        for (int y = 0; y < flowFloat.rows; y += step)
-        {
-            for (int x = 0; x < flowFloat.cols; x += step)
-            {
-                float mag = magnitude.at<float>(y, x);
-                if (mag > magThreshold)
-                {
-                    const cv::Point2f& fxy = flowFloat.at<cv::Point2f>(y, x);
-
-                    ImVec2 p1(image_pos.x + x * visualScaleX,
-                        image_pos.y + y * visualScaleY);
-                    ImVec2 p2 = ImVec2(p1.x + fxy.x * debug_scale * scaleX,
-                        p1.y + fxy.y * debug_scale * scaleY);
-
-                    draw_list->AddLine(p1, p2, IM_COL32(0, 223, 255, 255), 1.0f);
-                    draw_list->AddCircleFilled(p1, 1.5f, IM_COL32(0, 223, 255, 255));
-                }
-            }
-        }
-
-        draw_list->PopClipRect();
     }
 }
 

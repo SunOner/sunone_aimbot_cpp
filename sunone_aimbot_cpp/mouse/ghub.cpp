@@ -1,6 +1,7 @@
-#include "ghub.h"
 #include <iostream>
 #include <string>
+
+#include "ghub.h"
 
 UINT GhubMouse::_ghub_SendInput(UINT nInputs, LPINPUT pInputs)
 {

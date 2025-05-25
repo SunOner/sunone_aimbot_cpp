@@ -2,10 +2,6 @@
 #define WINRT_CAPTURE_H
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/cudawarping.hpp>
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <cuda_d3d11_interop.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
 #include <mutex>
@@ -30,8 +26,7 @@ public:
     WinRTScreenCapture(int desiredWidth, int desiredHeight);
     ~WinRTScreenCapture();
 
-    cv::cuda::GpuMat GetNextFrameGpu() override;
-    cv::Mat          GetNextFrameCpu() override;
+    cv::Mat GetNextFrameCpu() override;
 
 private:
     winrt::com_ptr<ID3D11Device>         d3dDevice;
@@ -44,8 +39,6 @@ private:
     winrt::Windows::Graphics::Capture::GraphicsCaptureSession           session{ nullptr };
 
     winrt::com_ptr<ID3D11Texture2D> sharedTexture;
-    cudaGraphicsResource* cudaResource = nullptr;
-    cudaStream_t cudaStream = nullptr;
 
     winrt::com_ptr<ID3D11Texture2D> stagingTextureCPU;
 
@@ -58,7 +51,6 @@ private:
     int regionX = 0;
     int regionY = 0;
 
-    bool createSharedTextureGPU();
     bool createStagingTextureCPU();
 
     winrt::Windows::Graphics::Capture::GraphicsCaptureItem

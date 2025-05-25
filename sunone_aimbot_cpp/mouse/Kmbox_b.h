@@ -8,6 +8,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+
 #include "serial/serial.h"
 
 class KmboxConnection

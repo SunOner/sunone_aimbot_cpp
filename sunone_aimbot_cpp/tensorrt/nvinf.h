@@ -1,3 +1,4 @@
+#ifdef USE_CUDA
 #ifndef NVINF_H
 #define NVINF_H
 
@@ -21,3 +22,4 @@ nvinfer1::ICudaEngine* loadEngineFromFile(const std::string& engineFile, nvinfer
 nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1::ILogger& logger);
 
 #endif // NVINF_H
+#endif

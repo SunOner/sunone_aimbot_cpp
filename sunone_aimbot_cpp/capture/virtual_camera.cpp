@@ -1,5 +1,4 @@
-﻿#include <opencv2/cudaimgproc.hpp>
-#include <iostream>
+﻿#include <iostream>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -114,8 +113,8 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
     roiW_ = even(w);
     roiH_ = even(h);
 
-    scratchGpu_.create(roiH_, roiW_, CV_8UC2);
-    bgrGpu_.create(roiH_, roiW_, CV_8UC3);
+    //scratchGpu_.create(roiH_, roiW_, CV_8UC2);
+    //bgrGpu_.create(roiH_, roiW_, CV_8UC3);
 
     if (config.verbose)
         std::cout << "[VirtualCamera] Actual capture: "
@@ -133,36 +132,6 @@ VirtualCameraCapture::~VirtualCameraCapture()
         }
         cap_.reset();
     }
-}
-
-cv::cuda::GpuMat VirtualCameraCapture::GetNextFrameGpu()
-{
-    if (!cap_ || !cap_->isOpened())
-        return cv::cuda::GpuMat();
-
-    cv::Mat frame;
-    if (!cap_->read(frame) || frame.empty())
-    {
-        return cv::cuda::GpuMat();
-    }
-
-    if (frame.channels() == 1)        cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
-    else if (frame.channels() == 2)   cv::cvtColor(frame, frame, cv::COLOR_YUV2BGR_YUY2);
-    else if (frame.channels() == 4)   cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
-
-    cv::cuda::GpuMat gpuFrame;
-    gpuFrame.upload(frame);
-
-    int target_width = config.virtual_camera_width;
-    int target_height = config.virtual_camera_heigth;
-
-    if (target_width > 0 && target_height > 0 && !gpuFrame.empty())
-    {
-        cv::cuda::resize(gpuFrame, gpuFrame, cv::Size(target_width, target_height));
-    }
-
-    lastGpu = gpuFrame;
-    return gpuFrame;
 }
 
 cv::Mat VirtualCameraCapture::GetNextFrameCpu()
