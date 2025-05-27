@@ -341,5 +341,11 @@ sunone_aimbot_cpp/
 * **License:** [MIT License](https://github.com/ocornut/imgui/blob/master/LICENSE)
 
 ---
+## ❤️ Support the Project & Get Better AI Models
+
+This project is actively developed thanks to the people who support it on [Boosty](https://boosty.to/sunone) and [Patreon](https://www.patreon.com/c/sunone).  
+**By supporting the project, you get access to improved and better-trained AI models!**
+
+---
 
 **Need help or want to contribute? Join our [Discord server](https://discord.gg/37WVp6sNEh) or open an issue on GitHub!**
