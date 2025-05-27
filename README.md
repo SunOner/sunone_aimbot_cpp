@@ -21,6 +21,8 @@
 **You do NOT need to compile anything if you just want to use the aimbot!**
 Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML (all GPUs).
 
+---
+
 ### 🟢 DirectML (DML) Build — Universal (All GPUs)
 
 * **Works on:**
@@ -99,6 +101,8 @@ If you want to compile the project yourself or modify code, follow these instruc
   * [GLFW](https://www.glfw.org/download.html)
   * [ImGui](https://github.com/ocornut/imgui)
 
+---
+
 ## 2. Choose Build Target in Visual Studio
 
 * **DML (DirectML):**
@@ -106,26 +110,80 @@ If you want to compile the project yourself or modify code, follow these instruc
 * **CUDA (TensorRT):**
   Select `Release | x64 | CUDA` (requires supported NVIDIA GPU, see above)
 
-## 3. Build Steps
+---
 
-1. Clone or download this repository.
-2. Install all requirements (see above).
-3. Place all libraries into `sunone_aimbot_cpp/sunone_aimbot_cpp/modules`.
-4. For CUDA build:
+## 3. Placement of Third-Party Modules and Libraries
 
-   * Build OpenCV with CUDA (see detailed guide below)
-   * Place all resulting DLLs (e.g. `opencv_world4100.dll`) next to the executable or in `modules`.
-5. For DML build:
+Before building the project, **download and place all third-party dependencies** in the following directories inside your project structure:
 
-   * Use pre-built DLLs if you don't want to build OpenCV yourself.
-6. Open the solution in Visual Studio 2022.
-7. Choose the build configuration (see step 2).
-8. Build the project.
-9. Run `ai.exe` from the output folder.
+**Required folders inside your repository:**
+
+```
+sunone_aimbot_cpp/
+└── sunone_aimbot_cpp/
+    └── modules/
+```
+
+**Place each dependency as follows:**
+
+| Library   | Path                                                              |
+| --------- | ----------------------------------------------------------------- |
+| SimpleIni | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/SimpleIni.h`         |
+| serial    | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/serial/`             |
+| TensorRT  | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/TensorRT-10.8.0.43/` |
+| GLFW      | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/glfw-3.4.bin.WIN64/` |
+| OpenCV    | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/`             |
+| cuDNN     | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/cudnn/`              |
+
+* **SimpleIni:**
+  Download [`SimpleIni.h`](https://github.com/brofield/simpleini/blob/master/SimpleIni.h)
+  Place in `modules/`.
+
+* **serial:**
+  Download the [`serial`](https://github.com/wjwwood/serial) library (whole folder).
+  To build, open
+
+  ```
+  sunone_aimbot_cpp/sunone_aimbot_cpp/modules/serial/visual_studio/visual_studio.sln
+  ```
+
+  * Set **C/C++ > Code Generation > Runtime Library** to **Multi-threaded (/MT)**
+  * Build in **Release x64**
+  * Use the built DLL/LIB with your project.
+
+* **TensorRT:**
+  Download [TensorRT 10.8.0.43](https://developer.nvidia.com/tensorrt/download/10x)
+  Place the folder as shown above.
+
+* **GLFW:**
+  Download [GLFW Windows binaries](https://www.glfw.org/download.html)
+  Place the folder as shown above.
+
+* **OpenCV:**
+  Use your custom build or official DLLs (see CUDA/DML notes below).
+  Place DLLs either next to your exe or in `modules/opencv/`.
+
+* **cuDNN:**
+  Place cuDNN files here (for CUDA build):
+  `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/cudnn/`
+
+**Example structure after setup:**
+
+```
+sunone_aimbot_cpp/
+└── sunone_aimbot_cpp/
+    └── modules/
+        ├── SimpleIni.h
+        ├── serial/
+        ├── TensorRT-10.8.0.43/
+        ├── glfw-3.4.bin.WIN64/
+        ├── opencv/
+        └── cudnn/
+```
 
 ---
 
-## 🟦 How to Build OpenCV 4.10.0 with CUDA Support (For CUDA Version Only)
+## 4. How to Build OpenCV 4.10.0 with CUDA Support (For CUDA Version Only)
 
 > This section is **only required** if you want to use the CUDA (TensorRT) version and need OpenCV with CUDA support.
 > For DML build, skip this step — you can use the pre-built OpenCV DLL.
@@ -207,6 +265,30 @@ If you want to compile the project yourself or modify code, follow these instruc
    * Includes:
      `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/include/opencv2`
    * Copy needed DLLs (`opencv_world4100.dll`, etc.) next to your project’s executable.
+
+---
+
+## 5. Notes on OpenCV for CUDA/DML
+
+* **For CUDA build (TensorRT backend):**
+
+  * You **must** build OpenCV with CUDA support (see the guide above).
+  * Place all built DLLs (e.g., `opencv_world4100.dll`) next to your executable or in the `modules` folder.
+* **For DML build (DirectML backend):**
+
+  * You can use the official pre-built OpenCV DLLs if you **only** plan to use DirectML.
+  * If you want to use both CUDA and DML modes in the same executable, you should always use your custom OpenCV build with CUDA enabled (it will work for both modes).
+* **Note:**
+  If you run the CUDA backend with non-CUDA OpenCV DLLs, the program will not work and may crash due to missing symbols.
+
+---
+
+## 6. Build and Run
+
+1. Open the solution in Visual Studio 2022.
+2. Choose your configuration (`Release | x64 | DML` or `Release | x64 | CUDA`).
+3. Build the solution.
+4. Run `ai.exe` from the output folder.
 
 ---
 
