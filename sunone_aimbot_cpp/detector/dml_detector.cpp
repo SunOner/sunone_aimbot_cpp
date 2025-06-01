@@ -18,6 +18,11 @@
 extern std::atomic<bool> detector_model_changed;
 extern std::atomic<bool> detection_resolution_changed;
 
+std::chrono::duration<double, std::milli> lastPreprocessTimeDML{};
+std::chrono::duration<double, std::milli> lastCopyTimeDML{};
+std::chrono::duration<double, std::milli> lastPostprocessTimeDML{};
+std::chrono::duration<double, std::milli> lastNmsTimeDML{};
+
 std::string GetDMLDeviceName(int deviceId)
 {
     Microsoft::WRL::ComPtr<IDXGIFactory1> dxgiFactory;
@@ -83,19 +88,17 @@ std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
 
 std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vector<cv::Mat>& frames)
 {
+    auto t0 = std::chrono::steady_clock::now();
     int batch_size = frames.size();
     int target_width = config.detection_resolution;
     int target_height = config.detection_resolution;
-
     std::vector<float> input_tensor_values(batch_size * 3 * target_height * target_width);
-
     for (int b = 0; b < batch_size; ++b)
     {
         cv::Mat resized_frame;
         cv::resize(frames[b], resized_frame, cv::Size(target_width, target_height));
         cv::cvtColor(resized_frame, resized_frame, cv::COLOR_BGR2RGB);
         resized_frame.convertTo(resized_frame, CV_32FC3, 1.0f / 255.0f);
-
         const float* input_data = reinterpret_cast<const float*>(resized_frame.data);
         for (int h = 0; h < target_height; ++h)
             for (int w = 0; w < target_width; ++w)
@@ -106,39 +109,42 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
                             h * target_width + w
                     ] = input_data[(h * target_width + w) * 3 + c];
     }
-
+    auto t1 = std::chrono::steady_clock::now(); // Preprocess End
+    
     std::vector<int64_t> input_shape = { batch_size, 3, target_height, target_width };
-
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
         memory_info, input_tensor_values.data(), input_tensor_values.size(),
         input_shape.data(), input_shape.size());
-
+    
     const char* input_names[] = { input_name.c_str() };
     const char* output_names[] = { output_name.c_str() };
-
+    
+    auto t2 = std::chrono::steady_clock::now(); // Inference Start
     auto output_tensors = session.Run(Ort::RunOptions{ nullptr },
         input_names, &input_tensor, 1,
         output_names, 1);
-
+    auto t3 = std::chrono::steady_clock::now(); // Inference End
+    
+    auto t4 = std::chrono::steady_clock::now(); // Copy Start
     float* output_data = output_tensors.front().GetTensorMutableData<float>();
+    auto t5 = std::chrono::steady_clock::now(); // Copy End
+    
     Ort::TensorTypeAndShapeInfo output_info = output_tensors.front().GetTensorTypeAndShapeInfo();
     std::vector<int64_t> output_shape = output_info.GetShape();
-
     int batch_out = output_shape[0];
     int rows = output_shape[1];
     int cols = output_shape[2];
     int num_classes = rows - 4;
-
     std::vector<std::vector<Detection>> batchDetections(batch_out);
-
     float conf_threshold = config.confidence_threshold;
     float nms_threshold = config.nms_threshold;
-
+    
+    auto t6 = std::chrono::steady_clock::now(); // Postprocess Start
+    std::chrono::duration<double, std::milli> nmsTimeTmp{0};
     for (int b = 0; b < batch_out; ++b)
     {
         const float* out_ptr = output_data + b * rows * cols;
         std::vector<Detection> detections;
-
         if (config.postprocess == "yolo10")
         {
             std::vector<int64_t> shape = { batch_out, rows, cols };
@@ -147,7 +153,8 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
                 shape,
                 num_classes,
                 conf_threshold,
-                nms_threshold
+                nms_threshold,
+                &nmsTimeTmp
             );
         }
         else
@@ -158,13 +165,20 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
                 shape,
                 num_classes,
                 conf_threshold,
-                nms_threshold
+                nms_threshold,
+                &nmsTimeTmp
             );
         }
-
         batchDetections[b] = std::move(detections);
     }
-
+    auto t7 = std::chrono::steady_clock::now(); // Postprocess End
+    
+    lastPreprocessTimeDML = t1 - t0;
+    lastInferenceTimeDML = t3 - t2;
+    lastCopyTimeDML = t5 - t4;
+    lastPostprocessTimeDML = t7 - t6;
+    lastNmsTimeDML = nmsTimeTmp;
+    
     return batchDetections;
 }
 

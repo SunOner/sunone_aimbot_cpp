@@ -10,7 +10,7 @@
 
 void draw_stats()
 {
-    // Inference times (for all stages)
+    // all stages
     static float preprocess_times[120] = {};
     static float inference_times[120] = {};
     static float copy_times[120] = {};
@@ -26,7 +26,11 @@ void draw_stats()
 
     if (config.backend == "DML" && dml_detector)
     {
+        current_preprocess = static_cast<float>(dml_detector->lastPreprocessTimeDML.count());
         current_inference = static_cast<float>(dml_detector->lastInferenceTimeDML.count());
+        current_copy = static_cast<float>(dml_detector->lastCopyTimeDML.count());
+        current_post = static_cast<float>(dml_detector->lastPostprocessTimeDML.count());
+        current_nms = static_cast<float>(dml_detector->lastNmsTimeDML.count());
     }
 #ifdef USE_CUDA
     else

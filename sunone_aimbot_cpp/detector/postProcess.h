@@ -42,7 +42,8 @@ std::vector<Detection> postProcessYolo10DML(
     const std::vector<int64_t>& shape,
     int numClasses,
     float confThreshold,
-    float nmsThreshold
+    float nmsThreshold,
+    std::chrono::duration<double, std::milli>* nmsTime = nullptr
 );
 
 std::vector<Detection> postProcessYolo11DML(
@@ -50,6 +51,7 @@ std::vector<Detection> postProcessYolo11DML(
     const std::vector<int64_t>& shape,
     int numClasses,
     float confThreshold,
-    float nmsThreshold
+    float nmsThreshold,
+    std::chrono::duration<double, std::milli>* nmsTime = nullptr
 );
 #endif // POSTPROCESS_H

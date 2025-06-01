@@ -4,6 +4,7 @@
 #include <Windows.h>
 
 #include "imgui/imgui.h"
+
 #include "sunone_aimbot_cpp.h"
 #include "include/other_tools.h"
 #include "overlay.h"
@@ -86,10 +87,6 @@ void draw_ai()
 #ifdef USE_CUDA
     std::vector<std::string> backendOptions = { "TRT", "DML" };
     std::vector<const char*> backendItems = { "TensorRT (CUDA)", "DirectML (CPU/GPU)" };
-#else
-    std::vector<std::string> backendOptions = { "DML" };
-    std::vector<const char*> backendItems = { "DirectML (CPU/GPU)" };
-#endif
 
     int currentBackendIndex = config.backend == "DML" ? 1 : 0;
 
@@ -105,6 +102,7 @@ void draw_ai()
     }
 
     ImGui::Separator();
+#endif
 
     std::vector<std::string> postprocessOptions = { "yolo8", "yolo9", "yolo10", "yolo11", "yolo12" };
     std::vector<const char*> postprocessItems;

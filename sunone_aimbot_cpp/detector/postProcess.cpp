@@ -192,7 +192,8 @@ std::vector<Detection> postProcessYolo10DML(
     const std::vector<int64_t>& shape,
     int numClasses,
     float confThreshold,
-    float nmsThreshold
+    float nmsThreshold,
+    std::chrono::duration<double, std::milli>* nmsTime
 ) {
     std::vector<Detection> detections;
     int64_t numDetections = shape[1];
@@ -218,7 +219,7 @@ std::vector<Detection> postProcessYolo10DML(
             detections.push_back(Detection{ box, confidence, classId });
         }
     }
-    NMS(detections, nmsThreshold);
+    NMS(detections, nmsThreshold, nmsTime);
     return detections;
 }
 
@@ -227,7 +228,8 @@ std::vector<Detection> postProcessYolo11DML(
     const std::vector<int64_t>& shape,
     int numClasses,
     float confThreshold,
-    float nmsThreshold
+    float nmsThreshold,
+    std::chrono::duration<double, std::milli>* nmsTime
 ) {
     std::vector<Detection> detections;
     if (shape.size() != 2) return detections;
@@ -256,6 +258,9 @@ std::vector<Detection> postProcessYolo11DML(
             detections.push_back(Detection{ box, static_cast<float>(score), class_id_point.y });
         }
     }
-    if (!detections.empty()) NMS(detections, nmsThreshold);
+    if (!detections.empty())
+    {
+        NMS(detections, nmsThreshold, nmsTime);
+    }
     return detections;
 }
