@@ -9,7 +9,7 @@
 #include "config.h"
 #include "sunone_aimbot_cpp.h"
 
-KmboxConnection::KmboxConnection(const std::string& port, unsigned int baud_rate)
+Kmbox_b_Connection::Kmbox_b_Connection(const std::string& port, unsigned int baud_rate)
     : is_open_(false)
     , listening_(false)
     , aiming_active(false)
@@ -39,7 +39,7 @@ KmboxConnection::KmboxConnection(const std::string& port, unsigned int baud_rate
     }
 }
 
-KmboxConnection::~KmboxConnection()
+Kmbox_b_Connection::~Kmbox_b_Connection()
 {
     listening_ = false;
     if (serial_.isOpen())
@@ -59,12 +59,12 @@ KmboxConnection::~KmboxConnection()
     is_open_ = false;
 }
 
-bool KmboxConnection::isOpen() const
+bool Kmbox_b_Connection::isOpen() const
 {
     return is_open_;
 }
 
-void KmboxConnection::write(const std::string& data)
+void Kmbox_b_Connection::write(const std::string& data)
 {
     std::lock_guard<std::mutex> lock(write_mutex_);
     if (is_open_)
@@ -80,7 +80,7 @@ void KmboxConnection::write(const std::string& data)
     }
 }
 
-std::string KmboxConnection::read()
+std::string Kmbox_b_Connection::read()
 {
     if (!is_open_)
         return std::string();
@@ -98,7 +98,7 @@ std::string KmboxConnection::read()
     return result;
 }
 
-void KmboxConnection::move(int x, int y)
+void Kmbox_b_Connection::move(int x, int y)
 {
     if (!is_open_)
         return;
@@ -109,7 +109,7 @@ void KmboxConnection::move(int x, int y)
     write(cmd);
 }
 
-void KmboxConnection::click(int button = 0)
+void Kmbox_b_Connection::click(int button = 0)
 {
     std::string cmd  = "km.click("
         + std::to_string(button)
@@ -117,56 +117,56 @@ void KmboxConnection::click(int button = 0)
     sendCommand(cmd);
 }
 
-void KmboxConnection::press(int button)
+void Kmbox_b_Connection::press(int button)
 {
     sendCommand("km.left_down()");
 }
 
-void KmboxConnection::release(int button)
+void Kmbox_b_Connection::release(int button)
 {
     sendCommand("km.left_up()");
 }
 
-void KmboxConnection::start_boot()
+void Kmbox_b_Connection::start_boot()
 {
     write("\x03\x03");
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     write("exec(open('boot.py').read(),globals())\r\n");
 }
 
-void KmboxConnection::reboot()
+void Kmbox_b_Connection::reboot()
 {
     write("\x03\x03");
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     write("km.reboot()");
 }
 
-void KmboxConnection::send_stop()
+void Kmbox_b_Connection::send_stop()
 {
     write("\x03\x03");
 }
 
-void KmboxConnection::sendCommand(const std::string& command)
+void Kmbox_b_Connection::sendCommand(const std::string& command)
 {
     write(command + "\r\n");
 }
 
-std::vector<int> KmboxConnection::splitValue(int value)
+std::vector<int> Kmbox_b_Connection::splitValue(int value)
 {
     std::vector<int> values;
     return values;
 }
 
-void KmboxConnection::startListening()
+void Kmbox_b_Connection::startListening()
 {
     listening_ = true;
     if (listening_thread_.joinable())
         listening_thread_.join();
 
-    listening_thread_ = std::thread(&KmboxConnection::listeningThreadFunc, this);
+    listening_thread_ = std::thread(&Kmbox_b_Connection::listeningThreadFunc, this);
 }
 
-void KmboxConnection::listeningThreadFunc()
+void Kmbox_b_Connection::listeningThreadFunc()
 {
     std::string buffer;
     while (listening_ && is_open_)
@@ -202,7 +202,7 @@ void KmboxConnection::listeningThreadFunc()
     }
 }
 
-void KmboxConnection::processIncomingLine(const std::string& line)
+void Kmbox_b_Connection::processIncomingLine(const std::string& line)
 {
     try
     {

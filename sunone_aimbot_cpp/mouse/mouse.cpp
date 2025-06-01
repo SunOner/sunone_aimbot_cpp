@@ -27,7 +27,7 @@ MouseThread::MouseThread(
     float bScope_multiplier,
     SerialConnection* serialConnection,
     GhubMouse* gHubMouse,
-    KmboxConnection* kmboxConnection)
+    Kmbox_b_Connection* kmboxConnection)
     : screen_width(resolution),
     screen_height(resolution),
     prediction_interval(predictionInterval),
@@ -513,7 +513,7 @@ void MouseThread::setSerialConnection(SerialConnection* newSerial)
     serial = newSerial;
 }
 
-void MouseThread::setKmboxConnection(KmboxConnection* newKmbox)
+void MouseThread::setKmboxConnection(Kmbox_b_Connection* newKmbox)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
     kmbox = newKmbox;

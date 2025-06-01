@@ -34,7 +34,7 @@ Config config;
 
 GhubMouse* gHub = nullptr;
 SerialConnection* arduinoSerial = nullptr;
-KmboxConnection* kmboxSerial = nullptr;
+Kmbox_b_Connection* kmboxSerial = nullptr;
 
 std::atomic<bool> detection_resolution_changed(false);
 std::atomic<bool> capture_method_changed(false);
@@ -89,7 +89,7 @@ void createInputDevices()
     else if (config.input_method == "KMBOX_B")
     {
         std::cout << "[Mouse] Using KMBOX_B method input." << std::endl;
-        kmboxSerial = new KmboxConnection(config.kmbox_b_port, config.kmbox_b_baudrate);
+        kmboxSerial = new Kmbox_b_Connection(config.kmbox_b_port, config.kmbox_b_baudrate);
         if (!kmboxSerial->isOpen())
         {
             std::cerr << "[Kmbox] Error connecting to Kmbox serial." << std::endl;

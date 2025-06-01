@@ -1,5 +1,5 @@
-﻿#ifndef KMBOXCONNECTION_H
-#define KMBOXCONNECTION_H
+﻿#ifndef KMBOX_B_CONNECTION_H
+#define KMBOX_B_CONNECTION_H
 
 #define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
@@ -11,11 +11,11 @@
 
 #include "serial/serial.h"
 
-class KmboxConnection
+class Kmbox_b_Connection
 {
 public:
-    KmboxConnection(const std::string& port, unsigned int baud_rate);
-    ~KmboxConnection();
+    Kmbox_b_Connection(const std::string& port, unsigned int baud_rate);
+    ~Kmbox_b_Connection();
 
     bool isOpen() const;
 
@@ -51,4 +51,4 @@ private:
     std::mutex        write_mutex_;
 };
 
-#endif // KMBOXCONNECTION_H
+#endif // KMBOX_B_CONNECTION_H

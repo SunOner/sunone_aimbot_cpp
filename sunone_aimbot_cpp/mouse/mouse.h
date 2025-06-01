@@ -44,7 +44,7 @@ private:
     std::atomic<bool> mouse_pressed{ false };
 
     SerialConnection* serial;
-    KmboxConnection* kmbox;
+    Kmbox_b_Connection* kmbox;
     GhubMouse* gHub;
 
     void sendMovementToDriver(int dx, int dy);
@@ -85,7 +85,7 @@ public:
         float bScope_multiplier,
         SerialConnection* serialConnection = nullptr,
         GhubMouse* gHubMouse = nullptr,
-        KmboxConnection* kmboxConnection = nullptr
+        Kmbox_b_Connection* kmboxConnection = nullptr
     );
     ~MouseThread();
 
@@ -116,7 +116,7 @@ public:
     std::vector<std::pair<double, double>> getFuturePositions();
 
     void setSerialConnection(SerialConnection* newSerial);
-    void setKmboxConnection(KmboxConnection* newKmbox);
+    void setKmboxConnection(Kmbox_b_Connection* newKmbox);
     void setGHubMouse(GhubMouse* newGHub);
 
     void setTargetDetected(bool detected) { target_detected.store(detected); }
