@@ -16,14 +16,14 @@
 
 ---
 
-# ⚡️ Ready-to-Use Builds (Recommended)
+# Ready-to-Use Builds (Recommended)
 
 **You do NOT need to compile anything if you just want to use the aimbot!**
 Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML (all GPUs).
 
 ---
 
-### 🟢 DirectML (DML) Build — Universal (All GPUs)
+### DirectML (DML) Build — Universal (All GPUs)
 
 * **Works on:**
 
@@ -36,9 +36,9 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
   * Any AMD Radeon or Intel Iris/Xe GPU
   * Laptops and office PCs with integrated graphics
 * **Download DML build:**
-  [DirectML Release](https://disk.yandex.ru/d/9mf8VwfN0cK96w)
+  [DirectML Release](https://disk.yandex.ru/d/vKGxsMCdV7Lg8w)
 
-### 🟡 CUDA + TensorRT Build — High Performance (NVIDIA Only)
+### CUDA + TensorRT Build — High Performance (NVIDIA Only)
 
 * **Works on:**
 
@@ -48,13 +48,13 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 * **Not supported:** GTX 10xx/Pascal and older (TensorRT 10 limitation)
 * **Includes both CUDA+TensorRT and DML support (switchable in settings)**
 * **Download CUDA build:**
-  [CUDA + TensorRT Release](https://disk.yandex.ru/d/VjyDyWLbv7AUHQ)
+  [DML + CUDA + TensorRT Release](https://disk.yandex.ru/d/daaj_lCi9cCt8Q)
 
 **Both versions are ready-to-use: just download, unpack, run `ai.exe` and follow instructions in the overlay.**
 
 ---
 
-## 🚀 How to Run (For Precompiled Builds)
+## How to Run (For Precompiled Builds)
 
 1. **Download and unpack your chosen version (see links above).**
 2. For CUDA build, install [CUDA 12.8](https://developer.nvidia.com/cuda-12-8-0-download-archive) if not already installed.
@@ -65,7 +65,7 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 6. All settings are available in the overlay.
    Use the HOME key to open/close overlay.
 
-### 🎮 Controls
+### Controls
 
 * **Right Mouse Button:** Aim at the detected target
 * **F2:** Exit
@@ -75,7 +75,7 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 
 ---
 
-# 🛠️ Build From Source (Advanced Users)
+# Build From Source (Advanced Users)
 
 If you want to compile the project yourself or modify code, follow these instructions.
 
