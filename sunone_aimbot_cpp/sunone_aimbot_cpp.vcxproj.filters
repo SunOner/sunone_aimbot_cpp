@@ -36,6 +36,8 @@
     <ClCompile Include="overlay\draw_stats.cpp" />
     <ClCompile Include="capture\capture_utils.cpp" />
     <ClCompile Include="detector\detection_buffer.cpp" />
+    <ClCompile Include="mouse\kmbox_net\kmboxNet.cpp" />
+    <ClCompile Include="mouse\kmboxNetConnection.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -78,6 +80,10 @@
     <ClInclude Include="tensorrt\trt_monitor.h" />
     <ClInclude Include="capture\capture_utils.h" />
     <ClInclude Include="detector\detection_buffer.h" />
+    <ClInclude Include="mouse\kmbox_net\HidTable.h" />
+    <ClInclude Include="mouse\kmbox_net\kmboxNet.h" />
+    <ClInclude Include="mouse\kmbox_net\picture.h" />
+    <ClInclude Include="mouse\kmboxNetConnection.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

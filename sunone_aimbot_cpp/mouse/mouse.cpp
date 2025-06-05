@@ -27,7 +27,8 @@ MouseThread::MouseThread(
     float bScope_multiplier,
     SerialConnection* serialConnection,
     GhubMouse* gHubMouse,
-    Kmbox_b_Connection* kmboxConnection)
+    Kmbox_b_Connection* kmboxConnection,
+    KmboxNetConnection* Kmbox_Net_Connection)
     : screen_width(resolution),
     screen_height(resolution),
     prediction_interval(predictionInterval),
@@ -42,6 +43,7 @@ MouseThread::MouseThread(
     bScope_multiplier(bScope_multiplier),
     serial(serialConnection),
     kmbox(kmboxConnection),
+    kmbox_net(Kmbox_Net_Connection),
     gHub(gHubMouse),
 
     prev_velocity_x(0.0),
@@ -229,6 +231,10 @@ void MouseThread::sendMovementToDriver(int dx, int dy)
     {
         kmbox->move(dx, dy);
     }
+    else if (kmbox_net)
+    {
+        kmbox_net->move(dx, dy);
+    }
     else if (serial)
     {
         serial->move(dx, dy);
@@ -365,6 +371,10 @@ void MouseThread::pressMouse(const AimbotTarget& target)
         {
             kmbox->press(0);
         }
+        else if (kmbox_net)
+        {
+            kmbox_net->keyDown(0);
+        }
         else if (serial)
         {
             serial->press();
@@ -387,6 +397,10 @@ void MouseThread::pressMouse(const AimbotTarget& target)
         if (kmbox)
         {
             kmbox->release(0);
+        }
+        else if (kmbox_net)
+        {
+            kmbox_net->keyUp(0);
         }
         else if (serial)
         {
@@ -416,6 +430,10 @@ void MouseThread::releaseMouse()
         if (kmbox)
         {
             kmbox->release(0);
+        }
+        else if (kmbox_net)
+        {
+            kmbox_net->keyUp(0);
         }
         else if (serial)
         {
@@ -517,6 +535,12 @@ void MouseThread::setKmboxConnection(Kmbox_b_Connection* newKmbox)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
     kmbox = newKmbox;
+}
+
+void MouseThread::setKmboxNetConnection(KmboxNetConnection* newKmbox_net)
+{
+    std::lock_guard<std::mutex> lock(input_method_mutex);
+    newKmbox_net = newKmbox_net;
 }
 
 void MouseThread::setGHubMouse(GhubMouse* newGHub)

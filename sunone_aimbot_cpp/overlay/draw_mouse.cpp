@@ -320,7 +320,7 @@ void draw_mouse()
     }
 
     ImGui::SeparatorText("Input method");
-    std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX_B" };
+    std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX_B", "KMBOX_NET"};
 
     std::vector<const char*> method_items;
     method_items.reserve(input_methods.size());
@@ -532,6 +532,41 @@ void draw_mouse()
         if (ImGui::Button("Send Stop"))
         {
             kmboxSerial->send_stop();
+        }
+    }
+    else if (config.input_method == "KMBOX_NET") {
+        static char ip[32], port[8], uuid[16];
+        strncpy(ip, config.kmbox_net_ip.c_str(), sizeof(ip));
+        strncpy(port, config.kmbox_net_port.c_str(), sizeof(port));
+        strncpy(uuid, config.kmbox_net_uuid.c_str(), sizeof(uuid));
+
+        ImGui::InputText("kmboxNet IP", ip, sizeof(ip));
+        ImGui::InputText("Port", port, sizeof(port));
+        ImGui::InputText("UUID", uuid, sizeof(uuid));
+        if (ImGui::Button("Save & Reconnect")) {
+            config.kmbox_net_ip = ip;
+            config.kmbox_net_port = port;
+            config.kmbox_net_uuid = uuid;
+            config.saveConfig();
+            input_method_changed.store(true);
+        }
+        if (kmboxNetSerial && kmboxNetSerial->isOpen())
+            ImGui::TextColored(ImVec4(0, 255, 0, 255), "kmboxNet connected");
+        else
+            ImGui::TextColored(ImVec4(255, 0, 0, 255), "kmboxNet not connected");
+        if (ImGui::Button("Reboot box"))
+        {
+            if (kmboxNetSerial)
+            {
+                kmboxNetSerial->reboot();
+            }
+        }
+        if (ImGui::Button("Start monitor"))
+        {
+            if (kmboxNetSerial)
+            {
+                kmboxNetSerial->monitor(10000);
+            }
         }
     }
 

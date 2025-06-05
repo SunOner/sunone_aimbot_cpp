@@ -102,6 +102,11 @@ bool Config::loadConfig(const std::string& filename)
         kmbox_b_baudrate = 115200;
         kmbox_b_port = "COM0";
 
+        // kmbox_net
+        kmbox_net_ip = "10.42.42.42";
+        kmbox_net_port = "1984";
+        kmbox_net_uuid = "DEADC0DE";
+
         // Mouse shooting
         auto_shoot = false;
         bScope_multiplier = 1.0f;
@@ -313,6 +318,11 @@ bool Config::loadConfig(const std::string& filename)
     kmbox_b_baudrate = get_long("kmbox_baudrate", 115200);
     kmbox_b_port = get_string("kmbox_port", "COM0");
 
+    // kmbox_net
+    kmbox_net_ip = get_string("kmbox_net_ip", "10.42.42.42");
+    kmbox_net_port = get_string("kmbox_net_port", "1984");
+    kmbox_net_uuid = get_string("kmbox_net_uuid", "DEADC0DE");
+
     // Mouse shooting
     auto_shoot = get_bool("auto_shoot", false);
     bScope_multiplier = (float)get_double("bScope_multiplier", 1.2);
@@ -468,6 +478,12 @@ bool Config::saveConfig(const std::string& filename)
     file << "# Kmbox_B\n"
         << "kmbox_baudrate = " << kmbox_b_baudrate << "\n"
         << "kmbox_port = " << kmbox_b_port << "\n\n";
+
+    // kmbox_net
+    file << "# Kmbox_net\n"
+        << "kmbox_net_ip = " << kmbox_net_ip << "\n"
+        << "kmbox_net_port = " << kmbox_net_port << "\n"
+        << "kmbox_net_uuid = " << kmbox_net_uuid << "\n\n";
 
     // Mouse shooting
     file << "# Mouse shooting\n"

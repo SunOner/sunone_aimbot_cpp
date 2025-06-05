@@ -18,6 +18,7 @@
 #include "AimbotTarget.h"
 #include "SerialConnection.h"
 #include "Kmbox_b.h"
+#include "KmboxNetConnection.h"
 #include "ghub.h"
 
 class MouseThread
@@ -45,6 +46,7 @@ private:
 
     SerialConnection* serial;
     Kmbox_b_Connection* kmbox;
+    KmboxNetConnection* kmbox_net;
     GhubMouse* gHub;
 
     void sendMovementToDriver(int dx, int dy);
@@ -85,7 +87,8 @@ public:
         float bScope_multiplier,
         SerialConnection* serialConnection = nullptr,
         GhubMouse* gHubMouse = nullptr,
-        Kmbox_b_Connection* kmboxConnection = nullptr
+        Kmbox_b_Connection* kmboxConnection = nullptr,
+        KmboxNetConnection* Kmbox_Net_Connection = nullptr
     );
     ~MouseThread();
 
@@ -117,6 +120,7 @@ public:
 
     void setSerialConnection(SerialConnection* newSerial);
     void setKmboxConnection(Kmbox_b_Connection* newKmbox);
+    void setKmboxNetConnection(KmboxNetConnection* newKmbox_net);
     void setGHubMouse(GhubMouse* newGHub);
 
     void setTargetDetected(bool detected) { target_detected.store(detected); }

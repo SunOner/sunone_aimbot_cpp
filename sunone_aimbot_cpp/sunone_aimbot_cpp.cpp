@@ -35,6 +35,7 @@ Config config;
 GhubMouse* gHub = nullptr;
 SerialConnection* arduinoSerial = nullptr;
 Kmbox_b_Connection* kmboxSerial = nullptr;
+KmboxNetConnection* kmboxNetSerial = nullptr;
 
 std::atomic<bool> detection_resolution_changed(false);
 std::atomic<bool> capture_method_changed(false);
@@ -70,6 +71,12 @@ void createInputDevices()
         kmboxSerial = nullptr;
     }
 
+    if (kmboxNetSerial)
+    {
+        delete kmboxNetSerial;
+        kmboxNetSerial = nullptr;
+    }
+
     if (config.input_method == "ARDUINO")
     {
         std::cout << "[Mouse] Using Arduino method input." << std::endl;
@@ -97,6 +104,16 @@ void createInputDevices()
             kmboxSerial = nullptr;
         }
     }
+    else if (config.input_method == "KMBOX_NET")
+    {
+        std::cout << "[Mouse] Using KMBOX_NET input." << std::endl;
+        kmboxNetSerial = new KmboxNetConnection(config.kmbox_net_ip, config.kmbox_net_port, config.kmbox_net_uuid);
+        if (!kmboxNetSerial->isOpen())
+        {
+            std::cerr << "[KmboxNet] Error connecting." << std::endl;
+            delete kmboxNetSerial; kmboxNetSerial = nullptr;
+        }
+    }
     else
     {
         std::cout << "[Mouse] Using default Win32 method input." << std::endl;
@@ -110,6 +127,7 @@ void assignInputDevices()
         globalMouseThread->setSerialConnection(arduinoSerial);
         globalMouseThread->setGHubMouse(gHub);
         globalMouseThread->setKmboxConnection(kmboxSerial);
+        globalMouseThread->setKmboxNetConnection(kmboxNetSerial);
     }
 }
 
@@ -127,6 +145,14 @@ void handleEasyNoRecoil(MouseThread& mouseThread)
         else if (gHub)
         {
             gHub->mouse_xy(0, recoil_compensation);
+        }
+        else if (kmboxSerial)
+        {
+            kmboxSerial->move(0, recoil_compensation);
+        }
+        else if (kmboxNetSerial)
+        {
+            kmboxNetSerial->move(0, recoil_compensation);
         }
         else
         {
@@ -338,7 +364,9 @@ int main()
             config.auto_shoot,
             config.bScope_multiplier,
             arduinoSerial,
-            gHub
+            gHub,
+            kmboxSerial,
+            kmboxNetSerial
         );
 
         globalMouseThread = &mouseThread;
