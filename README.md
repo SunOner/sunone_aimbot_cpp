@@ -36,7 +36,7 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
   * Any AMD Radeon or Intel Iris/Xe GPU
   * Laptops and office PCs with integrated graphics
 * **Download DML build:**
-  [DirectML Release](https://disk.yandex.ru/d/vKGxsMCdV7Lg8w)
+  [DirectML Release](https://disk.yandex.ru/d/jAVoMDfCuloNzw)
 
 ### CUDA + TensorRT Build — High Performance (NVIDIA Only)
 
@@ -48,7 +48,7 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 * **Not supported:** GTX 10xx/Pascal and older (TensorRT 10 limitation)
 * **Includes both CUDA+TensorRT and DML support (switchable in settings)**
 * **Download CUDA build:**
-  [DML + CUDA + TensorRT Release](https://disk.yandex.ru/d/daaj_lCi9cCt8Q)
+  [DML + CUDA + TensorRT Release](https://disk.yandex.ru/d/ltSkG0DadLBqcA)
 
 **Both versions are ready-to-use: just download, unpack, run `ai.exe` and follow instructions in the overlay.**
 
