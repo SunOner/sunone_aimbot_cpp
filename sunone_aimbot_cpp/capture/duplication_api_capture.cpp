@@ -265,7 +265,10 @@ cv::Mat DuplicationAPIScreenCapture::GetNextFrameCpu()
     {
         return cv::Mat();
     }
-    else if (hr == DXGI_ERROR_ACCESS_LOST || hr == DXGI_ERROR_DEVICE_RESET || hr == DXGI_ERROR_DEVICE_REMOVED)
+    else if (hr == DXGI_ERROR_ACCESS_LOST ||
+        hr == DXGI_ERROR_DEVICE_RESET ||
+        hr == DXGI_ERROR_DEVICE_REMOVED ||
+        hr == DXGI_ERROR_INVALID_CALL)
     {
         capture_method_changed.store(true);
         m_ddaManager->ReleaseFrame();
