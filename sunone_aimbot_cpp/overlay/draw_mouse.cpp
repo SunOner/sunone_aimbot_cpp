@@ -10,6 +10,7 @@
 
 #include "sunone_aimbot_cpp.h"
 #include "include/other_tools.h"
+#include "kmbox_net/picture.h"
 
 std::string ghub_version = get_ghub_version();
 
@@ -561,11 +562,12 @@ void draw_mouse()
                 kmboxNetSerial->reboot();
             }
         }
-        if (ImGui::Button("Start monitor"))
+        if (ImGui::Button("Change Kmbox image"))
         {
             if (kmboxNetSerial)
             {
-                kmboxNetSerial->monitor(10000);
+                kmboxNetSerial->lcdColor(0);
+                kmboxNetSerial->lcdPicture(gImage_128x160);
             }
         }
     }
