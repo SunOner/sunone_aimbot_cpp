@@ -535,7 +535,8 @@ void draw_mouse()
             kmboxSerial->send_stop();
         }
     }
-    else if (config.input_method == "KMBOX_NET") {
+    else if (config.input_method == "KMBOX_NET")
+    {
         static char ip[32], port[8], uuid[16];
         strncpy(ip, config.kmbox_net_ip.c_str(), sizeof(ip));
         strncpy(port, config.kmbox_net_port.c_str(), sizeof(port));
@@ -544,17 +545,25 @@ void draw_mouse()
         ImGui::InputText("kmboxNet IP", ip, sizeof(ip));
         ImGui::InputText("Port", port, sizeof(port));
         ImGui::InputText("UUID", uuid, sizeof(uuid));
-        if (ImGui::Button("Save & Reconnect")) {
+
+        if (ImGui::Button("Save & Reconnect"))
+        {
             config.kmbox_net_ip = ip;
             config.kmbox_net_port = port;
             config.kmbox_net_uuid = uuid;
             config.saveConfig();
             input_method_changed.store(true);
         }
+
         if (kmboxNetSerial && kmboxNetSerial->isOpen())
+        {
             ImGui::TextColored(ImVec4(0, 255, 0, 255), "kmboxNet connected");
+        }
         else
+        {
             ImGui::TextColored(ImVec4(255, 0, 0, 255), "kmboxNet not connected");
+        }
+        
         if (ImGui::Button("Reboot box"))
         {
             if (kmboxNetSerial)
@@ -562,6 +571,7 @@ void draw_mouse()
                 kmboxNetSerial->reboot();
             }
         }
+
         if (ImGui::Button("Change Kmbox image"))
         {
             if (kmboxNetSerial)

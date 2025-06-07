@@ -227,6 +227,8 @@ std::pair<double, double> MouseThread::predict_target_position(double target_x, 
 
 void MouseThread::sendMovementToDriver(int dx, int dy)
 {
+    std::lock_guard<std::mutex> lock(input_method_mutex);
+
     if (kmbox)
     {
         kmbox->move(dx, dy);
@@ -540,7 +542,7 @@ void MouseThread::setKmboxConnection(Kmbox_b_Connection* newKmbox)
 void MouseThread::setKmboxNetConnection(KmboxNetConnection* newKmbox_net)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
-    newKmbox_net = newKmbox_net;
+    kmbox_net = newKmbox_net;
 }
 
 void MouseThread::setGHubMouse(GhubMouse* newGHub)
