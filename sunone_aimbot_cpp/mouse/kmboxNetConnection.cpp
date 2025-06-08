@@ -33,28 +33,6 @@ void KmboxNetConnection::monitorThread()
 
     while (true)
     {
-        if (kmNet_monitor_mouse_right() == 1)
-        {
-            aiming_active = true;
-            aiming.store(true);
-        }
-        else
-        {
-            aiming_active = false;
-            aiming.store(false);
-        }
-
-        if (kmNet_monitor_mouse_left() == 1)
-        {
-            shooting_active = true;
-            shooting.store(true);
-        }
-        else
-        {
-            shooting_active = false;
-            shooting.store(false);
-        }
-
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
