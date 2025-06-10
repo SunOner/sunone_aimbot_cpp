@@ -135,6 +135,7 @@ bool Config::loadConfig(const std::string& filename)
         export_enable_fp8 = false;
         export_enable_fp16 = true;
 #endif
+        fixed_input_size = false;
 
         // CUDA
 #ifdef USE_CUDA
@@ -355,6 +356,7 @@ bool Config::loadConfig(const std::string& filename)
     export_enable_fp8 = get_bool("export_enable_fp8", true);
     export_enable_fp16 = get_bool("export_enable_fp16", true);
 #endif
+    fixed_input_size = get_bool("fixed_input_size", false);
 
     // CUDA
 #ifdef USE_CUDA
@@ -456,7 +458,7 @@ bool Config::saveConfig(const std::string& filename)
         << std::fixed << std::setprecision(1)
         << "easynorecoilstrength = " << easynorecoilstrength << "\n"
 
-        << "# WIN32, GHUB, ARDUINO, KMBOX_B\n"
+        << "# WIN32, GHUB, ARDUINO, KMBOX_B, KMBOX_NET\n"
         << "input_method = " << input_method << "\n\n";
 
     // Wind mouse
@@ -505,14 +507,13 @@ bool Config::saveConfig(const std::string& filename)
         << "batch_size = " << batch_size << "\n"
 #ifdef USE_CUDA
         << "export_enable_fp8 = " << (export_enable_fp8 ? "true" : "false") << "\n"
-        << "export_enable_fp16 = " << (export_enable_fp16 ? "true" : "false") << "\n\n";
-#else
-        << "\n";
+        << "export_enable_fp16 = " << (export_enable_fp16 ? "true" : "false") << "\n"
 #endif
-
+        << "fixed_input_size = " << (fixed_input_size ? "true" : "false") << "\n";
+    
     // CUDA
 #ifdef USE_CUDA
-    file << "# CUDA\n"
+    file << "\n# CUDA\n"
         << "use_cuda_graph = " << (use_cuda_graph ? "true" : "false") << "\n"
         << "use_pinned_memory = " << (use_pinned_memory ? "true" : "false") << "\n\n";
 #endif

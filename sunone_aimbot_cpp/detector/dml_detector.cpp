@@ -88,97 +88,106 @@ std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
 
 std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vector<cv::Mat>& frames)
 {
+    std::vector<std::vector<Detection>> empty;
+    if (frames.empty()) return empty;
+
+    const int batch_size = static_cast<int>(frames.size());
+
+    int model_h = (input_shape.size() > 2) ? static_cast<int>(input_shape[2]) : -1;
+    int model_w = (input_shape.size() > 3) ? static_cast<int>(input_shape[3]) : -1;
+    const bool useFixed = config.fixed_input_size && model_h > 0 && model_w > 0;
+
+    const int target_h = useFixed ? model_h : config.detection_resolution;
+    const int target_w = useFixed ? model_w : config.detection_resolution;
+
     auto t0 = std::chrono::steady_clock::now();
-    int batch_size = frames.size();
-    int target_width = config.detection_resolution;
-    int target_height = config.detection_resolution;
-    std::vector<float> input_tensor_values(batch_size * 3 * target_height * target_width);
+    std::vector<float> input_tensor_values(batch_size * 3 * target_h * target_w);
+
     for (int b = 0; b < batch_size; ++b)
     {
-        cv::Mat resized_frame;
-        cv::resize(frames[b], resized_frame, cv::Size(target_width, target_height));
-        cv::cvtColor(resized_frame, resized_frame, cv::COLOR_BGR2RGB);
-        resized_frame.convertTo(resized_frame, CV_32FC3, 1.0f / 255.0f);
-        const float* input_data = reinterpret_cast<const float*>(resized_frame.data);
-        for (int h = 0; h < target_height; ++h)
-            for (int w = 0; w < target_width; ++w)
+        cv::Mat resized;
+        cv::resize(frames[b], resized, cv::Size(target_w, target_h));
+        cv::cvtColor(resized, resized, cv::COLOR_BGR2RGB);
+        resized.convertTo(resized, CV_32FC3, 1.0f / 255.0f);
+
+        const float* src = reinterpret_cast<const float*>(resized.data);
+        for (int h = 0; h < target_h; ++h)
+            for (int w = 0; w < target_w; ++w)
                 for (int c = 0; c < 3; ++c)
-                    input_tensor_values[
-                        b * 3 * target_height * target_width +
-                            c * target_height * target_width +
-                            h * target_width + w
-                    ] = input_data[(h * target_width + w) * 3 + c];
+                {
+                    size_t dstIdx = b * 3 * target_h * target_w + c * target_h * target_w + h * target_w + w;
+                    input_tensor_values[dstIdx] = src[(h * target_w + w) * 3 + c];
+                }
     }
-    auto t1 = std::chrono::steady_clock::now(); // Preprocess End
-    
-    std::vector<int64_t> input_shape = { batch_size, 3, target_height, target_width };
+    auto t1 = std::chrono::steady_clock::now();
+
+    std::vector<int64_t> ort_input_shape{ batch_size, 3, target_h, target_w };
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
         memory_info, input_tensor_values.data(), input_tensor_values.size(),
-        input_shape.data(), input_shape.size());
-    
+        ort_input_shape.data(), ort_input_shape.size());
+
     const char* input_names[] = { input_name.c_str() };
     const char* output_names[] = { output_name.c_str() };
-    
-    auto t2 = std::chrono::steady_clock::now(); // Inference Start
+
+    auto t2 = std::chrono::steady_clock::now();
     auto output_tensors = session.Run(Ort::RunOptions{ nullptr },
         input_names, &input_tensor, 1,
         output_names, 1);
-    auto t3 = std::chrono::steady_clock::now(); // Inference End
-    
-    auto t4 = std::chrono::steady_clock::now(); // Copy Start
-    float* output_data = output_tensors.front().GetTensorMutableData<float>();
-    auto t5 = std::chrono::steady_clock::now(); // Copy End
-    
-    Ort::TensorTypeAndShapeInfo output_info = output_tensors.front().GetTensorTypeAndShapeInfo();
-    std::vector<int64_t> output_shape = output_info.GetShape();
-    int batch_out = output_shape[0];
-    int rows = output_shape[1];
-    int cols = output_shape[2];
-    int num_classes = rows - 4;
-    std::vector<std::vector<Detection>> batchDetections(batch_out);
-    float conf_threshold = config.confidence_threshold;
-    float nms_threshold = config.nms_threshold;
-    
-    auto t6 = std::chrono::steady_clock::now(); // Postprocess Start
-    std::chrono::duration<double, std::milli> nmsTimeTmp{0};
-    for (int b = 0; b < batch_out; ++b)
+    auto t3 = std::chrono::steady_clock::now();
+
+    float* outData = output_tensors.front().GetTensorMutableData<float>();
+    Ort::TensorTypeAndShapeInfo outInfo = output_tensors.front().GetTensorTypeAndShapeInfo();
+    std::vector<int64_t> outShape = outInfo.GetShape(); // [B, rows, cols]
+
+    int rows = static_cast<int>(outShape[1]);
+    int cols = static_cast<int>(outShape[2]);
+    const int num_classes = rows - 4;
+
+    std::vector<std::vector<Detection>> batchDetections(batch_size);
+    float conf_thr = config.confidence_threshold;
+    float nms_thr = config.nms_threshold;
+
+    auto t4 = std::chrono::steady_clock::now();
+    std::chrono::duration<double, std::milli> nmsTimeTmp{ 0 };
+
+    for (int b = 0; b < batch_size; ++b)
     {
-        const float* out_ptr = output_data + b * rows * cols;
+        const float* ptr = outData + b * rows * cols;
         std::vector<Detection> detections;
+
         if (config.postprocess == "yolo10")
         {
-            std::vector<int64_t> shape = { batch_out, rows, cols };
-            detections = postProcessYolo10DML(
-                out_ptr,
-                shape,
-                num_classes,
-                conf_threshold,
-                nms_threshold,
-                &nmsTimeTmp
-            );
+            std::vector<int64_t> shp = { batch_size, rows, cols };
+            detections = postProcessYolo10DML(ptr, shp, num_classes, conf_thr, nms_thr, &nmsTimeTmp);
         }
         else
         {
-            std::vector<int64_t> shape = { rows, cols };
-            detections = postProcessYolo11DML(
-                out_ptr,
-                shape,
-                num_classes,
-                conf_threshold,
-                nms_threshold,
-                &nmsTimeTmp
-            );
+            std::vector<int64_t> shp = { rows, cols };
+            detections = postProcessYolo11DML(ptr, shp, num_classes, conf_thr, nms_thr, &nmsTimeTmp);
         }
+
+        if (useFixed && (target_w != config.detection_resolution))
+        {
+            float scale = static_cast<float>(config.detection_resolution) / target_w;
+            for (auto& d : detections)
+            {
+                d.box.x = static_cast<int>(d.box.x * scale);
+                d.box.y = static_cast<int>(d.box.y * scale);
+                d.box.width = static_cast<int>(d.box.width * scale);
+                d.box.height = static_cast<int>(d.box.height * scale);
+            }
+        }
+
         batchDetections[b] = std::move(detections);
     }
-    auto t7 = std::chrono::steady_clock::now(); // Postprocess End
-    
+    auto t5 = std::chrono::steady_clock::now();
+
     lastPreprocessTimeDML = t1 - t0;
     lastInferenceTimeDML = t3 - t2;
-    lastCopyTimeDML = t5 - t4;
-    lastPostprocessTimeDML = t7 - t6;
+    lastCopyTimeDML = t4 - t3;
+    lastPostprocessTimeDML = t5 - t4;
     lastNmsTimeDML = nmsTimeTmp;
-    
+
     return batchDetections;
 }
 

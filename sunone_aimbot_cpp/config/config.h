@@ -87,6 +87,8 @@ public:
     bool export_enable_fp8;
     bool export_enable_fp16;
 #endif
+    bool fixed_input_size;
+
     // CUDA
 #ifdef USE_CUDA
     bool use_cuda_graph;

@@ -117,22 +117,37 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
         return nullptr;
     }
 
+    nvinfer1::ITensor* inputTensor = network->getInput(0);
+    const char* inName = inputTensor->getName();
+    nvinfer1::Dims inDims = inputTensor->getDimensions();
+    int H = (inDims.nbDims >= 4) ? inDims.d[2] : -1;
+    int W = (inDims.nbDims >= 4) ? inDims.d[3] : -1;
+
+    bool fixedByModel = (H > 0 && W > 0);
+    bool fixedByConfig = config.fixed_input_size;
+    bool makeStatic = fixedByModel || fixedByConfig;
+
+    if (fixedByConfig && (H <= 0 || W <= 0))
+        H = W = config.detection_resolution;
+
     nvinfer1::IOptimizationProfile* profile = builder->createOptimizationProfile();
-    profile->setDimensions(
-        "images",
-        nvinfer1::OptProfileSelector::kMIN,
-        nvinfer1::Dims4(1, 3, 160, 160)
-    );
-    profile->setDimensions(
-        "images",
-        nvinfer1::OptProfileSelector::kOPT,
-        nvinfer1::Dims4(1, 3, 320, 320)
-    );
-    profile->setDimensions(
-        "images",
-        nvinfer1::OptProfileSelector::kMAX,
-        nvinfer1::Dims4(1, 3, 640, 640)
-    );
+    if (makeStatic)
+    {
+        nvinfer1::Dims4 d{ 1, 3, H, W };
+        profile->setDimensions(inName, nvinfer1::OptProfileSelector::kMIN, d);
+        profile->setDimensions(inName, nvinfer1::OptProfileSelector::kOPT, d);
+        profile->setDimensions(inName, nvinfer1::OptProfileSelector::kMAX, d);
+        if (config.verbose)
+            std::cout << "[TensorRT] Static profile " << H << "x" << W << std::endl;
+    }
+    else
+    {
+        profile->setDimensions(inName, nvinfer1::OptProfileSelector::kMIN, nvinfer1::Dims4{ 1, 3, 160, 160 });
+        profile->setDimensions(inName, nvinfer1::OptProfileSelector::kOPT, nvinfer1::Dims4{ 1, 3, 320, 320 });
+        profile->setDimensions(inName, nvinfer1::OptProfileSelector::kMAX, nvinfer1::Dims4{ 1, 3, 640, 640 });
+        if (config.verbose)
+            std::cout << "[TensorRT] Dynamic profile 160/320/640" << std::endl;
+    }
 
     cfg->addOptimizationProfile(profile);
 

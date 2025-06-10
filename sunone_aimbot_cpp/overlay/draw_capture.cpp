@@ -23,8 +23,10 @@ int monitors = get_active_monitors();
 static std::vector<std::string> virtual_cameras;
 static char virtual_camera_filter_buf[128] = "";
 
-void ensureVirtualCamerasLoaded() {
-    if (virtual_cameras.empty()) {
+void ensureVirtualCamerasLoaded()
+{
+    if (virtual_cameras.empty())
+    {
         virtual_cameras = VirtualCameraCapture::GetAvailableVirtualCameras();
     }
 }
