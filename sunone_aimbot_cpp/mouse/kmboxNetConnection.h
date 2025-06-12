@@ -65,5 +65,6 @@ private:
     bool is_open_;
     bool monitor_;
     std::thread monitor_thread_;
+    std::atomic<bool> monitor_running_{ true };
     std::string ip_, port_, uuid_;
 };
