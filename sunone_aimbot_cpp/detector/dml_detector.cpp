@@ -74,6 +74,17 @@ void DirectMLDetector::initializeModel(const std::string& model_path)
     Ort::TypeInfo input_type_info = session.GetInputTypeInfo(0);
     auto input_tensor_info = input_type_info.GetTensorTypeAndShapeInfo();
     input_shape = input_tensor_info.GetShape();
+
+    bool isStatic = true;
+    for (auto d : input_shape) if (d <= 0) isStatic = false;
+
+    if (isStatic != config.fixed_input_size)
+    {
+        config.fixed_input_size = isStatic;
+        config.saveConfig();
+        detector_model_changed.store(true);
+        std::cout << "[DML] Automatically set fixed_input_size = " << (isStatic ? "true" : "false") << std::endl;
+    }
 }
 
 std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)

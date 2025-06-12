@@ -250,12 +250,20 @@ void TrtDetector::initialize(const std::string& modelFile)
     inputName = inputNames[0];
 
     nvinfer1::Dims inputDims = context->getTensorShape(inputName.c_str());
-    bool modelStatic = config.fixed_input_size;
-    for (int i = 0; i < inputDims.nbDims && !modelStatic; ++i)
-        modelStatic = (inputDims.d[i] > 0 && i == inputDims.nbDims - 1) ? true : modelStatic;
+    bool isStatic = true;
+    for (int i = 0; i < inputDims.nbDims; ++i)
+        if (inputDims.d[i] <= 0) isStatic = false;
+    
+    if (isStatic != config.fixed_input_size)
+    {
+        config.fixed_input_size = isStatic;
+        config.saveConfig();
+        detector_model_changed.store(true);
+        std::cout << "[Detector] Automatically set fixed_input_size = " << (isStatic ? "true" : "false") << std::endl;
+    }
 
     const int target = config.detection_resolution;
-    if (!modelStatic)
+    if (!isStatic)
     {
         nvinfer1::Dims4 newShape{ 1, 3, target, target };
         context->setInputShape(inputName.c_str(), newShape);
@@ -318,7 +326,7 @@ void TrtDetector::initialize(const std::string& modelFile)
 
     if (config.verbose)
     {
-        std::cout << "[Detector] Initialized. ModelStatic=" << std::boolalpha << modelStatic
+        std::cout << "[Detector] Initialized. ModelStatic=" << std::boolalpha << isStatic
             << ", NetInput=" << h << "x" << w << " (scale=" << img_scale << ")" << std::endl;
     }
 }
