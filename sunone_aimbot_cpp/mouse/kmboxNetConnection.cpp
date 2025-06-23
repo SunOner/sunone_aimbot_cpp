@@ -31,18 +31,16 @@ void KmboxNetConnection::monitorThread()
 {
     kmNet_monitor(10000);
 
-    while (true)
-    {
+    while (monitor_running_)
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
 }
 
 KmboxNetConnection::~KmboxNetConnection()
 {
+    monitor_running_ = false;
     if (monitor_thread_.joinable())
-    {
         monitor_thread_.join();
-    }
+    kmNet_monitor(0);
     WSACleanup();
 }
 
