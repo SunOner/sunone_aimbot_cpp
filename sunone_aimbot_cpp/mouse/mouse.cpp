@@ -281,6 +281,10 @@ std::pair<double, double> MouseThread::calc_movement(double tx, double ty)
 
 double MouseThread::calculate_speed_multiplier(double distance)
 {
+    // Si está muy cerca, usar un multiplicador alto para asegurar llegada rápida
+    if (distance < 2.0)
+        return max_speed_multiplier * 1.5;
+
     if (distance < config.snapRadius)
         return min_speed_multiplier * config.snapBoostFactor;
 

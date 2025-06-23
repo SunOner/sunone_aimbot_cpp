@@ -84,25 +84,24 @@ AimbotTarget* sortTargets(
     {
         return nullptr;
     }
-
-    int finalY = 0;
-    if (classes[nearestIdx] == config.class_head)
-    {
-        int headOffsetY = static_cast<int>(boxes[nearestIdx].height * config.head_y_offset);
-        finalY = boxes[nearestIdx].y + headOffsetY - boxes[nearestIdx].height / 2;
-    }
-    else
-    {
-        finalY = targetY - boxes[nearestIdx].height / 2;
-    }
-
+   
     int finalX = boxes[nearestIdx].x;
     int finalW = boxes[nearestIdx].width;
     int finalH = boxes[nearestIdx].height;
     int finalClass = classes[nearestIdx];
+    // Calcular el centro exacto del área objetivo (head/body)
+    double pivotY;
+    if (finalClass == config.class_head) {
+        int headOffsetY = static_cast<int>(finalH * config.head_y_offset);
+        pivotY = boxes[nearestIdx].y + headOffsetY;
+    } else {
+        int offsetY = static_cast<int>(finalH * config.body_y_offset);
+        pivotY = boxes[nearestIdx].y + offsetY;
+    }
+    
 
     double pivotX = finalX + (finalW / 2.0);
-    double pivotY = finalY + (finalH / 2.0);
+    
 
-    return new AimbotTarget(finalX, finalY, finalW, finalH, finalClass, pivotX, pivotY);
+    return new AimbotTarget(finalX, boxes[nearestIdx].y, finalW, finalH, finalClass, pivotX, pivotY);
 }

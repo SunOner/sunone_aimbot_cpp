@@ -234,6 +234,10 @@ std::vector<Detection> postProcessYolo11DML(
     std::vector<Detection> detections;
     if (shape.size() != 2) return detections;
 
+
+    const int HEAD_CLASS_ID = 1;
+    const float HEAD_MIN_CONFIDENCE = 0.55f;
+
     int64_t rows = shape[0];
     int64_t cols = shape[1];
 
@@ -243,7 +247,11 @@ std::vector<Detection> postProcessYolo11DML(
         cv::Point class_id_point;
         double score;
         cv::minMaxLoc(classes_scores, nullptr, &score, nullptr, &class_id_point);
-        if (score > confThreshold) {
+
+        // Confianza diferenciada para head/body
+        float min_conf = (class_id_point.y == HEAD_CLASS_ID) ? HEAD_MIN_CONFIDENCE : confThreshold;
+
+        if (score > min_conf) {
             float cx = det_output.at<float>(0, i);
             float cy = det_output.at<float>(1, i);
             float ow = det_output.at<float>(2, i);

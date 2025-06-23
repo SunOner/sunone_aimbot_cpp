@@ -85,7 +85,8 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
     }
     
     cap_ = std::make_unique<cv::VideoCapture>(camIdx, cv::CAP_MSMF);
-    cap_->set(cv::CAP_PROP_FOURCC, 0);
+	std::cout << "[VirtualCamera] Opening camera: " << config.virtual_camera_name << std::endl;
+    // cap_->set(cv::CAP_PROP_FOURCC, 0);
 
     if (!cap_->isOpened())
         throw std::runtime_error("[VirtualCamera] Unable to open any capture device");
@@ -101,8 +102,8 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
     {
         cap_->set(cv::CAP_PROP_FRAME_WIDTH, even(w));
         cap_->set(cv::CAP_PROP_FRAME_HEIGHT, even(h));
-        w = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_WIDTH));
-        h = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
+    w = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_WIDTH));
+    h = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
     }
 
     if (config.capture_fps > 0)
@@ -118,7 +119,7 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
 
     if (config.verbose)
         std::cout << "[VirtualCamera] Actual capture: "
-            << roiW_ << 'x' << roiH_ << " @ "
+        << roiW_ << 'x' << roiH_ << " @ "
             << cap_->get(cv::CAP_PROP_FPS) << " FPS\n";
 }
 
@@ -165,6 +166,7 @@ cv::Mat VirtualCameraCapture::GetNextFrameCpu()
     {
         cv::resize(frameCpu, frameCpu, cv::Size(target_width, target_height));
     }
+
 
     return frameCpu.clone();
 }

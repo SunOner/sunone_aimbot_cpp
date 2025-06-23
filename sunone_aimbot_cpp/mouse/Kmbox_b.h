@@ -2,12 +2,13 @@
 #define KMBOX_B_CONNECTION_H
 
 #define WIN32_LEAN_AND_MEAN
-#define _WINSOCKAPI_
 #include <windows.h>
 #include <string>
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <vector>
+#include <cstdint> // Para uint8_t
 
 #include "serial/serial.h"
 
@@ -18,6 +19,7 @@ public:
     ~Kmbox_b_Connection();
 
     bool isOpen() const;
+	bool isListening() const;
 
     void write(const std::string& data);
     std::string read();
@@ -31,6 +33,9 @@ public:
     void reboot();
     void send_stop();
 
+    int monitorMouseLeft() const;
+    int monitorMouseRight() const;
+
     bool aiming_active;
     bool shooting_active;
     bool zooming_active;
@@ -41,7 +46,10 @@ private:
 
     void startListening();
     void listeningThreadFunc();
-    void processIncomingLine(const std::string& line);
+
+    bool initializeButtonReporting();
+    void processButtonMask(uint8_t current_mask);
+    static const std::vector<uint8_t> BinaryPacketHeader;
 
 private:
     serial::Serial serial_;
@@ -49,6 +57,9 @@ private:
     std::atomic<bool> listening_;
     std::thread       listening_thread_;
     std::mutex        write_mutex_;
+    uint8_t last_button_mask_;
+    std::atomic<bool> left_button_;
+    std::atomic<bool> right_button_;
 };
 
 #endif // KMBOX_B_CONNECTION_H

@@ -59,6 +59,16 @@ bool isAnyKeyPressed(const std::vector<std::string>& keys)
             else if(key_name == "X2MouseButton")     pressed = kmboxNetSerial->monitorMouseSide2()  == 1;
         }
 
+        // Kmbox B
+        if (kmboxSerial && kmboxSerial->isOpen() && kmboxSerial->isListening())
+        {
+            if (key_name == "LeftMouseButton")      pressed = kmboxSerial->monitorMouseLeft() == 1;
+            else if (key_name == "RightMouseButton")  pressed = kmboxSerial->monitorMouseRight() == 1;
+            else if (key_name == "MiddleMouseButton") pressed = kmboxSerial->zooming_active == true;
+            else if (key_name == "X1MouseButton")     pressed = kmboxSerial->zooming_active == true;
+            else if (key_name == "X2MouseButton")     pressed = kmboxSerial->zooming_active == true;
+        }
+
         // local mouse
         if (!pressed && key_code != -1 && (GetAsyncKeyState(key_code) & 0x8000))
             pressed = true;

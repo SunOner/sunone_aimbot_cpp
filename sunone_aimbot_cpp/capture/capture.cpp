@@ -189,11 +189,12 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
             if (config.capture_method == "virtual_camera")
             {
-                int x = (screenshotCpu.cols - CAPTURE_WIDTH) / 2;
-                int y = (screenshotCpu.rows - CAPTURE_HEIGHT) / 2;
+                int current_detection_res = config.detection_resolution;
+                int x = (screenshotCpu.cols - current_detection_res) / 2;
+                int y = (screenshotCpu.rows - current_detection_res) / 2;
                 x = std::max(x, 0);
                 y = std::max(y, 0);
-                screenshotCpu = screenshotCpu(cv::Rect(x, y, CAPTURE_WIDTH, CAPTURE_HEIGHT)).clone();
+                screenshotCpu = screenshotCpu(cv::Rect(x, y, current_detection_res, current_detection_res)).clone();
             }
 
             if (config.circle_mask)
