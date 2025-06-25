@@ -17,7 +17,7 @@ public:
     std::vector<std::vector<Detection>> detectBatch(const std::vector<cv::Mat>& frames);
 
     void dmlInferenceThread();
-    void processFrame(const cv::Mat& frame);
+    void processFrame(cv::Mat&& frame);
 
     int getNumberOfClasses();
 

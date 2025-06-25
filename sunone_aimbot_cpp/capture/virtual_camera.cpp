@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <utility> // Necesario para std::move
 
 #include "virtual_camera.h"
 
@@ -102,8 +103,8 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
     {
         cap_->set(cv::CAP_PROP_FRAME_WIDTH, even(w));
         cap_->set(cv::CAP_PROP_FRAME_HEIGHT, even(h));
-    w = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_WIDTH));
-    h = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
+		w = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_WIDTH));
+		h = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
     }
 
     if (config.capture_fps > 0)
@@ -113,9 +114,6 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
 
     roiW_ = even(w);
     roiH_ = even(h);
-
-    //scratchGpu_.create(roiH_, roiW_, CV_8UC2);
-    //bgrGpu_.create(roiH_, roiW_, CV_8UC3);
 
     if (config.verbose)
         std::cout << "[VirtualCamera] Actual capture: "
@@ -140,6 +138,7 @@ cv::Mat VirtualCameraCapture::GetNextFrameCpu()
     if (!cap_ || !cap_->isOpened())
         return cv::Mat();
 
+    // La variable 'frame' es local, no hay necesidad de usar la variable miembro 'frameCpu' aquí
     cv::Mat frame;
     if (!cap_->read(frame) || frame.empty())
     {
@@ -157,18 +156,23 @@ cv::Mat VirtualCameraCapture::GetNextFrameCpu()
         return cv::Mat();
     }
 
-    frameCpu = frame;
-
     int target_width = config.virtual_camera_width;
     int target_height = config.virtual_camera_heigth;
+
+    // Asignar el frame procesado a la variable miembro 'frameCpu'
+    frameCpu = frame;
 
     if (target_width > 0 && target_height > 0 && !frameCpu.empty())
     {
         cv::resize(frameCpu, frameCpu, cv::Size(target_width, target_height));
     }
 
-
-    return frameCpu.clone();
+    // *** OPTIMIZACIÓN ***
+    // Se utiliza std::move para transferir la propiedad de los datos del frame sin
+    // realizar una copia profunda (clone). Esto es más eficiente.
+    // La variable miembro frameCpu quedará en un estado válido pero vacío,
+    // y será rellenada en la siguiente llamada a GetNextFrameCpu.
+    return std::move(frameCpu);
 }
 
 std::vector<std::string> VirtualCameraCapture::GetAvailableVirtualCameras(bool forceRescan)

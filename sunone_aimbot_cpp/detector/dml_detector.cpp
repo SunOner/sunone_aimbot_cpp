@@ -9,6 +9,7 @@
 #include <atomic>
 #include <chrono>
 #include <dxgi.h>
+#include <opencv2/dnn.hpp> // *** OPTIMIZACIÓN: Incluir para blobFromImages ***
 
 #include "dml_detector.h"
 #include "sunone_aimbot_cpp.h"
@@ -68,8 +69,25 @@ void DirectMLDetector::initializeModel(const std::string& model_path)
     std::wstring model_path_wide(model_path.begin(), model_path.end());
     session = Ort::Session(env, model_path_wide.c_str(), session_options);
 
-    input_name = session.GetInputNameAllocated(0, allocator).get();
-    output_name = session.GetOutputNameAllocated(0, allocator).get();
+    auto temp_input_name_ptr = session.GetInputNameAllocated(0, allocator);
+    if (temp_input_name_ptr)
+    {
+        input_name = temp_input_name_ptr.get();
+    }
+    else
+    {
+        throw std::runtime_error("[DirectMLDetector] Failed to get input name from ONNX model");
+    }
+
+    auto temp_output_name_ptr = session.GetOutputNameAllocated(0, allocator);
+    if (temp_output_name_ptr)
+    {
+        output_name = temp_output_name_ptr.get();
+    }
+    else
+    {
+        throw std::runtime_error("[DirectMLDetector] Failed to get output name from ONNX model");
+    }
 
     Ort::TypeInfo input_type_info = session.GetInputTypeInfo(0);
     auto input_tensor_info = input_type_info.GetTensorTypeAndShapeInfo();
@@ -89,6 +107,7 @@ void DirectMLDetector::initializeModel(const std::string& model_path)
 
 std::vector<Detection> DirectMLDetector::detect(const cv::Mat& input_frame)
 {
+    if (input_frame.empty()) return {};
     std::vector<cv::Mat> batch = { input_frame };
     auto batchResult = detectBatch(batch);
     if (!batchResult.empty())
@@ -112,29 +131,14 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
     const int target_w = useFixed ? model_w : config.detection_resolution;
 
     auto t0 = std::chrono::steady_clock::now();
-    std::vector<float> input_tensor_values(batch_size * 3 * target_h * target_w);
+    cv::Mat blob;
+    cv::dnn::blobFromImages(frames, blob, 1.0 / 255.0, cv::Size(target_w, target_h), cv::Scalar(), true, false, CV_32F);
 
-    for (int b = 0; b < batch_size; ++b)
-    {
-        cv::Mat resized;
-        cv::resize(frames[b], resized, cv::Size(target_w, target_h));
-        cv::cvtColor(resized, resized, cv::COLOR_BGR2RGB);
-        resized.convertTo(resized, CV_32FC3, 1.0f / 255.0f);
-
-        const float* src = reinterpret_cast<const float*>(resized.data);
-        for (int h = 0; h < target_h; ++h)
-            for (int w = 0; w < target_w; ++w)
-                for (int c = 0; c < 3; ++c)
-                {
-                    size_t dstIdx = b * 3 * target_h * target_w + c * target_h * target_w + h * target_w + w;
-                    input_tensor_values[dstIdx] = src[(h * target_w + w) * 3 + c];
-                }
-    }
     auto t1 = std::chrono::steady_clock::now();
 
-    std::vector<int64_t> ort_input_shape{ batch_size, 3, target_h, target_w };
+    std::vector<int64_t> ort_input_shape = { batch_size, 3, target_h, target_w };
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
-        memory_info, input_tensor_values.data(), input_tensor_values.size(),
+        memory_info, blob.ptr<float>(), blob.total(),
         ort_input_shape.data(), ort_input_shape.size());
 
     const char* input_names[] = { input_name.c_str() };
@@ -163,6 +167,10 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
 
     for (int b = 0; b < batch_size; ++b)
     {
+        if (frames[b].empty()) {
+            continue;
+        }
+
         const float* ptr = outData + b * rows * cols;
         std::vector<Detection> detections;
 
@@ -215,15 +223,15 @@ int DirectMLDetector::getNumberOfClasses()
     }
     else
     {
-        std::cerr << "[DirectMLDetector] Unexpected output tensor shape." << std::endl;
+        std::cerr << "[DirectMLDetector] Unexpected output tensor shape. Expected 3 dimensions." << std::endl;
         return -1;
     }
 }
 
-void DirectMLDetector::processFrame(const cv::Mat& frame)
+void DirectMLDetector::processFrame(cv::Mat&& frame)
 {
     std::unique_lock<std::mutex> lock(inferenceMutex);
-    currentFrame = frame.clone();
+    currentFrame = std::move(frame);
     frameReady = true;
     inferenceCV.notify_one();
 }
@@ -261,22 +269,28 @@ void DirectMLDetector::dmlInferenceThread()
         {
             auto start = std::chrono::steady_clock::now();
 
-            std::vector<cv::Mat> batchFrames = { frame };
-            auto detectionsBatch = detectBatch(batchFrames);
-            const std::vector<Detection>& detections = detectionsBatch.back();
-
-            auto end = std::chrono::steady_clock::now();
-            lastInferenceTimeDML = end - start;
-
-            std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
-            detectionBuffer.boxes.clear();
-            detectionBuffer.classes.clear();
-            for (const auto& d : detections) {
-                detectionBuffer.boxes.push_back(d.box);
-                detectionBuffer.classes.push_back(d.classId);
+            std::vector<cv::Mat> batchFrames;
+            if (!frame.empty()) {
+                batchFrames.push_back(std::move(frame));
             }
-            detectionBuffer.version++;
-            detectionBuffer.cv.notify_all();
+            
+            if (!batchFrames.empty()) {
+                auto detectionsBatch = detectBatch(batchFrames);
+                const std::vector<Detection>& detections = detectionsBatch.front();
+
+                auto end = std::chrono::steady_clock::now();
+                lastInferenceTimeDML = end - start;
+
+                std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
+                detectionBuffer.boxes.clear();
+                detectionBuffer.classes.clear();
+                for (const auto& d : detections) {
+                    detectionBuffer.boxes.push_back(d.box);
+                    detectionBuffer.classes.push_back(d.classId);
+                }
+                detectionBuffer.version++;
+                detectionBuffer.cv.notify_all();
+            }
         }
     }
 }

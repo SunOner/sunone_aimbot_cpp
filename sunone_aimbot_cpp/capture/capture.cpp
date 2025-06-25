@@ -10,6 +10,7 @@
 #include <chrono>
 #include <timeapi.h>
 #include <condition_variable>
+#include <utility> // Para std::move
 
 #include "capture.h"
 #ifdef USE_CUDA
@@ -62,7 +63,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         if (config.verbose)
             std::cout << "[Capture] OpenCV version: " << CV_VERSION << std::endl;
 
-        IScreenCapture* capturer = nullptr;
+        IScreenCapture *capturer = nullptr;
         if (config.capture_method == "duplication_api")
         {
             capturer = new DuplicationAPIScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
@@ -194,11 +195,13 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 int y = (screenshotCpu.rows - current_detection_res) / 2;
                 x = std::max(x, 0);
                 y = std::max(y, 0);
-                screenshotCpu = screenshotCpu(cv::Rect(x, y, current_detection_res, current_detection_res)).clone();
+                screenshotCpu = screenshotCpu(cv::Rect(x, y, current_detection_res, current_detection_res));
             }
 
             if (config.circle_mask)
-                screenshotCpu = apply_circle_mask(screenshotCpu);
+            {
+                apply_circle_mask_inplace(screenshotCpu);
+            }
 
             {
                 std::lock_guard<std::mutex> lock(frameMutex);
@@ -211,12 +214,12 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
             if (config.backend == "DML" && dml_detector)
             {
-                dml_detector->processFrame(screenshotCpu);
+                dml_detector->processFrame(std::move(screenshotCpu));
             }
 #ifdef USE_CUDA
             else if (config.backend == "TRT")
             {
-                trt_detector.processFrame(screenshotCpu);
+                trt_detector.processFrame(screenshotCpu.clone());
             }
 #endif
             if (!config.screenshot_button.empty() && config.screenshot_button[0] != "None")
@@ -233,8 +236,8 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     }
 
                     auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::system_clock::now().time_since_epoch()
-                    ).count();
+                                          std::chrono::system_clock::now().time_since_epoch())
+                                          .count();
                     std::string filename = std::to_string(epoch_time) + ".jpg";
                     cv::imwrite("screenshots/" + filename, saveMat);
 
@@ -277,7 +280,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         if (config.capture_method == "winrt")
             winrt::uninit_apartment();
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
         std::cerr << "[Capture] Unhandled exception: " << e.what() << std::endl;
     }
