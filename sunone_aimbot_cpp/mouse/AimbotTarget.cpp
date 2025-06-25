@@ -28,6 +28,8 @@ AimbotTarget* sortTargets(
         return nullptr;
     }
 
+    const float maxDistance = 120 * 120; // 120 pixels squared
+
     cv::Point center(screenWidth / 2, screenHeight / 2);
 
     double minDistance = std::numeric_limits<double>::max();
@@ -43,7 +45,7 @@ AimbotTarget* sortTargets(
                 int headOffsetY = static_cast<int>(boxes[i].height * config.head_y_offset);
                 cv::Point targetPoint(boxes[i].x + boxes[i].width / 2, boxes[i].y + headOffsetY);
                 double distance = std::pow(targetPoint.x - center.x, 2) + std::pow(targetPoint.y - center.y, 2);
-                if (distance < minDistance)
+                if (distance <= maxDistance && distance < minDistance)
                 {
                     minDistance = distance;
                     nearestIdx = static_cast<int>(i);
@@ -70,7 +72,7 @@ AimbotTarget* sortTargets(
                 int offsetY = static_cast<int>(boxes[i].height * config.body_y_offset);
                 cv::Point targetPoint(boxes[i].x + boxes[i].width / 2, boxes[i].y + offsetY);
                 double distance = std::pow(targetPoint.x - center.x, 2) + std::pow(targetPoint.y - center.y, 2);
-                if (distance < minDistance)
+                if (distance <= maxDistance && distance < minDistance)
                 {
                     minDistance = distance;
                     nearestIdx = static_cast<int>(i);
