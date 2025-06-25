@@ -15,6 +15,7 @@ SerialConnection::SerialConnection(const std::string& port, unsigned int baud_ra
     shooting_active(false),
     zooming_active(false)
 {
+    // Mutexes are default-initialized
     try
     {
         serial_.setPort(port);
@@ -44,7 +45,10 @@ SerialConnection::SerialConnection(const std::string& port, unsigned int baud_ra
 
 SerialConnection::~SerialConnection()
 {
-    listening_ = false;
+    {
+        std::lock_guard<std::mutex> lock(listen_mutex_);
+        listening_ = false;
+    }
     if (serial_.isOpen())
     {
         try { serial_.close(); }
@@ -54,17 +58,22 @@ SerialConnection::~SerialConnection()
     {
         listening_thread_.join();
     }
-    is_open_ = false;
+    {
+        std::lock_guard<std::mutex> lock(open_mutex_);
+        is_open_ = false;
+    }
 }
 
 bool SerialConnection::isOpen() const
 {
+    std::lock_guard<std::mutex> lock(open_mutex_);
     return is_open_;
 }
 
 void SerialConnection::write(const std::string& data)
 {
     std::lock_guard<std::mutex> lock(write_mutex_);
+    std::lock_guard<std::mutex> open_lock(open_mutex_);
     if (is_open_)
     {
         try
@@ -80,6 +89,7 @@ void SerialConnection::write(const std::string& data)
 
 std::string SerialConnection::read()
 {
+    std::lock_guard<std::mutex> open_lock(open_mutex_);
     if (!is_open_)
         return std::string();
 
@@ -112,6 +122,7 @@ void SerialConnection::release()
 
 void SerialConnection::move(int x, int y)
 {
+    std::lock_guard<std::mutex> open_lock(open_mutex_);
     if (!is_open_)
         return;
 
@@ -173,8 +184,11 @@ void SerialConnection::timerThreadFunc()
     while (timer_running_)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        if (!is_open_)
-            continue;
+        {
+            std::lock_guard<std::mutex> open_lock(open_mutex_);
+            if (!is_open_)
+                continue;
+        }
 
         bool arduino_enable_keys_local;
         {
@@ -183,6 +197,7 @@ void SerialConnection::timerThreadFunc()
 
         if (arduino_enable_keys_local)
         {
+            std::lock_guard<std::mutex> lock(listen_mutex_);
             if (!listening_)
             {
                 startListening();
@@ -190,6 +205,7 @@ void SerialConnection::timerThreadFunc()
         }
         else
         {
+            std::lock_guard<std::mutex> lock(listen_mutex_);
             if (listening_)
             {
                 listening_ = false;
@@ -204,6 +220,7 @@ void SerialConnection::timerThreadFunc()
 
 void SerialConnection::startListening()
 {
+    std::lock_guard<std::mutex> lock(listen_mutex_);
     listening_ = true;
     if (listening_thread_.joinable())
         listening_thread_.join();
@@ -214,8 +231,14 @@ void SerialConnection::startListening()
 void SerialConnection::listeningThreadFunc()
 {
     std::string buffer;
-    while (listening_ && is_open_)
+    while (true)
     {
+        {
+            std::lock_guard<std::mutex> lock(listen_mutex_);
+            std::lock_guard<std::mutex> open_lock(open_mutex_);
+            if (!listening_ || !is_open_)
+                break;
+        }
         try
         {
             size_t available = serial_.available();
@@ -240,6 +263,7 @@ void SerialConnection::listeningThreadFunc()
         }
         catch (...)
         {
+            std::lock_guard<std::mutex> open_lock(open_mutex_);
             is_open_ = false;
             break;
         }
