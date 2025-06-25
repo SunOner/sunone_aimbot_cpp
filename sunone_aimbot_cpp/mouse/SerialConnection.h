@@ -42,8 +42,7 @@ private:
 
     void timerThreadFunc();
     void listeningThreadFunc();
-    std::mutex write_mutex_;
-
+    
 private:
     serial::Serial serial_;
     std::atomic<bool> is_open_;
@@ -54,6 +53,9 @@ private:
     std::thread listening_thread_;
     std::atomic<bool> listening_;
 
+    std::mutex write_mutex_;
+    std::mutex listen_mutex_;
+    mutable std::mutex open_mutex_;
 };
 
 #endif // SERIALCONNECTION_H
