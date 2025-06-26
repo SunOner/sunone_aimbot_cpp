@@ -56,7 +56,7 @@ private:
     std::queue<Move>              moveQueue;
     std::mutex                    queueMtx;
     std::condition_variable       queueCv;
-    const size_t                  queueLimit = 5;
+    const size_t                  queueLimit = 100;
     std::thread                   moveWorker;
     std::atomic<bool>             workerStop{ false };
 
