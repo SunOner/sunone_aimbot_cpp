@@ -38,23 +38,14 @@ Kmbox_b_Connection::Kmbox_b_Connection(const std::string &port, unsigned int bau
             const std::vector<uint8_t> BAUD_CHANGE_COMMAND = {
             0xDE, 0xAD, 0x05, 0x00, 0xA5, 0x00, 0x09, 0x3D, 0x00};
             serial_.write(BAUD_CHANGE_COMMAND);
+			serial_.flush();
+			serial_.close(); // Cerrar antes de cambiar el baud rate
             serial_.setPort(port);
             serial_.setBaudrate(4000000);
             serial_.setTimeout(timeout);
             std::cout << "[Kmbox_b] Port " << port << " super opened successfully at " << 4000000 << " baud." << std::endl;
 
             serial_.open();
-
-            try
-            {
-                serial_.setDTR(true);
-                serial_.setRTS(true);
-                std::cout << "[Kmbox_b] DTR and RTS set successfully." << std::endl;
-            }
-            catch (const serial::SerialException &e)
-            {
-                std::cerr << "[Kmbox_b] Warning: Failed to set DTR/RTS: " << e.what() << ". Continuing." << std::endl;
-            }
 
             // Verificar comunicación a este baud rate (opcional pero recomendado)
             // Esto asume que km.version() responde a baud_rate

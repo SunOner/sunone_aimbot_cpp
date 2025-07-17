@@ -28,7 +28,7 @@ AimbotTarget* sortTargets(
         return nullptr;
     }
 
-    const float maxDistance = 120 * 120; // 120 pixels squared
+    const float maxDistance = 90 * 90; // 90 pixels squared
 
     cv::Point center(screenWidth / 2, screenHeight / 2);
 

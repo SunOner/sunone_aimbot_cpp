@@ -236,7 +236,7 @@ std::vector<Detection> postProcessYolo11DML(
 
 
     const int HEAD_CLASS_ID = 1;
-    const float HEAD_MIN_CONFIDENCE = 0.55f;
+    const float HEAD_MIN_CONFIDENCE = confThreshold - 0.10f;
 
     int64_t rows = shape[0];
     int64_t cols = shape[1];
