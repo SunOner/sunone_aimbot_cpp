@@ -22,6 +22,8 @@
 #include "other_tools.h"
 #include "postProcess.h"
 
+#include <opencv2/dnn.hpp>
+
 extern std::atomic<bool> detectionPaused;
 int model_quant;
 std::vector<float> outputData;
@@ -581,30 +583,23 @@ std::vector<std::vector<Detection>> TrtDetector::detectBatch(const std::vector<c
     int h = dims.d[2];
     int w = dims.d[3];
 
+    // Ajustar la forma de entrada si el tamaño del lote ha cambiado
     if (dims.d[0] != batch_size)
     {
         context->setInputShape(inputName.c_str(), nvinfer1::Dims4{ batch_size, c, h, w });
     }
 
-    std::vector<float> batchInput(batch_size * c * h * w);
+    // --- INICIO DE LA OPTIMIZACIÓN ---
+    // Reemplazamos el bucle manual de preprocesamiento con una sola llamada a cv::dnn::blobFromImages.
+    // Esta función es mucho más rápida ya que está optimizada para estas operaciones.
+    cv::Mat blob = cv::dnn::blobFromImages(frames, 1.0 / 255.0, cv::Size(w, h), cv::Scalar(), false, false, CV_32F);
 
-    for (int b = 0; b < batch_size; ++b)
-    {
-        cv::Mat resized;
-        cv::resize(frames[b], resized, cv::Size(w, h));
-        resized.convertTo(resized, CV_32FC3, 1.0 / 255.0);
-        std::vector<cv::Mat> channels;
-        cv::split(resized, channels);
+    // Copiar el blob preprocesado directamente a la memoria de la GPU.
+    // blob.total() devuelve (N*C*H*W) y blob.elemSize() es sizeof(float).
+    cudaMemcpy(inputBindings[inputName], blob.ptr<float>(), blob.total() * blob.elemSize(), cudaMemcpyHostToDevice);
+    // --- FIN DE LA OPTIMIZACIÓN ---
 
-        for (int ch = 0; ch < c; ++ch)
-        {
-            float* dst = batchInput.data() + b * c * h * w + ch * h * w;
-            memcpy(dst, channels[ch].ptr<float>(), h * w * sizeof(float));
-        }
-    }
-
-    cudaMemcpy(inputBindings[inputName], batchInput.data(), batchInput.size() * sizeof(float), cudaMemcpyHostToDevice);
-
+    // El resto del código permanece igual, ya que es específico de la inferencia y el postprocesado.
     context->enqueueV3(stream);
     cudaStreamSynchronize(stream);
 
@@ -641,7 +636,7 @@ std::vector<std::vector<Detection>> TrtDetector::detectBatch(const std::vector<c
             config.postprocess == "yolo9" ||
             config.postprocess == "yolo11" ||
             config.postprocess == "yolo12"
-        )
+            )
         {
             std::vector<int64_t> shape = { rows, cols };
             detections = postProcessYolo11(
