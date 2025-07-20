@@ -42,6 +42,7 @@ public:
 
 private:
     void sendCommand(const char* command, size_t length);
+    fast_itoa(int value, char* buffer);
     std::vector<int> splitValue(int value);
 
     void startListening();
@@ -60,7 +61,8 @@ private:
     uint8_t last_button_mask_;
     std::atomic<bool> left_button_;
     std::atomic<bool> right_button_;
-    char command_buffer_[64];
+    static constexpr size_t COMMAND_BUFFER_SIZE = 128;
+    char command_buffer_[COMMAND_BUFFER_SIZE];
 };
 
 #endif // KMBOX_B_CONNECTION_H
