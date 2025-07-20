@@ -110,7 +110,7 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
     if (config.capture_fps > 0)
         cap_->set(cv::CAP_PROP_FPS, config.capture_fps);
     
-    cap_->set(cv::CAP_PROP_BUFFERSIZE, 1);
+    cap_->set(cv::CAP_PROP_BUFFERSIZE, 0);
 
     roiW_ = even(w);
     roiH_ = even(h);
@@ -118,7 +118,7 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
     if (config.verbose)
         std::cout << "[VirtualCamera] Actual capture: "
         << roiW_ << 'x' << roiH_ << " @ "
-            << cap_->get(cv::CAP_PROP_FPS) << " FPS\n";
+             << cap_->get(cv::CAP_PROP_FPS) << " FPS\n";
 }
 
 VirtualCameraCapture::~VirtualCameraCapture()
@@ -126,8 +126,8 @@ VirtualCameraCapture::~VirtualCameraCapture()
     if (cap_)
     {
         if (cap_->isOpened())
-        {
-            cap_->release();
+    {
+        cap_->release();
         }
         cap_.reset();
     }
@@ -166,7 +166,7 @@ cv::Mat VirtualCameraCapture::GetNextFrameCpu()
     {
         cv::resize(frameCpu, frameCpu, cv::Size(target_width, target_height));
     }
-
+    
     // *** OPTIMIZACIÓN ***
     // Se utiliza std::move para transferir la propiedad de los datos del frame sin
     // realizar una copia profunda (clone). Esto es más eficiente.
@@ -208,4 +208,4 @@ void VirtualCameraCapture::ClearCachedCameraList()
     CamCache().clear();
     std::error_code ec;
     std::filesystem::remove(kCamCachePath, ec);
-}
+} // virtual_camera.cpp

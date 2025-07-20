@@ -421,7 +421,7 @@ int main()
             dml_detThread = std::thread(&DirectMLDetector::dmlInferenceThread, dml_detector);
         }
 #ifdef USE_CUDA
-        else if (config.backend == "CUDA")
+        else if (config.backend == "TRT")
         {
             trt_detector.initialize("models/" + config.ai_model);
             trt_detThread = std::thread(&TrtDetector::inferenceThread, &trt_detector);
@@ -450,8 +450,7 @@ int main()
 #ifdef USE_CUDA
         if (trt_detThread.joinable())
         {
-            trt_detThread->shouldExit = true;
-            trt_detThread->inferenceCV.notify_all();
+            trt_detector.notifyExit();
             trt_detThread.join();
         }
 #endif

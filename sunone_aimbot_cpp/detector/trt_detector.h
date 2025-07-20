@@ -26,6 +26,7 @@ class TrtDetector
 public:
     TrtDetector();
     ~TrtDetector();
+    void notifyExit();
     void initialize(const std::string& modelFile);
     void processFrame(const cv::Mat& frame);
     void inferenceThread();

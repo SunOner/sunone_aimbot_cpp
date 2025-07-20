@@ -43,6 +43,12 @@ TrtDetector::TrtDetector()
     cudaStreamCreate(&stream);
 }
 
+void TrtDetector::notifyExit()
+{
+    shouldExit = true;
+    inferenceCV.notify_all();
+}
+
 TrtDetector::~TrtDetector()
 {
     for (auto& buffer : pinnedOutputBuffers)
