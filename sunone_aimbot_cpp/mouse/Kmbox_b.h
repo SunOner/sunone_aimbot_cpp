@@ -42,7 +42,7 @@ public:
 
 private:
     void sendCommand(const char* command, size_t length);
-    fast_itoa(int value, char* buffer);
+    char* fast_itoa(int value, char* buffer);
     std::vector<int> splitValue(int value);
 
     void startListening();
