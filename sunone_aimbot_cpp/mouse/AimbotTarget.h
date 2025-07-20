@@ -3,6 +3,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <vector>
+#include <optional>
 
 class AimbotTarget
 {
@@ -16,7 +17,7 @@ public:
     AimbotTarget(int x, int y, int w, int h, int classId, double pivotX = 0.0, double pivotY = 0.0);
 };
 
-AimbotTarget* sortTargets(
+std::optional<AimbotTarget> sortTargets(
     const std::vector<cv::Rect>& boxes,
     const std::vector<int>& classes,
     int screenWidth,
