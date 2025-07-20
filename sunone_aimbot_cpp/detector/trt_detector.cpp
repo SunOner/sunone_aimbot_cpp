@@ -583,23 +583,23 @@ std::vector<std::vector<Detection>> TrtDetector::detectBatch(const std::vector<c
     int h = dims.d[2];
     int w = dims.d[3];
 
-    // Ajustar la forma de entrada si el tamaño del lote ha cambiado
+    // Ajustar la forma de entrada si el tamaï¿½o del lote ha cambiado
     if (dims.d[0] != batch_size)
     {
         context->setInputShape(inputName.c_str(), nvinfer1::Dims4{ batch_size, c, h, w });
     }
 
-    // --- INICIO DE LA OPTIMIZACIÓN ---
+    // --- INICIO DE LA OPTIMIZACIï¿½N ---
     // Reemplazamos el bucle manual de preprocesamiento con una sola llamada a cv::dnn::blobFromImages.
-    // Esta función es mucho más rápida ya que está optimizada para estas operaciones.
+    // Esta funciï¿½n es mucho mï¿½s rï¿½pida ya que estï¿½ optimizada para estas operaciones.
     cv::Mat blob = cv::dnn::blobFromImages(frames, 1.0 / 255.0, cv::Size(w, h), cv::Scalar(), false, false, CV_32F);
 
     // Copiar el blob preprocesado directamente a la memoria de la GPU.
     // blob.total() devuelve (N*C*H*W) y blob.elemSize() es sizeof(float).
     cudaMemcpy(inputBindings[inputName], blob.ptr<float>(), blob.total() * blob.elemSize(), cudaMemcpyHostToDevice);
-    // --- FIN DE LA OPTIMIZACIÓN ---
+    // --- FIN DE LA OPTIMIZACIï¿½N ---
 
-    // El resto del código permanece igual, ya que es específico de la inferencia y el postprocesado.
+    // El resto del cï¿½digo permanece igual, ya que es especï¿½fico de la inferencia y el postprocesado.
     context->enqueueV3(stream);
     cudaStreamSynchronize(stream);
 
@@ -742,4 +742,4 @@ void TrtDetector::postProcess(const float* output, const std::string& outputName
         detectionBuffer.cv.notify_all();
     }
 }
-#endif
+#endif // trt_detector.cpp

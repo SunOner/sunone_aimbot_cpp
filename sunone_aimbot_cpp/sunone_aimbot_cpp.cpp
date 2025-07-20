@@ -111,7 +111,8 @@ void createInputDevices()
         if (!kmboxNetSerial->isOpen())
         {
             std::cerr << "[KmboxNet] Error connecting." << std::endl;
-            delete kmboxNetSerial; kmboxNetSerial = nullptr;
+            delete kmboxNetSerial;
+            kmboxNetSerial = nullptr;
         }
     }
     else
@@ -137,7 +138,7 @@ void handleEasyNoRecoil(MouseThread& mouseThread)
     {
         std::lock_guard<std::mutex> lock(mouseThread.input_method_mutex);
         int recoil_compensation = static_cast<int>(config.easynorecoilstrength);
-        
+
         if (arduinoSerial)
         {
             arduinoSerial->move(0, recoil_compensation);
@@ -156,7 +157,7 @@ void handleEasyNoRecoil(MouseThread& mouseThread)
         }
         else
         {
-            INPUT input = { 0 };
+            INPUT input = {0};
             input.type = INPUT_MOUSE;
             input.mi.dx = 0;
             input.mi.dy = recoil_compensation;
@@ -205,8 +206,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
                     config.maxSpeedMultiplier,
                     config.predictionInterval,
                     config.auto_shoot,
-                    config.bScope_multiplier
-                );
+                    config.bScope_multiplier);
             }
             detection_resolution_changed.store(false);
         }
@@ -412,6 +412,7 @@ int main()
         }
 
         std::thread dml_detThread;
+        std::thread trt_detThread;
 
         if (config.backend == "DML")
         {
@@ -420,9 +421,10 @@ int main()
             dml_detThread = std::thread(&DirectMLDetector::dmlInferenceThread, dml_detector);
         }
 #ifdef USE_CUDA
-        else
+        else if (config.backend == "CUDA")
         {
             trt_detector.initialize("models/" + config.ai_model);
+            trt_detThread = std::thread(&TrtDetector::inferenceThread, &trt_detector);
         }
 #endif
 
@@ -431,9 +433,6 @@ int main()
         std::thread keyThread(keyboardListener);
         std::thread capThread(captureThread, config.detection_resolution, config.detection_resolution);
 
-#ifdef USE_CUDA
-        std::thread trt_detThread(&TrtDetector::inferenceThread, &trt_detector);
-#endif
         std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
         std::thread overlayThread(OverlayThread);
 
@@ -449,7 +448,12 @@ int main()
         }
 
 #ifdef USE_CUDA
-        trt_detThread.join();
+        if (trt_detThread.joinable())
+        {
+            trt_detThread->shouldExit = true;
+            trt_detThread->inferenceCV.notify_all();
+            trt_detThread.join();
+        }
 #endif
         mouseMovThread.join();
         overlayThread.join();
@@ -473,11 +477,11 @@ int main()
 
         return 0;
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
         std::cerr << "[MAIN] An error has occurred in the main stream: " << e.what() << std::endl;
         std::cout << "Press Enter to exit...";
         std::cin.get();
         return -1;
     }
-}
+} // sunone_aimbot_cpp.cpp

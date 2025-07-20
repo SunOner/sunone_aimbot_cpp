@@ -520,3 +520,4 @@ int Kmbox_b_Connection::monitorMouseRight() const
         return -1;
     return right_button_.load() ? 1 : 0;
 }
+// Kmbox_b.cpp

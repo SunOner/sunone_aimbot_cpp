@@ -550,4 +550,4 @@ void MouseThread::setGHubMouse(GhubMouse* newGHub)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
     gHub = newGHub;
-}
+} // mouse.cpp

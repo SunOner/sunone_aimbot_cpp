@@ -293,4 +293,4 @@ void DirectMLDetector::dmlInferenceThread()
             }
         }
     }
-}
+}// dml_detector.cpp

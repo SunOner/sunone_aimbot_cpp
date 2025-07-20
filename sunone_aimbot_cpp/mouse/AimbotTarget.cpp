@@ -106,4 +106,4 @@ AimbotTarget* sortTargets(
     
 
     return new AimbotTarget(finalX, boxes[nearestIdx].y, finalW, finalH, finalClass, pivotX, pivotY);
-}
+} // AimbotTarget.cpp
