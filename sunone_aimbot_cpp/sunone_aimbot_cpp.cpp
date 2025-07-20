@@ -8,6 +8,8 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+#include <optional> // *** OPTIMIZACIÓN: Incluir para std::optional ***
+#include <filesystem> // Para std::filesystem::exists
 
 #include "capture.h"
 #include "mouse.h"
@@ -17,7 +19,16 @@
 #include "ghub.h"
 #include "other_tools.h"
 #include "virtual_camera.h"
+#include "Kmbox_b.h"
+#include "KmboxNetConnection.h"
+#include "SerialConnection.h"
+#ifdef USE_CUDA
+#include "trt_detector.h"
+#endif
+#include "dml_detector.h"
 
+
+// --- Variables Globales ---
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
 std::atomic<bool> aiming(false);
@@ -37,6 +48,7 @@ SerialConnection* arduinoSerial = nullptr;
 Kmbox_b_Connection* kmboxSerial = nullptr;
 KmboxNetConnection* kmboxNetSerial = nullptr;
 
+// Flags de cambio de configuración
 std::atomic<bool> detection_resolution_changed(false);
 std::atomic<bool> capture_method_changed(false);
 std::atomic<bool> capture_cursor_changed(false);
@@ -50,32 +62,14 @@ std::atomic<bool> input_method_changed(false);
 std::atomic<bool> zooming(false);
 std::atomic<bool> shooting(false);
 
+// --- Funciones de Gestión de Dispositivos (sin cambios funcionales, solo limpieza) ---
+
 void createInputDevices()
 {
-    if (arduinoSerial)
-    {
-        delete arduinoSerial;
-        arduinoSerial = nullptr;
-    }
-
-    if (gHub)
-    {
-        gHub->mouse_close();
-        delete gHub;
-        gHub = nullptr;
-    }
-
-    if (kmboxSerial)
-    {
-        delete kmboxSerial;
-        kmboxSerial = nullptr;
-    }
-
-    if (kmboxNetSerial)
-    {
-        delete kmboxNetSerial;
-        kmboxNetSerial = nullptr;
-    }
+    if (arduinoSerial) { delete arduinoSerial; arduinoSerial = nullptr; }
+    if (gHub) { gHub->mouse_close(); delete gHub; gHub = nullptr; }
+    if (kmboxSerial) { delete kmboxSerial; kmboxSerial = nullptr; }
+    if (kmboxNetSerial) { delete kmboxNetSerial; kmboxNetSerial = nullptr; }
 
     if (config.input_method == "ARDUINO")
     {
@@ -86,33 +80,27 @@ void createInputDevices()
     {
         std::cout << "[Mouse] Using Ghub method input." << std::endl;
         gHub = new GhubMouse();
-        if (!gHub->mouse_xy(0, 0))
-        {
+        if (!gHub->mouse_xy(0, 0)) {
             std::cerr << "[Ghub] Error with opening mouse." << std::endl;
-            delete gHub;
-            gHub = nullptr;
+            delete gHub; gHub = nullptr;
         }
     }
     else if (config.input_method == "KMBOX_B")
     {
         std::cout << "[Mouse] Using KMBOX_B method input." << std::endl;
         kmboxSerial = new Kmbox_b_Connection(config.kmbox_b_port, config.kmbox_b_baudrate);
-        if (!kmboxSerial->isOpen())
-        {
+        if (!kmboxSerial->isOpen()) {
             std::cerr << "[Kmbox] Error connecting to Kmbox serial." << std::endl;
-            delete kmboxSerial;
-            kmboxSerial = nullptr;
+            delete kmboxSerial; kmboxSerial = nullptr;
         }
     }
     else if (config.input_method == "KMBOX_NET")
     {
         std::cout << "[Mouse] Using KMBOX_NET input." << std::endl;
         kmboxNetSerial = new KmboxNetConnection(config.kmbox_net_ip, config.kmbox_net_port, config.kmbox_net_uuid);
-        if (!kmboxNetSerial->isOpen())
-        {
+        if (!kmboxNetSerial->isOpen()) {
             std::cerr << "[KmboxNet] Error connecting." << std::endl;
-            delete kmboxNetSerial;
-            kmboxNetSerial = nullptr;
+            delete kmboxNetSerial; kmboxNetSerial = nullptr;
         }
     }
     else
@@ -134,39 +122,16 @@ void assignInputDevices()
 
 void handleEasyNoRecoil(MouseThread& mouseThread)
 {
-    if (config.easynorecoil && shooting.load() && zooming.load())
+    if (config.easynorecoil && shooting.load(std::memory_order_relaxed) && zooming.load(std::memory_order_relaxed))
     {
         std::lock_guard<std::mutex> lock(mouseThread.input_method_mutex);
         int recoil_compensation = static_cast<int>(config.easynorecoilstrength);
 
-        if (arduinoSerial)
-        {
-            arduinoSerial->move(0, recoil_compensation);
-        }
-        else if (gHub)
-        {
-            gHub->mouse_xy(0, recoil_compensation);
-        }
-        else if (kmboxSerial)
-        {
-            kmboxSerial->move(0, recoil_compensation);
-        }
-        else if (kmboxNetSerial)
-        {
-            kmboxNetSerial->move(0, recoil_compensation);
-        }
-        else
-        {
-            INPUT input = {0};
-            input.type = INPUT_MOUSE;
-            input.mi.dx = 0;
-            input.mi.dy = recoil_compensation;
-            input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
-            SendInput(1, &input, sizeof(INPUT));
-        }
+        mouseThread.sendMovementToDriver(0, recoil_compensation); // Simplificado para usar el método central
     }
 }
 
+// *** FUNCIÓN DEL HILO PRINCIPAL OPTIMIZADA ***
 void mouseThreadFunction(MouseThread& mouseThread)
 {
     int lastVersion = -1;
@@ -180,38 +145,34 @@ void mouseThreadFunction(MouseThread& mouseThread)
             std::unique_lock<std::mutex> lock(detectionBuffer.mutex);
             detectionBuffer.cv.wait(lock, [&] {
                 return detectionBuffer.version > lastVersion || shouldExit;
-                });
+            });
             if (shouldExit) break;
             boxes = detectionBuffer.boxes;
             classes = detectionBuffer.classes;
             lastVersion = detectionBuffer.version;
         }
 
-        if (input_method_changed.load())
+        if (input_method_changed.load(std::memory_order_relaxed))
         {
             createInputDevices();
             assignInputDevices();
-            input_method_changed.store(false);
+            input_method_changed.store(false, std::memory_order_relaxed);
         }
 
-        if (detection_resolution_changed.load())
+        if (detection_resolution_changed.load(std::memory_order_relaxed))
         {
             {
                 std::lock_guard<std::mutex> cfgLock(configMutex);
                 mouseThread.updateConfig(
-                    config.detection_resolution,
-                    config.fovX,
-                    config.fovY,
-                    config.minSpeedMultiplier,
-                    config.maxSpeedMultiplier,
-                    config.predictionInterval,
-                    config.auto_shoot,
-                    config.bScope_multiplier);
+                    config.detection_resolution, config.fovX, config.fovY,
+                    config.minSpeedMultiplier, config.maxSpeedMultiplier,
+                    config.predictionInterval, config.auto_shoot, config.bScope_multiplier);
             }
-            detection_resolution_changed.store(false);
+            detection_resolution_changed.store(false, std::memory_order_relaxed);
         }
 
-        AimbotTarget* target = sortTargets(
+        // *** OPTIMIZACIÓN: Usar std::optional para evitar alocaciones en el heap (new/delete) ***
+        std::optional<AimbotTarget> target = sortTargets(
             boxes,
             classes,
             config.detection_resolution,
@@ -219,7 +180,7 @@ void mouseThreadFunction(MouseThread& mouseThread)
             config.disable_headshot
         );
 
-        if (target)
+        if (target.has_value()) // o simplemente `if (target)`
         {
             mouseThread.setLastTargetTime(std::chrono::steady_clock::now());
             mouseThread.setTargetDetected(true);
@@ -237,14 +198,15 @@ void mouseThreadFunction(MouseThread& mouseThread)
             mouseThread.setTargetDetected(false);
         }
 
-        if (aiming)
+        if (aiming.load(std::memory_order_relaxed))
         {
-            if (target)
+            if (target) // Se puede usar como un booleano
             {
                 mouseThread.moveMousePivot(target->pivotX, target->pivotY);
 
                 if (config.auto_shoot)
                 {
+                    // El operador `*` devuelve la referencia al objeto contenido
                     mouseThread.pressMouse(*target);
                 }
             }
@@ -265,10 +227,9 @@ void mouseThreadFunction(MouseThread& mouseThread)
         }
 
         handleEasyNoRecoil(mouseThread);
-
         mouseThread.checkAndResetPredictions();
-
-        delete target;
+        
+        // No hay 'delete target', la memoria se libera automáticamente al salir del ámbito del bucle.
     }
 }
 
@@ -291,7 +252,7 @@ int main()
 
         if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
         {
-            std::cout << "[MAIN] Error with screenshoot folder" << std::endl;
+            std::cout << "[MAIN] Error with screenshot folder" << std::endl;
             std::cin.get();
             return -1;
         }
@@ -329,15 +290,12 @@ int main()
                 std::cerr << "[MAIN] No virtual cameras found" << std::endl;
             }
         }
-
+        
         std::string modelPath = "models/" + config.ai_model;
-
         if (!std::filesystem::exists(modelPath))
         {
             std::cerr << "[MAIN] Specified model does not exist: " << modelPath << std::endl;
-
             std::vector<std::string> modelFiles = getModelFiles();
-
             if (!modelFiles.empty())
             {
                 config.ai_model = modelFiles[0];
@@ -346,70 +304,21 @@ int main()
             }
             else
             {
-                std::cerr << "[MAIN] No models found in 'models' directory." << std::endl;
-                std::cin.get();
-                return -1;
+                std::cerr << "[MAIN] No models found in 'models' directory." << std::cin.get(); return -1;
             }
         }
 
         createInputDevices();
 
         MouseThread mouseThread(
-            config.detection_resolution,
-            config.fovX,
-            config.fovY,
-            config.minSpeedMultiplier,
-            config.maxSpeedMultiplier,
-            config.predictionInterval,
-            config.auto_shoot,
-            config.bScope_multiplier,
-            arduinoSerial,
-            gHub,
-            kmboxSerial,
-            kmboxNetSerial
+            config.detection_resolution, config.fovX, config.fovY,
+            config.minSpeedMultiplier, config.maxSpeedMultiplier,
+            config.predictionInterval, config.auto_shoot, config.bScope_multiplier,
+            arduinoSerial, gHub, kmboxSerial, kmboxNetSerial
         );
 
         globalMouseThread = &mouseThread;
         assignInputDevices();
-
-        std::vector<std::string> availableModels = getAvailableModels();
-
-        if (!config.ai_model.empty())
-        {
-            std::string modelPath = "models/" + config.ai_model;
-            if (!std::filesystem::exists(modelPath))
-            {
-                std::cerr << "[MAIN] Specified model does not exist: " << modelPath << std::endl;
-
-                if (!availableModels.empty())
-                {
-                    config.ai_model = availableModels[0];
-                    config.saveConfig("config.ini");
-                    std::cout << "[MAIN] Loaded first available model: " << config.ai_model << std::endl;
-                }
-                else
-                {
-                    std::cerr << "[MAIN] No models found in 'models' directory." << std::endl;
-                    std::cin.get();
-                    return -1;
-                }
-            }
-        }
-        else
-        {
-            if (!availableModels.empty())
-            {
-                config.ai_model = availableModels[0];
-                config.saveConfig();
-                std::cout << "[MAIN] No AI model specified in config. Loaded first available model: " << config.ai_model << std::endl;
-            }
-            else
-            {
-                std::cerr << "[MAIN] No AI models found in 'models' directory." << std::endl;
-                std::cin.get();
-                return -1;
-            }
-        }
 
         std::thread dml_detThread;
         std::thread trt_detThread;
@@ -429,10 +338,8 @@ int main()
 #endif
 
         detection_resolution_changed.store(true);
-
         std::thread keyThread(keyboardListener);
         std::thread capThread(captureThread, config.detection_resolution, config.detection_resolution);
-
         std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
         std::thread overlayThread(OverlayThread);
 
@@ -440,10 +347,11 @@ int main()
 
         keyThread.join();
         capThread.join();
+
         if (dml_detThread.joinable())
         {
-            dml_detector->shouldExit = true;
-            dml_detector->inferenceCV.notify_all();
+            if (dml_detector) dml_detector->shouldExit = true;
+            if (dml_detector) dml_detector->inferenceCV.notify_all();
             dml_detThread.join();
         }
 
@@ -457,22 +365,12 @@ int main()
         mouseMovThread.join();
         overlayThread.join();
 
-        if (arduinoSerial)
-        {
-            delete arduinoSerial;
-        }
-
-        if (gHub)
-        {
-            gHub->mouse_close();
-            delete gHub;
-        }
-
-        if (dml_detector)
-        {
-            delete dml_detector;
-            dml_detector = nullptr;
-        }
+        // Limpieza final
+        if (arduinoSerial) delete arduinoSerial;
+        if (gHub) { gHub->mouse_close(); delete gHub; }
+        if (kmboxSerial) delete kmboxSerial;
+        if (kmboxNetSerial) delete kmboxNetSerial;
+        if (dml_detector) delete dml_detector;
 
         return 0;
     }
