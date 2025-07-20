@@ -472,7 +472,7 @@ void Kmbox_b_Connection::processButtonMask(uint8_t current_mask)
         }
         if ((changed_bits & 4)) { // Bit 2
             bool is_pressed = (current_mask & 4);
-            zooming_active.store(is_pressed, std::memory_order_relaxed);
+            // zooming_active.store(is_pressed, std::memory_order_relaxed);
         }
         last_button_mask_.store(current_mask, std::memory_order_relaxed);
     }

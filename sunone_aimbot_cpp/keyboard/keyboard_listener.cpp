@@ -66,9 +66,6 @@ bool isAnyKeyPressed(const std::vector<std::string>& keys)
         {
             if (key_name == "LeftMouseButton" && kmboxSerial->monitorMouseLeft() == 1) return true;
             if (key_name == "RightMouseButton" && kmboxSerial->monitorMouseRight() == 1) return true;
-            if (key_name == "MiddleMouseButton" && kmboxSerial->monitorMouseMiddle() == 1) return true;
-            if (key_name == "X1MouseButton" && kmboxSerial->monitorMouseSide1() == 1) return true;
-            if (key_name == "X2MouseButton" && kmboxSerial->monitorMouseSide2() == 1) return true;
             // Añadir otros botones de kmbox si es necesario
         }
 

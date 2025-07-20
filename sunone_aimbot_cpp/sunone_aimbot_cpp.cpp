@@ -26,6 +26,7 @@
 #include "trt_detector.h"
 #endif
 #include "dml_detector.h"
+#include <AimbotTarget.h>
 
 
 // --- Variables Globales ---

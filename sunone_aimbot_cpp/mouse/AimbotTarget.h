@@ -5,9 +5,8 @@
 #include <vector>
 #include <optional>
 
-class AimbotTarget
+struct AimbotTarget
 {
-public:
     int x, y, w, h;
     int classId;
 
