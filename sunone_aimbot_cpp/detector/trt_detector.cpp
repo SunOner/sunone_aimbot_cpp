@@ -496,10 +496,7 @@ void TrtDetector::inferenceThread()
                 auto t1 = std::chrono::steady_clock::now();
 
                 context->enqueueV3(stream);
-                while (cudaStreamQuery(stream) == cudaErrorNotReady)
-                {
-                    std::this_thread::yield();
-                }
+                cudaStreamSynchronize(stream);
 
                 auto t2 = std::chrono::steady_clock::now();
 
@@ -672,26 +669,14 @@ void TrtDetector::preProcess(const cv::Mat& frame)
     if (!inputBuffer) return;
 
     nvinfer1::Dims dims = context->getTensorShape(inputName.c_str());
-    int c = dims.d[1];
-    int h = dims.d[2];
-    int w = dims.d[3];
+    const int c = dims.d[1];
+    const int h = dims.d[2];
+    const int w = dims.d[3];
 
-    cv::cuda::GpuMat gpuFrame, gpuResized, gpuFloat;
-    gpuFrame.upload(frame);
+    cv::Mat blob;
+    cv::dnn::blobFromImage(frame, blob, 1.0 / 255.0, cv::Size(w, h), cv::Scalar(), true, false, CV_32F);
 
-    if (frame.channels() == 4)
-        cv::cuda::cvtColor(gpuFrame, gpuFrame, cv::COLOR_BGRA2BGR);
-    else if (frame.channels() == 1)
-        cv::cuda::cvtColor(gpuFrame, gpuFrame, cv::COLOR_GRAY2BGR);
-
-    cv::cuda::resize(gpuFrame, gpuResized, cv::Size(w, h));
-    gpuResized.convertTo(gpuFloat, CV_32FC3, 1.0 / 255.0);
-
-    std::vector<cv::cuda::GpuMat> gpuChannels;
-    cv::cuda::split(gpuFloat, gpuChannels);
-
-    for (int i = 0; i < c; ++i)
-        cudaMemcpy((float*)inputBuffer + i * h * w, gpuChannels[i].ptr<float>(), h * w * sizeof(float), cudaMemcpyDeviceToDevice);
+    cudaMemcpyAsync(inputBuffer, blob.ptr<float>(), blob.total() * blob.elemSize(), cudaMemcpyHostToDevice, stream);
 }
 
 void TrtDetector::postProcess(const float* output, const std::string& outputName, std::chrono::duration<double, std::milli>* nmsTime)

@@ -41,7 +41,7 @@ public:
     bool zooming_active;
 
 private:
-    void sendCommand(const std::string& command);
+    void sendCommand(const char* command, size_t length);
     std::vector<int> splitValue(int value);
 
     void startListening();
@@ -60,6 +60,7 @@ private:
     uint8_t last_button_mask_;
     std::atomic<bool> left_button_;
     std::atomic<bool> right_button_;
+    char command_buffer_[64];
 };
 
 #endif // KMBOX_B_CONNECTION_H

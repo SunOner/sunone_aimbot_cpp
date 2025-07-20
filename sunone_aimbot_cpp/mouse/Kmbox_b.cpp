@@ -36,10 +36,10 @@ Kmbox_b_Connection::Kmbox_b_Connection(const std::string &port, unsigned int bau
             std::cout << "[Kmbox_b] Port " << port << " opened successfully at " << baud_rate << " baud." << std::endl;
 
             const std::vector<uint8_t> BAUD_CHANGE_COMMAND = {
-            0xDE, 0xAD, 0x05, 0x00, 0xA5, 0x00, 0x09, 0x3D, 0x00};
+                0xDE, 0xAD, 0x05, 0x00, 0xA5, 0x00, 0x09, 0x3D, 0x00};
             serial_.write(BAUD_CHANGE_COMMAND);
-			serial_.flush();
-			serial_.close(); // Cerrar antes de cambiar el baud rate
+            serial_.flush();
+            serial_.close(); // Cerrar antes de cambiar el baud rate
             serial_.setPort(port);
             serial_.setBaudrate(4000000);
             serial_.setTimeout(timeout);
@@ -148,15 +148,11 @@ bool Kmbox_b_Connection::isListening() const
 void Kmbox_b_Connection::write(const std::string &data)
 {
     std::lock_guard<std::mutex> lock(write_mutex_);
-    if (is_open_.load())
-    {
-        try
-        {
+    if (is_open_.load()) {
+        try {
             serial_.write(data);
             serial_.flush();
-        }
-        catch (const std::exception &e)
-        {
+        } catch (const std::exception &e) {
             std::cerr << "[Kmbox_b] Exception during write: " << e.what() << std::endl;
             is_open_ = false;
         }
@@ -200,7 +196,7 @@ bool Kmbox_b_Connection::initializeButtonReporting()
 
     std::cout << "[Kmbox_b] Sending command to enable button events: \"" << cmd_enable_events
               << "\" (NOT expecting 'OK' response) at " << current_br << " baud." << std::endl;
-    sendCommand(cmd_enable_events);
+    sendCommand(cmd_enable_events, strlen(cmd_enable_events));
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     try
@@ -238,13 +234,20 @@ void Kmbox_b_Connection::move(int x, int y)
 {
     if (!is_open_.load())
         return;
-    sendCommand("km.move(" + std::to_string(x) + "," + std::to_string(y) + ")");
+    int len = snprintf(command_buffer_, sizeof(command_buffer_), "km.move(%d,%d)", x, y);
+
+    // Enviamos el comando formateado.
+    if (len > 0)
+    {
+        sendCommand(command_buffer_, len);
+    }
 }
 
 void Kmbox_b_Connection::click(int button = 0)
 {
     std::string cmd = "km.click(" + std::to_string(button) + ")\r\n";
     sendCommand(cmd);
+    sendCommand(cmd, strlen(cmd));
 }
 
 void Kmbox_b_Connection::press(int button)
@@ -261,7 +264,7 @@ void Kmbox_b_Connection::press(int button)
         std::cerr << "[Kmbox_b] Press: Unknown button_id: " << button << std::endl;
         return;
     }
-    sendCommand(cmd);
+    sendCommand(cmd, strlen(cmd));
 }
 
 void Kmbox_b_Connection::release(int button)
@@ -278,7 +281,7 @@ void Kmbox_b_Connection::release(int button)
         std::cerr << "[Kmbox_b] Release: Unknown button_id: " << button << std::endl;
         return;
     }
-    sendCommand(cmd);
+    sendCommand(cmd, strlen(cmd));
 }
 
 void Kmbox_b_Connection::start_boot()
@@ -300,9 +303,34 @@ void Kmbox_b_Connection::send_stop()
     write("\x03\x03");
 }
 
-void Kmbox_b_Connection::sendCommand(const std::string &command)
+void Kmbox_b_Connection::sendCommand(const char* command, size_t length)
 {
-    write(command + "\r\n");
+    if (!is_open_.load() || length + 2 > sizeof(command_buffer_))
+    {
+        return;
+    }
+
+    // Si el comando no es nuestro buffer, lo copiamos.
+    if (command != command_buffer_)
+    {
+        memcpy(command_buffer_, command, length);
+    }
+
+    // Añadimos el terminador de línea
+    command_buffer_[length] = '\r';
+    command_buffer_[length + 1] = '\n';
+
+    std::lock_guard<std::mutex> lock(write_mutex_);
+    try
+    {
+        // Escribimos directamente desde el buffer al puerto.
+        serial_.write(reinterpret_cast<const uint8_t *>(command_buffer_), length + 2);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "[Kmbox_b] Exception during sendCommand: " << e.what() << std::endl;
+        is_open_ = false;
+    }
 }
 
 std::vector<int> Kmbox_b_Connection::splitValue(int value)
@@ -452,7 +480,7 @@ void Kmbox_b_Connection::listeningThreadFunc()
             }
             else
             {
-                std::this_thread::yield();
+                std::this_thread::sleep_for(std::chrono::microseconds(200));
             }
         }
         catch (const serial::SerialException &e)
