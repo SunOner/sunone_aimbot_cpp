@@ -219,7 +219,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 #ifdef USE_CUDA
             else if (config.backend == "TRT")
             {
-                trt_detector.processFrame(screenshotCpu.clone());
+                trt_detector.processFrame(std::move(screenshotCpu));
             }
 #endif
             if (!config.screenshot_button.empty() && config.screenshot_button[0] != "None")
