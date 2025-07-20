@@ -61,7 +61,7 @@ private:
     uint8_t last_button_mask_;
     std::atomic<bool> left_button_;
     std::atomic<bool> right_button_;
-    static constexpr size_t COMMAND_BUFFER_SIZE = 128;
+    static const size_t COMMAND_BUFFER_SIZE = 128; 
     char command_buffer_[COMMAND_BUFFER_SIZE];
 };
 
