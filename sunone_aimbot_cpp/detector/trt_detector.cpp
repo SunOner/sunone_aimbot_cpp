@@ -490,7 +490,10 @@ void TrtDetector::inferenceThread()
                 auto t1 = std::chrono::steady_clock::now();
 
                 context->enqueueV3(stream);
-                cudaStreamSynchronize(stream);
+                while (cudaStreamQuery(stream) == cudaErrorNotReady)
+                {
+                    std::this_thread::yield();
+                }
 
                 auto t2 = std::chrono::steady_clock::now();
 
