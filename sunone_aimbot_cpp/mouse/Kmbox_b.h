@@ -51,6 +51,7 @@ private:
     bool initializeButtonReporting();
     void processButtonMask(uint8_t current_mask);
     static const std::vector<uint8_t> BinaryPacketHeader;
+    
 
 private:
     serial::Serial serial_;
@@ -58,11 +59,11 @@ private:
     std::atomic<bool> listening_;
     std::thread       listening_thread_;
     std::mutex        write_mutex_;
-    uint8_t last_button_mask_;
+    std::atomic<uint8_t> last_button_mask_;
     std::atomic<bool> left_button_;
     std::atomic<bool> right_button_;
-    static const size_t COMMAND_BUFFER_SIZE = 128; 
-    char command_buffer_[COMMAND_BUFFER_SIZE];
+    
+    char command_buffer_[128];
 };
 
 #endif // KMBOX_B_CONNECTION_H

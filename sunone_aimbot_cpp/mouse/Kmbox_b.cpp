@@ -29,6 +29,8 @@ const char CMD_CLICK_LEFT[] = "km.click(0)";
 const char CMD_CLICK_RIGHT[] = "km.click(1)";
 const char CMD_CLICK_MIDDLE[] = "km.click(2)";
 
+const size_t COMMAND_BUFFER_SIZE = 128; 
+
 const std::vector<uint8_t> Kmbox_b_Connection::BinaryPacketHeader = {0x6B, 0x6D, 0x2E}; // "km."
 
 // Implementación de itoa de alto rendimiento para evitar snprintf/stringstream
