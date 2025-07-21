@@ -122,41 +122,6 @@ void MouseThread::moveInstant(int dx, int dy)
     }
 }
 
-// *** NUEVO: Función para movimiento suavizado (lógica extraída de calc_movement) ***
-void MouseThread::moveSmooth(double target_x, double target_y)
-{
-    // La lógica de interpolación que ya teníamos
-    if (!smoothing_initialized) {
-        smoothed_x = this->center_x;
-        smoothed_y = this->center_y;
-        smoothing_initialized = true;
-    }
-
-    double final_target_x, final_target_y;
-    double dist_to_target = std::hypot(target_x - center_x, target_y - center_y);
-
-    if (config.smoothing_level > 1 && dist_to_target >= config.snapRadius) {
-        float lerp_alpha = 1.0f / static_cast<float>(config.smoothing_level);
-        smoothed_x = smoothed_x + (target_x - smoothed_x) * lerp_alpha;
-        smoothed_y = smoothed_y + (target_y - smoothed_y) * lerp_alpha;
-        final_target_x = smoothed_x;
-        final_target_y = smoothed_y;
-    } else {
-        smoothed_x = target_x;
-        smoothed_y = target_y;
-        final_target_x = target_x;
-        final_target_y = target_y;
-    }
-
-    // Calcular el delta de píxeles necesario para llegar al objetivo suavizado
-    auto move_pair = calc_movement(final_target_x, final_target_y);
-    int move_x = static_cast<int>(move_pair.first);
-    int move_y = static_cast<int>(move_pair.second);
-    
-    if (move_x != 0 || move_y != 0) {
-        queueMove(move_x, move_y);
-    }
-}
 
 
 // *** MODIFICADO: moveMousePivot AHORA ES UN DESPACHADOR ***
@@ -222,7 +187,7 @@ void MouseThread::moveMousePivot(double pivotX, double pivotY)
     }
     else if (config.mouse_move_method == "smooth")
     {
-        moveSmooth(finalTargetX, finalTargetY);
+        moveMouseWithSmoothing(finalTargetX, finalTargetY);
     }
     else // "instant"
     {

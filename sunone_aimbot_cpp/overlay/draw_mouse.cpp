@@ -169,7 +169,7 @@ void draw_mouse()
     if (config.mouse_move_method == "smooth") current_move_method_index = 1;
     else if (config.mouse_move_method == "wind") current_move_method_index = 2;
 
-    if (ImGui::Combo("Movement Method", ¤t_move_method_index, move_methods, IM_ARRAYSIZE(move_methods)))
+    if (ImGui::Combo("Movement Method", &current_move_method_index, move_methods, IM_ARRAYSIZE(move_methods)))
     {
         config.mouse_move_method = move_methods_values[current_move_method_index];
     }
@@ -626,7 +626,7 @@ void draw_mouse()
         prev_kalman_q = config.kalman_q;
         prev_kalman_r = config.kalman_r;
         prev_smoothing_level = config.smoothing_level;
-        prev_mouse_move_method = config.mouse_move_method
+        prev_mouse_move_method = config.mouse_move_method;
 
         globalMouseThread->updateConfig(
             config.detection_resolution,
