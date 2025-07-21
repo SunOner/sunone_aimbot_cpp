@@ -72,6 +72,12 @@ bool Config::loadConfig(const std::string& filename)
         minSpeedMultiplier = 0.1f;
         maxSpeedMultiplier = 0.1f;
 
+        // *** NUEVO: Parámetros de control de predicción ***
+        prediction_method = "kalman"; // "kalman" o "linear"
+        kalman_q = 0.01f; // Ruido del proceso (cuánto puede acelerar el objetivo)
+        kalman_r = 0.1f; // Ruido de la medición (cuán ruidoso es YOLO)
+        // *** FIN NUEVO ***
+
         predictionInterval = 0.01f;
         prediction_futurePositions = 20;
         draw_futurePositions = true;
@@ -289,6 +295,10 @@ bool Config::loadConfig(const std::string& filename)
     minSpeedMultiplier = (float)get_double("minSpeedMultiplier", 0.1);
     maxSpeedMultiplier = (float)get_double("maxSpeedMultiplier", 0.1);
 
+    prediction_method = get_string("prediction_method", "linear");
+    kalman_q = (float)get_double("kalman_q", 0.0001);
+    kalman_r = (float)get_double("kalman_r", 0.05);
+
     predictionInterval = (float)get_double("predictionInterval", 0.01);
     prediction_futurePositions = get_long("prediction_futurePositions", 20);
     draw_futurePositions = get_bool("draw_futurePositions", true);
@@ -442,6 +452,12 @@ bool Config::saveConfig(const std::string& filename)
         << "fovY = " << fovY << "\n"
         << "minSpeedMultiplier = " << minSpeedMultiplier << "\n"
         << "maxSpeedMultiplier = " << maxSpeedMultiplier << "\n"
+
+        << std::fixed << std::setprecision(2)
+        << "prediction_method = " << prediction_method << "\n"
+        << "kalman_q = " << kalman_q << "\n"
+        << "kalman_r = " << kalman_r << "\n"
+
 
         << std::fixed << std::setprecision(2)
         << "predictionInterval = " << predictionInterval << "\n"

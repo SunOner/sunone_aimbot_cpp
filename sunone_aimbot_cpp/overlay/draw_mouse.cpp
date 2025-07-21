@@ -33,6 +33,10 @@ float prev_wind_D = config.wind_D;
 bool prev_auto_shoot = config.auto_shoot;
 float prev_bScope_multiplier = config.bScope_multiplier;
 
+std::string prev_prediction_method = config.prediction_method;
+float prev_kalman_q = config.kalman_q;
+float prev_kalman_r = config.kalman_r;
+
 static void draw_target_correction_demo()
 {
     if (ImGui::CollapsingHeader("Visual demo"))
@@ -107,26 +111,45 @@ void draw_mouse()
     ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 5.0f, "%.1f");
 
     ImGui::SeparatorText("Prediction");
-    ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.00f, 0.5f, "%.2f");
-    if (config.predictionInterval == 0.00f)
-    {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(255, 0, 0, 255), "-> Disabled");
-    }
-    else
-    {
-        
-        if (ImGui::SliderInt("Future Positions", &config.prediction_futurePositions, 1, 40))
-        {
-            config.saveConfig();
-            input_method_changed.store(true);
-        }
+    const char* prediction_methods[] = { "Kalman Filter (Advanced)", "Simple Linear (Legacy)" };
+    const std::vector<std::string> prediction_methods_values = { "kalman", "linear" };
+    int current_method_index = (config.prediction_method == "linear") ? 1 : 0;
 
-        ImGui::SameLine();
-        if (ImGui::Checkbox("Draw##draw_future_positions_button", &config.draw_futurePositions))
-        {
-            config.saveConfig();
-        }
+    if (ImGui::Combo("Prediction Method", ¤t_method_index, prediction_methods, IM_ARRAYSIZE(prediction_methods)))
+    {
+        config.prediction_method = prediction_methods_values[current_method_index];
+        // No es necesario notificar a otros hilos, ya que mouse.cpp lee el config directamente.
+    }
+
+    if (config.prediction_method == "kalman")
+    {
+        ImGui::SliderFloat("Prediction Interval (s)", &config.predictionInterval, 0.00f, 0.5f, "%.3f");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("How far into the future to predict (in seconds).\nShould roughly match your total system latency.");
+
+        // Usamos un slider logarítmico para 'Q' porque sus valores óptimos son muy pequeños.
+        ImGui::SliderFloat("Process Noise (Q)", &config.kalman_q, 1e-6f, 1e-2f, "%.6f", ImGuiSliderFlags_Logarithmic);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Model confidence. Controls smoothness.\nLOWER = Smoother, but slower to react to direction changes.\nHigher = More responsive, but prone to jitter.");
+
+        ImGui::SliderFloat("Measurement Noise (R)", &config.kalman_r, 0.001f, 0.5f, "%.4f");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("YOLO detection confidence. Controls jitter rejection.\nLOWER = Trusts YOLO more, more responsive, but more jitter.\nHIGHER = Ignores YOLO noise, much smoother tracking.");
+    }
+    // Controles para la predicción Lineal
+    else 
+    {
+        ImGui::SliderFloat("Prediction Interval (s)", &config.predictionInterval, 0.00f, 0.5f, "%.3f");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("How far into the future to predict (in seconds).");
+    }
+
+    if (ImGui::SliderInt("Future Positions (Visual)", &config.prediction_futurePositions, 1, 40))
+    {
+        config.saveConfig();
+        // input_method_changed.store(true); // Esto no es necesario aquí
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Checkbox("Draw##draw_future_positions_button", &config.draw_futurePositions))
+    {
+        config.saveConfig();
     }
 
     ImGui::SeparatorText("Target corrention");
@@ -593,7 +616,10 @@ void draw_mouse()
         prev_snapRadius != config.snapRadius ||
         prev_nearRadius != config.nearRadius ||
         prev_speedCurveExponent != config.speedCurveExponent ||
-        prev_snapBoostFactor != config.snapBoostFactor)
+        prev_snapBoostFactor != config.snapBoostFactor || 
+        prev_prediction_method != config.prediction_method ||
+        prev_kalman_q != config.kalman_q ||
+        prev_kalman_r != config.kalman_r)
     {
         prev_fovX = config.fovX;
         prev_fovY = config.fovY;
@@ -604,6 +630,10 @@ void draw_mouse()
         prev_nearRadius = config.nearRadius;
         prev_speedCurveExponent = config.speedCurveExponent;
         prev_snapBoostFactor = config.snapBoostFactor;
+
+        prev_prediction_method = config.prediction_method;
+        prev_kalman_q = config.kalman_q;
+        prev_kalman_r = config.kalman_r;
 
         globalMouseThread->updateConfig(
             config.detection_resolution,

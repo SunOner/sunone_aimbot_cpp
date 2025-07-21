@@ -35,6 +35,12 @@ public:
     float minSpeedMultiplier;
     float maxSpeedMultiplier;
 
+    // *** NUEVO: Parámetros de control de predicción ***
+    std::string prediction_method; // "kalman" o "linear"
+    float kalman_q; // Ruido del proceso (cuánto puede acelerar el objetivo)
+    float kalman_r; // Ruido de la medición (cuán ruidoso es YOLO)
+    // *** FIN NUEVO ***
+
     float predictionInterval;
     int prediction_futurePositions;
     bool draw_futurePositions;
