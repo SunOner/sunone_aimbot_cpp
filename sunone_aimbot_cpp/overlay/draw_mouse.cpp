@@ -106,12 +106,20 @@ static void draw_target_correction_demo()
 void draw_mouse()
 {
     ImGui::SeparatorText("FOV");
-    ImGui::SliderInt("FOV X", &config.fovX, 10, 120);
-    ImGui::SliderInt("FOV Y", &config.fovY, 10, 120);
+    ImGui::SliderInt("FOV X", &config.fovX, 10, 240);
+    ImGui::SliderInt("FOV Y", &config.fovY, 10, 240);
 
     ImGui::SeparatorText("Speed Multiplier");
-    ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 5.0f, "%.1f");
-    ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 5.0f, "%.1f");
+    if (config.prediction_method != "kalman")
+    {
+        ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 5.0f, "%.1f");
+        ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 5.0f, "%.1f");
+    }
+    else
+    {
+        ImGui::TextDisabled("Min Speed Multiplier (N/A in Kalman)");
+        ImGui::TextDisabled("Max Speed Multiplier (N/A in Kalman)");
+    }
 
     ImGui::SeparatorText("Prediction");
     const char *prediction_methods[] = {"Kalman Filter (Advanced)", "Simple Linear (Legacy)"};
@@ -138,6 +146,8 @@ void draw_mouse()
         ImGui::SliderFloat("Measurement Noise (R)", &config.kalman_r, 0.001f, 0.5f, "%.4f");
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("YOLO detection confidence. Controls jitter rejection.\nLOWER = Trusts YOLO more, more responsive, but more jitter.\nHIGHER = Ignores YOLO noise, much smoother tracking.");
+
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "NOTE: Speed Multiplier and Target Correction\nsliders below have no effect in Kalman mode.");
     }
     // Controles para la predicción Lineal
     else
@@ -167,11 +177,21 @@ void draw_mouse()
     }
 
     ImGui::SeparatorText("Target corrention");
-    ImGui::SliderFloat("Snap Radius", &config.snapRadius, 0.1f, 5.0f, "%.1f");
-    ImGui::SliderFloat("Near Radius", &config.nearRadius, 1.0f, 40.0f, "%.1f");
-    ImGui::SliderFloat("Speed Curve Exponent", &config.speedCurveExponent, 0.1f, 10.0f, "%.1f");
-    ImGui::SliderFloat("Snap Boost Factor", &config.snapBoostFactor, 0.01f, 4.00f, "%.2f");
-    draw_target_correction_demo();
+    if (config.prediction_method != "kalman")
+    {
+        ImGui::SliderFloat("Snap Radius", &config.snapRadius, 0.1f, 5.0f, "%.1f");
+        ImGui::SliderFloat("Near Radius", &config.nearRadius, 1.0f, 40.0f, "%.1f");
+        ImGui::SliderFloat("Speed Curve Exponent", &config.speedCurveExponent, 0.1f, 10.0f, "%.1f");
+        ImGui::SliderFloat("Snap Boost Factor", &config.snapBoostFactor, 0.01f, 4.00f, "%.2f");
+        draw_target_correction_demo();
+    }
+    else
+    {
+        ImGui::TextDisabled("Snap Radius (N/A in Kalman)");
+        ImGui::TextDisabled("Near Radius (N/A in Kalman)");
+        ImGui::TextDisabled("Speed Curve Exponent (N/A in Kalman)");
+        ImGui::TextDisabled("Snap Boost Factor (N/A in Kalman)");
+    }
 
     ImGui::SeparatorText("Movement Style");
 
@@ -645,15 +665,15 @@ void draw_mouse()
         prev_smoothing_level = config.smoothing_level;
         prev_mouse_move_method = config.mouse_move_method;
 
-                                     globalMouseThread->updateConfig(
-                                         config.detection_resolution,
-                                         config.fovX,
-                                         config.fovY,
-                                         config.minSpeedMultiplier,
-                                         config.maxSpeedMultiplier,
-                                         config.predictionInterval,
-                                         config.auto_shoot,
-                                         config.bScope_multiplier);
+        globalMouseThread->updateConfig(
+            config.detection_resolution,
+            config.fovX,
+            config.fovY,
+            config.minSpeedMultiplier,
+            config.maxSpeedMultiplier,
+            config.predictionInterval,
+            config.auto_shoot,
+            config.bScope_multiplier);
 
         config.saveConfig();
     }
