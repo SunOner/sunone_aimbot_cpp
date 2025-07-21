@@ -125,7 +125,6 @@ void handleEasyNoRecoil(MouseThread& mouseThread)
 {
     if (config.easynorecoil && shooting.load(std::memory_order_relaxed) && zooming.load(std::memory_order_relaxed))
     {
-        std::lock_guard<std::mutex> lock(mouseThread.input_method_mutex);
         int recoil_compensation = static_cast<int>(config.easynorecoilstrength);
 
         mouseThread.sendMovementToDriver(0, recoil_compensation); // Simplificado para usar el método central

@@ -439,4 +439,4 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
     std::thread overlay(OverlayThread);
     overlay.join();
     return 0;
-}
+} // overlay.cpp
