@@ -641,13 +641,12 @@ void draw_mouse()
         config.saveConfig();
     }
 
-    if (prev_wind_mouse_enabled != config.wind_mouse_enabled ||
+    if (
         prev_wind_G != config.wind_G ||
         prev_wind_W != config.wind_W ||
         prev_wind_M != config.wind_M ||
         prev_wind_D != config.wind_D)
     {
-        prev_wind_mouse_enabled = config.wind_mouse_enabled;
         prev_wind_G = config.wind_G;
         prev_wind_W = config.wind_W;
         prev_wind_M = config.wind_M;

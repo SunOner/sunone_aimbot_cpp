@@ -490,7 +490,6 @@ bool Config::saveConfig(const std::string& filename)
 
     // Wind mouse
     file << "# Wind mouse\n"
-        << "wind_mouse_enabled = " << (wind_mouse_enabled ? "true" : "false") << "\n"
         << "wind_G = " << wind_G << "\n"
         << "wind_W = " << wind_W << "\n"
         << "wind_M = " << wind_M << "\n"

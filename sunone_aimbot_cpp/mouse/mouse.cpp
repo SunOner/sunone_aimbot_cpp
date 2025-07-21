@@ -65,7 +65,6 @@ void MouseThread::updateConfig(
     this->center_x = static_cast<double>(resolution) / 2.0;
     this->center_y = static_cast<double>(resolution) / 2.0;
     this->max_distance = std::hypot(static_cast<double>(resolution), static_cast<double>(resolution)) / 2.0;
-    this->wind_mouse_enabled = config.wind_mouse_enabled;
     this->wind_G = config.wind_G;
     this->wind_W = config.wind_W;
     this->wind_M = config.wind_M;
