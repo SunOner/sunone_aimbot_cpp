@@ -24,7 +24,6 @@ float prev_nearRadius = config.nearRadius;
 float prev_speedCurveExponent = config.speedCurveExponent;
 float prev_snapBoostFactor = config.snapBoostFactor;
 
-bool  prev_wind_mouse_enabled = config.wind_mouse_enabled;
 float prev_wind_G = config.wind_G;
 float prev_wind_W = config.wind_W;
 float prev_wind_M = config.wind_M;
@@ -303,45 +302,6 @@ void draw_mouse()
         ImGui::SliderFloat("bScope Multiplier", &config.bScope_multiplier, 0.5f, 2.0f, "%.1f");
     }
 
-    ImGui::SeparatorText("Wind mouse");
-
-    if (ImGui::Checkbox("Enable WindMouse", &config.wind_mouse_enabled))
-    {
-        config.saveConfig();
-        input_method_changed.store(true);
-    }
-
-    if (config.wind_mouse_enabled)
-    {
-        if (ImGui::SliderFloat("Gravity force", &config.wind_G, 4.00f, 40.00f, "%.2f"))
-        {
-            config.saveConfig();
-        }
-
-        if (ImGui::SliderFloat("Wind fluctuation", &config.wind_W, 1.00f, 40.00f, "%.2f"))
-        {
-            config.saveConfig();
-        }
-
-        if (ImGui::SliderFloat("Max step (velocity clip)", &config.wind_M, 1.00f, 40.00f, "%.2f"))
-        {
-            config.saveConfig();
-        }
-
-        if (ImGui::SliderFloat("Distance where behaviour changes", &config.wind_D, 1.00f, 40.00f, "%.2f"))
-        {
-            config.saveConfig();
-        }
-
-        if (ImGui::Button("Reset Wind Mouse to default settings"))
-        {
-            config.wind_G = 18.0f;
-            config.wind_W = 15.0f;
-            config.wind_M = 10.0f;
-            config.wind_D = 8.0f;
-            config.saveConfig();
-        }
-    }
 
     ImGui::SeparatorText("Input method");
     std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX_B", "KMBOX_NET"};
@@ -648,13 +608,12 @@ void draw_mouse()
         config.saveConfig();
     }
 
-    if (prev_wind_mouse_enabled != config.wind_mouse_enabled ||
+    if (
         prev_wind_G != config.wind_G ||
         prev_wind_W != config.wind_W ||
         prev_wind_M != config.wind_M ||
         prev_wind_D != config.wind_D)
     {
-        prev_wind_mouse_enabled = config.wind_mouse_enabled;
         prev_wind_G = config.wind_G;
         prev_wind_W = config.wind_W;
         prev_wind_M = config.wind_M;
