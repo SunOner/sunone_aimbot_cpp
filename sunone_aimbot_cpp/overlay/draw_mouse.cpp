@@ -48,9 +48,9 @@ static void draw_target_correction_demo()
 
         ImVec2 p0 = ImGui::GetItemRectMin();
         ImVec2 p1 = ImGui::GetItemRectMax();
-        ImVec2 center{ (p0.x + p1.x) * 0.5f, (p0.y + p1.y) * 0.5f };
+        ImVec2 center{(p0.x + p1.x) * 0.5f, (p0.y + p1.y) * 0.5f};
 
-        ImDrawList* dl = ImGui::GetWindowDrawList();
+        ImDrawList *dl = ImGui::GetWindowDrawList();
         dl->AddRectFilled(p0, p1, IM_COL32(25, 25, 25, 255));
 
         const float scale = 4.0f;
@@ -62,8 +62,8 @@ static void draw_target_correction_demo()
         dl->AddCircle(center, near_px, IM_COL32(80, 120, 255, 180), 64, 2.0f);
         dl->AddCircle(center, snap_px, IM_COL32(255, 100, 100, 180), 64, 2.0f);
 
-        static float  dist_px = near_px;
-        static float  vel_px = 0.0f;
+        static float dist_px = near_px;
+        static float vel_px = 0.0f;
         static double last_t = ImGui::GetTime();
         double now = ImGui::GetTime();
         double dt = now - last_t;
@@ -78,21 +78,22 @@ static void draw_target_correction_demo()
             double t = dist_units / config.nearRadius;
             double crv = 1.0 - pow(1.0 - t, config.speedCurveExponent);
             speed_mult = config.minSpeedMultiplier +
-                (config.maxSpeedMultiplier - config.minSpeedMultiplier) * crv;
+                         (config.maxSpeedMultiplier - config.minSpeedMultiplier) * crv;
         }
         else
         {
             double norm = ImClamp(dist_units / config.nearRadius, 0.0, 1.0);
             speed_mult = config.minSpeedMultiplier +
-                (config.maxSpeedMultiplier - config.minSpeedMultiplier) * norm;
+                         (config.maxSpeedMultiplier - config.minSpeedMultiplier) * norm;
         }
 
         double base_px_s = 60.0;
         vel_px = static_cast<float>(base_px_s * speed_mult);
         dist_px -= vel_px * static_cast<float>(dt);
-        if (dist_px <= 0.0f) dist_px = near_px;
+        if (dist_px <= 0.0f)
+            dist_px = near_px;
 
-        ImVec2 dot{ center.x - dist_px, center.y };
+        ImVec2 dot{center.x - dist_px, center.y};
         dl->AddCircleFilled(dot, 4.0f, IM_COL32(255, 255, 80, 255));
 
         ImGui::Dummy(ImVec2(0, 4));
@@ -113,8 +114,8 @@ void draw_mouse()
     ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 5.0f, "%.1f");
 
     ImGui::SeparatorText("Prediction");
-    const char* prediction_methods[] = { "Kalman Filter (Advanced)", "Simple Linear (Legacy)" };
-    const std::vector<std::string> prediction_methods_values = { "kalman", "linear" };
+    const char *prediction_methods[] = {"Kalman Filter (Advanced)", "Simple Linear (Legacy)"};
+    const std::vector<std::string> prediction_methods_values = {"kalman", "linear"};
     int current_method_index = (config.prediction_method == "linear") ? 1 : 0;
 
     if (ImGui::Combo("Prediction Method", &current_method_index, prediction_methods, IM_ARRAYSIZE(prediction_methods)))
@@ -125,33 +126,44 @@ void draw_mouse()
 
     if (config.prediction_method == "kalman")
     {
-        ImGui::SliderFloat("Prediction Interval (s)", &config.predictionInterval, 0.00f, 0.5f, "%.3f");
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("How far into the future to predict (in seconds).\nShould roughly match your total system latency.");
+        ImGui::SliderFloat("Prediction Interval (s)", &config.predictionInterval, 0.00f, 0.5f, "%.2f");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("How far into the future to predict (in seconds).\nShould roughly match your total system latency.");
 
         // Usamos un slider logarítmico para 'Q' porque sus valores óptimos son muy pequeños.
         ImGui::SliderFloat("Process Noise (Q)", &config.kalman_q, 1e-6f, 1e-2f, "%.6f", ImGuiSliderFlags_Logarithmic);
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Model confidence. Controls smoothness.\nLOWER = Smoother, but slower to react to direction changes.\nHigher = More responsive, but prone to jitter.");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Model confidence. Controls smoothness.\nLOWER = Smoother, but slower to react to direction changes.\nHigher = More responsive, but prone to jitter.");
 
         ImGui::SliderFloat("Measurement Noise (R)", &config.kalman_r, 0.001f, 0.5f, "%.4f");
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("YOLO detection confidence. Controls jitter rejection.\nLOWER = Trusts YOLO more, more responsive, but more jitter.\nHIGHER = Ignores YOLO noise, much smoother tracking.");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("YOLO detection confidence. Controls jitter rejection.\nLOWER = Trusts YOLO more, more responsive, but more jitter.\nHIGHER = Ignores YOLO noise, much smoother tracking.");
     }
     // Controles para la predicción Lineal
-    else 
+    else
     {
-        ImGui::SliderFloat("Prediction Interval (s)", &config.predictionInterval, 0.00f, 0.5f, "%.3f");
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("How far into the future to predict (in seconds).");
+        ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.00f, 0.5f, "%.2f");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("How far into the future to predict (in seconds).");
     }
 
-    if (ImGui::SliderInt("Future Positions (Visual)", &config.prediction_futurePositions, 1, 40))
+    if (config.predictionInterval == 0.00f)
     {
-        config.saveConfig();
-        // input_method_changed.store(true); // Esto no es necesario aquí
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(255, 0, 0, 255), "-> Disabled");
     }
-
-    ImGui::SameLine();
-    if (ImGui::Checkbox("Draw##draw_future_positions_button", &config.draw_futurePositions))
+    else
     {
-        config.saveConfig();
+        if (ImGui::SliderInt("Future Positions (Visual)", &config.prediction_futurePositions, 1, 40))
+        {
+            config.saveConfig();
+            // input_method_changed.store(true); // Esto no es necesario aquí
+        }
+        ImGui::SameLine();
+        if (ImGui::Checkbox("Draw##draw_future_positions_button", &config.draw_futurePositions))
+        {
+            config.saveConfig();
+        }
     }
 
     ImGui::SeparatorText("Target corrention");
@@ -163,22 +175,25 @@ void draw_mouse()
 
     ImGui::SeparatorText("Movement Style");
 
-    const char* move_methods[] = { "Instant (Raw)", "Smooth", "Wind Mouse" };
-    const std::vector<std::string> move_methods_values = { "instant", "smooth", "wind" };
+    const char *move_methods[] = {"Instant (Raw)", "Smooth", "Wind Mouse"};
+    const std::vector<std::string> move_methods_values = {"instant", "smooth", "wind"};
     int current_move_method_index = 0;
-    if (config.mouse_move_method == "smooth") current_move_method_index = 1;
-    else if (config.mouse_move_method == "wind") current_move_method_index = 2;
+    if (config.mouse_move_method == "smooth")
+        current_move_method_index = 1;
+    else if (config.mouse_move_method == "wind")
+        current_move_method_index = 2;
 
     if (ImGui::Combo("Movement Method", ¤t_move_method_index, move_methods, IM_ARRAYSIZE(move_methods)))
     {
         config.mouse_move_method = move_methods_values[current_move_method_index];
     }
-    
+
     // Controles específicos para cada modo
     if (config.mouse_move_method == "smooth")
     {
-        ImGui::SliderInt("Smoothing Level", &config.smoothing_level, 1, 100);
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("1 = Less smooth.\nHigher = Smoother, 'heavy' feeling.");
+        ImGui::SliderInt("Smoothing Level", &config.smoothing_level, 1, 200);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("1 = Less smooth.\nHigher = Smoother, 'heavy' feeling.");
     }
     else if (config.mouse_move_method == "wind")
     {
@@ -190,7 +205,7 @@ void draw_mouse()
 
     ImGui::SeparatorText("Game Profile");
     std::vector<std::string> profile_names;
-    for (const auto& kv : config.game_profiles)
+    for (const auto &kv : config.game_profiles)
         profile_names.push_back(kv.first);
 
     static int selected_index = 0;
@@ -203,8 +218,8 @@ void draw_mouse()
         }
     }
 
-    std::vector<const char*> profile_items;
-    for (const auto& name : profile_names)
+    std::vector<const char *> profile_items;
+    for (const auto &name : profile_names)
         profile_items.push_back(name.c_str());
 
     if (ImGui::Combo("Active Game Profile", &selected_index, profile_items.data(), static_cast<int>(profile_items.size())))
@@ -219,12 +234,11 @@ void draw_mouse()
             config.maxSpeedMultiplier,
             config.predictionInterval,
             config.auto_shoot,
-            config.bScope_multiplier
-        );
+            config.bScope_multiplier);
         input_method_changed.store(true);
     }
 
-    const auto& gp = config.currentProfile();
+    const auto &gp = config.currentProfile();
 
     ImGui::Text("Current profile: %s", gp.name.c_str());
     ImGui::Text("Sens: %.4f", gp.sens);
@@ -234,7 +248,7 @@ void draw_mouse()
 
     if (gp.name != "UNIFIED")
     {
-        Config::GameProfile& modifiable = config.game_profiles[gp.name];
+        Config::GameProfile &modifiable = config.game_profiles[gp.name];
         bool changed = false;
 
         float sens_f = static_cast<float>(modifiable.sens);
@@ -317,7 +331,7 @@ void draw_mouse()
     {
         ImGui::SliderFloat("No Recoil Strength", &config.easynorecoilstrength, 0.1f, 500.0f, "%.1f");
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Left/Right Arrow keys: Adjust recoil strength by 10");
-        
+
         if (config.easynorecoilstrength >= 100.0f)
         {
             ImGui::TextColored(ImVec4(255, 255, 0, 255), "WARNING: High recoil strength may be detected.");
@@ -333,11 +347,11 @@ void draw_mouse()
     }
 
     ImGui::SeparatorText("Input method");
-    std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX_B", "KMBOX_NET"};
+    std::vector<std::string> input_methods = {"WIN32", "GHUB", "ARDUINO", "KMBOX_B", "KMBOX_NET"};
 
-    std::vector<const char*> method_items;
+    std::vector<const char *> method_items;
     method_items.reserve(input_methods.size());
-    for (const auto& item : input_methods)
+    for (const auto &item : input_methods)
     {
         method_items.push_back(item.c_str());
     }
@@ -385,9 +399,9 @@ void draw_mouse()
             port_list.push_back("COM" + std::to_string(i));
         }
 
-        std::vector<const char*> port_items;
+        std::vector<const char *> port_items;
         port_items.reserve(port_list.size());
-        for (const auto& port : port_list)
+        for (const auto &port : port_list)
         {
             port_items.push_back(port.c_str());
         }
@@ -409,16 +423,16 @@ void draw_mouse()
             input_method_changed.store(true);
         }
 
-        std::vector<int> baud_rate_list = { 9600, 19200, 38400, 57600, 115200, 4000000 };
+        std::vector<int> baud_rate_list = {9600, 19200, 38400, 57600, 115200, 4000000};
         std::vector<std::string> baud_rate_str_list;
-        for (const auto& rate : baud_rate_list)
+        for (const auto &rate : baud_rate_list)
         {
             baud_rate_str_list.push_back(std::to_string(rate));
         }
 
-        std::vector<const char*> baud_rate_items;
+        std::vector<const char *> baud_rate_items;
         baud_rate_items.reserve(baud_rate_str_list.size());
-        for (const auto& rate_str : baud_rate_str_list)
+        for (const auto &rate_str : baud_rate_str_list)
         {
             baud_rate_items.push_back(rate_str.c_str());
         }
@@ -487,9 +501,10 @@ void draw_mouse()
         {
             port_list.push_back("COM" + std::to_string(i));
         }
-        std::vector<const char*> port_items;
+        std::vector<const char *> port_items;
         port_items.reserve(port_list.size());
-        for (auto& p : port_list) port_items.push_back(p.c_str());
+        for (auto &p : port_list)
+            port_items.push_back(p.c_str());
 
         int port_index = 0;
         for (size_t i = 0; i < port_list.size(); ++i)
@@ -508,12 +523,14 @@ void draw_mouse()
             input_method_changed.store(true);
         }
 
-        std::vector<int> baud_list = { 9600, 19200, 38400, 57600, 115200, 4000000 };
+        std::vector<int> baud_list = {9600, 19200, 38400, 57600, 115200, 4000000};
         std::vector<std::string> baud_str_list;
-        for (int b : baud_list) baud_str_list.push_back(std::to_string(b));
-        std::vector<const char*> baud_items;
+        for (int b : baud_list)
+            baud_str_list.push_back(std::to_string(b));
+        std::vector<const char *> baud_items;
         baud_items.reserve(baud_str_list.size());
-        for (auto& bs : baud_str_list) baud_items.push_back(bs.c_str());
+        for (auto &bs : baud_str_list)
+            baud_items.push_back(bs.c_str());
 
         int baud_index = 0;
         for (size_t i = 0; i < baud_list.size(); ++i)
@@ -575,7 +592,7 @@ void draw_mouse()
         {
             ImGui::TextColored(ImVec4(255, 0, 0, 255), "kmboxNet not connected");
         }
-        
+
         if (ImGui::Button("Reboot box"))
         {
             if (kmboxNetSerial)
@@ -605,10 +622,10 @@ void draw_mouse()
         prev_snapRadius != config.snapRadius ||
         prev_nearRadius != config.nearRadius ||
         prev_speedCurveExponent != config.speedCurveExponent ||
-        prev_snapBoostFactor != config.snapBoostFactor || 
+        prev_snapBoostFactor != config.snapBoostFactor ||
         prev_prediction_method != config.prediction_method ||
         prev_kalman_q != config.kalman_q ||
-        prev_kalman_r != config.kalman_r || 
+        prev_kalman_r != config.kalman_r ||
         prev_smoothing_level != config.smoothing_level ||
         prev_mouse_move_method != config.mouse_move_method)
     {
@@ -628,15 +645,15 @@ void draw_mouse()
         prev_smoothing_level = config.smoothing_level;
         prev_mouse_move_method = config.mouse_move_method
 
-        globalMouseThread->updateConfig(
-            config.detection_resolution,
-            config.fovX,
-            config.fovY,
-            config.minSpeedMultiplier,
-            config.maxSpeedMultiplier,
-            config.predictionInterval,
-            config.auto_shoot,
-            config.bScope_multiplier);
+                                     globalMouseThread->updateConfig(
+                                         config.detection_resolution,
+                                         config.fovX,
+                                         config.fovY,
+                                         config.minSpeedMultiplier,
+                                         config.maxSpeedMultiplier,
+                                         config.predictionInterval,
+                                         config.auto_shoot,
+                                         config.bScope_multiplier);
 
         config.saveConfig();
     }
