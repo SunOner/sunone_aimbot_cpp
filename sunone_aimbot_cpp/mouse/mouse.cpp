@@ -96,84 +96,6 @@ void MouseThread::initKalmanFilter(double x, double y) {
     kf->statePost.at<double>(3) = 0;
 }
 
-// *** MODIFICADO: moveMousePivot ahora es HÍBRIDO ***
-void MouseThread::moveMousePivot(double pivotX, double pivotY)
-{
-    // --- MÉTODO DE PREDICCIÓN CON FILTRO DE KALMAN (ESTABILIZADO) ---
-    if (config.prediction_method == "kalman")
-    {
-        if (!kf.has_value()) {
-            initKalmanFilter(pivotX, pivotY);
-            auto m0 = calc_movement(pivotX, pivotY);
-            queueMove(static_cast<int>(m0.first), static_cast<int>(m0.second));
-            return;
-        }
-
-        auto current_time = std::chrono::steady_clock::now();
-        double dt = std::chrono::duration<double>(current_time - last_kf_update_time).count();
-        last_kf_update_time = current_time;
-        dt = std::max(dt, 1e-5); 
-
-        kf->transitionMatrix.at<double>(0, 2) = dt;
-        kf->transitionMatrix.at<double>(1, 3) = dt;
-
-        kf->predict();
-
-        cv::Mat measurement = cv::Mat::zeros(2, 1, CV_64F);
-        measurement.at<double>(0) = pivotX;
-        measurement.at<double>(1) = pivotY;
-
-        cv::Mat estimated = kf->correct(measurement);
-
-        double predX = estimated.at<double>(0) + estimated.at<double>(2) * this->prediction_interval;
-        double predY = estimated.at<double>(1) + estimated.at<double>(3) * this->prediction_interval;
-
-        prev_velocity_x = estimated.at<double>(2);
-        prev_velocity_y = estimated.at<double>(3);
-        prev_x = estimated.at<double>(0);
-        prev_y = estimated.at<double>(1);
-
-        auto mv = calc_movement(predX, predY);
-        int mx = static_cast<int>(mv.first);
-        int my = static_cast<int>(mv.second);
-
-        if (this->wind_mouse_enabled) windMouseMoveRelative(mx, my);
-        else queueMove(mx, my);
-    }
-    // --- MÉTODO DE PREDICCIÓN LINEAL (EL ANTIGUO, PERO EFECTIVO Y ESTABLE) ---
-    else // "linear" u otro valor
-    {
-        auto current_time = std::chrono::steady_clock::now();
-        if (prev_time.time_since_epoch().count() == 0 || !target_detected.load(std::memory_order_relaxed)) {
-            prev_time = current_time;
-            prev_x = pivotX; prev_y = pivotY;
-            prev_velocity_x = prev_velocity_y = 0.0;
-            auto m0 = calc_movement(pivotX, pivotY);
-            queueMove(static_cast<int>(m0.first), static_cast<int>(m0.second));
-            return;
-        }
-        
-        double dt = std::chrono::duration<double>(current_time - prev_time).count();
-        dt = std::max(dt, 1e-8); 
-        
-        double vx = std::clamp((pivotX - prev_x) / dt, -20000.0, 20000.0);
-        double vy = std::clamp((pivotY - prev_y) / dt, -20000.0, 20000.0);
-        
-        prev_time = current_time;
-        prev_x = pivotX; prev_y = pivotY;
-        prev_velocity_x = vx;  prev_velocity_y = vy;
-        
-        double predX = pivotX + vx * this->prediction_interval;
-        double predY = pivotY + vy * this->prediction_interval;
-        
-        auto mv = calc_movement(predX, predY);
-        int mx = static_cast<int>(mv.first);
-        int my = static_cast<int>(mv.second);
-        
-        if (this->wind_mouse_enabled) windMouseMoveRelative(mx, my);
-        else queueMove(mx, my);
-    }
-}
 
 // *** MODIFICADO: calculate_speed_multiplier con AMORTIGUACIÓN (DAMPING) ***
 double MouseThread::calculate_speed_multiplier(double distance)
@@ -194,20 +116,136 @@ double MouseThread::calculate_speed_multiplier(double distance)
     return this->min_speed_multiplier + (this->max_speed_multiplier - this->min_speed_multiplier) * norm;
 }
 
-// *** MODIFICADO: calc_movement con LÓGICA DE AMORTIGUACIÓN ***
+void MouseThread::moveInstant(int dx, int dy)
+{
+    if (dx != 0 || dy != 0) {
+        queueMove(dx, dy);
+    }
+}
+
+// *** NUEVO: Función para movimiento suavizado (lógica extraída de calc_movement) ***
+void MouseThread::moveSmooth(double target_x, double target_y)
+{
+    // La lógica de interpolación que ya teníamos
+    if (!smoothing_initialized) {
+        smoothed_x = this->center_x;
+        smoothed_y = this->center_y;
+        smoothing_initialized = true;
+    }
+
+    double final_target_x, final_target_y;
+    double dist_to_target = std::hypot(target_x - center_x, target_y - center_y);
+
+    if (config.smoothing_level > 1 && dist_to_target >= config.snapRadius) {
+        float lerp_alpha = 1.0f / static_cast<float>(config.smoothing_level);
+        smoothed_x = smoothed_x + (target_x - smoothed_x) * lerp_alpha;
+        smoothed_y = smoothed_y + (target_y - smoothed_y) * lerp_alpha;
+        final_target_x = smoothed_x;
+        final_target_y = smoothed_y;
+    } else {
+        smoothed_x = target_x;
+        smoothed_y = target_y;
+        final_target_x = target_x;
+        final_target_y = target_y;
+    }
+
+    // Calcular el delta de píxeles necesario para llegar al objetivo suavizado
+    auto move_pair = calc_movement(final_target_x, final_target_y);
+    int move_x = static_cast<int>(move_pair.first);
+    int move_y = static_cast<int>(move_pair.second);
+    
+    if (move_x != 0 || move_y != 0) {
+        queueMove(move_x, move_y);
+    }
+}
+
+
+// *** MODIFICADO: moveMousePivot AHORA ES UN DESPACHADOR ***
+void MouseThread::moveMousePivot(double pivotX, double pivotY)
+{
+    // --- PASO 1: PREDICCIÓN (Común a todos los modos) ---
+    // Esta parte no cambia. Siempre calculamos el mejor punto futuro para apuntar.
+    double finalTargetX = pivotX;
+    double finalTargetY = pivotY;
+
+    if (config.prediction_method == "kalman")
+    {
+        if (!kf.has_value()) { initKalmanFilter(pivotX, pivotY); }
+
+        auto current_time = std::chrono::steady_clock::now();
+        double dt = std::chrono::duration<double>(current_time - last_kf_update_time).count();
+        last_kf_update_time = current_time;
+        dt = std::max(dt, 1e-5); 
+
+        kf->transitionMatrix.at<double>(0, 2) = dt;
+        kf->transitionMatrix.at<double>(1, 3) = dt;
+        kf->predict();
+        cv::Mat measurement = cv::Mat::zeros(2, 1, CV_64F);
+        measurement.at<double>(0) = pivotX;
+        measurement.at<double>(1) = pivotY;
+        cv::Mat estimated = kf->correct(measurement);
+
+        finalTargetX = estimated.at<double>(0) + estimated.at<double>(2) * this->prediction_interval;
+        finalTargetY = estimated.at<double>(1) + estimated.at<double>(3) * this->prediction_interval;
+
+        prev_velocity_x = estimated.at<double>(2);
+        prev_velocity_y = estimated.at<double>(3);
+        prev_x = estimated.at<double>(0);
+        prev_y = estimated.at<double>(1);
+    }
+    else // "linear"
+    {
+        // ... (lógica de predicción lineal) ...
+        auto current_time = std::chrono::steady_clock::now();
+        if (prev_time.time_since_epoch().count() == 0 || !target_detected.load(std::memory_order_relaxed)) {
+            prev_time = current_time;
+            prev_x = pivotX; prev_y = pivotY;
+            prev_velocity_x = prev_velocity_y = 0.0;
+        } else {
+            double dt = std::chrono::duration<double>(current_time - prev_time).count();
+            dt = std::max(dt, 1e-8); 
+            double vx = std::clamp((pivotX - prev_x) / dt, -20000.0, 20000.0);
+            double vy = std::clamp((pivotY - prev_y) / dt, -20000.0, 20000.0);
+            prev_velocity_x = vx;  prev_velocity_y = vy;
+            finalTargetX = pivotX + vx * this->prediction_interval;
+            finalTargetY = pivotY + vy * this->prediction_interval;
+        }
+        prev_time = current_time;
+        prev_x = pivotX; prev_y = pivotY;
+    }
+
+    // --- PASO 2: DESPACHO DE MOVIMIENTO (Selección de método) ---
+    // Basado en el config, decidimos CÓMO movernos hacia finalTargetX/Y.
+    if (config.mouse_move_method == "wind")
+    {
+        auto move_pair = calc_movement(finalTargetX, finalTargetY);
+        windMouseMoveRelative(static_cast<int>(move_pair.first), static_cast<int>(move_pair.second));
+    }
+    else if (config.mouse_move_method == "smooth")
+    {
+        moveSmooth(finalTargetX, finalTargetY);
+    }
+    else // "instant"
+    {
+        auto move_pair = calc_movement(finalTargetX, finalTargetY);
+        moveInstant(static_cast<int>(move_pair.first), static_cast<int>(move_pair.second));
+    }
+}
+
 std::pair<double, double> MouseThread::calc_movement(double tx, double ty)
 {
-    double offx = tx - this->center_x;
-    double offy = ty - this->center_y;
-    double dist = std::hypot(offx, offy);
+    // Esta función ahora solo convierte el objetivo (tx, ty) en un delta de píxeles de ratón.
+    double final_offx = tx - this->center_x;
+    double final_offy = ty - this->center_y;
+    double dist_to_final_target = std::hypot(final_offx, final_offy);
     
-    double speed = calculate_speed_multiplier(dist);
+    double speed = calculate_speed_multiplier(dist_to_final_target);
     
     double degPerPxX = this->fov_x / this->screen_width;
     double degPerPxY = this->fov_y / this->screen_height;
     
-    double mmx = offx * degPerPxX;
-    double mmy = offy * degPerPxY;
+    double mmx = final_offx * degPerPxX;
+    double mmy = final_offy * degPerPxY;
     
     double corr = 1.0;
     double fps = captureFps.load(std::memory_order_relaxed);
@@ -217,17 +255,86 @@ std::pair<double, double> MouseThread::calc_movement(double tx, double ty)
     double move_x = counts_pair.first * speed * corr;
     double move_y = counts_pair.second * speed * corr;
 
-    // *** LÓGICA DE AMORTIGUACIÓN (DAMPING) ***
-    // Si estamos dentro del radio de "snap", hacemos el movimiento proporcional a la distancia.
-    // Esto crea un "freno" natural que detiene el movimiento exactamente en el objetivo,
-    // eliminando las oscilaciones de sobre-corrección.
-    if (dist < config.snapRadius && config.snapRadius > 0) {
-        double damping_factor = dist / config.snapRadius;
+    if (dist_to_final_target < config.snapRadius && config.snapRadius > 0) {
+        double damping_factor = dist_to_final_target / config.snapRadius;
         move_x *= damping_factor;
         move_y *= damping_factor;
     }
 
     return { move_x, move_y };
+}
+
+void MouseThread::moveMouseWithSmoothing(double targetX, double targetY)
+{
+    // =========================================================================
+    //  RUTA RÁPIDA (FAST PATH) PARA MOVIMIENTO BRUSCO / INSTANTÁNEO
+    // =========================================================================
+    if (config.smoothing_level <= 1)
+    {
+        // 1. Calcular el desplazamiento total necesario desde la mira (centro) al objetivo.
+        double raw_delta_x = targetX - center_x;
+        double raw_delta_y = targetY - center_y;
+
+        // 2. Usar 'addOverflow' para manejar píxeles fraccionarios y mantener la precisión.
+        auto move_pair = addOverflow(raw_delta_x, raw_delta_y, move_overflow_x, move_overflow_y);
+        int move_x = static_cast<int>(move_pair.first);
+        int move_y = static_cast<int>(move_pair.second);
+
+        // 3. Enviar el movimiento en un solo paso, sin bucles ni retrasos.
+        if (move_x != 0 || move_y != 0) {
+            sendMovementToDriver(move_x, move_y);
+        }
+
+        // NO HAY BUCLE. NO HAY 'easeInOut'. Y LO MÁS IMPORTANTE, NO HAY 'sleep_for'.
+        return; // Salimos de la función inmediatamente.
+    }
+
+    // =========================================================================
+    //  RUTA LENTA (SLOW PATH) - LÓGICA ORIGINAL PARA MOVIMIENTO SUAVE
+    //  Este código solo se ejecutará si 'smoothness' es 2 o mayor.
+    // =========================================================================
+
+    double start_x = center_x;
+    double start_y = center_y;
+    double previous_x = start_x;
+    double previous_y = start_y;
+
+    // El bloqueo/desbloqueo del ratón solo tiene sentido en un movimiento de varios pasos.
+    if (kmbox_net) {
+        kmbox_net->maskMouseX(1);
+        kmbox_net->maskMouseY(1);
+    }
+
+    // Proceso de movimiento suave original
+    for (int i = 1; i <= config.smoothing_level; i++) {
+        double t = static_cast<double>(i) / config.smoothing_level;
+        double progress = easeInOut(t);
+
+        double current_x = start_x + (targetX - start_x) * progress;
+        double current_y = start_y + (targetY - start_y) * progress;
+
+        double raw_delta_x = current_x - previous_x;
+        double raw_delta_y = current_y - previous_y;
+
+        auto move_pair = addOverflow(raw_delta_x, raw_delta_y, move_overflow_x, move_overflow_y);
+        int move_x = static_cast<int>(move_pair.first);
+        int move_y = static_cast<int>(move_pair.second);
+
+        if (move_x != 0 || move_y != 0) {
+            sendMovementToDriver(move_x, move_y);
+        }
+
+        previous_x = current_x;
+        previous_y = current_y;
+
+        // El retraso deliberado que crea el movimiento lento
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    if (kmbox_net) {
+        kmbox_net->maskMouseX(0);
+        kmbox_net->maskMouseY(0);
+    }
 }
 
 

@@ -35,11 +35,15 @@ public:
     float minSpeedMultiplier;
     float maxSpeedMultiplier;
 
-    // *** NUEVO: Parámetros de control de predicción ***
     std::string prediction_method; // "kalman" o "linear"
     float kalman_q; // Ruido del proceso (cuánto puede acelerar el objetivo)
     float kalman_r; // Ruido de la medición (cuán ruidoso es YOLO)
-    // *** FIN NUEVO ***
+
+
+ 
+    int  smoothing_level; // Rango sugerido: 1-100
+
+    std::string mouse_move_method; // "instant", "smooth", "wind"
 
     float predictionInterval;
     int prediction_futurePositions;
@@ -55,7 +59,6 @@ public:
     std::string input_method; // "WIN32", "GHUB", "ARDUINO", "KMBOX_B", "KMBOX_NET"
 
     // Wind mouse
-    bool wind_mouse_enabled;
     float wind_G;
     float wind_W;
     float wind_M;

@@ -87,12 +87,14 @@ bool Config::loadConfig(const std::string& filename)
         speedCurveExponent = 3.0f;
         snapBoostFactor = 1.15f;
 
+        smoothing_level = 100;
+        mouse_move_method = "smooth";
+
         easynorecoil = false;
         easynorecoilstrength = 0.0f;
         input_method = "WIN32";
 
         // Wind mouse
-        wind_mouse_enabled = false;
         wind_G = 18.0f;
         wind_W = 15.0f;
         wind_M = 10.0f;
@@ -308,12 +310,16 @@ bool Config::loadConfig(const std::string& filename)
     speedCurveExponent = (float)get_double("speedCurveExponent", 3.0);
     snapBoostFactor = (float)get_double("snapBoostFactor", 1.15);
 
+    mouse_move_method = get_string("mouse_move_method", "smooth");
+
+    smoothing_level = get_long("smoothing_level", 100);
+
     easynorecoil = get_bool("easynorecoil", false);
     easynorecoilstrength = (float)get_double("easynorecoilstrength", 0.0);
     input_method = get_string("input_method", "WIN32");
 
     // Wind mouse
-    wind_mouse_enabled = get_bool("wind_mouse_enabled", false);
+
     wind_G = (float)get_double("wind_G", 18.0f);
     wind_W = (float)get_double("wind_W", 15.0f);
     wind_M = (float)get_double("wind_M", 10.0f);
@@ -469,6 +475,11 @@ bool Config::saveConfig(const std::string& filename)
         << "speedCurveExponent = " << speedCurveExponent << "\n"
         << std::fixed << std::setprecision(2)
         << "snapBoostFactor = " << snapBoostFactor << "\n"
+
+        << "# Movement method: 'instant', 'smooth', 'wind'\n"
+        << "mouse_move_method = " << mouse_move_method << "\n\n"
+        << "# Smoothing level (1 = raw/instant, higher = smoother).\n"
+        << "smoothing_level = " << smoothing_level << "\n\n"
 
         << "easynorecoil = " << (easynorecoil ? "true" : "false") << "\n"
         << std::fixed << std::setprecision(1)
