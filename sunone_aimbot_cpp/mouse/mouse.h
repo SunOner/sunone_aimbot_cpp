@@ -2,120 +2,92 @@
 #define MOUSE_H
 
 #define WIN32_LEAN_AND_MEAN
-#define _WINSOCKAPI_
-#include <winsock2.h>
 #include <Windows.h>
 
 #include <atomic>
 #include <chrono>
 #include <mutex>
-#include <thread>
 #include <vector>
 #include <utility>
 
-// Adelantar declaraciones
+// Declaraciones adelantadas para evitar inclusiones circulares
 class SerialConnection;
 class GhubMouse;
 class Kmbox_b_Connection;
 class KmboxNetConnection;
 struct AimbotTarget;
 
-struct Move {
-    int dx;
-    int dy;
-};
+// Declaración externa para acceder a la variable global de zoom
+extern std::atomic<bool> zooming;
 
 class MouseThread
 {
 public:
+    // Constructor simplificado
     MouseThread(
-        int resolution, int fovX, int fovY,
-        double minSpeedMultiplier, double maxSpeedMultiplier,
-        double predictionInterval, bool auto_shoot, float bScope_multiplier,
         SerialConnection* serialConnection = nullptr, GhubMouse* gHubMouse = nullptr,
         Kmbox_b_Connection* kmboxConnection = nullptr, KmboxNetConnection* Kmbox_Net_Connection = nullptr
     );
+    
+    // Destructor
     ~MouseThread();
 
+    // Actualiza toda la configuración relevante para el aimbot
     void updateConfig(
-        int resolution, int fovX, int fovY,
+        int resolution, float fovX,
         double minSpeedMultiplier, double maxSpeedMultiplier,
         double predictionInterval, bool auto_shoot, float bScope_multiplier
     );
 
-    void moveMousePivot(double pivotX, double pivotY);
+    // La función principal que calcula el movimiento de apuntado
+    std::pair<int, int> calculateAimMovement(double target_pivot_x, double target_pivot_y);
+    
+    // Envía el movimiento directamente al driver de hardware
+    void sendMovementToDriver(int dx, int dy);
+    
+    // Maneja la pulsación y liberación del botón del ratón para auto-disparo
     void pressMouse(const AimbotTarget& target);
     void releaseMouse();
-    void resetPrediction();
+
+    // Lógica de predicción
+    void storeTargetPosition(double x, double y);
     void checkAndResetPredictions();
-    void sendMovementToDriver(int dx, int dy);
+    void clearPredictionHistory();
 
-    std::vector<std::pair<double, double>> predictFuturePositions(double pivotX, double pivotY, int frames);
-    void storeFuturePositions(const std::vector<std::pair<double, double>>& positions);
-    void clearFuturePositions();
-    std::vector<std::pair<double, double>> getFuturePositions();
-
+    // Setters para los dispositivos de entrada
     void setSerialConnection(SerialConnection* newSerial);
     void setKmboxConnection(Kmbox_b_Connection* newKmbox);
     void setKmboxNetConnection(KmboxNetConnection* newKmbox_net);
     void setGHubMouse(GhubMouse* newGHub);
 
-    void setTargetDetected(bool detected) { target_detected.store(detected); }
-    void setLastTargetTime(const std::chrono::steady_clock::time_point& t) { last_target_time = t; }
-    std::pair<int, int> calculateAimMovement(double target_pivot_x, double target_pivot_y);
-
 private:
-    static const size_t QUEUE_SIZE = 256; 
-    Move moveQueue_[QUEUE_SIZE];
-    std::atomic<size_t> head_;
-    std::atomic<size_t> tail_;
-    
-    std::thread moveWorker;
-    std::atomic<bool> workerStop;
-
-    void moveWorkerLoop();
-    void queueMove(int dx, int dy);
-
-    std::mutex config_mutex;
-    double screen_width, screen_height;
-    double prediction_interval;
-    double fov_x, fov_y;
-    double max_distance;
-    double min_speed_multiplier, max_speed_multiplier;
-    double center_x, center_y;
-    bool   auto_shoot;
-    float  bScope_multiplier;
-
-    double prev_x, prev_y;
-    double prev_velocity_x, prev_velocity_y;
-
-    int m_detection_resolution_w;
-    int m_detection_resolution_h;
+    // --- Miembros para la Lógica de Aimbot ---
+    int   m_detection_resolution_w;
+    int   m_detection_resolution_h;
     float m_fov_radius_pixels;
+    double m_minSpeedMultiplier;
+    double m_maxSpeedMultiplier;
+    double m_predictionInterval;
+    float m_bScope_multiplier;
+    bool  m_auto_shoot_enabled;
     
-    std::chrono::time_point<std::chrono::steady_clock> prev_time;
-    std::chrono::steady_clock::time_point last_target_time;
-    std::atomic<bool> target_detected;
-    std::atomic<bool> mouse_pressed;
+    // --- Miembros para la Predicción de Movimiento ---
+    std::mutex m_prediction_mutex;
+    std::vector<std::pair<double, double>> m_last_target_positions;
+    std::chrono::steady_clock::time_point m_last_prediction_time;
+    std::chrono::steady_clock::time_point m_last_target_seen_time;
+    bool m_target_detected;
 
+    // --- Miembros para Control de Hardware ---
+    std::mutex input_method_mutex;
+    std::atomic<bool> mouse_pressed;
     SerialConnection* serial;
     Kmbox_b_Connection* kmbox;
     KmboxNetConnection* kmbox_net;
     GhubMouse* gHub;
 
-    bool   wind_mouse_enabled;
-    double wind_G, wind_W, wind_M, wind_D;
-    void   windMouseMoveRelative(int dx, int dy);
-
-    std::pair<double, double> calc_movement(double target_x, double target_y);
-    double calculate_speed_multiplier(double distance);
-    
-    // *** SOLUCIÓN: Actualizar la firma para que coincida con la implementación de 4 argumentos. ***
-    bool check_target_in_scope(double target_x, double target_y, double target_w, double target_h);
-    
-    std::vector<std::pair<double, double>> futurePositions;
-    std::mutex futurePositionsMutex;
-    std::mutex input_method_mutex;
+    // Función auxiliar para comprobar si el cursor está sobre el objetivo
+    bool isCursorInTarget(double target_x, double target_y, double target_w, double target_h);
 };
 
 #endif // MOUSE_H
