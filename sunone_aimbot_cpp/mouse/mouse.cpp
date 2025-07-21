@@ -10,14 +10,14 @@
 #include <atomic>
 #include <vector>
 #include <random>
+#include <opencv2/video/tracking.hpp> // *** NUEVO: Incluir la cabecera para el Filtro de Kalman ***
 
-#include "mouse.h" // Incluye tu cabecera
+#include "mouse.h"
 #include "capture.h"
 #include "SerialConnection.h"
 #include "ghub.h"
 #include "Kmbox_b.h"
 #include "KmboxNetConnection.h"
-
 #include "AimbotTarget.h"
 #include <sunone_aimbot_cpp.h>
 
@@ -70,6 +70,154 @@ void MouseThread::updateConfig(
     this->wind_M = config.wind_M;
     this->wind_D = config.wind_D;
 }
+
+// *** NUEVO: Inicializador del Filtro de Kalman ***
+void MouseThread::initKalmanFilter(double x, double y) {
+    // 4 estados (x, y, vx, vy), 2 mediciones (x, y)
+    kf.emplace(4, 2, 0, CV_64F); 
+    last_kf_update_time = std::chrono::steady_clock::now();
+
+    // Matriz de transición (modelo de movimiento)
+    // Se actualiza dinámicamente con 'dt' en cada paso del bucle.
+    cv::setIdentity(kf->transitionMatrix);
+
+    // Matriz de medición (z_x = x, z_y = y)
+    kf->measurementMatrix = cv::Mat::zeros(2, 4, CV_64F);
+    kf->measurementMatrix.at<double>(0, 0) = 1.0;
+    kf->measurementMatrix.at<double>(1, 1) = 1.0;
+
+    // Covarianza del ruido del proceso (Q) - Confianza en el modelo de velocidad constante.
+    cv::setIdentity(kf->processNoiseCov, cv::Scalar::all(1e-2));
+
+    // Covarianza del ruido de la medición (R) - Confianza en la detección de YOLO (más ruido = valor más alto).
+    cv::setIdentity(kf->measurementNoiseCov, cv::Scalar::all(1e-1));
+
+    // Covarianza del error a posteriori (P) - Incertidumbre inicial.
+    cv::setIdentity(kf->errorCovPost, cv::Scalar::all(1.0));
+
+    // Estado inicial del filtro.
+    kf->statePost.at<double>(0) = x;
+    kf->statePost.at<double>(1) = y;
+    kf->statePost.at<double>(2) = 0; // Velocidad X inicial
+    kf->statePost.at<double>(3) = 0; // Velocidad Y inicial
+}
+
+// *** MODIFICADO: moveMousePivot AHORA USA EL FILTRO DE KALMAN ***
+void MouseThread::moveMousePivot(double pivotX, double pivotY)
+{
+    if (!kf.has_value()) {
+        // Primera detección del objetivo, inicializamos el filtro.
+        initKalmanFilter(pivotX, pivotY);
+        // Realizamos un movimiento reactivo inmediato para no perder el primer frame.
+        auto m0 = calc_movement(pivotX, pivotY);
+        queueMove(static_cast<int>(m0.first), static_cast<int>(m0.second));
+        return;
+    }
+
+    auto current_time = std::chrono::steady_clock::now();
+    double dt = std::chrono::duration<double>(current_time - last_kf_update_time).count();
+    last_kf_update_time = current_time;
+    
+    // dt debe ser pequeño pero positivo para la estabilidad del filtro.
+    dt = std::max(dt, 1e-5); 
+
+    // 1. Actualizar la matriz de transición con el delta de tiempo actual.
+    kf->transitionMatrix.at<double>(0, 2) = dt;
+    kf->transitionMatrix.at<double>(1, 3) = dt;
+
+    // 2. Predicción: El filtro estima dónde debería estar el objetivo ahora.
+    kf->predict();
+
+    // 3. Medición: Empaquetamos la nueva detección de YOLO.
+    cv::Mat measurement = cv::Mat::zeros(2, 1, CV_64F);
+    measurement.at<double>(0) = pivotX;
+    measurement.at<double>(1) = pivotY;
+
+    // 4. Corrección: El filtro fusiona su predicción con la medición real para obtener un estado suavizado.
+    cv::Mat estimated = kf->correct(measurement);
+
+    // 5. Apuntar: Usamos el estado suavizado para predecir hacia el futuro.
+    //    Apuntamos a la posición estimada + velocidad_suavizada * intervalo_de_prediccion.
+    double predX = estimated.at<double>(0) + estimated.at<double>(2) * this->prediction_interval;
+    double predY = estimated.at<double>(1) + estimated.at<double>(3) * this->prediction_interval;
+
+    // Actualizamos las variables `prev_` con los datos suavizados del filtro para la visualización.
+    prev_velocity_x = estimated.at<double>(2);
+    prev_velocity_y = estimated.at<double>(3);
+
+    // Calcular el movimiento del mouse hacia el punto futuro predicho.
+    auto mv = calc_movement(predX, predY);
+    int mx = static_cast<int>(mv.first);
+    int my = static_cast<int>(mv.second);
+
+    if (this->wind_mouse_enabled) {
+        windMouseMoveRelative(mx, my);
+    } else {
+        queueMove(mx, my);
+    }
+}
+
+
+// *** MODIFICADO: calculate_speed_multiplier ahora implementa SNAP & LOCK ***
+double MouseThread::calculate_speed_multiplier(double distance)
+{
+    // *** LÓGICA DE SNAP & LOCK ***
+    // Si la distancia al objetivo es menor que el radio de "snap",
+    // aplicamos un multiplicador de velocidad muy agresivo para "pegar" la mira.
+    if (distance < config.snapRadius) {
+        return this->min_speed_multiplier * config.snapBoostFactor; 
+    }
+    
+    // *** LÓGICA DE TRACKING SUAVE (ZONA DE TRANSICIÓN) ***
+    // Si estamos dentro del "nearRadius" pero fuera del "snapRadius",
+    // usamos una curva para una transición suave en la velocidad.
+    if (distance < config.nearRadius) {
+        // Normalizamos la distancia dentro de esta zona de transición.
+        double t = (distance - config.snapRadius) / (config.nearRadius - config.snapRadius);
+        double curve = 1.0 - std::pow(1.0 - t, config.speedCurveExponent);
+        return this->min_speed_multiplier + (this->max_speed_multiplier - this->min_speed_multiplier) * curve;
+    }
+    
+    // *** LÓGICA A LARGA DISTANCIA ***
+    // Fuera de todas las zonas, la velocidad es proporcional a la distancia.
+    double norm = std::clamp(distance / this->max_distance, 0.0, 1.0);
+    return this->min_speed_multiplier + (this->max_speed_multiplier - this->min_speed_multiplier) * norm;
+}
+
+// *** MODIFICADO: Reinicia el filtro de Kalman ***
+void MouseThread::resetPrediction()
+{
+    kf.reset(); // Invalida y destruye el objeto KalmanFilter.
+    prev_time = std::chrono::steady_clock::time_point();
+    prev_x = 0; prev_y = 0;
+    prev_velocity_x = 0; prev_velocity_y = 0;
+    target_detected.store(false, std::memory_order_relaxed);
+}
+
+// *** MODIFICADO: predictFuturePositions usa la velocidad del filtro ***
+std::vector<std::pair<double, double>> MouseThread::predictFuturePositions(double pivotX, double pivotY, int frames)
+{
+    std::vector<std::pair<double, double>> result;
+    // Solo predecir si el filtro está activo y tenemos un estado válido.
+    if (frames <= 0 || !kf.has_value()) return result;
+
+    result.reserve(frames);
+    const double frame_time = 1.0 / 60.0; // Frecuencia de refresco para visualización
+
+    // Usamos el estado y velocidad actual del filtro, que están suavizados.
+    double current_x = kf->statePost.at<double>(0);
+    double current_y = kf->statePost.at<double>(1);
+    double vel_x = kf->statePost.at<double>(2);
+    double vel_y = kf->statePost.at<double>(3);
+
+    for (int i = 1; i <= frames; i++) {
+        double t_future = frame_time * i;
+        result.push_back({ current_x + vel_x * t_future, current_y + vel_y * t_future });
+    }
+    return result;
+}
+
+// --- El resto del código no requiere modificaciones funcionales para la nueva lógica ---
 
 void MouseThread::queueMove(int dx, int dy)
 {
@@ -183,20 +331,6 @@ std::pair<double, double> MouseThread::calc_movement(double tx, double ty)
     return { move_x, move_y };
 }
 
-double MouseThread::calculate_speed_multiplier(double distance)
-{
-    if (distance < config.snapRadius)
-        return this->min_speed_multiplier * config.snapBoostFactor;
-    if (distance < config.nearRadius) {
-        double t = distance / config.nearRadius;
-        double curve = 1.0 - std::pow(1.0 - t, config.speedCurveExponent);
-        return this->min_speed_multiplier + (this->max_speed_multiplier - this->min_speed_multiplier) * curve;
-    }
-    double norm = std::clamp(distance / this->max_distance, 0.0, 1.0);
-    return this->min_speed_multiplier + (this->max_speed_multiplier - this->min_speed_multiplier) * norm;
-}
-
-// *** SOLUCIÓN: Implementación de la versión de 4 argumentos ***
 bool MouseThread::check_target_in_scope(double target_x, double target_y, double target_w, double target_h)
 {
     double center_target_x = target_x + target_w / 2.0;
@@ -210,36 +344,8 @@ bool MouseThread::check_target_in_scope(double target_x, double target_y, double
     return (this->center_x > x1 && this->center_x < x2 && this->center_y > y1 && this->center_y < y2);
 }
 
-void MouseThread::moveMousePivot(double pivotX, double pivotY)
-{
-    auto current_time = std::chrono::steady_clock::now();
-    if (prev_time.time_since_epoch().count() == 0 || !target_detected.load(std::memory_order_relaxed)) {
-        prev_time = current_time;
-        prev_x = pivotX; prev_y = pivotY;
-        prev_velocity_x = prev_velocity_y = 0.0;
-        auto m0 = calc_movement(pivotX, pivotY);
-        queueMove(static_cast<int>(m0.first), static_cast<int>(m0.second));
-        return;
-    }
-    double dt = std::chrono::duration<double>(current_time - prev_time).count();
-    dt = std::max(dt, 1e-8);
-    double vx = std::clamp((pivotX - prev_x) / dt, -20000.0, 20000.0);
-    double vy = std::clamp((pivotY - prev_y) / dt, -20000.0, 20000.0);
-    prev_time = current_time;
-    prev_x = pivotX; prev_y = pivotY;
-    prev_velocity_x = vx;  prev_velocity_y = vy;
-    double predX = pivotX + vx * this->prediction_interval;
-    double predY = pivotY + vy * this->prediction_interval;
-    auto mv = calc_movement(predX, predY);
-    int mx = static_cast<int>(mv.first);
-    int my = static_cast<int>(mv.second);
-    if (this->wind_mouse_enabled) windMouseMoveRelative(mx, my);
-    else queueMove(mx, my);
-}
-
 void MouseThread::pressMouse(const AimbotTarget& target)
 {
-    // *** SOLUCIÓN: La llamada ahora coincide con la nueva firma de 4 argumentos. ***
     bool in_scope = check_target_in_scope(target.x, target.y, target.w, target.h);
     if (in_scope && !mouse_pressed.load(std::memory_order_relaxed)) {
         std::lock_guard<std::mutex> lock(input_method_mutex);
@@ -274,14 +380,6 @@ void MouseThread::releaseMouse()
     }
 }
 
-void MouseThread::resetPrediction()
-{
-    prev_time = std::chrono::steady_clock::time_point();
-    prev_x = 0; prev_y = 0;
-    prev_velocity_x = 0; prev_velocity_y = 0;
-    target_detected.store(false, std::memory_order_relaxed);
-}
-
 void MouseThread::checkAndResetPredictions()
 {
     auto current_time = std::chrono::steady_clock::now();
@@ -289,22 +387,6 @@ void MouseThread::checkAndResetPredictions()
     if (elapsed > 0.5 && target_detected.load(std::memory_order_relaxed)) {
         resetPrediction();
     }
-}
-
-std::vector<std::pair<double, double>> MouseThread::predictFuturePositions(double pivotX, double pivotY, int frames)
-{
-    std::vector<std::pair<double, double>> result;
-    if (frames <= 0) return result;
-    result.reserve(frames);
-    const double frame_time = 1.0 / 30.0;
-    auto current_time = std::chrono::steady_clock::now();
-    double dt = std::chrono::duration<double>(current_time - prev_time).count();
-    if (prev_time.time_since_epoch().count() == 0 || dt > 0.5) return result;
-    for (int i = 1; i <= frames; i++) {
-        double t = frame_time * i;
-        result.push_back({ pivotX + prev_velocity_x * t, pivotY + prev_velocity_y * t });
-    }
-    return result;
 }
 
 void MouseThread::storeFuturePositions(const std::vector<std::pair<double, double>>& positions)

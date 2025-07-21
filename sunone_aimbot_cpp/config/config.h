@@ -153,4 +153,4 @@ private:
     std::vector<std::string> splitString(const std::string& str, char delimiter = ',');
 };
 
-#endif // CONFIG_H
+#endif // config.h

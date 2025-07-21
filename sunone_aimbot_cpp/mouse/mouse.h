@@ -12,6 +12,8 @@
 #include <thread>
 #include <vector>
 #include <utility>
+#include <optional>                     // *** NUEVO: Para el filtro opcional ***
+#include <opencv2/video/tracking.hpp>   // *** NUEVO: Para el Filtro de Kalman de OpenCV ***
 
 // Adelantar declaraciones
 class SerialConnection;
@@ -46,7 +48,7 @@ public:
     void moveMousePivot(double pivotX, double pivotY);
     void pressMouse(const AimbotTarget& target);
     void releaseMouse();
-    void resetPrediction();
+    void resetPrediction(); // *** MODIFICADO: Ahora reiniciará el filtro de Kalman ***
     void checkAndResetPredictions();
     void sendMovementToDriver(int dx, int dy);
 
@@ -76,6 +78,12 @@ private:
     void moveWorkerLoop();
     void queueMove(int dx, int dy);
 
+    // *** NUEVO: Lógica del Filtro de Kalman para predicción avanzada ***
+    std::optional<cv::KalmanFilter> kf;
+    std::chrono::steady_clock::time_point last_kf_update_time;
+    void initKalmanFilter(double x, double y);
+    // *** FIN NUEVO ***
+
     std::mutex config_mutex;
     double screen_width, screen_height;
     double prediction_interval;
@@ -86,6 +94,7 @@ private:
     bool   auto_shoot;
     float  bScope_multiplier;
 
+    // Estas variables ahora se actualizan con los datos suavizados del filtro
     double prev_x, prev_y;
     double prev_velocity_x, prev_velocity_y;
 
@@ -110,7 +119,6 @@ private:
     std::pair<double, double> calc_movement(double target_x, double target_y);
     double calculate_speed_multiplier(double distance);
     
-    // *** SOLUCIÓN: Actualizar la firma para que coincida con la implementación de 4 argumentos. ***
     bool check_target_in_scope(double target_x, double target_y, double target_w, double target_h);
     
     std::vector<std::pair<double, double>> futurePositions;
