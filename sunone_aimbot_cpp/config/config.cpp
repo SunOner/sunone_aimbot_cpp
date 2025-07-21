@@ -456,10 +456,11 @@ bool Config::saveConfig(const std::string& filename)
     file << "# Mouse move\n"
         << "fovX = " << fovX << "\n"
         << "fovY = " << fovY << "\n"
+        << std::fixed << std::setprecision(2)
         << "minSpeedMultiplier = " << minSpeedMultiplier << "\n"
         << "maxSpeedMultiplier = " << maxSpeedMultiplier << "\n"
 
-        << std::fixed << std::setprecision(2)
+        << std::fixed << std::setprecision(8)
         << "prediction_method = " << prediction_method << "\n"
         << "kalman_q = " << kalman_q << "\n"
         << "kalman_r = " << kalman_r << "\n"
