@@ -115,6 +115,9 @@ private:
     double smoothed_y;
     bool smoothing_initialized;
 
+    double move_overflow_x{ 0.0 };
+    double move_overflow_y{ 0.0 };
+
     bool   wind_mouse_enabled;
     double wind_G, wind_W, wind_M, wind_D;
     void moveInstant(int dx, int dy);

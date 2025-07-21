@@ -263,6 +263,33 @@ std::pair<double, double> MouseThread::calc_movement(double tx, double ty)
     return { move_x, move_y };
 }
 
+double MouseThread::easeInOut(double t) {
+    return 1 - pow(1 - t, 4);
+
+}
+
+// New function to handle overflow for smooth movement
+std::pair<double, double> MouseThread::addOverflow(double input_x, double input_y, double& overflow_x, double& overflow_y) {
+    double integral_x = 0.0, integral_y = 0.0;
+    
+    overflow_x = modf(input_x + overflow_x, &integral_x);
+    overflow_y = modf(input_y + overflow_y, &integral_y);
+    
+    if (overflow_x > 1.0) {
+        double temp_integral = 0.0;
+        overflow_x = modf(overflow_x, &temp_integral);
+        integral_x += temp_integral;
+    }
+    
+    if (overflow_y > 1.0) {
+        double temp_integral = 0.0;
+        overflow_y = modf(overflow_y, &temp_integral);
+        integral_y += temp_integral;
+    }
+    
+    return { integral_x, integral_y };
+}
+
 void MouseThread::moveMouseWithSmoothing(double targetX, double targetY)
 {
     // =========================================================================
