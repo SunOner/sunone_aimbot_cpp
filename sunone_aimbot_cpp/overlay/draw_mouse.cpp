@@ -661,4 +661,4 @@ void draw_mouse()
 
         config.saveConfig();
     }
-}
+} // draw_mouse.cpp

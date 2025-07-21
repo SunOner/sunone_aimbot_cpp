@@ -244,4 +244,4 @@ void draw_debug()
         prev_verbose = config.verbose;
         config.saveConfig();
     }
-}
+} // draw_debug.cpp
