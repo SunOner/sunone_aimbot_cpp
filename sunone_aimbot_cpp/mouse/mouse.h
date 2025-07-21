@@ -118,7 +118,7 @@ private:
     bool   wind_mouse_enabled;
     double wind_G, wind_W, wind_M, wind_D;
     void moveInstant(int dx, int dy);
-    void moveSmooth(double target_x, double target_y);
+    void moveMouseWithSmoothing(double target_x, double target_y);
     void windMouseMoveRelative(int dx, int dy);
 
     std::pair<double, double> calc_movement(double target_x, double target_y);
