@@ -124,6 +124,9 @@ private:
     void moveMouseWithSmoothing(double target_x, double target_y);
     void windMouseMoveRelative(int dx, int dy);
 
+    double easeInOut(double t);
+    std::pair<double, double> addOverflow(double input_x, double input_y, double& overflow_x, double& overflow_y);
+
     std::pair<double, double> calc_movement(double target_x, double target_y);
     double calculate_speed_multiplier(double distance);
     
