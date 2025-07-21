@@ -123,4 +123,4 @@ std::optional<AimbotTarget> sortTargets(
     // *** OPTIMIZACIÓN: Devolver por valor. El compilador usará RVO (Return Value Optimization). ***
     // No hay alocación en el heap.
     return AimbotTarget(finalBox.x, finalBox.y, finalBox.width, finalBox.height, finalClass, pivotX, pivotY);
-}
+} // AimbotTarget.cpp

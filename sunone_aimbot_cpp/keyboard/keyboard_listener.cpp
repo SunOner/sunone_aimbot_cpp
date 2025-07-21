@@ -161,6 +161,7 @@ void keyboardListener()
             bool up_arrow_currently_pressed = isAnyKeyPressed(upArrowKeys);
             if (up_arrow_currently_pressed && !up_arrow_pressed_last_frame)
             {
+                std::lock_guard<std::mutex> lock(configMutex);
                 if (shift_currently_pressed) {
                     config.head_y_offset = std::max(0.0f, config.head_y_offset - OFFSET_STEP);
                 } else {
@@ -172,6 +173,7 @@ void keyboardListener()
             bool down_arrow_currently_pressed = isAnyKeyPressed(downArrowKeys);
             if (down_arrow_currently_pressed && !down_arrow_pressed_last_frame)
             {
+                std::lock_guard<std::mutex> lock(configMutex);
                 if (shift_currently_pressed) {
                     config.head_y_offset = std::min(1.0f, config.head_y_offset + OFFSET_STEP);
                 } else {
@@ -183,6 +185,7 @@ void keyboardListener()
             bool left_arrow_currently_pressed = isAnyKeyPressed(leftArrowKeys);
             if (left_arrow_currently_pressed && !left_arrow_pressed_last_frame)
             {
+                std::lock_guard<std::mutex> lock(configMutex);
                 config.easynorecoilstrength = std::max(0.1f, config.easynorecoilstrength - NORECOIL_STEP);
             }
             left_arrow_pressed_last_frame = left_arrow_currently_pressed;
@@ -190,6 +193,7 @@ void keyboardListener()
             bool right_arrow_currently_pressed = isAnyKeyPressed(rightArrowKeys);
             if (right_arrow_currently_pressed && !right_arrow_pressed_last_frame)
             {
+                std::lock_guard<std::mutex> lock(configMutex);
                 config.easynorecoilstrength = std::min(500.0f, config.easynorecoilstrength + NORECOIL_STEP);
             }
             right_arrow_pressed_last_frame = right_arrow_currently_pressed;

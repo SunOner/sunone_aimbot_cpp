@@ -183,6 +183,28 @@ std::pair<double, double> MouseThread::calc_movement(double tx, double ty)
     return { move_x, move_y };
 }
 
+std::pair<int, int> MouseThread::calculateAimMovement(double target_pivot_x, double target_pivot_y)
+{
+    // ...
+    // Aquí va toda tu lógica para calcular el suavizado (smoothing),
+    // la predicción, la velocidad variable, etc.
+    // ...
+
+    // Ejemplo de cálculo simple (tu lógica será más compleja):
+    double screen_center_x = m_detection_resolution_w / 2.0;
+    double screen_center_y = m_detection_resolution_h / 2.0;
+
+    double dx = target_pivot_x - screen_center_x;
+    double dy = target_pivot_y - screen_center_y;
+
+    // Aplica tu smoothing y multiplicadores de velocidad aquí...
+    // dx = dx * speed_multiplier * smoothing_factor;
+    // dy = dy * speed_multiplier * smoothing_factor;
+
+    // Devuelve los deltas calculados como enteros.
+    return { static_cast<int>(dx), static_cast<int>(dy) };
+}
+
 double MouseThread::calculate_speed_multiplier(double distance)
 {
     if (distance < config.snapRadius)

@@ -62,8 +62,7 @@ public:
 
     void setTargetDetected(bool detected) { target_detected.store(detected); }
     void setLastTargetTime(const std::chrono::steady_clock::time_point& t) { last_target_time = t; }
-
-    std::mutex input_method_mutex;
+    std::pair<int, int> calculateAimMovement(double target_pivot_x, double target_pivot_y);
 
 private:
     static const size_t QUEUE_SIZE = 256; 
@@ -111,6 +110,7 @@ private:
     
     std::vector<std::pair<double, double>> futurePositions;
     std::mutex futurePositionsMutex;
+    std::mutex input_method_mutex;
 };
 
 #endif // MOUSE_H

@@ -132,6 +132,15 @@ void handleEasyNoRecoil(MouseThread& mouseThread)
     }
 }
 
+int calculateRecoilCompensation()
+{
+    if (config.easynorecoil && shooting.load(std::memory_order_relaxed) && zooming.load(std::memory_order_relaxed))
+    {
+        return static_cast<int>(config.easynorecoilstrength);
+    }
+    return 0; // No hay compensación de recoil
+}
+
 // *** FUNCIÓN DEL HILO PRINCIPAL OPTIMIZADA ***
 void mouseThreadFunction(MouseThread& mouseThread)
 {
@@ -199,24 +208,19 @@ void mouseThreadFunction(MouseThread& mouseThread)
             mouseThread.setTargetDetected(false);
         }
 
-        if (aiming.load(std::memory_order_relaxed))
-        {
-            if (target) // Se puede usar como un booleano
-            {
-                mouseThread.moveMousePivot(target->pivotX, target->pivotY);
+        int total_dx = 0;
+        int total_dy = 0;
 
-                if (config.auto_shoot)
-                {
-                    // El operador `*` devuelve la referencia al objeto contenido
-                    mouseThread.pressMouse(*target);
-                }
-            }
-            else
+        if (aiming.load(std::memory_order_relaxed) && target)
+        {
+
+            std::pair<int, int> aim_movement = mouseThread.calculateAimMovement(target->pivotX, target->pivotY);
+            total_dx += aim_movement.first;
+            total_dy += aim_movement.second;
+
+            if (config.auto_shoot)
             {
-                if (config.auto_shoot)
-                {
-                    mouseThread.releaseMouse();
-                }
+                mouseThread.pressMouse(*target);
             }
         }
         else
@@ -227,10 +231,16 @@ void mouseThreadFunction(MouseThread& mouseThread)
             }
         }
 
-        handleEasyNoRecoil(mouseThread);
+        total_dy += calculateRecoilCompensation();
+
+
+        if (total_dx != 0 || total_dy != 0)
+        {
+            mouseThread.sendMovementToDriver(total_dx, total_dy);
+        }
+
         mouseThread.checkAndResetPredictions();
         
-        // No hay 'delete target', la memoria se libera automáticamente al salir del ámbito del bucle.
     }
 }
 
