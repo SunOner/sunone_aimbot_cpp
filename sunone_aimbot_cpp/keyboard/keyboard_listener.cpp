@@ -20,11 +20,13 @@
 #include "Kmbox_b.h" // Incluir para kmboxSerial
 #include "KmboxNetConnection.h"
 
+
 extern std::atomic<bool> shouldExit;
 extern std::atomic<bool> aiming;
 extern std::atomic<bool> shooting;
 extern std::atomic<bool> zooming;
 extern std::atomic<bool> detectionPaused;
+extern std::mutex configMutex;
 
 extern MouseThread* globalMouseThread;
 

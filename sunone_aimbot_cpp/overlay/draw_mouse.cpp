@@ -115,7 +115,7 @@ void draw_mouse()
     const std::vector<std::string> prediction_methods_values = { "kalman", "linear" };
     int current_method_index = (config.prediction_method == "linear") ? 1 : 0;
 
-    if (ImGui::Combo("Prediction Method", ¤t_method_index, prediction_methods, IM_ARRAYSIZE(prediction_methods)))
+    if (ImGui::Combo("Prediction Method", &current_method_index, prediction_methods, IM_ARRAYSIZE(prediction_methods)))
     {
         config.prediction_method = prediction_methods_values[current_method_index];
         // No es necesario notificar a otros hilos, ya que mouse.cpp lee el config directamente.
