@@ -112,9 +112,15 @@ private:
     KmboxNetConnection* kmbox_net;
     GhubMouse* gHub;
 
+    double smoothed_x;
+    double smoothed_y;
+    bool smoothing_initialized;
+
     bool   wind_mouse_enabled;
     double wind_G, wind_W, wind_M, wind_D;
-    void   windMouseMoveRelative(int dx, int dy);
+    void moveInstant(int dx, int dy);
+    void moveSmooth(double target_x, double target_y);
+    void windMouseMoveRelative(int dx, int dy);
 
     std::pair<double, double> calc_movement(double target_x, double target_y);
     double calculate_speed_multiplier(double distance);

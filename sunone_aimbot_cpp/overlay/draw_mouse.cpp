@@ -24,7 +24,6 @@ float prev_nearRadius = config.nearRadius;
 float prev_speedCurveExponent = config.speedCurveExponent;
 float prev_snapBoostFactor = config.snapBoostFactor;
 
-bool  prev_wind_mouse_enabled = config.wind_mouse_enabled;
 float prev_wind_G = config.wind_G;
 float prev_wind_W = config.wind_W;
 float prev_wind_M = config.wind_M;
@@ -36,6 +35,9 @@ float prev_bScope_multiplier = config.bScope_multiplier;
 std::string prev_prediction_method = config.prediction_method;
 float prev_kalman_q = config.kalman_q;
 float prev_kalman_r = config.kalman_r;
+
+int prev_smoothing_level = config.smoothing_level;
+std::string prev_mouse_move_method = config.mouse_move_method;
 
 static void draw_target_correction_demo()
 {
@@ -158,6 +160,33 @@ void draw_mouse()
     ImGui::SliderFloat("Speed Curve Exponent", &config.speedCurveExponent, 0.1f, 10.0f, "%.1f");
     ImGui::SliderFloat("Snap Boost Factor", &config.snapBoostFactor, 0.01f, 4.00f, "%.2f");
     draw_target_correction_demo();
+
+    ImGui::SeparatorText("Movement Style");
+
+    const char* move_methods[] = { "Instant (Raw)", "Smooth", "Wind Mouse" };
+    const std::vector<std::string> move_methods_values = { "instant", "smooth", "wind" };
+    int current_move_method_index = 0;
+    if (config.mouse_move_method == "smooth") current_move_method_index = 1;
+    else if (config.mouse_move_method == "wind") current_move_method_index = 2;
+
+    if (ImGui::Combo("Movement Method", ¤t_move_method_index, move_methods, IM_ARRAYSIZE(move_methods)))
+    {
+        config.mouse_move_method = move_methods_values[current_move_method_index];
+    }
+    
+    // Controles específicos para cada modo
+    if (config.mouse_move_method == "smooth")
+    {
+        ImGui::SliderInt("Smoothing Level", &config.smoothing_level, 1, 100);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("1 = Less smooth.\nHigher = Smoother, 'heavy' feeling.");
+    }
+    else if (config.mouse_move_method == "wind")
+    {
+        ImGui::SliderFloat("Gravity force", &config.wind_G, 4.00f, 40.00f, "%.2f");
+        ImGui::SliderFloat("Wind fluctuation", &config.wind_W, 1.00f, 40.00f, "%.2f");
+        ImGui::SliderFloat("Max step (velocity clip)", &config.wind_M, 1.00f, 40.00f, "%.2f");
+        ImGui::SliderFloat("Distance threshold", &config.wind_D, 1.00f, 40.00f, "%.2f");
+    }
 
     ImGui::SeparatorText("Game Profile");
     std::vector<std::string> profile_names;
@@ -301,46 +330,6 @@ void draw_mouse()
     if (config.auto_shoot)
     {
         ImGui::SliderFloat("bScope Multiplier", &config.bScope_multiplier, 0.5f, 2.0f, "%.1f");
-    }
-
-    ImGui::SeparatorText("Wind mouse");
-
-    if (ImGui::Checkbox("Enable WindMouse", &config.wind_mouse_enabled))
-    {
-        config.saveConfig();
-        input_method_changed.store(true);
-    }
-
-    if (config.wind_mouse_enabled)
-    {
-        if (ImGui::SliderFloat("Gravity force", &config.wind_G, 4.00f, 40.00f, "%.2f"))
-        {
-            config.saveConfig();
-        }
-
-        if (ImGui::SliderFloat("Wind fluctuation", &config.wind_W, 1.00f, 40.00f, "%.2f"))
-        {
-            config.saveConfig();
-        }
-
-        if (ImGui::SliderFloat("Max step (velocity clip)", &config.wind_M, 1.00f, 40.00f, "%.2f"))
-        {
-            config.saveConfig();
-        }
-
-        if (ImGui::SliderFloat("Distance where behaviour changes", &config.wind_D, 1.00f, 40.00f, "%.2f"))
-        {
-            config.saveConfig();
-        }
-
-        if (ImGui::Button("Reset Wind Mouse to default settings"))
-        {
-            config.wind_G = 18.0f;
-            config.wind_W = 15.0f;
-            config.wind_M = 10.0f;
-            config.wind_D = 8.0f;
-            config.saveConfig();
-        }
     }
 
     ImGui::SeparatorText("Input method");
@@ -619,7 +608,9 @@ void draw_mouse()
         prev_snapBoostFactor != config.snapBoostFactor || 
         prev_prediction_method != config.prediction_method ||
         prev_kalman_q != config.kalman_q ||
-        prev_kalman_r != config.kalman_r)
+        prev_kalman_r != config.kalman_r || 
+        prev_smoothing_level != config.smoothing_level ||
+        prev_mouse_move_method != config.mouse_move_method)
     {
         prev_fovX = config.fovX;
         prev_fovY = config.fovY;
@@ -634,6 +625,8 @@ void draw_mouse()
         prev_prediction_method = config.prediction_method;
         prev_kalman_q = config.kalman_q;
         prev_kalman_r = config.kalman_r;
+        prev_smoothing_level = config.smoothing_level;
+        prev_mouse_move_method = config.mouse_move_method
 
         globalMouseThread->updateConfig(
             config.detection_resolution,
