@@ -139,7 +139,7 @@ void draw_mouse()
             ImGui::SetTooltip("How far into the future to predict (in seconds).\nShould roughly match your total system latency.");
 
         // Usamos un slider logarítmico para 'Q' porque sus valores óptimos son muy pequeños.
-        ImGui::SliderFloat("Process Noise (Q)", &config.kalman_q, 1e-6f, 1e-2f, "%.6f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SliderFloat("Process Noise (Q)", &config.kalman_q, 1e-6f, 1e-2f, "%.6f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
         if (ImGui::IsItemHovered())
             ImGui::SetTooltip("Model confidence. Controls smoothness.\nLOWER = Smoother, but slower to react to direction changes.\nHigher = More responsive, but prone to jitter.");
 
