@@ -30,7 +30,8 @@ MouseThread::MouseThread(
     : head_(0), tail_(0), workerStop(false),
     prev_x(0.0), prev_y(0.0), prev_velocity_x(0.0), prev_velocity_y(0.0),
     target_detected(false), mouse_pressed(false),
-    serial(serialConnection), kmbox(kmboxConnection), kmbox_net(kmboxNetConn), gHub(gHubMouse)
+    serial(serialConnection), kmbox(kmboxConnection), kmbox_net(kmboxNetConn), gHub(gHubMouse),
+    m_detection_resolution_w(resolution), m_detection_resolution_h(resolution)
 {
     updateConfig(resolution, fovX, fovY, minSpeedMultiplier, maxSpeedMultiplier, predictionInterval, auto_shoot, bScope_multiplier);
     prev_time = std::chrono::steady_clock::time_point();
@@ -51,6 +52,8 @@ void MouseThread::updateConfig(
     double minSpeedMultiplier, double maxSpeedMultiplier,
     double predictionInterval, bool new_auto_shoot, float new_bScope_multiplier)
 {
+    m_detection_resolution_w = resolution;
+    m_detection_resolution_h = resolution;
     std::lock_guard<std::mutex> lock(config_mutex);
     this->screen_width = static_cast<double>(resolution);
     this->screen_height = static_cast<double>(resolution);
@@ -69,6 +72,7 @@ void MouseThread::updateConfig(
     this->wind_W = config.wind_W;
     this->wind_M = config.wind_M;
     this->wind_D = config.wind_D;
+    m_fov_radius_pixels = (static_cast<float>(m_detection_resolution_w) * (fovX / 100.0f)) / 2.0f;
 }
 
 void MouseThread::queueMove(int dx, int dy)
@@ -185,24 +189,86 @@ std::pair<double, double> MouseThread::calc_movement(double tx, double ty)
 
 std::pair<int, int> MouseThread::calculateAimMovement(double target_pivot_x, double target_pivot_y)
 {
-    // ...
-    // Aquí va toda tu lógica para calcular el suavizado (smoothing),
-    // la predicción, la velocidad variable, etc.
-    // ...
+    // --- Paso 1: Predicción de Movimiento ---
+    double predicted_x = target_pivot_x;
+    double predicted_y = target_pivot_y;
+    
+    {
+        std::lock_guard<std::mutex> lock(m_prediction_mutex);
+        if (m_last_target_positions.size() > 1)
+        {
+            // Calcula la velocidad promedio (delta_pos / delta_t)
+            double dx_sum = 0.0, dy_sum = 0.0;
+            for (size_t i = 1; i < m_last_target_positions.size(); ++i) {
+                dx_sum += m_last_target_positions[i].first - m_last_target_positions[i - 1].first;
+                dy_sum += m_last_target_positions[i].second - m_last_target_positions[i - 1].second;
+            }
+            double avg_dx = dx_sum / (m_last_target_positions.size() - 1);
+            double avg_dy = dy_sum / (m_last_target_positions.size() - 1);
 
-    // Ejemplo de cálculo simple (tu lógica será más compleja):
-    double screen_center_x = m_detection_resolution_w / 2.0;
-    double screen_center_y = m_detection_resolution_h / 2.0;
+            // Calcula el tiempo transcurrido desde la última predicción
+            auto now = std::chrono::steady_clock::now();
+            double time_delta_ms = std::chrono::duration_cast<std::chrono::microseconds>(now - m_last_prediction_time).count() / 1000.0;
+            m_last_prediction_time = now;
+            
+            // Extrapola la posición futura. El intervalo de predicción + el tiempo de ciclo real.
+            double prediction_factor = (static_cast<double>(m_predictionInterval) + time_delta_ms) / (1000.0 / 60.0); // Normalizado a un frametime de 60hz
+            
+            predicted_x += avg_dx * prediction_factor;
+            predicted_y += avg_dy * prediction_factor;
+        }
+    }
 
-    double dx = target_pivot_x - screen_center_x;
-    double dy = target_pivot_y - screen_center_y;
 
-    // Aplica tu smoothing y multiplicadores de velocidad aquí...
-    // dx = dx * speed_multiplier * smoothing_factor;
-    // dy = dy * speed_multiplier * smoothing_factor;
+    // --- Paso 2: Calcular el vector desde el centro de la pantalla al objetivo ---
+    const double screen_center_x = static_cast<double>(m_detection_resolution_w) / 2.0;
+    const double screen_center_y = static_cast<double>(m_detection_resolution_h) / 2.0;
 
-    // Devuelve los deltas calculados como enteros.
-    return { static_cast<int>(dx), static_cast<int>(dy) };
+    double dx = predicted_x - screen_center_x;
+    double dy = predicted_y - screen_center_y;
+
+    // --- Paso 3: Chequeo de FOV ---
+    const double distance = std::sqrt(dx * dx + dy * dy);
+    if (distance > m_fov_radius_pixels || distance < 1.0) // Si está fuera del FOV o ya estamos en el objetivo
+    {
+        return {0, 0}; // No mover
+    }
+
+    // --- Paso 4: Aplicar multiplicador de zoom (scope) ---
+    // Si el jugador está apuntando con mira, la sensibilidad del juego baja.
+    // Reducimos nuestro movimiento para compensar y evitar un sobreajuste.
+    if (zooming.load(std::memory_order_relaxed))
+    {
+        dx *= m_bScope_multiplier;
+        dy *= m_bScope_multiplier;
+    }
+
+    // --- Paso 5: Calcular Velocidad Dinámica y Suavizado ---
+    // La velocidad del ratón será mayor cuanto más lejos esté el objetivo del centro.
+    // Se interpola linealmente entre la velocidad mínima y máxima.
+    float speed_factor = static_cast<float>(distance / m_fov_radius_pixels); // Factor de 0.0 a 1.0
+    speed_factor = std::min(1.0f, speed_factor); // Asegurar que no exceda 1.0
+
+    // Interpolar para obtener el multiplicador de velocidad final
+    float final_speed_multiplier = m_minSpeedMultiplier + (m_maxSpeedMultiplier - m_minSpeedMultiplier) * speed_factor;
+
+    double smoothed_dx = dx * final_speed_multiplier;
+    double smoothed_dy = dy * final_speed_multiplier;
+
+    // --- Paso 6: Evitar "píxel muerto" y convertir a entero ---
+    // Si el movimiento calculado es menor a 1 pero mayor que 0, el ratón no se moverá al castear a int.
+    // Forzamos un movimiento de al menos 1 píxel para evitar quedarse atascado.
+    if (std::abs(smoothed_dx) < 1.0 && std::abs(dx) > 0.5) // Usamos dx original para la intención
+    {
+        smoothed_dx = (smoothed_dx > 0) ? 1.0 : -1.0;
+    }
+    if (std::abs(smoothed_dy) < 1.0 && std::abs(dy) > 0.5)
+    {
+        smoothed_dy = (smoothed_dy > 0) ? 1.0 : -1.0;
+    }
+    
+    // --- Paso 7: Devolver el par de deltas de movimiento final ---
+    return { static_cast<int>(smoothed_dx), static_cast<int>(smoothed_dy) };
 }
 
 double MouseThread::calculate_speed_multiplier(double distance)

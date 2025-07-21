@@ -88,6 +88,11 @@ private:
 
     double prev_x, prev_y;
     double prev_velocity_x, prev_velocity_y;
+
+    int m_detection_resolution_w;
+    int m_detection_resolution_h;
+    float m_fov_radius_pixels;
+    
     std::chrono::time_point<std::chrono::steady_clock> prev_time;
     std::chrono::steady_clock::time_point last_target_time;
     std::atomic<bool> target_detected;
