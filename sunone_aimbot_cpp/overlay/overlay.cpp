@@ -25,6 +25,7 @@
 #include "keyboard_listener.h"
 #include "other_tools.h"
 #include "virtual_camera.h"
+#include "draw_game_overlay.h"
 #ifdef USE_CUDA
 #include "trt_detector.h"
 #endif
@@ -271,16 +272,6 @@ void OverlayThread()
     {
         key_names_cstrs.push_back(name.c_str());
     }
-
-    int input_method_index = 0;
-    if (config.input_method == "WIN32")
-        input_method_index = 0;
-    else if (config.input_method == "GHUB")
-        input_method_index = 1;
-    else if (config.input_method == "ARDUINO")
-        input_method_index = 2;
-    else
-        input_method_index = 0;
     
     std::vector<std::string> availableModels = getAvailableModels();
 
@@ -370,6 +361,12 @@ void OverlayThread()
                     {
                         draw_overlay();
 
+                        ImGui::EndTabItem();
+                    }
+
+                    if (ImGui::BeginTabItem("Game Overlay"))
+                    {
+                        draw_game_overlay_settings();
                         ImGui::EndTabItem();
                     }
 

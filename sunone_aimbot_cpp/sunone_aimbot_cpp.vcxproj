@@ -47,10 +47,13 @@
     <ClCompile Include="overlay\draw_buttons.cpp" />
     <ClCompile Include="overlay\draw_capture.cpp" />
     <ClCompile Include="overlay\draw_debug.cpp" />
+    <ClCompile Include="overlay\draw_game_overlay.cpp" />
+    <ClCompile Include="overlay\draw_game_overlay.h" />
     <ClCompile Include="overlay\draw_mouse.cpp" />
     <ClCompile Include="overlay\draw_overlay.cpp" />
     <ClCompile Include="overlay\draw_stats.cpp" />
     <ClCompile Include="overlay\draw_target.cpp" />
+    <ClCompile Include="overlay\Game_overlay.cpp" />
     <ClCompile Include="overlay\overlay.cpp" />
     <ClCompile Include="scr\other_tools.cpp" />
     <ClCompile Include="sunone_aimbot_cpp.cpp" />
@@ -95,6 +98,7 @@
     <ClInclude Include="mouse\SerialConnection.h" />
     <ClInclude Include="mouse\AimbotTarget.h" />
     <ClInclude Include="overlay\draw_settings.h" />
+    <ClInclude Include="overlay\Game_overlay.h" />
     <ClInclude Include="overlay\overlay.h" />
     <ClInclude Include="sunone_aimbot_cpp.h" />
     <ClInclude Include="tensorrt\nvinf.h">

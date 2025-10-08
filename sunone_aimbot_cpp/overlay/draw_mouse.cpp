@@ -542,7 +542,7 @@ void draw_mouse()
         strncpy(port, config.kmbox_net_port.c_str(), sizeof(port));
         strncpy(uuid, config.kmbox_net_uuid.c_str(), sizeof(uuid));
 
-        ImGui::InputText("kmboxNet IP", ip, sizeof(ip));
+        ImGui::InputText("IP", ip, sizeof(ip));
         ImGui::InputText("Port", port, sizeof(port));
         ImGui::InputText("UUID", uuid, sizeof(uuid));
 

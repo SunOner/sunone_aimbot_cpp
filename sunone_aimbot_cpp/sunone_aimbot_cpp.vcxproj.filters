@@ -38,6 +38,9 @@
     <ClCompile Include="detector\detection_buffer.cpp" />
     <ClCompile Include="mouse\kmbox_net\kmboxNet.cpp" />
     <ClCompile Include="mouse\kmboxNetConnection.cpp" />
+    <ClCompile Include="overlay\Game_overlay.cpp" />
+    <ClCompile Include="overlay\draw_game_overlay.h" />
+    <ClCompile Include="overlay\draw_game_overlay.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -84,6 +87,7 @@
     <ClInclude Include="mouse\kmbox_net\kmboxNet.h" />
     <ClInclude Include="mouse\kmbox_net\picture.h" />
     <ClInclude Include="mouse\kmboxNetConnection.h" />
+    <ClInclude Include="overlay\Game_overlay.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

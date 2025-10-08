@@ -14,6 +14,7 @@
 #include "sunone_aimbot_cpp.h"
 #include "keyboard_listener.h"
 #include "overlay.h"
+#include "Game_overlay.h"
 #include "ghub.h"
 #include "other_tools.h"
 #include "virtual_camera.h"
@@ -32,6 +33,10 @@ DirectMLDetector* dml_detector = nullptr;
 MouseThread* globalMouseThread = nullptr;
 Config config;
 
+Game_overlay* gameOverlayPtr = nullptr;
+std::thread gameOverlayThread;
+std::atomic<bool> gameOverlayShouldExit(false);
+
 GhubMouse* gHub = nullptr;
 SerialConnection* arduinoSerial = nullptr;
 Kmbox_b_Connection* kmboxSerial = nullptr;
@@ -49,6 +54,10 @@ std::atomic<bool> input_method_changed(false);
 
 std::atomic<bool> zooming(false);
 std::atomic<bool> shooting(false);
+
+static std::string g_lastIconPath;
+static int g_iconImageId = 0;
+static std::mutex g_iconMutex;
 
 void createInputDevices()
 {
@@ -272,6 +281,243 @@ void mouseThreadFunction(MouseThread& mouseThread)
     }
 }
 
+static void gameOverlayRenderLoop()
+{
+    const int vx = GetSystemMetrics(SM_XVIRTUALSCREEN);
+    const int vy = GetSystemMetrics(SM_YVIRTUALSCREEN);
+
+    MONITORINFO mi{};
+    mi.cbSize = sizeof(mi);
+    HMONITOR hPrimary = MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY);
+    GetMonitorInfo(hPrimary, &mi);
+    RECT pr = mi.rcMonitor;
+    const int pw = pr.right - pr.left;
+    const int ph = pr.bottom - pr.top;
+
+    const int offX = pr.left - vx;
+    const int offY = pr.top - vy;
+
+    while (!gameOverlayShouldExit.load())
+    {
+        if (!config.game_overlay_enabled ||
+            !gameOverlayPtr ||
+            !gameOverlayPtr->IsRunning())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(150));
+            continue;
+        }
+
+        const int detRes = config.detection_resolution;
+        if (detRes <= 0)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            continue;
+        }
+
+        int regionW = detRes;
+        int regionH = detRes;
+
+        if (regionW > pw) regionW = pw;
+        if (regionH > ph) regionH = ph;
+
+        const int baseX = (pw - regionW) / 2;
+        const int baseY = (ph - regionH) / 2;
+
+        const float scaleX = 1.0f;
+        const float scaleY = 1.0f;
+
+        std::vector<cv::Rect> boxesCopy;
+        std::vector<int> classesCopy;
+        {
+            std::lock_guard<std::mutex> lk(detectionBuffer.mutex);
+            boxesCopy = detectionBuffer.boxes;
+            classesCopy = detectionBuffer.classes;
+        }
+
+        decltype(globalMouseThread->getFuturePositions()) futurePts;
+        if (config.game_overlay_draw_future && globalMouseThread)
+            futurePts = globalMouseThread->getFuturePositions();
+
+        if (config.game_overlay_icon_enabled)
+        {
+            std::lock_guard<std::mutex> lk(g_iconMutex);
+            if (config.game_overlay_icon_path != g_lastIconPath)
+            {
+                g_lastIconPath = config.game_overlay_icon_path;
+                g_iconImageId = 0;
+                std::filesystem::path p(g_lastIconPath);
+                if (std::filesystem::exists(p) && p.has_filename())
+                {
+                    std::wstring wpath = std::wstring(p.wstring().begin(), p.wstring().end());
+                    int id = gameOverlayPtr->LoadImageFromFile(wpath);
+                    if (id != 0)
+                    {
+                        g_iconImageId = id;
+                        std::cout << "[GameOverlay] Loaded icon: " << g_lastIconPath << std::endl;
+                    }
+                    else
+                    {
+                        std::cerr << "[GameOverlay] Failed to load icon: " << g_lastIconPath << std::endl;
+                    }
+                }
+                else
+                {
+                    std::cerr << "[GameOverlay] Icon file not found: " << g_lastIconPath << std::endl;
+                }
+            }
+        }
+
+        gameOverlayPtr->BeginFrame();
+
+        // BOXES
+        if (config.game_overlay_draw_boxes && !boxesCopy.empty())
+        {
+            int A = config.game_overlay_box_a;
+            int R = config.game_overlay_box_r;
+            int G = config.game_overlay_box_g;
+            int B = config.game_overlay_box_b;
+            auto clamp255 = [](int& v) { if (v < 0) v = 0; else if (v > 255) v = 255; };
+            clamp255(A); clamp255(R); clamp255(G); clamp255(B);
+            const uint32_t col =
+                (uint32_t(A) << 24) |
+                (uint32_t(R) << 16) |
+                (uint32_t(G) << 8) |
+                uint32_t(B);
+
+            float thickness = config.game_overlay_box_thickness;
+            if (thickness <= 0.f) thickness = 1.f;
+
+            for (const auto& b : boxesCopy)
+            {
+                if (b.width <= 0 || b.height <= 0) continue;
+
+                int bx = std::max(0, std::min(b.x, detRes));
+                int by = std::max(0, std::min(b.y, detRes));
+                int bw = std::max(0, std::min(b.width, detRes - bx));
+                int bh = std::max(0, std::min(b.height, detRes - by));
+                if (bw == 0 || bh == 0) continue;
+
+                float x = baseX + bx * scaleX;
+                float y = baseY + by * scaleY;
+                float w = bw * scaleX;
+                float h = bh * scaleY;
+
+                if (x + w < baseX || y + h < baseY ||
+                    x > baseX + regionW || y > baseY + regionH)
+                    continue;
+
+                gameOverlayPtr->AddRect({ x, y, w, h }, col, thickness);
+            }
+        }
+
+        // FUTURE POINTS
+        if (config.game_overlay_draw_future && !futurePts.empty())
+        {
+            const int total = static_cast<int>(futurePts.size());
+            const int baseA = std::max(5, std::min(255, config.game_overlay_box_a));
+
+            for (int i = 0; i < total; ++i)
+            {
+                float alphaFactor =
+                    std::exp(-config.game_overlay_future_alpha_falloff *
+                        (static_cast<float>(i) / static_cast<float>(total)));
+
+                int a = static_cast<int>(baseA * alphaFactor);
+                if (a < 12) a = 12;
+
+                const uint32_t col =
+                    (uint32_t(a) << 24) |
+                    (uint32_t(255 - (i * 255 / total)) << 16) |
+                    (uint32_t(50) << 8) |
+                    (uint32_t(i * 255 / total));
+
+                float px = baseX + futurePts[i].first * scaleX;
+                float py = baseY + futurePts[i].second * scaleY;
+
+                if (px < baseX - 40 || py < baseY - 40 ||
+                    px > baseX + regionW + 40 || py > baseY + regionH + 40)
+                    continue;
+
+                gameOverlayPtr->FillCircle({ px, py, config.game_overlay_future_point_radius }, col);
+            }
+        }
+
+        // ICONS
+        if (config.game_overlay_icon_enabled && g_iconImageId != 0 && !boxesCopy.empty())
+        {
+            const int iconW = config.game_overlay_icon_width;
+            const int iconH = config.game_overlay_icon_height;
+            const float offXIcon = config.game_overlay_icon_offset_x;
+            const float offYIcon = config.game_overlay_icon_offset_y;
+            std::string anchor = config.game_overlay_icon_anchor;
+            int i = 0;
+            for (const auto& b : boxesCopy)
+            {
+                // temporary: only draw for players
+                if (classesCopy[i] != 0)
+                {
+                    continue;
+                }
+
+                if (b.width <= 0 || b.height <= 0) continue;
+                int bx = std::max(0, std::min(b.x, detRes));
+                int by = std::max(0, std::min(b.y, detRes));
+                int bw = std::max(0, std::min(b.width, detRes - bx));
+                int bh = std::max(0, std::min(b.height, detRes - by));
+                if (bw == 0 || bh == 0) continue;
+
+                float boxX = baseX + bx * scaleX;
+                float boxY = baseY + by * scaleY;
+                float boxW = bw * scaleX;
+                float boxH = bh * scaleY;
+
+                float drawX = boxX;
+                float drawY = boxY;
+
+                if (anchor == "center")
+                {
+                    drawX = boxX + boxW / 2.0f - iconW / 2.0f;
+                    drawY = boxY + boxH / 2.0f - iconH / 2.0f;
+                }
+                else if (anchor == "top" || anchor == "head")
+                {
+                    drawX = boxX + boxW / 2.0f - iconW / 2.0f;
+                    drawY = boxY - iconH;
+                }
+                else if (anchor == "bottom")
+                {
+                    drawX = boxX + boxW / 2.0f - iconW / 2.0f;
+                    drawY = boxY + boxH;
+                }
+                else
+                {
+                    drawX = boxX + boxW / 2.0f - iconW / 2.0f;
+                    drawY = boxY + boxH / 2.0f - iconH / 2.0f;
+                }
+
+                drawX += offXIcon;
+                drawY += offYIcon;
+
+                gameOverlayPtr->DrawImage(g_iconImageId, drawX, drawY, (float)iconW, (float)iconH, 1.0f);
+                i++;
+            }
+        }
+
+        gameOverlayPtr->EndFrame();
+
+        unsigned fpsCap = (unsigned)config.game_overlay_max_fps;
+        if (boxesCopy.empty() && futurePts.empty())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(25));
+            continue;
+        }
+        if (fpsCap > 0)
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000 / fpsCap));
+        else
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
+
 int main()
 {
     try
@@ -437,6 +683,18 @@ int main()
         std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
         std::thread overlayThread(OverlayThread);
 
+        if (config.game_overlay_enabled)
+        {
+            gameOverlayPtr = new Game_overlay();
+            int pw = GetSystemMetrics(SM_CXSCREEN);
+            int ph = GetSystemMetrics(SM_CYSCREEN);
+            gameOverlayPtr->SetWindowBounds(0, 0, pw, ph);
+            gameOverlayPtr->SetMaxFPS(config.game_overlay_max_fps > 0 ? (unsigned)config.game_overlay_max_fps : 0);
+            gameOverlayPtr->Start();
+            gameOverlayShouldExit.store(false);
+            gameOverlayThread = std::thread(gameOverlayRenderLoop);
+        }
+
         welcome_message();
 
         keyThread.join();
@@ -469,6 +727,15 @@ int main()
         {
             delete dml_detector;
             dml_detector = nullptr;
+        }
+
+        gameOverlayShouldExit.store(true);
+        if (gameOverlayThread.joinable()) gameOverlayThread.join();
+        if (gameOverlayPtr)
+        {
+            gameOverlayPtr->Stop();
+            delete gameOverlayPtr;
+            gameOverlayPtr = nullptr;
         }
 
         return 0;

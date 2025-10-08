@@ -158,6 +158,27 @@ bool Config::loadConfig(const std::string& filename)
         overlay_snow_theme = true;
         overlay_ui_scale = 1.0f;
 
+        // Game overlay
+        game_overlay_enabled = false;
+        game_overlay_max_fps = 0;
+        game_overlay_draw_boxes = true;
+        game_overlay_draw_future = true;
+        game_overlay_box_a = 255;
+        game_overlay_box_r = 0;
+        game_overlay_box_g = 255;
+        game_overlay_box_b = 0;
+        game_overlay_box_thickness = 2.0f;
+        game_overlay_future_point_radius = 5.0f;
+        game_overlay_future_alpha_falloff = 1.0f;
+
+        game_overlay_icon_enabled = false;
+        game_overlay_icon_path = "icon.png";
+        game_overlay_icon_width = 64;
+        game_overlay_icon_height = 64;
+        game_overlay_icon_offset_x = 0.0f;
+        game_overlay_icon_offset_y = 0.0f;
+        game_overlay_icon_anchor = "center";
+
         // Custom classes
         class_player = 0;
         class_bot = 1;
@@ -379,6 +400,27 @@ bool Config::loadConfig(const std::string& filename)
     overlay_snow_theme = get_bool("overlay_snow_theme", true);
     overlay_ui_scale = (float)get_double("overlay_ui_scale", 1.0);
 
+    game_overlay_enabled = get_bool("game_overlay_enabled", false);
+    game_overlay_max_fps = get_long("game_overlay_max_fps", 0);
+    game_overlay_draw_boxes = get_bool("game_overlay_draw_boxes", true);
+    game_overlay_draw_future = get_bool("game_overlay_draw_future", true);
+    game_overlay_box_a = get_long("game_overlay_box_a", 255);
+    game_overlay_box_r = get_long("game_overlay_box_r", 0);
+    game_overlay_box_g = get_long("game_overlay_box_g", 255);
+    game_overlay_box_b = get_long("game_overlay_box_b", 0);
+    game_overlay_box_thickness = (float)get_double("game_overlay_box_thickness", 2.0);
+    game_overlay_future_point_radius = (float)get_double("game_overlay_future_point_radius", 5.0);
+    game_overlay_future_alpha_falloff = (float)get_double("game_overlay_future_alpha_falloff", 1.0);
+    clampGameOverlayColor();
+
+    game_overlay_icon_enabled = get_bool("game_overlay_icon_enabled", false);
+    game_overlay_icon_path = get_string("game_overlay_icon_path", "icon.png");
+    game_overlay_icon_width = get_long("game_overlay_icon_width", 64);
+    game_overlay_icon_height = get_long("game_overlay_icon_height", 64);
+    game_overlay_icon_offset_x = (float)get_double("game_overlay_icon_offset_x", 0.0f);
+    game_overlay_icon_offset_y = (float)get_double("game_overlay_icon_offset_y", 0.0f);
+    game_overlay_icon_anchor = get_string("game_overlay_icon_anchor", "center");
+
     // Custom Classes
     class_player = get_long("class_player", 0);
     class_bot = get_long("class_bot", 1);
@@ -510,7 +552,7 @@ bool Config::saveConfig(const std::string& filename)
         << "export_enable_fp16 = " << (export_enable_fp16 ? "true" : "false") << "\n"
 #endif
         << "fixed_input_size = " << (fixed_input_size ? "true" : "false") << "\n";
-    
+
     // CUDA
 #ifdef USE_CUDA
     file << "\n# CUDA\n"
@@ -535,6 +577,30 @@ bool Config::saveConfig(const std::string& filename)
         << "overlay_snow_theme = " << (overlay_snow_theme ? "true" : "false") << "\n"
         << std::fixed << std::setprecision(2)
         << "overlay_ui_scale = " << overlay_ui_scale << "\n\n";
+
+    file << "# Game Overlay\n"
+        << "game_overlay_enabled = " << (game_overlay_enabled ? "true" : "false") << "\n"
+        << "game_overlay_max_fps = " << game_overlay_max_fps << "\n"
+        << "game_overlay_draw_boxes = " << (game_overlay_draw_boxes ? "true" : "false") << "\n"
+        << "game_overlay_draw_future = " << (game_overlay_draw_future ? "true" : "false") << "\n"
+        << "game_overlay_box_a = " << game_overlay_box_a << "\n"
+        << "game_overlay_box_r = " << game_overlay_box_r << "\n"
+        << "game_overlay_box_g = " << game_overlay_box_g << "\n"
+        << "game_overlay_box_b = " << game_overlay_box_b << "\n"
+        << std::fixed << std::setprecision(2)
+        << "game_overlay_box_thickness = " << game_overlay_box_thickness << "\n"
+        << "game_overlay_future_point_radius = " << game_overlay_future_point_radius << "\n"
+        << "game_overlay_future_alpha_falloff = " << game_overlay_future_alpha_falloff << "\n\n";
+
+    file << "game_overlay_icon_enabled = " << (game_overlay_icon_enabled ? "true" : "false") << "\n"
+        << "game_overlay_icon_path = " << game_overlay_icon_path << "\n"
+        << "game_overlay_icon_width = " << game_overlay_icon_width << "\n"
+        << "game_overlay_icon_height = " << game_overlay_icon_height << "\n"
+        << std::fixed << std::setprecision(2)
+        << "game_overlay_icon_offset_x = " << game_overlay_icon_offset_x << "\n"
+        << std::fixed << std::setprecision(2)
+        << "game_overlay_icon_offset_y = " << game_overlay_icon_offset_y << "\n"
+        << "game_overlay_icon_anchor = " << game_overlay_icon_anchor << "\n\n";
 
     // Custom Classes
     file << "# Custom Classes\n"

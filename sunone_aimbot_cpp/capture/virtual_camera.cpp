@@ -113,13 +113,12 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
     roiW_ = even(w);
     roiH_ = even(h);
 
-    //scratchGpu_.create(roiH_, roiW_, CV_8UC2);
-    //bgrGpu_.create(roiH_, roiW_, CV_8UC3);
-
     if (config.verbose)
+    {
         std::cout << "[VirtualCamera] Actual capture: "
             << roiW_ << 'x' << roiH_ << " @ "
             << cap_->get(cv::CAP_PROP_FPS) << " FPS\n";
+    }
 }
 
 VirtualCameraCapture::~VirtualCameraCapture()
@@ -147,13 +146,13 @@ cv::Mat VirtualCameraCapture::GetNextFrameCpu()
 
     switch (frame.channels())
     {
-    case 1: cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR); break;
-    case 4: cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR); break;
-    case 3:                                                 break;
-    default:
-        std::cerr << "[VirtualCamera] Unexpected channel count: "
-            << frame.channels() << std::endl;
-        return cv::Mat();
+        case 1: cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR); break;
+        case 4: cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR); break;
+        case 3:                                                 break;
+        default:
+            std::cerr << "[VirtualCamera] Unexpected channel count: "
+                << frame.channels() << std::endl;
+            return cv::Mat();
     }
 
     frameCpu = frame;
@@ -191,7 +190,9 @@ std::vector<std::string> VirtualCameraCapture::GetAvailableVirtualCameras(bool f
     {
         cv::VideoCapture test(i, cv::CAP_MSMF);
         if (test.isOpened())
+        {
             cache.emplace_back("Camera " + std::to_string(i));
+        }
     }
     SaveCamList(cache);
     return cache;

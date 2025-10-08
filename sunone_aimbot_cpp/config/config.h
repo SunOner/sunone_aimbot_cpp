@@ -109,6 +109,36 @@ public:
     bool overlay_snow_theme;
     float overlay_ui_scale;
 
+    // Game Overlay
+    bool game_overlay_enabled;
+    int game_overlay_max_fps;
+    bool game_overlay_draw_boxes;
+    bool game_overlay_draw_future;
+    int game_overlay_box_a;
+    int game_overlay_box_r;
+    int game_overlay_box_g;
+    int game_overlay_box_b;
+    float game_overlay_box_thickness;
+    float game_overlay_future_point_radius;
+    float game_overlay_future_alpha_falloff;
+
+    bool game_overlay_icon_enabled;
+    std::string game_overlay_icon_path;
+    int game_overlay_icon_width;
+    int game_overlay_icon_height;
+    float game_overlay_icon_offset_x;
+    float game_overlay_icon_offset_y;
+    std::string game_overlay_icon_anchor; // "center", "top", "bottom", "head"
+
+    void clampGameOverlayColor()
+    {
+        auto clamp255 = [](int& v) { if (v < 0) v = 0; if (v > 255) v = 255; };
+        clamp255(game_overlay_box_a);
+        clamp255(game_overlay_box_r);
+        clamp255(game_overlay_box_g);
+        clamp255(game_overlay_box_b);
+    }
+
     // Custom Classes
     int class_player;                  // 0
     int class_bot;                     // 1
