@@ -376,6 +376,7 @@ bool Game_overlay::Impl::CreateWindowAndDevices()
     }
 
     ShowWindow(hwnd, SW_SHOWNA);
+    SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
     SetWindowPos(hwnd, HWND_TOPMOST, winX, winY, winW, winH,
         SWP_NOACTIVATE | SWP_SHOWWINDOW);
 
