@@ -448,13 +448,6 @@ void draw_mouse()
         }
         else
         {
-            if (ghub_version == "")
-            {
-                ghub_version = "unknown";
-            }
-
-            std::string ghub_version_label = "Installed Ghub version: " + ghub_version;
-            ImGui::Text(ghub_version_label.c_str());
             ImGui::Text("The wrong version of Ghub is installed or the path to Ghub is not set by default.\nDefault system path: C:\\Program Files\\LGHUB");
             if (ImGui::Button("GHub Docs"))
             {
