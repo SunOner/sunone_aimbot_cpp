@@ -431,8 +431,8 @@ static void gameOverlayRenderLoop()
                     (uint32_t(50) << 8) |
                     (uint32_t(i * 255 / total));
 
-                float px = baseX + futurePts[i].first * scaleX;
-                float py = baseY + futurePts[i].second * scaleY;
+                float px = static_cast<float>(baseX) + static_cast<float>(futurePts[i].first) * scaleX;
+                float py = static_cast<float>(baseY) + static_cast<float>(futurePts[i].second) * scaleY;
 
                 if (px < baseX - 40 || py < baseY - 40 ||
                     px > baseX + regionW + 40 || py > baseY + regionH + 40)
