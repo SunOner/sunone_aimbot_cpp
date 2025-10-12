@@ -135,7 +135,7 @@ void draw_ai()
 
     ImGui::Separator();
     ImGui::SliderFloat("Confidence Threshold", &config.confidence_threshold, 0.01f, 1.00f, "%.2f");
-    ImGui::SliderFloat("NMS Threshold", &config.nms_threshold, 0.01f, 1.00f, "%.2f");
+    ImGui::SliderFloat("NMS Threshold", &config.nms_threshold, 0.00f, 1.00f, "%.2f");
     ImGui::SliderInt("Max Detections", &config.max_detections, 1, 100);
 
     if (ImGui::Checkbox("Fixed model size", &config.fixed_input_size))
