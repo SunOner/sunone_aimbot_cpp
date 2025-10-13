@@ -7,6 +7,11 @@
 #include "config.h"
 #include "sunone_aimbot_cpp.h"
 
+#include <string>
+#include <cstring>
+
+extern std::string g_iconLastError;
+
 extern Config config;
 
 void draw_game_overlay_settings()
@@ -72,10 +77,17 @@ void draw_game_overlay_settings()
         config.game_overlay_icon_anchor = anchors[currentAnchor];
     }
 
+    if (!g_iconLastError.empty())
+    {
+        ImGui::Separator();
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 100, 100, 255));
+        ImGui::TextWrapped("%s", g_iconLastError.c_str());
+        ImGui::PopStyleColor();
+    }
+
     if (ImGui::Button("Save Game Overlay Config"))
     {
         config.game_overlay_icon_path = iconPathBuf;
         config.saveConfig("config.ini");
     }
-
 }

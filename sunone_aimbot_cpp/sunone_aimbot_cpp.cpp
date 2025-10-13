@@ -19,6 +19,14 @@
 #include "other_tools.h"
 #include "virtual_camera.h"
 
+#include <wincodec.h>
+#include <wrl/client.h>
+#include <comdef.h>
+
+#pragma comment(lib, "windowscodecs.lib")
+
+using Microsoft::WRL::ComPtr;
+
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
 std::atomic<bool> aiming(false);
@@ -58,6 +66,71 @@ std::atomic<bool> shooting(false);
 static std::string g_lastIconPath;
 static int g_iconImageId = 0;
 static std::mutex g_iconMutex;
+
+std::string g_iconLastError;
+
+static std::string hr_to_string(HRESULT hr)
+{
+    _com_error err(hr);
+    const wchar_t* ws = err.ErrorMessage();
+    int len = WideCharToMultiByte(CP_UTF8, 0, ws, -1, nullptr, 0, nullptr, nullptr);
+    std::string s(len > 0 ? len - 1 : 0, '\0');
+    if (len > 0) WideCharToMultiByte(CP_UTF8, 0, ws, -1, s.data(), len, nullptr, nullptr);
+    return s;
+}
+
+static bool IsValidImageFile(const std::wstring& wpath, UINT& outW, UINT& outH, std::string& outErr)
+{
+    outW = outH = 0;
+    outErr.clear();
+
+    static std::once_flag coinit_flag;
+    static HRESULT coinit_hr = S_OK;
+    std::call_once(coinit_flag, [] {
+        coinit_hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        });
+
+    ComPtr<IWICImagingFactory> factory;
+    HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory));
+    if (FAILED(hr)) { outErr = "WIC factory error: " + hr_to_string(hr); return false; }
+
+    ComPtr<IWICBitmapDecoder> decoder;
+    hr = factory->CreateDecoderFromFilename(wpath.c_str(), nullptr, GENERIC_READ, WICDecodeMetadataCacheOnLoad, &decoder);
+    if (FAILED(hr)) { outErr = "DecoderFromFilename failed: " + hr_to_string(hr); return false; }
+
+    ComPtr<IWICBitmapFrameDecode> frame;
+    hr = decoder->GetFrame(0, &frame);
+    if (FAILED(hr)) { outErr = "GetFrame(0) failed: " + hr_to_string(hr); return false; }
+
+    UINT w = 0, h = 0;
+    hr = frame->GetSize(&w, &h);
+    if (FAILED(hr)) { outErr = "GetSize failed: " + hr_to_string(hr); return false; }
+
+    const UINT MAX_DIM = 16384;
+    if (w == 0 || h == 0 || w > MAX_DIM || h > MAX_DIM)
+    {
+        outErr = "Invalid image size: " + std::to_string(w) + "x" + std::to_string(h);
+        return false;
+    }
+
+    ComPtr<IWICFormatConverter> conv;
+    hr = factory->CreateFormatConverter(&conv);
+    if (FAILED(hr)) { outErr = "CreateFormatConverter failed: " + hr_to_string(hr); return false; }
+
+    hr = conv->Initialize(frame.Get(), GUID_WICPixelFormat32bppRGBA,
+        WICBitmapDitherTypeNone, nullptr, 0.0f, WICBitmapPaletteTypeCustom);
+    if (FAILED(hr)) { outErr = "Converter Initialize failed: " + hr_to_string(hr); return false; }
+
+    const UINT probe_rows = (std::min)(h, 8u);
+    std::vector<uint8_t> probe;
+    probe.resize((size_t)w * probe_rows * 4);
+    WICRect rect{ 0, 0, (INT)w, (INT)probe_rows };
+    hr = conv->CopyPixels(&rect, (UINT)(w * 4), (UINT)probe.size(), probe.data());
+    if (FAILED(hr)) { outErr = "CopyPixels failed: " + hr_to_string(hr); return false; }
+
+    outW = w; outH = h;
+    return true;
+}
 
 void createInputDevices()
 {
@@ -348,16 +421,46 @@ static void gameOverlayRenderLoop()
                 std::filesystem::path p(g_lastIconPath);
                 if (std::filesystem::exists(p) && p.has_filename())
                 {
-                    std::wstring wpath = std::wstring(p.wstring().begin(), p.wstring().end());
-                    int id = gameOverlayPtr->LoadImageFromFile(wpath);
-                    if (id != 0)
+                    const std::wstring wpath = p.wstring();
+                    g_iconLastError.clear();
+
+                    UINT iw = 0, ih = 0;
+                    std::string verr;
+                    if (!IsValidImageFile(wpath, iw, ih, verr))
                     {
-                        g_iconImageId = id;
-                        std::cout << "[GameOverlay] Loaded icon: " << g_lastIconPath << std::endl;
+                        g_iconImageId = 0;
+                        g_iconLastError = "[GameOverlay] Invalid image '" + g_lastIconPath + "': " + verr;
+                        std::cerr << g_iconLastError << std::endl;
                     }
                     else
                     {
-                        std::cerr << "[GameOverlay] Failed to load icon: " << g_lastIconPath << std::endl;
+                        try
+                        {
+                            int id = gameOverlayPtr->LoadImageFromFile(wpath);
+                            if (id != 0)
+                            {
+                                g_iconImageId = id;
+                                std::cout << "[GameOverlay] Loaded icon (" << iw << "x" << ih << "): " << g_lastIconPath << std::endl;
+                            }
+                            else
+                            {
+                                g_iconImageId = 0;
+                                g_iconLastError = "[GameOverlay] Failed to load icon (loader returned 0): " + g_lastIconPath;
+                                std::cerr << g_iconLastError << std::endl;
+                            }
+                        }
+                        catch (const std::exception& e)
+                        {
+                            g_iconImageId = 0;
+                            g_iconLastError = std::string("[GameOverlay] Exception while loading icon: ") + e.what();
+                            std::cerr << g_iconLastError << std::endl;
+                        }
+                        catch (...)
+                        {
+                            g_iconImageId = 0;
+                            g_iconLastError = "[GameOverlay] Unknown exception while loading icon.";
+                            std::cerr << g_iconLastError << std::endl;
+                        }
                     }
                 }
                 else
