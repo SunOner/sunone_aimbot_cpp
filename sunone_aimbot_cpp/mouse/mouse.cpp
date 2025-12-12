@@ -388,8 +388,22 @@ void MouseThread::moveMousePivot(double pivotX, double pivotY)
         }
     }
 
-    double predX = pivotX + vx * prediction_interval + vx * 0.002;
-    double predY = pivotY + vy * prediction_interval + vy * 0.002;
+    // Get actual detection delay from inference timing
+    double detection_delay = 0.016;  // Default 16ms fallback
+    if (config.backend == "DML" && dml_detector)
+    {
+        detection_delay = dml_detector->lastInferenceTimeDML.count() / 1000.0;
+    }
+#ifdef USE_CUDA
+    else if (config.backend == "TRT")
+    {
+        detection_delay = trt_detector.lastInferenceTime.count() / 1000.0;
+    }
+#endif
+    detection_delay = std::clamp(detection_delay, 0.001, 0.1);  // 1-100ms range
+
+    double predX = pivotX + vx * (prediction_interval + detection_delay);
+    double predY = pivotY + vy * (prediction_interval + detection_delay);
 
     auto mv = calc_movement(predX, predY);
     int mx = static_cast<int>(mv.first);
