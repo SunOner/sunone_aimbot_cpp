@@ -375,6 +375,19 @@ void MouseThread::moveMousePivot(double pivotX, double pivotY)
     prev_velocity_x = vx;
     prev_velocity_y = vy;
 
+    // Pixel deadzone: stop if target within N pixels of center
+    if (config.pixel_deadzone > 0)
+    {
+        double offset_x = pivotX - center_x;
+        double offset_y = pivotY - center_y;
+        double offset_dist = std::hypot(offset_x, offset_y);
+
+        if (offset_dist < config.pixel_deadzone)
+        {
+            return;  // Within deadzone, don't move
+        }
+    }
+
     double predX = pivotX + vx * prediction_interval + vx * 0.002;
     double predY = pivotY + vy * prediction_interval + vy * 0.002;
 
