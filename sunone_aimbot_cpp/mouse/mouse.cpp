@@ -388,22 +388,37 @@ void MouseThread::moveMousePivot(double pivotX, double pivotY)
         }
     }
 
-    // Get actual detection delay from inference timing
-    double detection_delay = 0.016;  // Default 16ms fallback
-    if (config.backend == "DML" && dml_detector)
-    {
-        detection_delay = dml_detector->lastInferenceTimeDML.count() / 1000.0;
-    }
-#ifdef USE_CUDA
-    else if (config.backend == "TRT")
-    {
-        detection_delay = trt_detector.lastInferenceTime.count() / 1000.0;
-    }
-#endif
-    detection_delay = std::clamp(detection_delay, 0.001, 0.1);  // 1-100ms range
+    // Check if target is stationary
+    double velocity_magnitude = std::hypot(vx, vy);
+    bool is_stationary = (config.stationary_threshold > 0) &&
+                         (velocity_magnitude < config.stationary_threshold);
 
-    double predX = pivotX + vx * (prediction_interval + detection_delay);
-    double predY = pivotY + vy * (prediction_interval + detection_delay);
+    double predX, predY;
+    if (is_stationary)
+    {
+        // Target stationary - aim directly without prediction
+        predX = pivotX;
+        predY = pivotY;
+    }
+    else
+    {
+        // Target moving - apply prediction with detection delay
+        double detection_delay = 0.016;
+        if (config.backend == "DML" && dml_detector)
+        {
+            detection_delay = dml_detector->lastInferenceTimeDML.count() / 1000.0;
+        }
+#ifdef USE_CUDA
+        else if (config.backend == "TRT")
+        {
+            detection_delay = trt_detector.lastInferenceTime.count() / 1000.0;
+        }
+#endif
+        detection_delay = std::clamp(detection_delay, 0.001, 0.1);
+
+        predX = pivotX + vx * (prediction_interval + detection_delay);
+        predY = pivotY + vy * (prediction_interval + detection_delay);
+    }
 
     auto mv = calc_movement(predX, predY);
     int mx = static_cast<int>(mv.first);
