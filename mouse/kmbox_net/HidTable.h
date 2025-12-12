@@ -116,7 +116,9 @@
 #define KEY_F22                                0x71
 #define KEY_F23                                0x72
 #define KEY_F24                                0x73
+#ifndef KEY_EXECUTE
 #define KEY_EXECUTE                            0x74
+#endif
 #define KEY_HELP                               0x75
 #define KEY_MENU                               0x76
 #define KEY_SELECT                             0x77

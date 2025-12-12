@@ -120,8 +120,8 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
     nvinfer1::ITensor* inputTensor = network->getInput(0);
     const char* inName = inputTensor->getName();
     nvinfer1::Dims inDims = inputTensor->getDimensions();
-    int H = (inDims.nbDims >= 4) ? inDims.d[2] : -1;
-    int W = (inDims.nbDims >= 4) ? inDims.d[3] : -1;
+    int H = (inDims.nbDims >= 4) ? static_cast<int>(inDims.d[2]) : -1;
+    int W = (inDims.nbDims >= 4) ? static_cast<int>(inDims.d[3]) : -1;
 
     bool fixedByModel = (H > 0 && W > 0);
     bool fixedByConfig = config.fixed_input_size;

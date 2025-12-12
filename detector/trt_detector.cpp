@@ -316,12 +316,12 @@ void TrtDetector::initialize(const std::string& modelFile)
     {
         const std::string& mainOut = outputNames[0];
         nvinfer1::Dims outDims = context->getTensorShape(mainOut.c_str());
-        numClasses = (config.postprocess == "yolo10") ? 11 : (outDims.d[1] - 4);
+        numClasses = (config.postprocess == "yolo10") ? 11 : static_cast<int>(outDims.d[1] - 4);
     }
 
-    int c = inputDims.d[1];
-    int h = inputDims.d[2];
-    int w = inputDims.d[3];
+    int c = static_cast<int>(inputDims.d[1]);
+    int h = static_cast<int>(inputDims.d[2]);
+    int w = static_cast<int>(inputDims.d[3]);
 
     img_scale = static_cast<float>(config.detection_resolution) / w;
 
@@ -590,9 +590,9 @@ std::vector<std::vector<Detection>> TrtDetector::detectBatch(const std::vector<c
     int batch_size = static_cast<int>(frames.size());
 
     nvinfer1::Dims dims = context->getTensorShape(inputName.c_str());
-    int c = dims.d[1];
-    int h = dims.d[2];
-    int w = dims.d[3];
+    int c = static_cast<int>(dims.d[1]);
+    int h = static_cast<int>(dims.d[2]);
+    int w = static_cast<int>(dims.d[3]);
 
     if (dims.d[0] != batch_size)
     {
@@ -681,9 +681,9 @@ void TrtDetector::preProcess(const cv::Mat& frame)
     if (!inputBuffer) return;
 
     nvinfer1::Dims dims = context->getTensorShape(inputName.c_str());
-    int c = dims.d[1];
-    int h = dims.d[2];
-    int w = dims.d[3];
+    int c = static_cast<int>(dims.d[1]);
+    int h = static_cast<int>(dims.d[2]);
+    int w = static_cast<int>(dims.d[3]);
 
     cv::cuda::GpuMat gpuFrame, gpuResized, gpuFloat;
     gpuFrame.upload(frame);

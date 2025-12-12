@@ -39,7 +39,10 @@ std::string GetDMLDeviceName(int deviceId)
         return "Failed to get description";
 
     std::wstring wname(desc.Description);
-    return std::string(wname.begin(), wname.end());
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wname.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string result(size_needed - 1, 0);
+    WideCharToMultiByte(CP_UTF8, 0, wname.c_str(), -1, &result[0], size_needed, nullptr, nullptr);
+    return result;
 }
 
 DirectMLDetector::DirectMLDetector(const std::string& model_path)

@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -83,7 +83,7 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
             config.saveConfig("config.ini");
         }
     }
-    
+
     cap_ = std::make_unique<cv::VideoCapture>(camIdx, cv::CAP_MSMF);
     cap_->set(cv::CAP_PROP_FOURCC, 0);
 
@@ -107,7 +107,7 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
 
     if (config.capture_fps > 0)
         cap_->set(cv::CAP_PROP_FPS, config.capture_fps);
-    
+
     cap_->set(cv::CAP_PROP_BUFFERSIZE, 1);
 
     roiW_ = even(w);
@@ -117,7 +117,7 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
     {
         std::cout << "[VirtualCamera] Actual capture: "
             << roiW_ << 'x' << roiH_ << " @ "
-            << cap_->get(cv::CAP_PROP_FPS) << " FPS" << std::endl;
+            << cap_->get(cv::CAP_PROP_FPS) << " FPS" << std::endl;
     }
 }
 

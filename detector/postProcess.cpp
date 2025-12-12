@@ -150,7 +150,7 @@ std::vector<Detection> postProcessYolo11(
         return detections;
     }
     
-    cv::Mat det_output(rows, cols, CV_32F, (void*)output);
+    cv::Mat det_output(static_cast<int>(rows), static_cast<int>(cols), CV_32F, (void*)output);
 
     const float img_scale = trt_detector.img_scale;
     
@@ -246,7 +246,7 @@ std::vector<Detection> postProcessYolo11DML(
     int64_t rows = shape[0];
     int64_t cols = shape[1];
 
-    cv::Mat det_output(rows, cols, CV_32F, (void*)output);
+    cv::Mat det_output(static_cast<int>(rows), static_cast<int>(cols), CV_32F, (void*)output);
     for (int i = 0; i < cols; ++i) {
         cv::Mat classes_scores = det_output.col(i).rowRange(4, 4 + numClasses);
         cv::Point class_id_point;
