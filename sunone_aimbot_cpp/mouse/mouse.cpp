@@ -210,22 +210,22 @@ std::pair<double, double> MouseThread::predict_target_position(double target_x, 
     prev_velocity_x = vx;
     prev_velocity_y = vy;
 
-    double predictedX = target_x + vx * prediction_interval;
-    double predictedY = target_y + vy * prediction_interval;
-
-    double detectionDelay = 0.05;
-    if (config.backend == "DML")
+    // Get actual detection delay from inference timing (convert ms to seconds)
+    double detection_delay = 0.016;  // Default 16ms fallback
+    if (config.backend == "DML" && dml_detector)
     {
-        detectionDelay = dml_detector->lastInferenceTimeDML.count();
+        detection_delay = dml_detector->lastInferenceTimeDML.count() / 1000.0;
     }
 #ifdef USE_CUDA
-    else
+    else if (config.backend == "TRT")
     {
-        detectionDelay = trt_detector.lastInferenceTime.count();
+        detection_delay = trt_detector.lastInferenceTime.count() / 1000.0;
     }
 #endif
-    predictedX += vx * detectionDelay;
-    predictedY += vy * detectionDelay;
+    detection_delay = std::clamp(detection_delay, 0.001, 0.1);  // 1-100ms range
+
+    double predictedX = target_x + vx * (prediction_interval + detection_delay);
+    double predictedY = target_y + vy * (prediction_interval + detection_delay);
 
     return { predictedX, predictedY };
 }

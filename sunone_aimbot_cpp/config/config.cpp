@@ -335,10 +335,10 @@ bool Config::loadConfig(const std::string& filename)
     wind_M = (float)get_double("wind_M", 10.0f);
     wind_D = (float)get_double("wind_D", 8.0f);
 
-    // Anti-jitter smoothing
-    velocity_smoothing = (float)get_double("velocity_smoothing", 0.5);
-    pixel_deadzone = get_long("pixel_deadzone", 2);
-    stationary_threshold = (float)get_double("stationary_threshold", 30.0);
+    // Anti-jitter smoothing (with validation)
+    velocity_smoothing = std::clamp((float)get_double("velocity_smoothing", 0.5), 0.0f, 0.9f);
+    pixel_deadzone = std::clamp(get_long("pixel_deadzone", 2), 0L, 100L);
+    stationary_threshold = std::max(0.0f, (float)get_double("stationary_threshold", 30.0));
 
     // Arduino
     arduino_baudrate = get_long("arduino_baudrate", 115200);
