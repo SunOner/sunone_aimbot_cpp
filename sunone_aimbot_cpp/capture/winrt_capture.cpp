@@ -104,7 +104,7 @@ WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
     framePool = Direct3D11CaptureFramePool::CreateFreeThreaded(
         device,
         DirectXPixelFormat::B8G8R8A8UIntNormalized,
-        3,
+        2,  // Reduced from 3 - lower latency and memory
         captureItem.Size()
     );
 
@@ -203,11 +203,21 @@ cv::Mat WinRTScreenCapture::GetNextFrameCpu()
     }
 
     cv::Mat cpuFrame(regionHeight, regionWidth, CV_8UC4);
-    for (int y = 0; y < regionHeight; y++)
+    const size_t bytesPerRow = static_cast<size_t>(regionWidth) * 4;
+
+    // OPTIMIZED: Use single memcpy when stride matches
+    if (mapped.RowPitch == bytesPerRow)
     {
-        unsigned char* dstRow = cpuFrame.ptr<unsigned char>(y);
-        unsigned char* srcRow = (unsigned char*)mapped.pData + y * mapped.RowPitch;
-        memcpy(dstRow, srcRow, regionWidth * 4);
+        memcpy(cpuFrame.data, mapped.pData, regionHeight * bytesPerRow);
+    }
+    else
+    {
+        for (int y = 0; y < regionHeight; y++)
+        {
+            unsigned char* dstRow = cpuFrame.ptr<unsigned char>(y);
+            unsigned char* srcRow = static_cast<unsigned char*>(mapped.pData) + y * mapped.RowPitch;
+            memcpy(dstRow, srcRow, bytesPerRow);
+        }
     }
     d3dContext->Unmap(stagingTextureCPU.get(), 0);
 

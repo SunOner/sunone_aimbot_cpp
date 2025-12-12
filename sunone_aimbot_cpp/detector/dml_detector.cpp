@@ -122,14 +122,19 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
         cv::cvtColor(resized, resized, cv::COLOR_BGR2RGB);
         resized.convertTo(resized, CV_32FC3, 1.0f / 255.0f);
 
-        const float* src = reinterpret_cast<const float*>(resized.data);
-        for (int h = 0; h < target_h; ++h)
-            for (int w = 0; w < target_w; ++w)
-                for (int c = 0; c < 3; ++c)
-                {
-                    size_t dstIdx = b * 3 * target_h * target_w + c * target_h * target_w + h * target_w + w;
-                    input_tensor_values[dstIdx] = src[(h * target_w + w) * 3 + c];
-                }
+        // OPTIMIZED: Use cv::split instead of triple nested loop
+        std::vector<cv::Mat> channels(3);
+        cv::split(resized, channels);
+
+        const size_t plane_size = static_cast<size_t>(target_h) * target_w;
+        const size_t batch_offset = b * 3 * plane_size;
+
+        for (int c = 0; c < 3; ++c)
+        {
+            memcpy(&input_tensor_values[batch_offset + c * plane_size],
+                   channels[c].data,
+                   plane_size * sizeof(float));
+        }
     }
     auto t1 = std::chrono::steady_clock::now();
 

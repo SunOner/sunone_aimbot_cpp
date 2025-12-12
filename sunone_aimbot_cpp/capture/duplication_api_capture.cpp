@@ -317,11 +317,23 @@ cv::Mat DuplicationAPIScreenCapture::GetNextFrameCpu()
     }
 
     cv::Mat cpuFrame(regionHeight, regionWidth, CV_8UC4);
-    for (int y = 0; y < regionHeight; y++)
+    const size_t bytesPerRow = static_cast<size_t>(regionWidth) * 4;
+
+    // OPTIMIZED: Use single memcpy when stride matches
+    if (mapped.RowPitch == bytesPerRow)
     {
-        unsigned char* dstRow = cpuFrame.ptr<unsigned char>(y);
-        unsigned char* srcRow = (unsigned char*)mapped.pData + y * mapped.RowPitch;
-        memcpy(dstRow, srcRow, regionWidth * 4);
+        // Contiguous memory - single bulk copy
+        memcpy(cpuFrame.data, mapped.pData, regionHeight * bytesPerRow);
+    }
+    else
+    {
+        // Padded rows - row-by-row copy required
+        for (int y = 0; y < regionHeight; y++)
+        {
+            unsigned char* dstRow = cpuFrame.ptr<unsigned char>(y);
+            unsigned char* srcRow = static_cast<unsigned char*>(mapped.pData) + y * mapped.RowPitch;
+            memcpy(dstRow, srcRow, bytesPerRow);
+        }
     }
 
     d3dContext->Unmap(stagingTextureCPU, 0);

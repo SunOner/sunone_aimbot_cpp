@@ -62,17 +62,17 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         if (config.verbose)
             std::cout << "[Capture] OpenCV version: " << CV_VERSION << std::endl;
 
-        IScreenCapture* capturer = nullptr;
+        std::unique_ptr<IScreenCapture> capturer;
         if (config.capture_method == "duplication_api")
         {
-            capturer = new DuplicationAPIScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+            capturer = std::make_unique<DuplicationAPIScreenCapture>(CAPTURE_WIDTH, CAPTURE_HEIGHT);
             if (config.verbose)
                 std::cout << "[Capture] Using Duplication API" << std::endl;
         }
         else if (config.capture_method == "winrt")
         {
             winrt::init_apartment(winrt::apartment_type::multi_threaded);
-            capturer = new WinRTScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+            capturer = std::make_unique<WinRTScreenCapture>(CAPTURE_WIDTH, CAPTURE_HEIGHT);
             if (config.verbose)
                 std::cout << "[Capture] Using WinRT" << std::endl;
         }
@@ -80,7 +80,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         {
             {
                 std::lock_guard<std::mutex> lock(capturerMutex);
-                capturer = new VirtualCameraCapture(config.virtual_camera_width, config.virtual_camera_heigth);
+                capturer = std::make_unique<VirtualCameraCapture>(config.virtual_camera_width, config.virtual_camera_heigth);
             }
             if (config.verbose)
                 std::cout << "[Capture] Using Virtual Camera" << std::endl;
@@ -89,7 +89,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         {
             config.capture_method = "duplication_api";
             config.saveConfig();
-            capturer = new DuplicationAPIScreenCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT);
+            capturer = std::make_unique<DuplicationAPIScreenCapture>(CAPTURE_WIDTH, CAPTURE_HEIGHT);
             std::cout << "[Capture] Unknown capture_method. Set to duplication_api by default." << std::endl;
         }
 
@@ -137,21 +137,20 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 capture_cursor_changed.load() ||
                 capture_borders_changed.load())
             {
-                delete capturer;
-                capturer = nullptr;
+                capturer.reset();
 
                 int newWidth = config.detection_resolution;
                 int newHeight = config.detection_resolution;
 
                 if (config.capture_method == "duplication_api")
                 {
-                    capturer = new DuplicationAPIScreenCapture(newWidth, newHeight);
+                    capturer = std::make_unique<DuplicationAPIScreenCapture>(newWidth, newHeight);
                     if (config.verbose)
                         std::cout << "[Capture] Re-init with Duplication API." << std::endl;
                 }
                 else if (config.capture_method == "winrt")
                 {
-                    capturer = new WinRTScreenCapture(newWidth, newHeight);
+                    capturer = std::make_unique<WinRTScreenCapture>(newWidth, newHeight);
                     if (config.verbose)
                         std::cout << "[Capture] Re-init with WinRT." << std::endl;
                 }
@@ -159,7 +158,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 {
                     {
                         std::lock_guard<std::mutex> lock(capturerMutex);
-                        capturer = new VirtualCameraCapture(config.virtual_camera_width, config.virtual_camera_heigth);
+                        capturer = std::make_unique<VirtualCameraCapture>(config.virtual_camera_width, config.virtual_camera_heigth);
                     }
                     if (config.verbose)
                         std::cout << "[Capture] Re-init with Virtual Camera." << std::endl;
@@ -168,7 +167,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 {
                     config.capture_method = "duplication_api";
                     config.saveConfig();
-                    capturer = new DuplicationAPIScreenCapture(newWidth, newHeight);
+                    capturer = std::make_unique<DuplicationAPIScreenCapture>(newWidth, newHeight);
                     std::cout << "[Capture] Unknown capture_method. Set to duplication_api." << std::endl;
                 }
 
@@ -199,23 +198,29 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             if (config.circle_mask)
                 screenshotCpu = apply_circle_mask(screenshotCpu);
 
+            cv::Mat frameForDetector;
+
             {
                 std::lock_guard<std::mutex> lock(frameMutex);
-                latestFrame = screenshotCpu.clone();
+                // Share data for latestFrame (ref-counted)
+                latestFrame = screenshotCpu;
                 if (frameQueue.size() >= config.batch_size)
                     frameQueue.pop_front();
-                frameQueue.push_back(latestFrame);
+                // Queue needs independent copy
+                frameQueue.push_back(screenshotCpu.clone());
+                // Clone for detector (thread safety)
+                frameForDetector = screenshotCpu.clone();
             }
             frameCV.notify_one();
 
             if (config.backend == "DML" && dml_detector)
             {
-                dml_detector->processFrame(screenshotCpu);
+                dml_detector->processFrame(frameForDetector);
             }
 #ifdef USE_CUDA
             else if (config.backend == "TRT")
             {
-                trt_detector.processFrame(screenshotCpu);
+                trt_detector.processFrame(frameForDetector);
             }
 #endif
             if (!config.screenshot_button.empty() && config.screenshot_button[0] != "None")
@@ -266,12 +271,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         if (frameLimitingEnabled)
             timeEndPeriod(1);
 
-        if (capturer)
-        {
-            std::lock_guard<std::mutex> lock(capturerMutex);
-            delete capturer;
-            capturer = nullptr;
-        }
+        // unique_ptr handles cleanup automatically
 
         if (config.capture_method == "winrt")
             winrt::uninit_apartment();

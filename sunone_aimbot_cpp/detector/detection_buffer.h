@@ -28,4 +28,14 @@ struct DetectionBuffer
         outClasses = classes;
         outVersion = version;
     }
+
+    // OPTIMIZED: Move-based getter for performance-critical paths
+    void getAndClear(std::vector<cv::Rect>& outBoxes, std::vector<int>& outClasses, int& outVersion)
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        outBoxes = std::move(boxes);
+        outClasses = std::move(classes);
+        outVersion = version;
+        // Vectors are now empty, ready for next frame
+    }
 };

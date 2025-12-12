@@ -36,13 +36,26 @@ TrtDetector::TrtDetector()
     shouldExit(false),
     inputBufferDevice(nullptr),
     img_scale(1.0f),
-    numClasses(0)
+    numClasses(0),
+    stream(nullptr)
 {
-    cudaStreamCreate(&stream);
+    cudaError_t err = cudaStreamCreate(&stream);
+    if (err != cudaSuccess)
+    {
+        std::cerr << "[Detector] Failed to create CUDA stream: " << cudaGetErrorString(err) << std::endl;
+    }
 }
 
 TrtDetector::~TrtDetector()
 {
+    // Cleanup CUDA stream
+    if (stream)
+    {
+        cudaStreamSynchronize(stream);
+        cudaStreamDestroy(stream);
+        stream = nullptr;
+    }
+
     for (auto& buffer : pinnedOutputBuffers)
     {
         if (buffer.second) cudaFreeHost(buffer.second);
@@ -686,8 +699,18 @@ void TrtDetector::preProcess(const cv::Mat& frame)
     std::vector<cv::cuda::GpuMat> gpuChannels;
     cv::cuda::split(gpuFloat, gpuChannels);
 
+    // OPTIMIZED: Use async copies for better pipeline overlap
     for (int i = 0; i < c; ++i)
-        cudaMemcpy((float*)inputBuffer + i * h * w, gpuChannels[i].ptr<float>(), h * w * sizeof(float), cudaMemcpyDeviceToDevice);
+    {
+        cudaMemcpyAsync(
+            static_cast<float*>(inputBuffer) + i * h * w,
+            gpuChannels[i].ptr<float>(),
+            h * w * sizeof(float),
+            cudaMemcpyDeviceToDevice,
+            stream
+        );
+    }
+    // Sync will happen at enqueueV3
 }
 
 void TrtDetector::postProcess(const float* output, const std::string& outputName, std::chrono::duration<double, std::milli>* nmsTime)
