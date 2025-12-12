@@ -1,0 +1,330 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{3CE70E4F-AD9B-30FB-B10A-447AFF3A82FA}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>libwebp</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libwebp.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libwebpd</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libwebp.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libwebp</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build" /bigobj</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4244;4267</DisableSpecificWarnings>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild></MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;WEBP_USE_THREAD;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Debug\libwebpd.pdb</ProgramDataBaseFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;WEBP_USE_THREAD;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4221</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build" /bigobj</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DisableSpecificWarnings>4244;4267</DisableSpecificWarnings>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild></MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;NDEBUG;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;WEBP_USE_THREAD;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <ProgramDataBaseFileName>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Release\libwebp.pdb</ProgramDataBaseFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;NDEBUG;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;WEBP_USE_THREAD;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4221</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\sharpyuv\sharpyuv.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\sharpyuv\sharpyuv_cpu.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\sharpyuv\sharpyuv_csp.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\sharpyuv\sharpyuv_dsp.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\sharpyuv\sharpyuv_gamma.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\sharpyuv\sharpyuv_neon.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\sharpyuv\sharpyuv_sse2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\alpha_dec.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\buffer_dec.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\frame_dec.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\idec_dec.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\io_dec.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\quant_dec.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\tree_dec.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\vp8_dec.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\vp8l_dec.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\webp_dec.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\demux\anim_decode.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\demux\demux.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\alpha_processing.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\alpha_processing_mips_dsp_r2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\alpha_processing_neon.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\alpha_processing_sse2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\alpha_processing_sse41.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\cost.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\cost_mips32.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\cost_mips_dsp_r2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\cost_neon.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\cost_sse2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\cpu.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\dec.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\dec_clip_tables.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\dec_mips32.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\dec_mips_dsp_r2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\dec_msa.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\dec_neon.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\dec_sse2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\dec_sse41.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\enc_mips32.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\enc_mips_dsp_r2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\enc_msa.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\enc_neon.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\enc_sse2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\enc_sse41.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\filters.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\filters_mips_dsp_r2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\filters_msa.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\filters_neon.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\filters_sse2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_enc_mips32.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_enc_mips_dsp_r2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_enc_msa.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_enc_neon.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_enc_sse2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_enc_sse41.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_mips_dsp_r2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_msa.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_neon.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_sse2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_sse41.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\rescaler.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\rescaler_mips32.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\rescaler_mips_dsp_r2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\rescaler_msa.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\rescaler_neon.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\rescaler_sse2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\ssim.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\ssim_sse2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\upsampling.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\upsampling_mips_dsp_r2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\upsampling_msa.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\upsampling_neon.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\upsampling_sse2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\upsampling_sse41.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\yuv.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\yuv_mips32.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\yuv_mips_dsp_r2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\yuv_neon.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\yuv_sse2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\yuv_sse41.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\alpha_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\analysis_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\backward_references_cost_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\backward_references_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\config_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\cost_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\filter_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\frame_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\histogram_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\iterator_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\near_lossless_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\picture_csp_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\picture_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\picture_psnr_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\picture_rescale_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\picture_tools_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\predictor_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\quant_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\syntax_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\token_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\tree_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\vp8l_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\webp_enc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\mux\anim_encode.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\mux\muxedit.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\mux\muxinternal.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\mux\muxread.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\bit_reader_utils.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\bit_writer_utils.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\color_cache_utils.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\filters_utils.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\huffman_encode_utils.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\huffman_utils.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\palette.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\quant_levels_dec_utils.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\quant_levels_utils.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\random_utils.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\rescaler_utils.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\thread_utils.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\utils.c" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\sharpyuv\sharpyuv.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\sharpyuv\sharpyuv_cpu.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\sharpyuv\sharpyuv_csp.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\sharpyuv\sharpyuv_dsp.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\sharpyuv\sharpyuv_gamma.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\alphai_dec.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\common_dec.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\vp8_dec.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\vp8i_dec.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\vp8li_dec.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dec\webpi_dec.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\common_sse2.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\common_sse41.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\cpu.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\dsp.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\lossless_common.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\mips_macro.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\msa_macro.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\neon.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\quant.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\dsp\yuv.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\backward_references_enc.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\cost_enc.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\histogram_enc.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\vp8i_enc.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\enc\vp8li_enc.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\mux\animi.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\mux\muxi.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\bit_reader_inl_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\bit_reader_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\bit_writer_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\color_cache_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\endian_inl_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\filters_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\huffman_encode_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\huffman_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\palette.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\quant_levels_dec_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\quant_levels_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\random_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\rescaler_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\thread_utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\utils\utils.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\webp\decode.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\webp\demux.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\webp\encode.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\webp\format_constants.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\webp\mux.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\webp\mux_types.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\libwebp\src\webp\types.h" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,0 +1,178 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{4946C4CB-43BE-3979-8DE6-008FDA551BD8}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>libopenjp2</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libopenjp2.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">libopenjp2d</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libopenjp2.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">libopenjp2</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\openjpeg\openjp2;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build" /bigobj</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild></MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;OPJ_STATIC;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;_CRT_FAR_MAPPINGS_NO_DEPRECATE;_CRT_IS_WCTYPE_NO_DEPRECATE;_CRT_MANAGED_FP_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE_GLOBALS;_CRT_SETERRORMODE_BEEP_SLEEP_NO_DEPRECATE;_CRT_TIME_FUNCTIONS_NO_DEPRECATE;_CRT_VCCLRIT_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;MUTEX_win32;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Debug\libopenjp2d.pdb</ProgramDataBaseFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;OPJ_STATIC;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;_CRT_FAR_MAPPINGS_NO_DEPRECATE;_CRT_IS_WCTYPE_NO_DEPRECATE;_CRT_MANAGED_FP_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE_GLOBALS;_CRT_SETERRORMODE_BEEP_SLEEP_NO_DEPRECATE;_CRT_TIME_FUNCTIONS_NO_DEPRECATE;_CRT_VCCLRIT_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;MUTEX_win32;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\openjpeg\openjp2;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\openjpeg\openjp2;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4221</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\openjpeg\openjp2;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build" /bigobj</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild></MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;NDEBUG;OPJ_STATIC;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;_CRT_FAR_MAPPINGS_NO_DEPRECATE;_CRT_IS_WCTYPE_NO_DEPRECATE;_CRT_MANAGED_FP_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE_GLOBALS;_CRT_SETERRORMODE_BEEP_SLEEP_NO_DEPRECATE;_CRT_TIME_FUNCTIONS_NO_DEPRECATE;_CRT_VCCLRIT_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;MUTEX_win32;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <ProgramDataBaseFileName>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Release\libopenjp2.pdb</ProgramDataBaseFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;NDEBUG;OPJ_STATIC;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;_CRT_FAR_MAPPINGS_NO_DEPRECATE;_CRT_IS_WCTYPE_NO_DEPRECATE;_CRT_MANAGED_FP_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE_GLOBALS;_CRT_SETERRORMODE_BEEP_SLEEP_NO_DEPRECATE;_CRT_TIME_FUNCTIONS_NO_DEPRECATE;_CRT_VCCLRIT_NO_DEPRECATE;_SCL_SECURE_NO_DEPRECATE;MUTEX_win32;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\openjpeg\openjp2;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\openjpeg\openjp2;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4221</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\thread.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\bio.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\cio.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\dwt.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\event.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\ht_dec.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\image.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\invert.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\j2k.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\jp2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\mct.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\mqc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\openjpeg.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\opj_clock.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\pi.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\t1.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\t2.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\tcd.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\tgt.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\function_list.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\opj_malloc.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\openjpeg\openjp2\sparse_array.c" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,0 +1,182 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ResolveNugetPackages>false</ResolveNugetPackages>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{69F21E37-D424-3502-B5EC-FEB0971024A6}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>ALL_BUILD</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Utility</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\icv\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\iw\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\icv\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\iw\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\libjpeg-turbo\jpeg12-static.vcxproj">
+      <Project>{371EFBD5-2678-3043-83D2-94C583ECAECB}</Project>
+      <Name>jpeg12-static</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\libjpeg-turbo\jpeg16-static.vcxproj">
+      <Project>{3C9F20B5-4843-389D-A062-E78B4B0F4598}</Project>
+      <Name>jpeg16-static</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\libjpeg-turbo\libjpeg-turbo.vcxproj">
+      <Project>{FF755BEF-B248-39FE-910E-02A3B47BBBA6}</Project>
+      <Name>libjpeg-turbo</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\openjpeg\openjp2\libopenjp2.vcxproj">
+      <Project>{4946C4CB-43BE-3979-8DE6-008FDA551BD8}</Project>
+      <Name>libopenjp2</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\apps\annotation\opencv_annotation.vcxproj">
+      <Project>{B7CAC5DB-C282-33A4-ADA8-7C9AD2AE007D}</Project>
+      <Name>opencv_annotation</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\opencv_dnn_plugins.vcxproj">
+      <Project>{4164A6A7-1749-341E-BE61-13A62DD55A30}</Project>
+      <Name>opencv_dnn_plugins</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\opencv_highgui_plugins.vcxproj">
+      <Project>{A4967E94-E4B5-3231-9395-EE37D0F8C8D7}</Project>
+      <Name>opencv_highgui_plugins</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\modules\img_hash\opencv_img_hash.vcxproj">
+      <Project>{8EC95275-F9A3-3CEA-80A8-13164CF39997}</Project>
+      <Name>opencv_img_hash</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\apps\interactive-calibration\opencv_interactive-calibration.vcxproj">
+      <Project>{C21801A3-8BB3-36C5-A620-DAC30A77A792}</Project>
+      <Name>opencv_interactive-calibration</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\apps\model-diagnostics\opencv_model_diagnostics.vcxproj">
+      <Project>{AEA13796-FBCE-3787-9599-04C07FC9CFAA}</Project>
+      <Name>opencv_model_diagnostics</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\apps\version\opencv_version.vcxproj">
+      <Project>{853E3DB6-5C0B-3FAB-A33F-E38591E66D5D}</Project>
+      <Name>opencv_version</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\apps\version\opencv_version_win32.vcxproj">
+      <Project>{2C5B423C-F271-321D-B6F7-FCD5D537B2C5}</Project>
+      <Name>opencv_version_win32</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\modules\.firstpass\videoio\opencv_videoio_plugins.vcxproj">
+      <Project>{2087FA1C-4A77-333A-8AF9-058A854BEF9C}</Project>
+      <Name>opencv_videoio_plugins</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\apps\visualisation\opencv_visualisation.vcxproj">
+      <Project>{C7DE7CA8-A8CE-3724-B440-D2A0994E692D}</Project>
+      <Name>opencv_visualisation</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\modules\world\tools\waldboost_detector\opencv_waldboost_detector.vcxproj">
+      <Project>{44B93102-3341-34B0-85AA-7CA6C9FEDDE4}</Project>
+      <Name>opencv_waldboost_detector</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\modules\world\opencv_world.vcxproj">
+      <Project>{AA724696-B202-31E1-A763-C39D16ECE783}</Project>
+      <Name>opencv_world</Name>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\modules\world\opencv_world_AVX.vcxproj">
+      <Project>{5829934C-F469-3FFB-A3DC-B8EFCE0D5C2A}</Project>
+      <Name>opencv_world_AVX</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\modules\world\opencv_world_AVX2.vcxproj">
+      <Project>{2703593A-CB19-3CC6-86FB-9ACB1EEC4D2F}</Project>
+      <Name>opencv_world_AVX2</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\modules\world\opencv_world_AVX512_SKX.vcxproj">
+      <Project>{2B51E3E1-C88D-3B91-8942-00FB57890E68}</Project>
+      <Name>opencv_world_AVX512_SKX</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\modules\world\opencv_world_SSE4_1.vcxproj">
+      <Project>{BBBD0DDA-2CB5-31B3-8594-A55C30C9306F}</Project>
+      <Name>opencv_world_SSE4_1</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+    <ProjectReference Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\modules\world\opencv_world_SSE4_2.vcxproj">
+      <Project>{BE8E2978-AD19-3A8D-93FD-D0CD824E8AD6}</Project>
+      <Name>opencv_world_SSE4_2</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

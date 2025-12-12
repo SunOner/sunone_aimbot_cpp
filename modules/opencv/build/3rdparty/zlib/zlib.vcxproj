@@ -1,0 +1,182 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{B4A4982B-7CB1-3421-B33B-8BE9FA95507E}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>zlib</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">zlib.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">zlibd</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">zlib.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">zlib</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\zlib;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build" /bigobj</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4267;4244</DisableSpecificWarnings>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild></MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;NO_FSEEKO;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Debug\zlibd.pdb</ProgramDataBaseFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;NO_FSEEKO;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\zlib;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\zlib;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4221</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\zlib;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build" /bigobj</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DisableSpecificWarnings>4267;4244</DisableSpecificWarnings>
+      <ExceptionHandling>
+      </ExceptionHandling>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild></MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;NDEBUG;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;NO_FSEEKO;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <ProgramDataBaseFileName>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Release\zlib.pdb</ProgramDataBaseFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;NDEBUG;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;NO_FSEEKO;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\zlib;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\zlib;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4221</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\adler32.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\compress.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\crc32.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\deflate.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\gzclose.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\gzlib.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\gzread.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\gzwrite.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\inflate.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\infback.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\inftrees.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\inffast.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\trees.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\uncompr.c" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\zutil.c" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\zlib\zconf.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\zlib.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\crc32.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\deflate.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\gzguts.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\inffast.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\inffixed.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\inflate.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\inftrees.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\trees.h" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\opencv-4.10.0\3rdparty\zlib\zutil.h" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

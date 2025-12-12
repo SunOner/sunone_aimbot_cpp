@@ -1,0 +1,224 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A07AB637-E571-3727-BE5C-5E2A2774901A}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <Platform>x64</Platform>
+    <ProjectName>ade</ProjectName>
+    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ade.dir\Debug\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">aded</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.lib</TargetExt>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ade.dir\Release\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ade</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\icv\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\iw\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build" /bigobj</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4127;4251;4324;4275;4512;4589;4819</DisableSpecificWarnings>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild></MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;CMAKE_INTDIR="Debug"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Debug\aded.pdb</ProgramDataBaseFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;CMAKE_INTDIR=\"Debug\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\icv\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\iw\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\icv\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\iw\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4221</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\icv\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\iw\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>%(AdditionalOptions) /external:I "C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build" /bigobj</AdditionalOptions>
+      <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <DisableSpecificWarnings>4127;4251;4324;4275;4512;4589;4819</DisableSpecificWarnings>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <ForceConformanceInForLoopScope></ForceConformanceInForLoopScope>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild></MinimalRebuild>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RemoveUnreferencedCodeData></RemoveUnreferencedCodeData>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <SupportJustMyCode></SupportJustMyCode>
+      <TreatWChar_tAsBuiltInType></TreatWChar_tAsBuiltInType>
+      <UseFullPaths>false</UseFullPaths>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;NDEBUG;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;CMAKE_INTDIR="Release"</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+      <ProgramDataBaseFileName>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\lib\Release\ade.pdb</ProgramDataBaseFileName>
+      <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_SCL_SECURE_NO_WARNINGS;NDEBUG;_VARIADIC_MAX=10;_WIN32_WINNT=0x0601;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\icv\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\iw\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\icv\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ippicv\ippicv_win\iw\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include;C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+    <Lib>
+      <AdditionalOptions>%(AdditionalOptions) /machine:x64 /IGNORE:4221</AdditionalOptions>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\communication\callback_connector.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\communication\comm_buffer.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\communication\comm_interface.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\edge.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\execution_engine\backend.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\execution_engine\executable.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\execution_engine\execution_engine.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\graph.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\graph_listener.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\handle.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\helpers\search.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\helpers\subgraphs.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\memory\alloc.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\memory\memory_access_listener.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\memory\memory_accessor.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\memory\memory_descriptor.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\memory\memory_descriptor_ref.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\memory\memory_descriptor_view.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\memory\memory_types.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\metatypes\metatypes.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\node.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\passes\check_cycles.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\passes\communications.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\passes\pass_base.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\passes\topological_sort.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\passmanager.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\typed_graph.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\typed_metadata.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\algorithm.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\assert.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\chain_range.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\checked_cast.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\container_helper.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\filter_range.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\func_ref.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\hash.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\intrusive_list.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\iota_range.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\map_range.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\math.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\md_cast.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\md_io.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\md_size.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\md_span.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\md_view.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\memory_range.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\range.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\range_iterator.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\tuple.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\type_traits.hpp" />
+    <ClInclude Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\include\ade\util\zip_range.hpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\alloc.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\assert.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\check_cycles.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\edge.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\execution_engine.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\graph.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\memory_accessor.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\memory_descriptor.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\memory_descriptor_ref.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\memory_descriptor_view.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\metadata.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\metatypes.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\node.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\passes\communications.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\search.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\subgraphs.cpp" />
+    <ClCompile Include="C:\Users\therouxe\source\repos\MacroMan5\macroman_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\build\3rdparty\ade\ade-0.1.2d\sources\ade\source\topological_sort.cpp" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

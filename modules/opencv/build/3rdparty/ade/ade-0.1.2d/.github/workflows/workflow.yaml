@@ -1,0 +1,45 @@
+name: CI
+
+on: [push, pull_request, workflow_dispatch]
+
+env:
+  repo_name: ${{ github.repository }}
+  sha_git: ${{ github.sha }}
+
+jobs:
+  Basic_Workflow:
+    strategy:
+      matrix:
+        version: [11, 14, 17, 20, 23]
+        os: [
+            ubuntu-20.04,
+            ubuntu-22.04,
+            windows-2022,
+          ]
+  
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Stage
+        shell: bash
+        run: |
+          mkdir build && cd build
+
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            cmake -DENABLE_ADE_TESTING=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=${{ matrix.version }} ..
+            cmake --build . --target GTest --config Release
+            cmake --build . --config Release
+
+          elif [ "$RUNNER_OS" == "Linux" ]; then
+            cmake -DENABLE_ADE_TESTING=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=${{ matrix.version }} ..
+            make -j
+
+          else
+            echo "$RUNNER_OS not supported"
+            exit 1
+          fi
+
+      - name: Test Stage
+        shell: bash
+        run: cd build && ctest -C Release

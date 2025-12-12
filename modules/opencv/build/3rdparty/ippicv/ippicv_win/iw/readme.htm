@@ -1,0 +1,325 @@
+<html>
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=UTF-8">
+<title>Intel&reg; Integrated Performance Primitives (Intel&reg; IPP) Integration Wrappers for OpenCV*</title>
+<style>
+body { 
+	color:#333333;
+	background-color:#ffffff; 
+	font-family: Verdana, Arial, sans-serif; 
+	font-size: 10pt; 
+	margin-left: 30px;
+}
+p { 
+	font-size: inherit; 
+	line-height: 120%; 
+	margin-top: 0; 
+	margin-bottom: 5pt;
+	margin-left: 0;
+}
+p.Note { 
+	margin-top:0; 
+	margin-left:25px;
+	margin-bottom:10pt;
+}
+p.twoColumnListHead { 
+	color:#000000; 
+/*	padding:4px; */
+/*	text-align:left; */
+/*	width:auto; */
+	margin-top:0; 
+	margin-bottom:0; 
+/*	margin-left:0; */
+	font-weight:bold;
+}	
+p.pRelatedLink { 
+	margin-top: 0px; 
+	margin-bottom: 0px;
+}
+table { 
+	margin-bottom:5pt; 
+	border-collapse:collapse; 
+	margin-top:0.3em; 
+	font-size: 10pt;
+}	
+td { 
+	border: 1px #bababa solid; 
+	vertical-align: top; 
+	font-size: inherit;
+	margin-bottom: 0px;
+}
+td, P.TableCell, td p, td h3 { 
+	margin-top: 0; 
+	margin-left: 0;
+	padding: 4px; 
+	text-align: left; 
+	font-size: inherit; 
+	line-height: 120%;
+}
+td p.TableCell, td p, td h3{
+	padding:0;
+}
+tr { 
+	vertical-align:top;
+}
+td.noBorder { 
+	border:0px none;
+}
+th { 
+	padding: 4px; 
+	text-align: left; 
+	background-color: #555555; 
+	font-weight: bold; 
+	margin-top: 0; 
+	margin-bottom: 0; 
+	color: #FFFFFF; 
+	font-size: 11pt;	
+}
+th { 
+	border:1px #bababa solid;
+}
+th h3.TableHead, th h3 { 
+	padding:0;
+}		
+h3.TableHead{ 
+	padding: 4px; 
+	text-align: left; 
+	background-color: #555555; 
+	font-weight: bold; 
+	margin-top: 0; 
+	margin-bottom: 0; 
+	color: #FFFFFF; 
+	font-size: 11pt;	
+}
+h1 {
+	color: #0860a8;
+	font-size: 15pt;
+	padding-bottom: 1px;
+	margin-left: 0pt;
+	margin-bottom: 0px;
+	border-bottom: 1px solid #0860A8;
+	font-weight: normal;
+}
+h1.title { 
+	border-bottom:0 none; 
+	margin-left:0;
+	font-weight: normal;
+}
+h2 {
+	color: #0860a8;
+	font-weight: lighter;
+	margin-top: 5pt;
+	margin-bottom: 0;
+	font-size: 13pt;
+}
+h3 {
+	color: #333333;
+	font-weight: bold;
+	margin-top: 5pt;
+	margin-bottom: 0;
+	font-size: 10.5pt;
+}
+h3.NoteTipHead {
+	color:#006699;
+	margin-top:11pt;
+	padding-bottom:0;
+	line-height: 18px;
+	text-transform: uppercase;
+}
+h3.NoteTipHead img {
+	vertical-align: middle;
+}
+ul { 
+	margin-bottom: 1em; 
+	font-size: inherit; 
+	margin-top: 0px; 
+	line-height: 100%; 
+}
+ul ol { 
+	margin-bottom: 0em; 
+	font-size: inherit;
+	list-style-type: decimal;
+}
+ul ul { 
+	margin-bottom:0px; 
+	font-size:inherit;
+}
+ul.Note {
+	margin-left:25px;
+}
+td ul { 
+	font-size:inherit;
+}
+ol { 
+	margin-bottom: 1em; 
+	font-size: inherit; 
+	margin-top: 0px; 
+	line-height: 100%;
+	list-style-type: decimal;
+}
+ol ol { 
+	list-style: lower-alpha; 
+	margin-bottom: 0em; 
+	font-size: inherit;
+}
+ol.Note {
+	margin-left:25px;
+}
+td ol { 
+	font-size:inherit;
+}
+ol ul { 
+	margin-bottom:0px; 
+	font-size:inherit;
+}
+li { 
+	font-size: inherit; 
+	margin-top: 0px; 
+	line-height: 130%;
+}
+li p, ol p, ul p { 
+	margin-bottom:0.2em; 
+	margin-top:0.2em; 
+	margin-left:0; 
+	padding-left:0; 
+	font-size:inherit;
+}
+li table, td table, dd table { 
+	margin-left:0;
+}
+
+P.Preformatted, pre { 
+	x-text-tab-stops: repeat 1in; 
+	margin-top:0; 
+	margin-bottom:0; 
+	font-size: 10pt; 
+	font-family: "Courier New", Courier, monospace; 
+	background-color: #eeeeee;
+}
+td P.Preformatted, td pre { 
+	/* line-height: 90%; */
+	x-text-tab-stops: repeat 1in; 
+	margin-top:0; 
+	margin-bottom:0; 
+	margin-left: 0px;
+	font-size: 10pt; 
+	font-family: "Courier New", Courier, monospace; 
+	background-color: #eeeeee;
+}
+SPAN.Code, span.aCode, .Code { 
+	font-family: "Courier New", Courier, monospace;
+}
+var, span.Variable {
+	font-family: Courier, monospace;
+	font-style: italic;
+}
+blockquote { 
+	margin-top: 0; 
+	margin-bottom: 0;
+}
+HR { 
+	color: #555555; 
+	border: 0; 
+	background: #555555; 
+	height: 1px; 
+	margin-left: 0;
+}
+SPAN.Big { 
+	font-weight:bold; 
+	font-size:105%;
+}
+.welcomeImg { 
+	padding-left: 0px; 
+	padding-bottom: 0px; 
+	margin-left: 0px;
+}
+.IntelExt {
+	color:#008080;
+} 
+dl { 
+	margin-bottom: 1em; 
+	font-size: inherit; 
+	margin-top: 0px; 
+	
+}	
+dt { 
+	font-weight: bold; 
+	margin-top: 1em;
+}
+dd {
+	font-size: inherit; 
+/*	margin-top: -1.2em; */
+	margin-top: 0;
+
+}
+dd p {
+	margin-bottom: 0.2em; 
+	margin-top: 0.2em; 
+	font-size: inherit;
+}
+.link_buttons {
+	background-color: #EEEEEE;
+	border-color: #EEEEEE;
+	border-width: 1px;
+	padding: 4px;
+}
+a:link {
+	color: #0860a8;
+	text-decoration: none;
+}
+a:visited { 
+	color:#0860a8;
+	text-decoration: none;	
+}
+a:active {
+	color: #0860a8;
+	text-decoration: underline;
+}
+a:hover {
+	color: #0860a8;
+	text-decoration: underline;
+}
+sup {
+	font-size: 80%;
+	vertical-align: top;
+}
+
+</style>
+</head>
+<body>
+<h1>Intel&reg; Integrated Performance Primitives (Intel&reg; IPP) Integration Wrappers for OpenCV*</h1>
+
+<p>Intel&reg; Integrated Performance Primitives (Intel&reg; IPP) Integration Wrappers is a set of high-level wrappers over Intel&reg; IPP functions. This package contains Integration Wrappers
+specifically tuned for OpenCV*; they may differ from Integration Wrappers in the main Intel&reg; IPP package.
+<p>For detailed descriptions of Intel&reg; IPP functions and interfaces, refer to the <i>Intel&reg; IPP Developer Reference</i> and <i>Integration Wrappers for Intel&reg; IPP Developer Guide and Reference</i> available from the 
+Intel&reg; IPP documentation web page at <a href="https://www.intel.com/content/www/us/en/docs/ipp/developer-reference-integration-wrapper/current/overview.html">https://www.intel.com/content/www/us/en/docs/ipp/developer-reference-integration-wrapper/current/overview.html</a>. 
+<p>Note that not all functions described in the documentation are included in the Intel&reg; IPP Integration Wrappers for OpenCV package.
+
+
+<h2><a name="legal"></a>Legal Information</h2>
+
+<p>
+The source code, information and material ("Material") contained herein is
+owned by Intel Corporation or its suppliers or licensors, and title
+to such Material remains with Intel Corporation or its suppliers or
+licensors. The Material contains proprietary information of Intel
+or its suppliers and licensors. The Material is protected by worldwide
+copyright laws and treaty provisions. No part of the Material may be used,
+copied, reproduced, modified, published, uploaded, posted, transmitted,
+distributed or disclosed in any way without Intel's prior express written
+permission. No license under any patent, copyright or other intellectual
+property rights in the Material is granted to or conferred upon you,
+either expressly, by implication, inducement, estoppel or otherwise.
+Any license under such intellectual property rights must be express and
+approved by Intel in writing.
+<p>
+Unless otherwise agreed by Intel in writing,
+you may not remove or alter this notice or any other notice embedded in
+Materials by Intel or Intel's suppliers or licensors in any way.
+<p>
+*Other names and brands may be claimed as the property of others.
+<p>
+Copyright &copy; 2016 Intel Corporation All Rights Reserved.
+
+</body>
+</html>

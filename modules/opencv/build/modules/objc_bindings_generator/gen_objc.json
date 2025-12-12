@@ -1,0 +1,31 @@
+{
+  "rootdir": "C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv-4.10.0",
+  
+  "modules": [
+    { "name": "core", "location": "modules/core" },
+    { "name": "imgproc", "location": "modules/imgproc" },
+    { "name": "ml", "location": "modules/ml" },
+    { "name": "phase_unwrapping", "location": "../opencv_contrib-4.10.0/modules/phase_unwrapping" },
+    { "name": "plot", "location": "../opencv_contrib-4.10.0/modules/plot" },
+    { "name": "dnn", "location": "modules/dnn" },
+    { "name": "features2d", "location": "modules/features2d" },
+    { "name": "imgcodecs", "location": "modules/imgcodecs" },
+    { "name": "photo", "location": "modules/photo" },
+    { "name": "text", "location": "../opencv_contrib-4.10.0/modules/text" },
+    { "name": "videoio", "location": "modules/videoio" },
+    { "name": "xphoto", "location": "../opencv_contrib-4.10.0/modules/xphoto" },
+    { "name": "calib3d", "location": "modules/calib3d" },
+    { "name": "objdetect", "location": "modules/objdetect" },
+    { "name": "structured_light", "location": "../opencv_contrib-4.10.0/modules/structured_light" },
+    { "name": "video", "location": "modules/video" },
+    { "name": "wechat_qrcode", "location": "../opencv_contrib-4.10.0/modules/wechat_qrcode" },
+    { "name": "xfeatures2d", "location": "../opencv_contrib-4.10.0/modules/xfeatures2d" },
+    { "name": "ximgproc", "location": "../opencv_contrib-4.10.0/modules/ximgproc" },
+    { "name": "aruco", "location": "../opencv_contrib-4.10.0/modules/aruco" },
+    { "name": "bgsegm", "location": "../opencv_contrib-4.10.0/modules/bgsegm" },
+    { "name": "bioinspired", "location": "../opencv_contrib-4.10.0/modules/bioinspired" },
+    { "name": "face", "location": "../opencv_contrib-4.10.0/modules/face" },
+    { "name": "tracking", "location": "../opencv_contrib-4.10.0/modules/tracking" },
+    { "name": "img_hash", "location": "../opencv_contrib-4.10.0/modules/img_hash" }
+  ]
+}

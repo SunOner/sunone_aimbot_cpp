@@ -1,0 +1,29 @@
+dist: trusty
+language: cpp
+
+compiler:
+  - gcc
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-5
+    - g++-5
+    - ninja-build
+
+install:
+  - if [ "${TRAVIS_OS_NAME}" = "linux" ]; then export CC="gcc-5"; export CXX="g++-5"; fi
+  - cmake --version
+  - ninja --version
+
+script:
+  - mkdir build
+  - cd build
+# TODO: fix ninja build
+#  - cmake -G Ninja -DENABLE_ADE_TESTING=ON -DBUILD_ADE_TUTORIAL=ON -DCMAKE_BUILD_TYPE=Release ..
+#  - ninja
+  - cmake -DENABLE_ADE_TESTING=ON -DBUILD_ADE_TUTORIAL=ON -DCMAKE_BUILD_TYPE=Release ..
+  - make
+  - ctest

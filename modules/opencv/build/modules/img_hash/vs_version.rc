@@ -1,0 +1,38 @@
+#include <winver.h>
+
+VS_VERSION_INFO         VERSIONINFO
+  FILEVERSION           4,10,0,0
+  PRODUCTVERSION        4,10,0,0
+  FILEFLAGSMASK         VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+  FILEFLAGS             1
+#else
+  FILEFLAGS             0
+#endif
+  FILEOS                VOS__WINDOWS32
+  FILETYPE              VFT_DLL
+  FILESUBTYPE           0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+      VALUE "FileDescription",	"OpenCV module: Image hash algorithms\0"
+      VALUE "FileVersion",	"4.10.0\0"
+      VALUE "InternalName",	"opencv_img_hash4100\0"
+#if 0
+      VALUE "LegalCopyright",	"\0"
+#endif
+      VALUE "OriginalFilename",	"opencv_img_hash4100.dll\0"
+      VALUE "ProductName",	"OpenCV library\0"
+      VALUE "ProductVersion",	"4.10.0\0"
+#if 1
+      VALUE "Comments",		"http://opencv.org/\0"
+#endif
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1252
+  END
+END

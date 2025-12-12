@@ -1,0 +1,6 @@
+# CMake generation dependency list for this directory.
+C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv-4.10.0/modules/core/misc/java/src/java/core+Core.jcode.in
+C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv-4.10.0/modules/java/common.cmake
+C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv-4.10.0/modules/java/generator/CMakeLists.txt
+C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv-4.10.0/modules/java/generator/android/java/org/opencv/android/OpenCVLoader.java.in
+C:/Users/therouxe/source/repos/MacroMan5/macroman_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv-4.10.0/modules/java/generator/src/java/org/opencv/osgi/OpenCVNativeLoader.java.in
