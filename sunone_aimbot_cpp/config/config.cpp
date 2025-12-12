@@ -92,6 +92,11 @@ bool Config::loadConfig(const std::string& filename)
         wind_M = 10.0f;
         wind_D = 8.0f;
 
+        // Anti-jitter smoothing
+        velocity_smoothing = 0.5f;
+        pixel_deadzone = 2;
+        stationary_threshold = 30.0f;
+
         // Arduino
         arduino_baudrate = 115200;
         arduino_port = "COM0";
@@ -330,6 +335,11 @@ bool Config::loadConfig(const std::string& filename)
     wind_M = (float)get_double("wind_M", 10.0f);
     wind_D = (float)get_double("wind_D", 8.0f);
 
+    // Anti-jitter smoothing
+    velocity_smoothing = (float)get_double("velocity_smoothing", 0.5);
+    pixel_deadzone = get_long("pixel_deadzone", 2);
+    stationary_threshold = (float)get_double("stationary_threshold", 30.0);
+
     // Arduino
     arduino_baudrate = get_long("arduino_baudrate", 115200);
     arduino_port = get_string("arduino_port", "COM0");
@@ -510,6 +520,12 @@ bool Config::saveConfig(const std::string& filename)
         << "wind_W = " << wind_W << "\n"
         << "wind_M = " << wind_M << "\n"
         << "wind_D = " << wind_D << "\n\n";
+
+    // Anti-jitter smoothing
+    file << "# Anti-jitter smoothing\n"
+        << "velocity_smoothing = " << velocity_smoothing << "\n"
+        << "pixel_deadzone = " << pixel_deadzone << "\n"
+        << "stationary_threshold = " << stationary_threshold << "\n\n";
 
     // Arduino
     file << "# Arduino\n"

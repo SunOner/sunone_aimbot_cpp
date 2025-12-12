@@ -33,6 +33,11 @@ float prev_wind_D = config.wind_D;
 bool prev_auto_shoot = config.auto_shoot;
 float prev_bScope_multiplier = config.bScope_multiplier;
 
+// Anti-jitter smoothing
+float prev_velocity_smoothing = config.velocity_smoothing;
+int prev_pixel_deadzone = config.pixel_deadzone;
+float prev_stationary_threshold = config.stationary_threshold;
+
 static void draw_target_correction_demo()
 {
     if (ImGui::CollapsingHeader("Visual demo"))
@@ -135,6 +140,28 @@ void draw_mouse()
     ImGui::SliderFloat("Speed Curve Exponent", &config.speedCurveExponent, 0.1f, 10.0f, "%.1f");
     ImGui::SliderFloat("Snap Boost Factor", &config.snapBoostFactor, 0.01f, 4.00f, "%.2f");
     draw_target_correction_demo();
+
+    ImGui::SeparatorText("Anti-Jitter Smoothing");
+
+    ImGui::SliderFloat("Velocity Smoothing", &config.velocity_smoothing, 0.0f, 0.9f, "%.2f");
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("0 = no smoothing (raw), higher = smoother but more lag. Start at 0.5");
+
+    ImGui::SliderInt("Pixel Deadzone", &config.pixel_deadzone, 0, 10);
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Stop moving when within N pixels of target center. Prevents micro-oscillation.");
+
+    ImGui::SliderFloat("Stationary Threshold", &config.stationary_threshold, 0.0f, 100.0f, "%.0f px/s");
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Velocity below this = target is stationary, disable prediction.");
+
+    if (ImGui::Button("Reset Anti-Jitter"))
+    {
+        config.velocity_smoothing = 0.5f;
+        config.pixel_deadzone = 2;
+        config.stationary_threshold = 30.0f;
+        config.saveConfig();
+    }
 
     ImGui::SeparatorText("Game Profile");
     std::vector<std::string> profile_names;
@@ -652,6 +679,17 @@ void draw_mouse()
             config.auto_shoot,
             config.bScope_multiplier);
 
+        config.saveConfig();
+    }
+
+    // Anti-jitter changes
+    if (prev_velocity_smoothing != config.velocity_smoothing ||
+        prev_pixel_deadzone != config.pixel_deadzone ||
+        prev_stationary_threshold != config.stationary_threshold)
+    {
+        prev_velocity_smoothing = config.velocity_smoothing;
+        prev_pixel_deadzone = config.pixel_deadzone;
+        prev_stationary_threshold = config.stationary_threshold;
         config.saveConfig();
     }
 }

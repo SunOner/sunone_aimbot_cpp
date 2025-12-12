@@ -55,6 +55,11 @@ public:
     float wind_M;
     float wind_D;
 
+    // Anti-jitter smoothing
+    float velocity_smoothing;            // 0.5 - EMA factor (0=none, 0.9=max smoothing)
+    int pixel_deadzone;                  // 2 - ignore when within N pixels of center
+    float stationary_threshold;          // 30.0 - velocity below this = no prediction (px/s)
+
     // Arduino
     int arduino_baudrate;
     std::string arduino_port;
