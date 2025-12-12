@@ -346,6 +346,7 @@ void MouseThread::moveMousePivot(double pivotX, double pivotY)
         prev_time = current_time;
         prev_x = pivotX; prev_y = pivotY;
         prev_velocity_x = prev_velocity_y = 0.0;
+        smoothed_vx = smoothed_vy = 0.0;
 
         auto m0 = calc_movement(pivotX, pivotY);
         queueMove(static_cast<int>(m0.first), static_cast<int>(m0.second));
@@ -356,10 +357,23 @@ void MouseThread::moveMousePivot(double pivotX, double pivotY)
     prev_time = current_time;
     dt = std::max(dt, 1e-8);
 
-    double vx = std::clamp((pivotX - prev_x) / dt, -20000.0, 20000.0);
-    double vy = std::clamp((pivotY - prev_y) / dt, -20000.0, 20000.0);
-    prev_x = pivotX; prev_y = pivotY;
-    prev_velocity_x = vx;  prev_velocity_y = vy;
+    // Calculate raw velocity
+    double raw_vx = std::clamp((pivotX - prev_x) / dt, -20000.0, 20000.0);
+    double raw_vy = std::clamp((pivotY - prev_y) / dt, -20000.0, 20000.0);
+
+    // Apply EMA smoothing: lower alpha = more smoothing
+    // velocity_smoothing: 0 = no smooth (alpha=1), 0.9 = max smooth (alpha=0.1)
+    double alpha = 1.0 - config.velocity_smoothing;
+    double vx = alpha * raw_vx + (1.0 - alpha) * smoothed_vx;
+    double vy = alpha * raw_vy + (1.0 - alpha) * smoothed_vy;
+
+    // Store smoothed values for next frame
+    smoothed_vx = vx;
+    smoothed_vy = vy;
+    prev_x = pivotX;
+    prev_y = pivotY;
+    prev_velocity_x = vx;
+    prev_velocity_y = vy;
 
     double predX = pivotX + vx * prediction_interval + vx * 0.002;
     double predY = pivotY + vy * prediction_interval + vy * 0.002;
@@ -484,6 +498,8 @@ void MouseThread::resetPrediction()
     prev_y = 0;
     prev_velocity_x = 0;
     prev_velocity_y = 0;
+    smoothed_vx = 0;
+    smoothed_vy = 0;
     target_detected.store(false);
 }
 

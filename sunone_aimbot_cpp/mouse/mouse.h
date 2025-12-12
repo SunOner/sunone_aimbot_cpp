@@ -44,6 +44,10 @@ private:
     std::atomic<bool> target_detected{ false };
     std::atomic<bool> mouse_pressed{ false };
 
+    // Anti-jitter: smoothed velocity state
+    double smoothed_vx = 0.0;
+    double smoothed_vy = 0.0;
+
     SerialConnection* serial;
     Kmbox_b_Connection* kmbox;
     KmboxNetConnection* kmbox_net;
