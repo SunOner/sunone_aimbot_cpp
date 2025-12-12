@@ -337,8 +337,8 @@ bool Config::loadConfig(const std::string& filename)
 
     // Anti-jitter smoothing (with validation)
     velocity_smoothing = std::clamp((float)get_double("velocity_smoothing", 0.5), 0.0f, 0.9f);
-    pixel_deadzone = std::clamp(get_long("pixel_deadzone", 2), 0L, 100L);
-    stationary_threshold = std::max(0.0f, (float)get_double("stationary_threshold", 30.0));
+    pixel_deadzone = std::clamp(static_cast<int>(get_long("pixel_deadzone", 2)), 0, 100);
+    stationary_threshold = (std::max)(0.0f, (float)get_double("stationary_threshold", 30.0));
 
     // Arduino
     arduino_baudrate = get_long("arduino_baudrate", 115200);
