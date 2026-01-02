@@ -132,66 +132,52 @@ std::vector<Detection> postProcessYolo11(
     std::chrono::duration<double, std::milli>* nmsTime
 )
 {
-    if (shape.size() != 3)
-    {
-        std::cerr << "[postProcess] Unsupported output shape" << std::endl;
-        return std::vector<Detection>();
-    }
-
     std::vector<Detection> detections;
-    detections.reserve(shape[2]);
+    detections.reserve(256);  // Reasonable pre-allocation
 
     int64_t rows = shape[1];
     int64_t cols = shape[2];
-    
-    if (rows < 4 + numClasses)
-    {
-        std::cerr << "[postProcess] Number of classes exceeds available rows in det_output" << std::endl;
-        return detections;
-    }
-    
-    cv::Mat det_output(rows, cols, CV_32F, (void*)output);
-
     const float img_scale = trt_detector.img_scale;
-    
+
     for (int i = 0; i < cols; ++i)
     {
-        cv::Mat classes_scores = det_output.col(i).rowRange(4, 4 + numClasses);
+        const float* col_data = output + i;
 
-        cv::Point class_id_point;
-        double score;
-        cv::minMaxLoc(classes_scores, nullptr, &score, nullptr, &class_id_point);
+        float cx = col_data[0 * cols];
+        float cy = col_data[1 * cols];
+        float ow = col_data[2 * cols];
+        float oh = col_data[3 * cols];
 
-        if (score > confThreshold)
+        float maxScore = 0.0f;
+        int maxClassId = 0;
+        for (int c = 0; c < numClasses; ++c)
         {
-            float cx = det_output.at<float>(0, i);
-            float cy = det_output.at<float>(1, i);
-            float ow = det_output.at<float>(2, i);
-            float oh = det_output.at<float>(3, i);
+            float score = col_data[(4 + c) * cols];
+            if (score > maxScore)
+            {
+                maxScore = score;
+                maxClassId = c;
+            }
+        }
 
+        if (maxScore > confThreshold)
+        {
             const float half_ow = 0.5f * ow;
             const float half_oh = 0.5f * oh;
-            
-            cv::Rect box;
-            box.x = static_cast<int>((cx - half_ow) * img_scale);
-            box.y = static_cast<int>((cy - half_oh) * img_scale);
-            box.width = static_cast<int>(ow * img_scale);
-            box.height = static_cast<int>(oh * img_scale);
 
-            Detection detection;
-            detection.box = box;
-            detection.confidence = static_cast<float>(score);
-            detection.classId = class_id_point.y;
+            Detection det;
+            det.box.x = static_cast<int>((cx - half_ow) * img_scale);
+            det.box.y = static_cast<int>((cy - half_oh) * img_scale);
+            det.box.width = static_cast<int>(ow * img_scale);
+            det.box.height = static_cast<int>(oh * img_scale);
+            det.confidence = maxScore;
+            det.classId = maxClassId;
 
-            detections.push_back(detection);
+            detections.push_back(det);
         }
     }
 
-    if (!detections.empty())
-    {
-        NMS(detections, nmsThreshold, nmsTime);
-    }
-
+    NMS(detections, nmsThreshold, nmsTime);
     return detections;
 }
 #endif
