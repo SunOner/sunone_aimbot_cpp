@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/cuda_stream_accessor.hpp>
 #include <opencv2/dnn.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <algorithm>
@@ -309,6 +310,15 @@ void TrtDetector::initialize(const std::string& modelFile)
     int c = inputDims.d[1];
     int h = inputDims.d[2];
     int w = inputDims.d[3];
+
+    // Pre-allocate GPU buffers
+    gpuResizedBuffer.create(h, w, CV_8UC3);
+    gpuFloatBuffer.create(h, w, CV_32FC3);
+    gpuChannelBuffers.resize(c);
+    for (int i = 0; i < c; ++i)
+        gpuChannelBuffers[i].create(h, w, CV_32F);
+
+    cvStream = cv::cuda::StreamAccessor::wrapStream(stream);
 
     img_scale = static_cast<float>(config.detection_resolution) / w;
 
@@ -672,22 +682,29 @@ void TrtDetector::preProcess(const cv::Mat& frame)
     int h = dims.d[2];
     int w = dims.d[3];
 
-    cv::cuda::GpuMat gpuFrame, gpuResized, gpuFloat;
-    gpuFrame.upload(frame);
+    gpuFrameBuffer.upload(frame, cvStream);
 
     if (frame.channels() == 4)
-        cv::cuda::cvtColor(gpuFrame, gpuFrame, cv::COLOR_BGRA2BGR);
+        cv::cuda::cvtColor(gpuFrameBuffer, gpuFrameBuffer, cv::COLOR_BGRA2BGR, 0, cvStream);
     else if (frame.channels() == 1)
-        cv::cuda::cvtColor(gpuFrame, gpuFrame, cv::COLOR_GRAY2BGR);
+        cv::cuda::cvtColor(gpuFrameBuffer, gpuFrameBuffer, cv::COLOR_GRAY2BGR, 0, cvStream);
 
-    cv::cuda::resize(gpuFrame, gpuResized, cv::Size(w, h));
-    gpuResized.convertTo(gpuFloat, CV_32FC3, 1.0 / 255.0);
+    cv::cuda::resize(gpuFrameBuffer, gpuResizedBuffer, cv::Size(w, h), 0, 0, cv::INTER_LINEAR, cvStream);
 
-    std::vector<cv::cuda::GpuMat> gpuChannels;
-    cv::cuda::split(gpuFloat, gpuChannels);
+    gpuResizedBuffer.convertTo(gpuFloatBuffer, CV_32FC3, 1.0 / 255.0, 0.0, cvStream);
+
+    cv::cuda::split(gpuFloatBuffer, gpuChannelBuffers, cvStream);
 
     for (int i = 0; i < c; ++i)
-        cudaMemcpy((float*)inputBuffer + i * h * w, gpuChannels[i].ptr<float>(), h * w * sizeof(float), cudaMemcpyDeviceToDevice);
+    {
+        cudaMemcpyAsync(
+            (float*)inputBuffer + i * h * w,
+            gpuChannelBuffers[i].ptr<float>(),
+            h * w * sizeof(float),
+            cudaMemcpyDeviceToDevice,
+            stream
+        );
+    }
 }
 
 void TrtDetector::postProcess(const float* output, const std::string& outputName, std::chrono::duration<double, std::milli>* nmsTime)

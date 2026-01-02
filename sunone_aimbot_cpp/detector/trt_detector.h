@@ -71,6 +71,15 @@ private:
 
     void preProcess(const cv::Mat& frame);
 
+    // Pre-allocated GPU preProcess buffers 
+    cv::cuda::GpuMat gpuFrameBuffer;
+    cv::cuda::GpuMat gpuResizedBuffer;
+    cv::cuda::GpuMat gpuFloatBuffer;
+    std::vector<cv::cuda::GpuMat> gpuChannelBuffers;
+
+    // OpenCV CUDA Stream cudaStream_t wrapper
+    cv::cuda::Stream cvStream;
+
     void postProcess(
         const float* output,
         const std::string& outputName,
