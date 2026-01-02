@@ -187,6 +187,113 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
 }
 
+static inline ImVec4 RGBA(int r, int g, int b, int a = 255)
+{
+    return ImVec4(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
+}
+
+static void ApplyTheme_RoseDark()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    style.WindowRounding = 10.0f;
+    style.ChildRounding = 10.0f;
+    style.PopupRounding = 10.0f;
+    style.FrameRounding = 8.0f;
+    style.TabRounding = 8.0f;
+    style.ScrollbarRounding = 10.0f;
+    style.GrabRounding = 10.0f;
+
+    style.WindowBorderSize = 1.0f;
+    style.FrameBorderSize = 1.0f;
+    style.PopupBorderSize = 1.0f;
+    style.TabBorderSize = 1.0f;
+
+    style.WindowPadding = ImVec2(14, 12);
+    style.FramePadding = ImVec2(10, 8);
+    style.ItemSpacing = ImVec2(10, 8);
+    style.ItemInnerSpacing = ImVec2(8, 6);
+    style.ScrollbarSize = 14.0f;
+
+    ImVec4* c = style.Colors;
+
+    const ImVec4 bg0 = RGBA(12, 12, 13, 245);
+    const ImVec4 bg1 = RGBA(18, 18, 20, 245);
+    const ImVec4 bg2 = RGBA(24, 24, 28, 245);
+    const ImVec4 stroke = RGBA(46, 46, 52, 255);
+    const ImVec4 strokeHi = RGBA(64, 64, 74, 255);
+
+    const ImVec4 text = RGBA(230, 230, 235, 255);
+    const ImVec4 textDim = RGBA(160, 160, 170, 255);
+
+    const ImVec4 acc = RGBA(168, 125, 135, 255);
+    const ImVec4 accHover = RGBA(190, 145, 155, 255);
+    const ImVec4 accActive = RGBA(145, 105, 115, 255);
+
+    c[ImGuiCol_Text] = text;
+    c[ImGuiCol_TextDisabled] = textDim;
+
+    c[ImGuiCol_WindowBg] = bg0;
+    c[ImGuiCol_ChildBg] = RGBA(0, 0, 0, 0);
+    c[ImGuiCol_PopupBg] = RGBA(16, 16, 18, 250);
+
+    c[ImGuiCol_Border] = stroke;
+    c[ImGuiCol_BorderShadow] = RGBA(0, 0, 0, 0);
+
+    c[ImGuiCol_FrameBg] = bg2;
+    c[ImGuiCol_FrameBgHovered] = RGBA(30, 30, 36, 255);
+    c[ImGuiCol_FrameBgActive] = RGBA(34, 34, 42, 255);
+
+    c[ImGuiCol_TitleBg] = bg1;
+    c[ImGuiCol_TitleBgActive] = bg1;
+    c[ImGuiCol_TitleBgCollapsed] = bg1;
+
+    c[ImGuiCol_ScrollbarBg] = RGBA(0, 0, 0, 80);
+    c[ImGuiCol_ScrollbarGrab] = RGBA(70, 70, 80, 180);
+    c[ImGuiCol_ScrollbarGrabHovered] = RGBA(90, 90, 105, 200);
+    c[ImGuiCol_ScrollbarGrabActive] = RGBA(110, 110, 130, 220);
+
+    c[ImGuiCol_CheckMark] = acc;
+
+    c[ImGuiCol_SliderGrab] = acc;
+    c[ImGuiCol_SliderGrabActive] = accHover;
+
+    c[ImGuiCol_Button] = RGBA(32, 32, 38, 255);
+    c[ImGuiCol_ButtonHovered] = RGBA(42, 42, 50, 255);
+    c[ImGuiCol_ButtonActive] = RGBA(48, 48, 58, 255);
+
+    c[ImGuiCol_Header] = RGBA(34, 34, 40, 255);
+    c[ImGuiCol_HeaderHovered] = RGBA(44, 44, 54, 255);
+    c[ImGuiCol_HeaderActive] = RGBA(52, 52, 64, 255);
+
+    c[ImGuiCol_Separator] = stroke;
+    c[ImGuiCol_SeparatorHovered] = strokeHi;
+    c[ImGuiCol_SeparatorActive] = acc;
+
+    c[ImGuiCol_Tab] = RGBA(20, 20, 24, 255);
+    c[ImGuiCol_TabHovered] = RGBA(40, 40, 48, 255);
+    c[ImGuiCol_TabActive] = RGBA(28, 28, 34, 255);
+    c[ImGuiCol_TabUnfocused] = RGBA(18, 18, 22, 255);
+    c[ImGuiCol_TabUnfocusedActive] = RGBA(24, 24, 30, 255);
+
+    c[ImGuiCol_ResizeGrip] = RGBA(0, 0, 0, 0);
+    c[ImGuiCol_ResizeGripHovered] = RGBA(0, 0, 0, 0);
+    c[ImGuiCol_ResizeGripActive] = RGBA(0, 0, 0, 0);
+
+    c[ImGuiCol_PlotLines] = acc;
+    c[ImGuiCol_PlotHistogram] = acc;
+
+    c[ImGuiCol_TableHeaderBg] = bg1;
+    c[ImGuiCol_TableBorderStrong] = stroke;
+    c[ImGuiCol_TableBorderLight] = RGBA(0, 0, 0, 0);
+    c[ImGuiCol_TableRowBg] = RGBA(0, 0, 0, 0);
+    c[ImGuiCol_TableRowBgAlt] = RGBA(255, 255, 255, 6);
+
+    c[ImGuiCol_NavHighlight] = RGBA(255, 255, 255, 40);
+    c[ImGuiCol_NavWindowingHighlight] = RGBA(255, 255, 255, 40);
+    c[ImGuiCol_NavWindowingDimBg] = RGBA(0, 0, 0, 90);
+}
+
 void SetupImGui()
 {
     IMGUI_CHECKVERSION();
@@ -198,7 +305,7 @@ void SetupImGui()
     ImGui_ImplWin32_Init(g_hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-    ImGui::StyleColorsDark();
+    ApplyTheme_RoseDark();
 
     load_body_texture();
 }
@@ -208,9 +315,20 @@ bool CreateOverlayWindow()
     overlayWidth = static_cast<int>(BASE_OVERLAY_WIDTH * config.overlay_ui_scale);
     overlayHeight = static_cast<int>(BASE_OVERLAY_HEIGHT * config.overlay_ui_scale);
 
-    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L,
-                      GetModuleHandle(NULL), NULL, NULL, NULL, NULL,
-                      _T("Edge"), NULL };
+    WNDCLASSEX wc = {
+        sizeof(WNDCLASSEX),
+        CS_CLASSDC,
+        WndProc,
+        0L,
+        0L,
+        GetModuleHandle(NULL),
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        _T("Chrome"),
+        NULL
+    };
     ::RegisterClassEx(&wc);
 
     g_hwnd = ::CreateWindowEx(
@@ -322,67 +440,15 @@ void OverlayThread()
 
                 if (ImGui::BeginTabBar("Options tab bar"))
                 {
-                    if (ImGui::BeginTabItem("Capture"))
-                    {
-                        draw_capture_settings();
-
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("Target"))
-                    {
-                        draw_target();
-
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("Mouse"))
-                    {
-                        draw_mouse();
-
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("AI"))
-                    {
-                        draw_ai();
-
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("Buttons"))
-                    {
-                        draw_buttons();
-
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("Overlay"))
-                    {
-                        draw_overlay();
-
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("Game Overlay"))
-                    {
-                        draw_game_overlay_settings();
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("Stats"))
-                    {
-                        draw_stats();
-
-                        ImGui::EndTabItem();
-                    }
-
-                    if (ImGui::BeginTabItem("Debug"))
-                    {
-                        draw_debug();
-
-                        ImGui::EndTabItem();
-                    }
+                    if (ImGui::BeginTabItem("Capture")) { draw_capture_settings(); ImGui::EndTabItem(); }
+                    if (ImGui::BeginTabItem("Target")) { draw_target(); ImGui::EndTabItem(); }
+                    if (ImGui::BeginTabItem("Mouse")) { draw_mouse(); ImGui::EndTabItem();}
+                    if (ImGui::BeginTabItem("AI")) { draw_ai(); ImGui::EndTabItem(); }
+                    if (ImGui::BeginTabItem("Buttons")) { draw_buttons(); ImGui::EndTabItem(); }
+                    if (ImGui::BeginTabItem("Overlay")) { draw_overlay(); ImGui::EndTabItem(); }
+                    if (ImGui::BeginTabItem("Game Overlay")) { draw_game_overlay_settings(); ImGui::EndTabItem(); }
+                    if (ImGui::BeginTabItem("Stats")) { draw_stats(); ImGui::EndTabItem(); }
+                    if (ImGui::BeginTabItem("Debug")) { draw_debug(); ImGui::EndTabItem(); }
 
                     if (prev_opacity != config.overlay_opacity)
                     {
@@ -425,7 +491,7 @@ void OverlayThread()
 
     CleanupDeviceD3D();
     ::DestroyWindow(g_hwnd);
-    ::UnregisterClass(_T("Edge"), GetModuleHandle(NULL));
+    ::UnregisterClass(_T("Chrome"), GetModuleHandle(NULL));
 }
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
