@@ -107,6 +107,59 @@ void draw_capture_settings()
 
     if (config.capture_method == "winrt")
     {
+        {
+            std::vector<std::string> targetOptions = { "monitor", "window" };
+            int currentTargetIndex = (config.capture_target == "window") ? 1 : 0;
+            if (ImGui::Combo("Capture target (WinRT)", &currentTargetIndex,
+                [](void* data, int idx, const char** out_text) {
+                    const auto* v = static_cast<std::vector<std::string>*>(data);
+                    if (idx < 0 || idx >= (int)v->size()) return false;
+                    *out_text = v->at(idx).c_str();
+                    return true;
+                }, (void*)&targetOptions, (int)targetOptions.size()))
+            {
+                config.capture_target = targetOptions[currentTargetIndex];
+                config.saveConfig();
+                capture_method_changed.store(true);
+            }
+        }
+
+        if (config.capture_target == "window")
+        {
+            static bool initTitle = false;
+            static char titleBuf[256];
+            if (!initTitle)
+            {
+                memset(titleBuf, 0, sizeof(titleBuf));
+                std::string t = config.capture_window_title;
+                if (t.size() >= sizeof(titleBuf)) t = t.substr(0, sizeof(titleBuf) - 1);
+                memcpy(titleBuf, t.c_str(), t.size());
+                initTitle = true;
+            }
+
+            ImGui::InputText("Window title contains", titleBuf, IM_ARRAYSIZE(titleBuf));
+            ImGui::SameLine();
+            if (ImGui::Button("Use Active Window"))
+            {
+                wchar_t wbuf[512]{};
+                HWND fg = ::GetForegroundWindow();
+                if (fg && ::GetWindowTextW(fg, wbuf, (int)std::size(wbuf)) > 0)
+                {
+                    std::wstring ws(wbuf);
+                    std::string s(ws.begin(), ws.end());
+                    memset(titleBuf, 0, sizeof(titleBuf));
+                    auto copy = s.substr(0, sizeof(titleBuf) - 1);
+                    memcpy(titleBuf, copy.c_str(), copy.size());
+                }
+            }
+            if (ImGui::Button("Apply Window Target"))
+            {
+                config.capture_window_title = titleBuf;
+                config.saveConfig();
+                capture_method_changed.store(true);
+            }
+        }
+
         if (disable_winrt_futures)
         {
             ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
@@ -132,7 +185,7 @@ void draw_capture_settings()
         }
     }
 
-    if (config.capture_method == "duplication_api" || config.capture_method == "winrt")
+    if (config.capture_method == "duplication_api" || (config.capture_method == "winrt" && config.capture_target != "window"))
     {
         std::vector<std::string> monitorNames;
         if (monitors == -1)

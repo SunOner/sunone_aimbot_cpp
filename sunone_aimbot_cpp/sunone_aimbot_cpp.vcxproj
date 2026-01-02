@@ -36,6 +36,8 @@
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="keyboard\keyboard_listener.cpp" />
     <ClCompile Include="keyboard\keycodes.cpp" />
+    <ClCompile Include="mem\cpu_affinity_manager.cpp" />
+    <ClCompile Include="mem\gpu_resource_manager.cpp" />
     <ClCompile Include="mouse\ghub.cpp" />
     <ClCompile Include="mouse\kmboxNetConnection.cpp" />
     <ClCompile Include="mouse\Kmbox_b.cpp" />
@@ -88,6 +90,8 @@
     <ClInclude Include="include\other_tools.h" />
     <ClInclude Include="keyboard\keyboard_listener.h" />
     <ClInclude Include="keyboard\keycodes.h" />
+    <ClInclude Include="mem\cpu_affinity_manager.h" />
+    <ClInclude Include="mem\gpu_resource_manager.h" />
     <ClInclude Include="mouse\ghub.h" />
     <ClInclude Include="mouse\kmboxNetConnection.h" />
     <ClInclude Include="mouse\Kmbox_b.h" />

@@ -18,6 +18,8 @@
 #include "ghub.h"
 #include "other_tools.h"
 #include "virtual_camera.h"
+#include "mem/gpu_resource_manager.h"
+#include "mem/cpu_affinity_manager.h"
 
 #include <wincodec.h>
 #include <wrl/client.h>
@@ -623,6 +625,29 @@ static void gameOverlayRenderLoop()
 
 int main()
 {
+    GPUResourceManager gpuManager;
+    CPUAffinityManager cpuManager;
+
+    if (!gpuManager.reserveGPUMemory(2048))
+    {
+        return -1;
+    }
+
+    if (!gpuManager.setGPUExclusiveMode())
+    {
+        return -1;
+    }
+
+    if (!cpuManager.reserveCPUCores(10))
+    {
+        return -1;
+    }
+
+    if (!cpuManager.reserveSystemMemory(8192))
+    {
+        return -1;
+    }
+
     try
     {
 #ifdef USE_CUDA

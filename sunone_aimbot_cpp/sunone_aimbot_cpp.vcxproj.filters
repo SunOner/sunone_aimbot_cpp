@@ -41,6 +41,8 @@
     <ClCompile Include="overlay\Game_overlay.cpp" />
     <ClCompile Include="overlay\draw_game_overlay.h" />
     <ClCompile Include="overlay\draw_game_overlay.cpp" />
+    <ClCompile Include="mem\gpu_resource_manager.cpp" />
+    <ClCompile Include="mem\cpu_affinity_manager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -88,6 +90,8 @@
     <ClInclude Include="mouse\kmbox_net\picture.h" />
     <ClInclude Include="mouse\kmboxNetConnection.h" />
     <ClInclude Include="overlay\Game_overlay.h" />
+    <ClInclude Include="mem\gpu_resource_manager.h" />
+    <ClInclude Include="mem\cpu_affinity_manager.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -56,12 +56,17 @@ private:
     winrt::Windows::Graphics::Capture::GraphicsCaptureItem
         CreateCaptureItemForMonitor(HMONITOR hMonitor);
 
+    winrt::Windows::Graphics::Capture::GraphicsCaptureItem
+        CreateCaptureItemForWindow(HWND hWnd);
+
     winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice
         CreateDirect3DDevice(IDXGIDevice* dxgiDevice);
 
     template<typename T>
     winrt::com_ptr<T> GetDXGIInterfaceFromObject(
         winrt::Windows::Foundation::IInspectable const& object);
+
+    static HWND FindWindowByTitleSubstring(const std::wstring& title_substr);
 };
 
 #endif // WINRT_CAPTURE_H

@@ -8,6 +8,8 @@
 #include "config.h"
 #include "other_tools.h"
 
+#include <dwmapi.h>
+
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 
@@ -53,6 +55,32 @@ IGraphicsCaptureItemInterop* GetInteropFactory()
     return s_factory;
 }
 
+HWND WinRTScreenCapture::FindWindowByTitleSubstring(const std::wstring& title_substr)
+{
+    struct SearchData { const std::wstring* substr; HWND found = nullptr; };
+    SearchData data{ &title_substr, nullptr };
+
+    ::EnumWindows([](HWND hWnd, LPARAM lParam) -> BOOL {
+        auto* d = reinterpret_cast<SearchData*>(lParam);
+        if (!::IsWindowVisible(hWnd)) return TRUE;
+        BOOL isCloaked = FALSE;
+        DwmGetWindowAttribute(hWnd, DWMWA_CLOAKED, &isCloaked, sizeof(isCloaked));
+        if (isCloaked) return TRUE;
+
+        wchar_t buf[512]{};
+        ::GetWindowTextW(hWnd, buf, static_cast<int>(std::size(buf)));
+        if (buf[0] == L'\0') return TRUE;
+        std::wstring title(buf);
+        if (title.find(*d->substr) != std::wstring::npos) {
+            d->found = hWnd;
+            return FALSE;
+        }
+        return TRUE;
+    }, reinterpret_cast<LPARAM>(&data));
+
+    return data.found;
+}
+
 WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
     : regionWidth(desiredWidth)
     , regionHeight(desiredHeight)
@@ -83,13 +111,29 @@ WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
         throw std::runtime_error("[WinRTCapture] Failed to create IDirect3DDevice.");
     }
 
-    HMONITOR hMonitor = GetMonitorHandleByIndex(config.monitor_idx);
-    if (!hMonitor)
+    if (config.capture_target == "window")
     {
-        throw std::runtime_error("[WinRTCapture] Invalid monitor index in config.");
+        if (config.capture_window_title.empty())
+        {
+            throw std::runtime_error("[WinRTCapture] capture_target=window but capture_window_title is empty.");
+        }
+        std::wstring wtitle(config.capture_window_title.begin(), config.capture_window_title.end());
+        HWND hwnd = FindWindowByTitleSubstring(wtitle);
+        if (!hwnd)
+        {
+            throw std::runtime_error("[WinRTCapture] Target window not found by title substring: " + config.capture_window_title);
+        }
+        captureItem = CreateCaptureItemForWindow(hwnd);
     }
-
-    captureItem = CreateCaptureItemForMonitor(hMonitor);
+    else
+    {
+        HMONITOR hMonitor = GetMonitorHandleByIndex(config.monitor_idx);
+        if (!hMonitor)
+        {
+            throw std::runtime_error("[WinRTCapture] Invalid monitor index in config.");
+        }
+        captureItem = CreateCaptureItemForMonitor(hMonitor);
+    }
     if (!captureItem)
     {
         throw std::runtime_error("[WinRTCapture] CreateCaptureItemForMonitor failed.");
@@ -227,6 +271,23 @@ WinRTScreenCapture::CreateCaptureItemForMonitor(HMONITOR hMonitor)
     if (FAILED(hr))
     {
         throw std::runtime_error("[WinRTCapture] CreateForMonitor failed, HR=" + std::to_string(hr));
+    }
+    return item;
+}
+
+winrt::Windows::Graphics::Capture::GraphicsCaptureItem
+WinRTScreenCapture::CreateCaptureItemForWindow(HWND hWnd)
+{
+    auto interopFactory = GetInteropFactory();
+    GraphicsCaptureItem item{ nullptr };
+    HRESULT hr = interopFactory->CreateForWindow(
+        hWnd,
+        winrt::guid_of<GraphicsCaptureItem>(),
+        winrt::put_abi(item)
+    );
+    if (FAILED(hr))
+    {
+        throw std::runtime_error("[WinRTCapture] CreateForWindow failed, HR=" + std::to_string(hr));
     }
     return item;
 }
