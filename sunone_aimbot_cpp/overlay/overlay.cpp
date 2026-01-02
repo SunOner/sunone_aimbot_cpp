@@ -49,8 +49,8 @@ ID3D11BlendState* g_pBlendState = nullptr;
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-const int BASE_OVERLAY_WIDTH = 680;
-const int BASE_OVERLAY_HEIGHT = 480;
+const int BASE_OVERLAY_WIDTH = 720;
+const int BASE_OVERLAY_HEIGHT = 500;
 int overlayWidth = 0;
 int overlayHeight = 0;
 
