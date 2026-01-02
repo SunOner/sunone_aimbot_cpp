@@ -44,22 +44,13 @@ TrtDetector::TrtDetector()
 
 TrtDetector::~TrtDetector()
 {
-    for (auto& buffer : pinnedOutputBuffers)
-    {
-        if (buffer.second) cudaFreeHost(buffer.second);
-    }
-    for (auto& binding : inputBindings)
-    {
-        if (binding.second) cudaFree(binding.second);
-    }
-    for (auto& binding : outputBindings)
-    {
-        if (binding.second) cudaFree(binding.second);
-    }
-    if (inputBufferDevice)
-    {
-        cudaFree(inputBufferDevice);
-    }
+    for (auto& buffer : pinnedOutputBuffers) if (buffer.second) cudaFreeHost(buffer.second);
+    for (auto& binding : inputBindings) if (binding.second) cudaFree(binding.second);
+    for (auto& binding : outputBindings) if (binding.second) cudaFree(binding.second);
+    if (inputBufferDevice) cudaFree(inputBufferDevice);
+    if (inferenceStartEvent) cudaEventDestroy(inferenceStartEvent);
+    if (inferenceCompleteEvent) cudaEventDestroy(inferenceCompleteEvent);
+    if (copyCompleteEvent) cudaEventDestroy(copyCompleteEvent);
 }
 
 void TrtDetector::destroyCudaGraph()
@@ -334,6 +325,10 @@ void TrtDetector::initialize(const std::string& modelFile)
     for (const auto& n : outputNames)
         context->setTensorAddress(n.c_str(), outputBindings[n]);
 
+    cudaEventCreateWithFlags(&inferenceStartEvent, cudaEventDisableTiming);
+    cudaEventCreateWithFlags(&inferenceCompleteEvent, cudaEventDisableTiming);
+    cudaEventCreateWithFlags(&copyCompleteEvent, cudaEventDisableTiming);
+
     if (config.verbose)
     {
         std::cout << "[Detector] Initialized. ModelStatic=" << std::boolalpha << isStatic
@@ -494,20 +489,21 @@ void TrtDetector::inferenceThread()
             try
             {
                 auto t0 = std::chrono::steady_clock::now();
+
                 preProcess(frame);
+
                 auto t1 = std::chrono::steady_clock::now();
 
-                context->enqueueV3(stream);
-                cudaStreamSynchronize(stream);
+                cudaEventRecord(inferenceStartEvent, stream);
 
-                auto t2 = std::chrono::steady_clock::now();
+                context->enqueueV3(stream);
+
+                cudaEventRecord(inferenceCompleteEvent, stream);
 
                 for (const auto& name : outputNames)
                 {
                     size_t size = outputSizes[name];
                     nvinfer1::DataType dtype = outputTypes[name];
-
-                    auto t_copy_start = std::chrono::steady_clock::now();
 
                     if (dtype == nvinfer1::DataType::kHALF)
                     {
@@ -515,61 +511,73 @@ void TrtDetector::inferenceThread()
                         std::vector<__half>& outputDataHalf = outputDataBuffersHalf[name];
                         outputDataHalf.resize(numElements);
 
-                        cudaMemcpy(
+                        cudaMemcpyAsync(
                             outputDataHalf.data(),
                             outputBindings[name],
                             size,
-                            cudaMemcpyDeviceToHost
+                            cudaMemcpyDeviceToHost,
+                            stream
                         );
-
-                        std::vector<float> outputDataFloat(outputDataHalf.size());
-                        for (size_t i = 0; i < outputDataHalf.size(); ++i) {
-                            outputDataFloat[i] = __half2float(outputDataHalf[i]);
-                        }
-
-                        auto t_copy_end = std::chrono::steady_clock::now();
-                        lastCopyTime = t_copy_end - t_copy_start;
-
-                        auto t_post_start = std::chrono::steady_clock::now();
-
-                        postProcess(
-                            outputDataFloat.data(),
-                            name,
-                            &lastNmsTime
-                        );
-
-                        auto t_post_end = std::chrono::steady_clock::now();
-                        lastPostprocessTime = t_post_end - t_post_start;
                     }
                     else if (dtype == nvinfer1::DataType::kFLOAT)
                     {
                         std::vector<float>& outputData = outputDataBuffers[name];
                         outputData.resize(size / sizeof(float));
 
-                        cudaMemcpy(
+                        cudaMemcpyAsync(
                             outputData.data(),
                             outputBindings[name],
                             size,
-                            cudaMemcpyDeviceToHost
+                            cudaMemcpyDeviceToHost,
+                            stream
                         );
+                    }
+                }
 
-                        auto t_copy_end = std::chrono::steady_clock::now();
-                        lastCopyTime = t_copy_end - t_copy_start;
+                cudaEventRecord(copyCompleteEvent, stream);
+                cudaEventSynchronize(copyCompleteEvent);
 
-                        auto t_post_start = std::chrono::steady_clock::now();
+                auto t2 = std::chrono::steady_clock::now();
+
+                // Post-processing
+                auto t_post_start = std::chrono::steady_clock::now();
+
+                for (const auto& name : outputNames)
+                {
+                    nvinfer1::DataType dtype = outputTypes[name];
+
+                    if (dtype == nvinfer1::DataType::kHALF)
+                    {
+                        std::vector<__half>& outputDataHalf = outputDataBuffersHalf[name];
+                        std::vector<float> outputDataFloat(outputDataHalf.size());
+
+                        for (size_t i = 0; i < outputDataHalf.size(); ++i) {
+                            outputDataFloat[i] = __half2float(outputDataHalf[i]);
+                        }
+
+                        postProcess(
+                            outputDataFloat.data(),
+                            name,
+                            &lastNmsTime
+                        );
+                    }
+                    else if (dtype == nvinfer1::DataType::kFLOAT)
+                    {
+                        std::vector<float>& outputData = outputDataBuffers[name];
 
                         postProcess(
                             outputData.data(),
                             name,
                             &lastNmsTime
                         );
-
-                        auto t_post_end = std::chrono::steady_clock::now();
-                        lastPostprocessTime = t_post_end - t_post_start;
                     }
                 }
+
+                auto t_post_end = std::chrono::steady_clock::now();
+
                 lastPreprocessTime = t1 - t0;
-                lastInferenceTime = t2 - t1;
+                lastInferenceTime = t2 - t1;  // inference + copy
+                lastPostprocessTime = t_post_end - t_post_start;
             }
             catch (const std::exception& e)
             {

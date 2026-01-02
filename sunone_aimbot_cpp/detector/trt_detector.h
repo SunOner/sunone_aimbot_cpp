@@ -108,6 +108,12 @@ private:
     cv::cuda::GpuMat resizedBuffer;
     cv::cuda::GpuMat floatBuffer;
     std::vector<cv::cuda::GpuMat> channelBuffers;
+
+    // CUDA Events
+    cudaEvent_t inferenceStartEvent = nullptr;
+    cudaEvent_t inferenceCompleteEvent = nullptr;
+    cudaEvent_t copyCompleteEvent = nullptr;
+    bool asyncInferenceInProgress = false;
 };
 
 #endif // TRT_DETECTOR_H
