@@ -44,13 +44,52 @@ TrtDetector::TrtDetector()
 
 TrtDetector::~TrtDetector()
 {
-    for (auto& buffer : pinnedOutputBuffers) if (buffer.second) cudaFreeHost(buffer.second);
+    freePinnedOutputs();
+
     for (auto& binding : inputBindings) if (binding.second) cudaFree(binding.second);
     for (auto& binding : outputBindings) if (binding.second) cudaFree(binding.second);
     if (inputBufferDevice) cudaFree(inputBufferDevice);
     if (inferenceStartEvent) cudaEventDestroy(inferenceStartEvent);
     if (inferenceCompleteEvent) cudaEventDestroy(inferenceCompleteEvent);
     if (copyCompleteEvent) cudaEventDestroy(copyCompleteEvent);
+}
+
+void TrtDetector::freePinnedOutputs()
+{
+    for (auto& kv : pinnedOutputBuffers)
+    {
+        if (kv.second)
+            cudaFreeHost(kv.second);
+    }
+    pinnedOutputBuffers.clear();
+}
+
+void TrtDetector::allocatePinnedOutputs()
+{
+    freePinnedOutputs();
+
+    for (const auto& name : outputNames)
+    {
+        const size_t bytes = outputSizes[name];
+        if (bytes == 0) continue;
+
+        void* hostPtr = nullptr;
+        cudaError_t err = cudaHostAlloc(&hostPtr, bytes, cudaHostAllocDefault);
+        if (err != cudaSuccess)
+        {
+            std::cerr << "[Detector] cudaHostAlloc failed for output " << name
+                << " (" << bytes << " bytes): " << cudaGetErrorString(err) << std::endl;
+            continue;
+        }
+
+        pinnedOutputBuffers[name] = hostPtr;
+
+        if (config.verbose)
+        {
+            std::cout << "[Detector] Allocated pinned host buffer for output " << name
+                << ": " << bytes << " bytes" << std::endl;
+        }
+    }
 }
 
 void TrtDetector::destroyCudaGraph()
@@ -148,7 +187,7 @@ void TrtDetector::getOutputNames()
         {
             outputNames.emplace_back(name);
             outputTypes[name] = engine->getTensorDataType(name);
-            
+
             if (config.verbose)
             {
                 std::cout << "[Detector] Detected output: " << name << std::endl;
@@ -207,7 +246,8 @@ void TrtDetector::getBindings()
                 {
                     std::cout << "[Detector] Allocated " << size << " bytes for output " << name << std::endl;
                 }
-            } else
+            }
+            else
             {
                 std::cerr << "[Detector] Failed to allocate output memory: " << cudaGetErrorString(err) << std::endl;
             }
@@ -245,7 +285,7 @@ void TrtDetector::initialize(const std::string& modelFile)
     bool isStatic = true;
     for (int i = 0; i < inputDims.nbDims; ++i)
         if (inputDims.d[i] <= 0) isStatic = false;
-    
+
     if (isStatic != config.fixed_input_size)
     {
         config.fixed_input_size = isStatic;
@@ -290,6 +330,8 @@ void TrtDetector::initialize(const std::string& modelFile)
     }
 
     getBindings();
+
+    allocatePinnedOutputs();
 
     if (!outputNames.empty())
     {
@@ -351,11 +393,11 @@ size_t TrtDetector::getElementSize(nvinfer1::DataType dtype)
 {
     switch (dtype)
     {
-        case nvinfer1::DataType::kFLOAT: return 4;
-        case nvinfer1::DataType::kHALF: return 2;
-        case nvinfer1::DataType::kINT32: return 4;
-        case nvinfer1::DataType::kINT8: return 1;
-        default: return 0;
+    case nvinfer1::DataType::kFLOAT: return 4;
+    case nvinfer1::DataType::kHALF: return 2;
+    case nvinfer1::DataType::kINT32: return 4;
+    case nvinfer1::DataType::kINT8: return 1;
+    default: return 0;
     }
 }
 
@@ -389,10 +431,10 @@ void TrtDetector::loadEngine(const std::string& modelFile)
                     {
                         engineFile.write(reinterpret_cast<const char*>(serializedEngine->data()), serializedEngine->size());
                         engineFile.close();
-                        
+
                         config.ai_model = std::filesystem::path(engineFilePath).filename().string();
                         config.saveConfig("config.ini");
-                        
+
                         std::cout << "[Detector] Engine saved to: " << engineFilePath << std::endl;
                     }
                     delete serializedEngine;
@@ -439,6 +481,9 @@ void TrtDetector::inferenceThread()
                 std::unique_lock<std::mutex> lock(inferenceMutex);
                 context.reset();
                 engine.reset();
+
+                freePinnedOutputs();
+
                 for (auto& binding : inputBindings)
                     if (binding.second) cudaFree(binding.second);
                 inputBindings.clear();
@@ -493,90 +538,75 @@ void TrtDetector::inferenceThread()
                 preProcess(frame);
 
                 auto t1 = std::chrono::steady_clock::now();
+                auto t_inf_start = std::chrono::steady_clock::now();
 
                 cudaEventRecord(inferenceStartEvent, stream);
-
                 context->enqueueV3(stream);
-
                 cudaEventRecord(inferenceCompleteEvent, stream);
+
+                cudaEventSynchronize(inferenceCompleteEvent);
+
+                auto t_inf_end = std::chrono::steady_clock::now();
+                auto t_copy_start = std::chrono::steady_clock::now();
 
                 for (const auto& name : outputNames)
                 {
-                    size_t size = outputSizes[name];
-                    nvinfer1::DataType dtype = outputTypes[name];
+                    const size_t size = outputSizes[name];
 
-                    if (dtype == nvinfer1::DataType::kHALF)
-                    {
-                        size_t numElements = size / sizeof(__half);
-                        std::vector<__half>& outputDataHalf = outputDataBuffersHalf[name];
-                        outputDataHalf.resize(numElements);
+                    auto itPinned = pinnedOutputBuffers.find(name);
+                    if (itPinned == pinnedOutputBuffers.end() || !itPinned->second)
+                        continue;
 
-                        cudaMemcpyAsync(
-                            outputDataHalf.data(),
-                            outputBindings[name],
-                            size,
-                            cudaMemcpyDeviceToHost,
-                            stream
-                        );
-                    }
-                    else if (dtype == nvinfer1::DataType::kFLOAT)
-                    {
-                        std::vector<float>& outputData = outputDataBuffers[name];
-                        outputData.resize(size / sizeof(float));
-
-                        cudaMemcpyAsync(
-                            outputData.data(),
-                            outputBindings[name],
-                            size,
-                            cudaMemcpyDeviceToHost,
-                            stream
-                        );
-                    }
+                    cudaMemcpyAsync(
+                        itPinned->second,
+                        outputBindings[name],
+                        size,
+                        cudaMemcpyDeviceToHost,
+                        stream
+                    );
                 }
 
                 cudaEventRecord(copyCompleteEvent, stream);
+
                 cudaEventSynchronize(copyCompleteEvent);
 
-                auto t2 = std::chrono::steady_clock::now();
+                auto t_copy_end = std::chrono::steady_clock::now();
 
-                // Post-processing
+                // Post-processing (CPU)
                 auto t_post_start = std::chrono::steady_clock::now();
 
                 for (const auto& name : outputNames)
                 {
+                    const auto itPinned = pinnedOutputBuffers.find(name);
+                    if (itPinned == pinnedOutputBuffers.end() || !itPinned->second)
+                        continue;
+
                     nvinfer1::DataType dtype = outputTypes[name];
 
                     if (dtype == nvinfer1::DataType::kHALF)
                     {
-                        std::vector<__half>& outputDataHalf = outputDataBuffersHalf[name];
-                        std::vector<float> outputDataFloat(outputDataHalf.size());
+                        // Convert to float on CPU
+                        const size_t numElements = outputSizes[name] / sizeof(__half);
+                        const __half* halfPtr = reinterpret_cast<const __half*>(itPinned->second);
 
-                        for (size_t i = 0; i < outputDataHalf.size(); ++i) {
-                            outputDataFloat[i] = __half2float(outputDataHalf[i]);
-                        }
+                        std::vector<float> outputDataFloat(numElements);
+                        for (size_t i = 0; i < numElements; ++i)
+                            outputDataFloat[i] = __half2float(halfPtr[i]);
 
-                        postProcess(
-                            outputDataFloat.data(),
-                            name,
-                            &lastNmsTime
-                        );
+                        postProcess(outputDataFloat.data(), name, &lastNmsTime);
                     }
                     else if (dtype == nvinfer1::DataType::kFLOAT)
                     {
-                        std::vector<float>& outputData = outputDataBuffers[name];
-
-                        postProcess(
-                            outputData.data(),
-                            name,
-                            &lastNmsTime
-                        );
+                        const float* floatPtr = reinterpret_cast<const float*>(itPinned->second);
+                        postProcess(floatPtr, name, &lastNmsTime);
                     }
                 }
 
                 auto t_post_end = std::chrono::steady_clock::now();
 
                 lastPreprocessTime = t1 - t0;
-                lastInferenceTime = t2 - t1;  // inference + copy
+                lastInferenceTime = t_inf_end - t_inf_start;
+                lastCopyTime = t_copy_end - t_copy_start;
                 lastPostprocessTime = t_post_end - t_post_start;
             }
             catch (const std::exception& e)
@@ -659,7 +689,7 @@ std::vector<std::vector<Detection>> TrtDetector::detectBatch(const std::vector<c
             config.postprocess == "yolo9" ||
             config.postprocess == "yolo11" ||
             config.postprocess == "yolo12"
-        )
+            )
         {
             std::vector<int64_t> shape = { rows, cols };
             detections = postProcessYolo11(
@@ -733,7 +763,7 @@ void TrtDetector::postProcess(const float* output, const std::string& outputName
             nmsTime
         );
     }
-    else if(
+    else if (
         config.postprocess == "yolo8" ||
         config.postprocess == "yolo9" ||
         config.postprocess == "yolo11" ||

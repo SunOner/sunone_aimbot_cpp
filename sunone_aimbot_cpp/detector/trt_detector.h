@@ -60,6 +60,8 @@ private:
     void destroyCudaGraph();
 
     std::unordered_map<std::string, void*> pinnedOutputBuffers;
+    void allocatePinnedOutputs();
+    void freePinnedOutputs();
 
     std::mutex inferenceMutex;
     std::condition_variable inferenceCV;
@@ -71,13 +73,11 @@ private:
 
     void preProcess(const cv::Mat& frame);
 
-    // Pre-allocated GPU preProcess buffers 
     cv::cuda::GpuMat gpuFrameBuffer;
     cv::cuda::GpuMat gpuResizedBuffer;
     cv::cuda::GpuMat gpuFloatBuffer;
     std::vector<cv::cuda::GpuMat> gpuChannelBuffers;
 
-    // OpenCV CUDA Stream cudaStream_t wrapper
     cv::cuda::Stream cvStream;
 
     void postProcess(
@@ -101,8 +101,7 @@ private:
 
     std::string inputName;
     void* inputBufferDevice;
-    std::unordered_map<std::string, std::vector<float>> outputDataBuffers;
-    std::unordered_map<std::string, std::vector<__half>> outputDataBuffersHalf;
+
     std::unordered_map<std::string, nvinfer1::DataType> outputTypes;
 
     cv::cuda::GpuMat resizedBuffer;
