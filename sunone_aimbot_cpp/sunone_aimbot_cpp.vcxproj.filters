@@ -92,6 +92,7 @@
     <ClInclude Include="overlay\Game_overlay.h" />
     <ClInclude Include="mem\gpu_resource_manager.h" />
     <ClInclude Include="mem\cpu_affinity_manager.h" />
+    <ClInclude Include="detector\cuda_preprocess.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -100,5 +101,8 @@
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="detector\cuda_preprocess.cu" />
   </ItemGroup>
 </Project>

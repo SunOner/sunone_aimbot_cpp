@@ -22,6 +22,7 @@
 #include "sunone_aimbot_cpp.h"
 #include "other_tools.h"
 #include "postProcess.h"
+#include "cuda_preprocess.h"
 
 extern std::atomic<bool> detectionPaused;
 int model_quant;
@@ -720,6 +721,11 @@ void TrtDetector::preProcess(const cv::Mat& frame)
     int h = dims.d[2];
     int w = dims.d[3];
 
+    if (c != 3)
+    {
+        return;
+    }
+
     gpuFrameBuffer.upload(frame, cvStream);
 
     if (frame.channels() == 4)
@@ -731,17 +737,15 @@ void TrtDetector::preProcess(const cv::Mat& frame)
 
     gpuResizedBuffer.convertTo(gpuFloatBuffer, CV_32FC3, 1.0 / 255.0, 0.0, cvStream);
 
-    cv::cuda::split(gpuFloatBuffer, gpuChannelBuffers, cvStream);
+    launch_hwc_to_chw_norm(gpuFloatBuffer, reinterpret_cast<float*>(inputBuffer), w, h, stream);
 
-    for (int i = 0; i < c; ++i)
+    if (config.verbose)
     {
-        cudaMemcpyAsync(
-            (float*)inputBuffer + i * h * w,
-            gpuChannelBuffers[i].ptr<float>(),
-            h * w * sizeof(float),
-            cudaMemcpyDeviceToDevice,
-            stream
-        );
+        auto err = cudaGetLastError();
+        if (err != cudaSuccess)
+        {
+            std::cerr << "[Detector] preprocess kernel launch error: " << cudaGetErrorString(err) << std::endl;
+        }
     }
 }
 
