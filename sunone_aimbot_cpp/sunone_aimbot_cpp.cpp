@@ -8,6 +8,8 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+#include <array>
+#include <random>
 
 #include "capture.h"
 #include "mouse.h"
@@ -132,6 +134,28 @@ static bool IsValidImageFile(const std::wstring& wpath, UINT& outW, UINT& outH, 
 
     outW = w; outH = h;
     return true;
+}
+
+inline void SetRandomConsoleTitle()
+{
+    static constexpr std::array<const wchar_t*, 10> kTitles = {
+        L"Microsoft Edge",
+        L"Google Chrome",
+        L"Notepad",
+        L"Windows Terminal",
+        L"PowerShell",
+        L"Visual Studio Code",
+        L"Task Manager",
+        L"File Explorer",
+        L"Calculator",
+        L"Command Prompt",
+    };
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<size_t> dist(0, kTitles.size() - 1);
+
+    ::SetConsoleTitleW(kTitles[dist(gen)]);
 }
 
 void createInputDevices()
@@ -661,6 +685,8 @@ int main()
 #endif
 
         SetConsoleOutputCP(CP_UTF8);
+        SetRandomConsoleTitle();
+
         cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_FATAL);
 
         if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
