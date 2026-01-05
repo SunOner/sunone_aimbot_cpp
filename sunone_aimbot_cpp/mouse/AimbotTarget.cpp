@@ -61,11 +61,7 @@ AimbotTarget* sortTargets(
             if (disableHeadshot && classes[i] == config.class_head)
                 continue;
 
-            if (classes[i] == config.class_player ||
-                classes[i] == config.class_bot ||
-                (classes[i] == config.class_hideout_target_human && config.shooting_range_targets) ||
-                (classes[i] == config.class_hideout_target_balls && config.shooting_range_targets) ||
-                (classes[i] == config.class_third_person && !config.ignore_third_person))
+            if (classes[i] == config.class_player)
             {
                 int offsetY = static_cast<int>(boxes[i].height * config.body_y_offset);
                 cv::Point targetPoint(boxes[i].x + boxes[i].width / 2, boxes[i].y + offsetY);

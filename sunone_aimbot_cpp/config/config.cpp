@@ -64,8 +64,6 @@ bool Config::loadConfig(const std::string& filename)
         disable_headshot = false;
         body_y_offset = 0.15f;
         head_y_offset = 0.05f;
-        ignore_third_person = false;
-        shooting_range_targets = false;
         auto_aim = false;
 
         // Mouse
@@ -163,7 +161,6 @@ bool Config::loadConfig(const std::string& filename)
 
         // Overlay
         overlay_opacity = 225;
-        overlay_snow_theme = true;
         overlay_ui_scale = 1.0f;
 
         // Game overlay
@@ -187,18 +184,9 @@ bool Config::loadConfig(const std::string& filename)
         game_overlay_icon_offset_y = 0.0f;
         game_overlay_icon_anchor = "center";
 
-        // Custom classes
+        // Classes
         class_player = 0;
-        class_bot = 1;
-        class_weapon = 2;
-        class_outline = 3;
-        class_dead_body = 4;
-        class_hideout_target_human = 5;
-        class_hideout_target_balls = 6;
-        class_head = 7;
-        class_smoke = 8;
-        class_fire = 9;
-        class_third_person = 10;
+        class_head = 1;
 
         // Debug
         show_window = true;
@@ -310,8 +298,6 @@ bool Config::loadConfig(const std::string& filename)
     disable_headshot = get_bool("disable_headshot", false);
     body_y_offset = (float)get_double("body_y_offset", 0.15);
     head_y_offset = (float)get_double("head_y_offset", 0.05);
-    ignore_third_person = get_bool("ignore_third_person", false);
-    shooting_range_targets = get_bool("shooting_range_targets", false);
     auto_aim = get_bool("auto_aim", false);
 
     // Mouse
@@ -413,7 +399,6 @@ bool Config::loadConfig(const std::string& filename)
 
     // Overlay
     overlay_opacity = get_long("overlay_opacity", 225);
-    overlay_snow_theme = get_bool("overlay_snow_theme", true);
     overlay_ui_scale = (float)get_double("overlay_ui_scale", 1.0);
 
     game_overlay_enabled = get_bool("game_overlay_enabled", false);
@@ -437,18 +422,9 @@ bool Config::loadConfig(const std::string& filename)
     game_overlay_icon_offset_y = (float)get_double("game_overlay_icon_offset_y", 0.0f);
     game_overlay_icon_anchor = get_string("game_overlay_icon_anchor", "center");
 
-    // Custom Classes
+    // Classes
     class_player = get_long("class_player", 0);
-    class_bot = get_long("class_bot", 1);
-    class_weapon = get_long("class_weapon", 2);
-    class_outline = get_long("class_outline", 3);
-    class_dead_body = get_long("class_dead_body", 4);
-    class_hideout_target_human = get_long("class_hideout_target_human", 5);
-    class_hideout_target_balls = get_long("class_hideout_target_balls", 6);
-    class_head = get_long("class_head", 7);
-    class_smoke = get_long("class_smoke", 8);
-    class_fire = get_long("class_fire", 9);
-    class_third_person = get_long("class_third_person", 10);
+    class_head = get_long("class_head", 1);
 
     // Debug window
     show_window = get_bool("show_window", true);
@@ -492,8 +468,6 @@ bool Config::saveConfig(const std::string& filename)
         << std::fixed << std::setprecision(2)
         << "body_y_offset = " << body_y_offset << "\n"
         << "head_y_offset = " << head_y_offset << "\n"
-        << "ignore_third_person = " << (ignore_third_person ? "true" : "false") << "\n"
-        << "shooting_range_targets = " << (shooting_range_targets ? "true" : "false") << "\n"
         << "auto_aim = " << (auto_aim ? "true" : "false") << "\n\n";
 
     // Mouse
@@ -599,7 +573,6 @@ bool Config::saveConfig(const std::string& filename)
     // Overlay
     file << "# Overlay\n"
         << "overlay_opacity = " << overlay_opacity << "\n"
-        << "overlay_snow_theme = " << (overlay_snow_theme ? "true" : "false") << "\n"
         << std::fixed << std::setprecision(2)
         << "overlay_ui_scale = " << overlay_ui_scale << "\n\n";
 
@@ -627,19 +600,10 @@ bool Config::saveConfig(const std::string& filename)
         << "game_overlay_icon_offset_y = " << game_overlay_icon_offset_y << "\n"
         << "game_overlay_icon_anchor = " << game_overlay_icon_anchor << "\n\n";
 
-    // Custom Classes
+    // Classes
     file << "# Custom Classes\n"
         << "class_player = " << class_player << "\n"
-        << "class_bot = " << class_bot << "\n"
-        << "class_weapon = " << class_weapon << "\n"
-        << "class_outline = " << class_outline << "\n"
-        << "class_dead_body = " << class_dead_body << "\n"
-        << "class_hideout_target_human = " << class_hideout_target_human << "\n"
-        << "class_hideout_target_balls = " << class_hideout_target_balls << "\n"
-        << "class_head = " << class_head << "\n"
-        << "class_smoke = " << class_smoke << "\n"
-        << "class_fire = " << class_fire << "\n"
-        << "class_third_person = " << class_third_person << "\n\n";
+        << "class_head = " << class_head << "\n\n";
 
     // Debug
     file << "# Debug\n"
