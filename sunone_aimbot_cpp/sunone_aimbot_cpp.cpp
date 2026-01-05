@@ -651,17 +651,32 @@ static void gameOverlayRenderLoop()
 
 int main()
 {
-    GPUResourceManager gpuManager;
     CPUAffinityManager cpuManager;
 
-    if (!gpuManager.reserveGPUMemory(2048)) return -1;
-    if (!gpuManager.setGPUExclusiveMode()) return -1;
-    if (!cpuManager.reserveCPUCores(10)) return -1;
-    if (!cpuManager.reserveSystemMemory(8192)) return -1;
+    if (config.cpuCoreReserveCount > 0)
+    {
+        if (!cpuManager.reserveCPUCores(config.cpuCoreReserveCount)) return -1;
+    }
+
+    if (config.systemMemoryReserveMB > 0)
+    {
+        if (!cpuManager.reserveSystemMemory(config.systemMemoryReserveMB)) return -1;
+    }
 
     try
     {
 #ifdef USE_CUDA
+        GPUResourceManager gpuManager;
+        if (config.gpuMemoryReserveMB > 0)
+        {
+            if (!gpuManager.reserveGPUMemory(config.gpuMemoryReserveMB)) return -1;
+        }
+        
+        if (config.enableGpuExclusiveMode)
+        {
+            if (!gpuManager.setGPUExclusiveMode()) return -1;
+        }
+
         int cuda_devices = 0;
         if (cudaGetDeviceCount(&cuda_devices) != cudaSuccess || cuda_devices == 0)
         {

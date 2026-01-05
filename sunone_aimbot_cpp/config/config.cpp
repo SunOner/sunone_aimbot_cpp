@@ -143,7 +143,13 @@ bool Config::loadConfig(const std::string& filename)
 #ifdef USE_CUDA
         use_cuda_graph = false;
         use_pinned_memory = false;
+        gpuMemoryReserveMB = 2048;
+        enableGpuExclusiveMode = true;
 #endif
+
+        // System
+        cpuCoreReserveCount = 4;
+        systemMemoryReserveMB = 2048;
 
         // Buttons
         button_targeting = splitString("RightMouseButton");
@@ -387,7 +393,13 @@ bool Config::loadConfig(const std::string& filename)
 #ifdef USE_CUDA
     use_cuda_graph = get_bool("use_cuda_graph", false);
     use_pinned_memory = get_bool("use_pinned_memory", true);
+    gpuMemoryReserveMB = get_long("gpuMemoryReserveMB", 2048);
+    enableGpuExclusiveMode = get_bool("enableGpuExclusiveMode", true);
 #endif
+
+    // System
+    cpuCoreReserveCount = get_long("cpuCoreReserveCount", 4);
+    systemMemoryReserveMB = get_long("systemMemoryReserveMB", 2048);
 
     // Buttons
     button_targeting = splitString(get_string("button_targeting", "RightMouseButton"));
@@ -563,8 +575,15 @@ bool Config::saveConfig(const std::string& filename)
 #ifdef USE_CUDA
     file << "\n# CUDA\n"
         << "use_cuda_graph = " << (use_cuda_graph ? "true" : "false") << "\n"
-        << "use_pinned_memory = " << (use_pinned_memory ? "true" : "false") << "\n\n";
+        << "use_pinned_memory = " << (use_pinned_memory ? "true" : "false") << "\n"
+        << "gpuMemoryReserveMB = " << gpuMemoryReserveMB << "\n"
+        << "enableGpuExclusiveMode = " << (enableGpuExclusiveMode ? "true" : "false") << "\n\n";
 #endif
+
+	// System
+    file << "# System\n"
+        << "cpuCoreReserveCount = " << cpuCoreReserveCount << "\n"
+        << "systemMemoryReserveMB = " << systemMemoryReserveMB << "\n\n";
 
     // Buttons
     file << "# Buttons\n"

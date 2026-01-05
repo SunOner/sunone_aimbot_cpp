@@ -95,7 +95,14 @@ public:
 #ifdef USE_CUDA
     bool use_cuda_graph;
     bool use_pinned_memory;
+    int gpuMemoryReserveMB;
+    bool enableGpuExclusiveMode;
 #endif
+
+    // System
+    int cpuCoreReserveCount;
+    int systemMemoryReserveMB;
+
     // Buttons
     std::vector<std::string> button_targeting;
     std::vector<std::string> button_shoot;
