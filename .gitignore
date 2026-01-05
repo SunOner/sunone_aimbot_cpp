@@ -31,19 +31,19 @@
 *.app
 
 # modules
-sunone_aimbot_cpp/modules/opencv
-sunone_aimbot_cpp/screenshots/
 .vs
 sunone_aimbot_cpp/x64
 x64
 packages
-sunone_aimbot_cpp/cudnn64_9.dll
-sunone_aimbot_cpp/opencv_world4100.dll
+/sunone_aimbot_cpp/modules/opencv
+/sunone_aimbot_cpp/screenshots/
+/sunone_aimbot_cpp/cudnn64_9.dll
+/sunone_aimbot_cpp/opencv_world4100.dll
 /sunone_aimbot_cpp/modules/glfw-3.4
 /sunone_aimbot_cpp/modules/glfw-3.4.bin.WIN64
-/sunone_aimbot_cpp/modules/TensorRT-10.8.0.43
-sunone_aimbot_cpp/imgui.ini
+/sunone_aimbot_cpp/imgui.ini
 /sunone_aimbot_cpp/models
-sunone_aimbot_cpp/modules/SimpleIni.h
+/sunone_aimbot_cpp/modules/SimpleIni.h
 /sunone_aimbot_cpp/modules/serial
-sunone_aimbot_cpp/config.ini
+/sunone_aimbot_cpp/config.ini
+/sunone_aimbot_cpp/modules/TensorRT-10.14.1.48

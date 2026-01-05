@@ -43,7 +43,7 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 * **Works on:**
 
   * NVIDIA GPUs **GTX 1660, RTX 2000/3000/4000 or newer**
-  * **Requires:** CUDA 12.8, TensorRT 10.8 (included in build)
+  * **Requires:** CUDA 12.8, TensorRT-10.14.1.48 (included in build)
   * Windows 10/11 (x64)
 * **Not supported:** GTX 10xx/Pascal and older (TensorRT 10 limitation)
 * **Includes both CUDA+TensorRT and DML support (switchable in settings)**
@@ -90,7 +90,7 @@ If you want to compile the project yourself or modify code, follow these instruc
 
   * [CUDA Toolkit 12.8](https://developer.nvidia.com/cuda-12-8-0-download-archive)
   * [cuDNN 9.7.1](https://developer.nvidia.com/cudnn-downloads)
-  * [TensorRT 10.8.0.43](https://developer.nvidia.com/tensorrt/download/10x)
+  * [TensorRT-10.14.1.48](https://developer.nvidia.com/tensorrt/download/10x)
 * **\[For DML version]**
 
   * You can use [pre-built OpenCV DLLs](https://github.com/opencv/opencv/releases/tag/4.10.0) (just copy `opencv_world4100.dll` to your exe folder)
@@ -130,7 +130,7 @@ sunone_aimbot_cpp/
 | --------- | ----------------------------------------------------------------- |
 | SimpleIni | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/SimpleIni.h`         |
 | serial    | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/serial/`             |
-| TensorRT  | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/TensorRT-10.8.0.43/` |
+| TensorRT  | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/TensorRT-10.14.1.48/` |
 | GLFW      | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/glfw-3.4.bin.WIN64/` |
 | OpenCV    | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/`             |
 | cuDNN     | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/cudnn/`              |
@@ -152,7 +152,7 @@ sunone_aimbot_cpp/
   * Use the built DLL/LIB with your project.
 
 * **TensorRT:**
-  Download [TensorRT 10.8.0.43](https://developer.nvidia.com/tensorrt/download/10x)
+  Download [TensorRT-10.14.1.48](https://developer.nvidia.com/tensorrt/download/10x)
   Place the folder as shown above.
 
 * **GLFW:**
@@ -175,7 +175,7 @@ sunone_aimbot_cpp/
     └── modules/
         ├── SimpleIni.h
         ├── serial/
-        ├── TensorRT-10.8.0.43/
+        ├── TensorRT-10.14.1.48/
         ├── glfw-3.4.bin.WIN64/
         ├── opencv/
         └── cudnn/

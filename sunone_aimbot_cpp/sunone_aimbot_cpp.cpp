@@ -287,7 +287,9 @@ void mouseThreadFunction(MouseThread& mouseThread)
             std::unique_lock<std::mutex> lock(detectionBuffer.mutex);
             detectionBuffer.cv.wait(lock, [&] {
                 return detectionBuffer.version > lastVersion || shouldExit;
-                });
+                }
+            );
+
             if (shouldExit) break;
             boxes = detectionBuffer.boxes;
             classes = detectionBuffer.classes;
@@ -652,25 +654,10 @@ int main()
     GPUResourceManager gpuManager;
     CPUAffinityManager cpuManager;
 
-    if (!gpuManager.reserveGPUMemory(2048))
-    {
-        return -1;
-    }
-
-    if (!gpuManager.setGPUExclusiveMode())
-    {
-        return -1;
-    }
-
-    if (!cpuManager.reserveCPUCores(10))
-    {
-        return -1;
-    }
-
-    if (!cpuManager.reserveSystemMemory(8192))
-    {
-        return -1;
-    }
+    if (!gpuManager.reserveGPUMemory(2048)) return -1;
+    if (!gpuManager.setGPUExclusiveMode()) return -1;
+    if (!cpuManager.reserveCPUCores(10)) return -1;
+    if (!cpuManager.reserveSystemMemory(8192)) return -1;
 
     try
     {
@@ -691,7 +678,7 @@ int main()
 
         if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
         {
-            std::cout << "[MAIN] Error with screenshoot folder" << std::endl;
+            std::cout << "[MAIN] Error with screenshot folder" << std::endl;
             std::cin.get();
             return -1;
         }
