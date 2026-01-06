@@ -42,8 +42,6 @@ public:
     std::chrono::duration<double, std::milli> lastPostprocessTime;
     std::chrono::duration<double, std::milli> lastNmsTime;
 
-    std::vector<std::vector<Detection>> detectBatch(const std::vector<cv::Mat>& frames);
-
 private:
     std::unique_ptr<nvinfer1::IRuntime> runtime;
     std::unique_ptr<nvinfer1::ICudaEngine> engine;

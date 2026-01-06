@@ -130,7 +130,6 @@ bool Config::loadConfig(const std::string& filename)
         max_detections = 100;
 
         postprocess = "yolo10";
-        batch_size = 1;
 #ifdef USE_CUDA
         export_enable_fp8 = false;
         export_enable_fp16 = true;
@@ -364,11 +363,6 @@ bool Config::loadConfig(const std::string& filename)
     max_detections = get_long("max_detections", 20);
 
     postprocess = get_string("postprocess", "yolo10");
-
-    batch_size = get_long("batch_size", 1);
-    if (batch_size < 1) batch_size = 1;
-    if (batch_size > 8) batch_size = 8;
-
 #ifdef USE_CUDA
     export_enable_fp8 = get_bool("export_enable_fp8", true);
     export_enable_fp16 = get_bool("export_enable_fp16", true);
@@ -538,7 +532,6 @@ bool Config::saveConfig(const std::string& filename)
         << std::setprecision(0)
         << "max_detections = " << max_detections << "\n"
         << "postprocess = " << postprocess << "\n"
-        << "batch_size = " << batch_size << "\n"
 #ifdef USE_CUDA
         << "export_enable_fp8 = " << (export_enable_fp8 ? "true" : "false") << "\n"
         << "export_enable_fp16 = " << (export_enable_fp16 ? "true" : "false") << "\n"

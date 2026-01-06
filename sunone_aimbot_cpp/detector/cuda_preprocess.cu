@@ -17,9 +17,9 @@ static __global__ void hwc_to_chw_norm_kernel(
 
     const float* p = srcHwc + y * srcStepFloats + x * 3;
 
-    dstChw[0 * hw + idx] = p[0];
-    dstChw[1 * hw + idx] = p[1];
-    dstChw[2 * hw + idx] = p[2];
+    dstChw[0 * hw + idx] = p[2]; // R
+    dstChw[1 * hw + idx] = p[1]; // G
+    dstChw[2 * hw + idx] = p[0]; // B
 }
 
 void launch_hwc_to_chw_norm(

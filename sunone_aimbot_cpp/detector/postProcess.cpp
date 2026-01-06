@@ -133,7 +133,7 @@ std::vector<Detection> postProcessYolo11(
 )
 {
     std::vector<Detection> detections;
-    detections.reserve(256);  // Reasonable pre-allocation
+    detections.reserve(256);
 
     int64_t rows = shape[1];
     int64_t cols = shape[2];
