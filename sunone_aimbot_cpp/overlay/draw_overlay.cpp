@@ -9,7 +9,17 @@
 
 void draw_overlay()
 {
-    ImGui::SliderInt("Overlay Opacity", &config.overlay_opacity, 40, 255);
+    int prev_opacity = config.overlay_opacity;
+    if (ImGui::SliderInt("Overlay Opacity", &config.overlay_opacity, 40, 255))
+    {
+        if (config.overlay_opacity < 20) config.overlay_opacity = 20;
+        if (config.overlay_opacity > 255) config.overlay_opacity = 255;
+
+        Overlay_SetOpacity(config.overlay_opacity);
+
+        if (config.overlay_opacity != prev_opacity)
+            config.saveConfig("config.ini");
+    }
 
     static float ui_scale = config.overlay_ui_scale;
 

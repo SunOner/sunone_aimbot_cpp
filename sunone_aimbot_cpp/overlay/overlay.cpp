@@ -1,4 +1,4 @@
-#define WIN32_LEAN_AND_MEAN
+﻿#define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
@@ -9,7 +9,14 @@
 #include <atomic>
 #include <d3d11.h>
 #include <dxgi.h>
+#include <dwmapi.h>
+#include <dcomp.h>
 #include <filesystem>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <iostream>
+#include <chrono>
 
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
@@ -25,13 +32,22 @@
 #include "keyboard_listener.h"
 #include "other_tools.h"
 #include "virtual_camera.h"
+
 #ifdef USE_CUDA
 #include "trt_detector.h"
 #endif
 
+#pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "dcomp.lib")
+#pragma comment(lib, "d3d11.lib")
+
 ID3D11Device* g_pd3dDevice = NULL;
 ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
-IDXGISwapChain* g_pSwapChain = NULL;
+IDXGISwapChain1* g_pSwapChain = NULL;
+IDCompositionDevice* g_dcompDevice = NULL;
+IDCompositionTarget* g_dcompTarget = NULL;
+IDCompositionVisual* g_dcompVisual = NULL;
 ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
 HWND g_hwnd = NULL;
 
@@ -45,13 +61,19 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 
 ID3D11BlendState* g_pBlendState = nullptr;
+
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 const int BASE_OVERLAY_WIDTH = 720;
 const int BASE_OVERLAY_HEIGHT = 500;
+
 int overlayWidth = 0;
 int overlayHeight = 0;
+
+static const int DRAG_BAR_HEIGHT_PX = 30;
+static const int MIN_OVERLAY_W = 420;
+static const int MIN_OVERLAY_H = 300;
 
 std::vector<std::string> availableModels;
 std::vector<std::string> key_names;
@@ -59,131 +81,26 @@ std::vector<const char*> key_names_cstrs;
 
 ID3D11ShaderResourceView* body_texture = nullptr;
 
-bool InitializeBlendState()
+void load_body_texture();
+void release_body_texture();
+std::vector<std::string> getAvailableModels();
+
+static inline int ClampInt(int v, int lo, int hi)
 {
-    D3D11_BLEND_DESC blendDesc;
-    ZeroMemory(&blendDesc, sizeof(blendDesc));
-
-    blendDesc.AlphaToCoverageEnable = FALSE;
-    blendDesc.RenderTarget[0].BlendEnable = TRUE;
-    blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-    blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-    blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-    blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-    blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
-    blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-
-    HRESULT hr = g_pd3dDevice->CreateBlendState(&blendDesc, &g_pBlendState);
-    if (FAILED(hr))
-    {
-        return false;
-    }
-
-    float blendFactor[4] = { 0.f, 0.f, 0.f, 0.f };
-    g_pd3dDeviceContext->OMSetBlendState(g_pBlendState, blendFactor, 0xffffffff);
-
-    return true;
+    return (v < lo) ? lo : (v > hi) ? hi : v;
 }
 
-bool CreateDeviceD3D(HWND hWnd)
+void Overlay_SetOpacity(int opacity255)
 {
-    DXGI_SWAP_CHAIN_DESC sd;
-    ZeroMemory(&sd, sizeof(sd));
-    sd.BufferCount = 2;
-    sd.BufferDesc.Width = overlayWidth;
-    sd.BufferDesc.Height = overlayHeight;
-    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    sd.BufferDesc.RefreshRate.Numerator = 0;
-    sd.BufferDesc.RefreshRate.Denominator = 0;
-    sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    sd.OutputWindow = hWnd;
-    sd.SampleDesc.Count = 1;
-    sd.SampleDesc.Quality = 0;
-    sd.Windowed = TRUE;
-    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-    sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    if (!g_hwnd) return;
 
-    UINT createDeviceFlags = 0;
+    opacity255 = ClampInt(opacity255, 20, 255);
 
-    D3D_FEATURE_LEVEL featureLevel;
-    const D3D_FEATURE_LEVEL featureLevelArray[2] =
-    {
-        D3D_FEATURE_LEVEL_11_0,
-        D3D_FEATURE_LEVEL_10_0,
-    };
+    LONG exStyle = GetWindowLong(g_hwnd, GWL_EXSTYLE);
+    if ((exStyle & WS_EX_LAYERED) == 0)
+        SetWindowLong(g_hwnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
 
-    HRESULT res = D3D11CreateDeviceAndSwapChain(NULL,
-        D3D_DRIVER_TYPE_HARDWARE,
-        NULL,
-        createDeviceFlags,
-        featureLevelArray,
-        2,
-        D3D11_SDK_VERSION,
-        &sd,
-        &g_pSwapChain,
-        &g_pd3dDevice,
-        &featureLevel,
-        &g_pd3dDeviceContext);
-    if (res != S_OK)
-        return false;
-
-    if (!InitializeBlendState())
-        return false;
-
-    CreateRenderTarget();
-    return true;
-}
-
-void CreateRenderTarget()
-{
-    ID3D11Texture2D* pBackBuffer = NULL;
-    g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
-    g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &g_mainRenderTargetView);
-    pBackBuffer->Release();
-}
-
-void CleanupRenderTarget()
-{
-    if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = NULL; }
-}
-
-void CleanupDeviceD3D()
-{
-    CleanupRenderTarget();
-    if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = NULL; }
-    if (g_pd3dDeviceContext) { g_pd3dDeviceContext->Release(); g_pd3dDeviceContext = NULL; }
-    if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = NULL; }
-    if (g_pBlendState) { g_pBlendState->Release(); g_pBlendState = nullptr; }
-}
-
-LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-        return true;
-
-    switch (msg)
-    {
-    case WM_SIZE:
-        if (g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED)
-        {
-            RECT rect;
-            GetWindowRect(hWnd, &rect);
-            UINT width = rect.right - rect.left;
-            UINT height = rect.bottom - rect.top;
-
-            CleanupRenderTarget();
-            g_pSwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
-            CreateRenderTarget();
-        }
-        return 0;
-    case WM_DESTROY:
-        shouldExit = true;
-        ::PostQuitMessage(0);
-        return 0;
-    default:
-        return ::DefWindowProc(hWnd, msg, wParam, lParam);
-    }
+    SetLayeredWindowAttributes(g_hwnd, 0, (BYTE)opacity255, LWA_ALPHA);
 }
 
 static inline ImVec4 RGBA(int r, int g, int b, int a = 255)
@@ -227,7 +144,6 @@ static void ApplyTheme_RoseDark()
 
     const ImVec4 acc = RGBA(168, 125, 135, 255);
     const ImVec4 accHover = RGBA(190, 145, 155, 255);
-    const ImVec4 accActive = RGBA(145, 105, 115, 255);
 
     c[ImGuiCol_Text] = text;
     c[ImGuiCol_TextDisabled] = textDim;
@@ -253,7 +169,6 @@ static void ApplyTheme_RoseDark()
     c[ImGuiCol_ScrollbarGrabActive] = RGBA(110, 110, 130, 220);
 
     c[ImGuiCol_CheckMark] = acc;
-
     c[ImGuiCol_SliderGrab] = acc;
     c[ImGuiCol_SliderGrabActive] = accHover;
 
@@ -293,6 +208,241 @@ static void ApplyTheme_RoseDark()
     c[ImGuiCol_NavWindowingDimBg] = RGBA(0, 0, 0, 90);
 }
 
+static UINT GetDpiForWindowSafe(HWND hwnd)
+{
+    UINT dpi = 96;
+    HMODULE user32 = ::GetModuleHandleW(L"user32.dll");
+    if (user32)
+    {
+        auto pGetDpiForWindow = (UINT(WINAPI*)(HWND))::GetProcAddress(user32, "GetDpiForWindow");
+        if (pGetDpiForWindow)
+            dpi = pGetDpiForWindow(hwnd);
+    }
+    return dpi;
+}
+
+static int GetScaledSystemMetric(int metric, UINT dpi)
+{
+    const int v = ::GetSystemMetrics(metric);
+    return ::MulDiv(v, (int)dpi, 96);
+}
+
+bool InitializeBlendState()
+{
+    D3D11_BLEND_DESC blendDesc;
+    ZeroMemory(&blendDesc, sizeof(blendDesc));
+
+    blendDesc.AlphaToCoverageEnable = FALSE;
+    blendDesc.RenderTarget[0].BlendEnable = TRUE;
+    blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+    blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+    blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+    blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+    blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+    blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+    blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+    HRESULT hr = g_pd3dDevice->CreateBlendState(&blendDesc, &g_pBlendState);
+    if (FAILED(hr))
+        return false;
+
+    float blendFactor[4] = { 0.f, 0.f, 0.f, 0.f };
+    g_pd3dDeviceContext->OMSetBlendState(g_pBlendState, blendFactor, 0xffffffff);
+    return true;
+}
+
+bool CreateDeviceD3D(HWND hWnd)
+{
+    UINT createDeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+
+    D3D_FEATURE_LEVEL featureLevel;
+    const D3D_FEATURE_LEVEL featureLevelArray[] = {
+        D3D_FEATURE_LEVEL_11_0,
+        D3D_FEATURE_LEVEL_10_0,
+    };
+
+    HRESULT hr = D3D11CreateDevice(
+        nullptr,
+        D3D_DRIVER_TYPE_HARDWARE,
+        nullptr,
+        createDeviceFlags,
+        featureLevelArray,
+        ARRAYSIZE(featureLevelArray),
+        D3D11_SDK_VERSION,
+        &g_pd3dDevice,
+        &featureLevel,
+        &g_pd3dDeviceContext);
+
+    if (FAILED(hr))
+        return false;
+
+    IDXGIDevice* dxgiDev = nullptr;
+    hr = g_pd3dDevice->QueryInterface(IID_PPV_ARGS(&dxgiDev));
+    if (FAILED(hr) || !dxgiDev)
+        return false;
+
+    IDXGIAdapter* adapter = nullptr;
+    hr = dxgiDev->GetAdapter(&adapter);
+    if (FAILED(hr) || !adapter)
+    {
+        dxgiDev->Release();
+        return false;
+    }
+
+    IDXGIFactory2* factory2 = nullptr;
+    {
+        IDXGIFactory* baseFactory = nullptr;
+        hr = adapter->GetParent(IID_PPV_ARGS(&baseFactory));
+        if (FAILED(hr) || !baseFactory)
+        {
+            adapter->Release();
+            dxgiDev->Release();
+            return false;
+        }
+        hr = baseFactory->QueryInterface(IID_PPV_ARGS(&factory2));
+        baseFactory->Release();
+    }
+
+    if (FAILED(hr) || !factory2)
+    {
+        adapter->Release();
+        dxgiDev->Release();
+        return false;
+    }
+
+    DXGI_SWAP_CHAIN_DESC1 scd = {};
+    scd.Width = overlayWidth;
+    scd.Height = overlayHeight;
+    scd.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    scd.SampleDesc.Count = 1;
+    scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    scd.BufferCount = 2;
+    scd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+    scd.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
+    scd.Scaling = DXGI_SCALING_STRETCH;
+
+    hr = factory2->CreateSwapChainForComposition(
+        g_pd3dDevice,
+        &scd,
+        nullptr,
+        &g_pSwapChain);
+
+    factory2->Release();
+    adapter->Release();
+
+    if (FAILED(hr) || !g_pSwapChain)
+    {
+        dxgiDev->Release();
+        return false;
+    }
+
+    hr = DCompositionCreateDevice(dxgiDev, IID_PPV_ARGS(&g_dcompDevice));
+    dxgiDev->Release();
+    if (FAILED(hr) || !g_dcompDevice)
+        return false;
+
+    hr = g_dcompDevice->CreateTargetForHwnd(hWnd, TRUE, &g_dcompTarget);
+    if (FAILED(hr) || !g_dcompTarget)
+        return false;
+
+    hr = g_dcompDevice->CreateVisual(&g_dcompVisual);
+    if (FAILED(hr) || !g_dcompVisual)
+        return false;
+
+    hr = g_dcompVisual->SetContent(g_pSwapChain);
+    if (FAILED(hr))
+        return false;
+
+    hr = g_dcompTarget->SetRoot(g_dcompVisual);
+    if (FAILED(hr))
+        return false;
+
+    g_dcompDevice->Commit();
+
+    if (!InitializeBlendState())
+        return false;
+
+    CreateRenderTarget();
+    return true;
+}
+
+void CreateRenderTarget()
+{
+    ID3D11Texture2D* pBackBuffer = NULL;
+    g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
+    g_pd3dDevice->CreateRenderTargetView(pBackBuffer, NULL, &g_mainRenderTargetView);
+    pBackBuffer->Release();
+}
+
+void CleanupRenderTarget()
+{
+    if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = NULL; }
+}
+
+void CleanupDeviceD3D()
+{
+    CleanupRenderTarget();
+
+    if (g_dcompVisual) { g_dcompVisual->Release(); g_dcompVisual = NULL; }
+    if (g_dcompTarget) { g_dcompTarget->Release(); g_dcompTarget = NULL; }
+    if (g_dcompDevice) { g_dcompDevice->Release(); g_dcompDevice = NULL; }
+
+    if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = NULL; }
+    if (g_pd3dDeviceContext) { g_pd3dDeviceContext->Release(); g_pd3dDeviceContext = NULL; }
+    if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = NULL; }
+    if (g_pBlendState) { g_pBlendState->Release(); g_pBlendState = nullptr; }
+}
+
+LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg)
+    {
+        case WM_NCHITTEST:
+        {
+            POINT pt = { (int)(short)LOWORD(lParam), (int)(short)HIWORD(lParam) };
+            ::ScreenToClient(hWnd, &pt);
+
+            RECT rc;
+            ::GetClientRect(hWnd, &rc);
+
+            if (pt.y >= rc.top && pt.y < rc.top + DRAG_BAR_HEIGHT_PX)
+                return HTCAPTION;
+
+            return HTCLIENT;
+        }
+    }
+
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+        return true;
+
+    switch (msg)
+    {
+    case WM_SIZE:
+        if (g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED)
+        {
+            const UINT width = (UINT)LOWORD(lParam);
+            const UINT height = (UINT)HIWORD(lParam);
+
+            overlayWidth = (int)width;
+            overlayHeight = (int)height;
+
+            CleanupRenderTarget();
+            g_pSwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 0);
+            CreateRenderTarget();
+            if (g_dcompDevice) g_dcompDevice->Commit();
+        }
+        return 0;
+
+    case WM_DESTROY:
+        shouldExit = true;
+        ::PostQuitMessage(0);
+        return 0;
+
+    default:
+        return ::DefWindowProc(hWnd, msg, wParam, lParam);
+    }
+}
+
 void SetupImGui()
 {
     IMGUI_CHECKVERSION();
@@ -301,11 +451,13 @@ void SetupImGui()
     ImGuiIO& io = ImGui::GetIO();
     io.FontGlobalScale = config.overlay_ui_scale;
 
+    io.IniFilename = nullptr;
+    io.LogFilename = nullptr;
+
     ImGui_ImplWin32_Init(g_hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
     ApplyTheme_RoseDark();
-
     load_body_texture();
 }
 
@@ -330,30 +482,36 @@ bool CreateOverlayWindow()
     };
     ::RegisterClassEx(&wc);
 
+    const DWORD exStyle = WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED;
+    const DWORD style = WS_POPUP;
+
+    RECT wr = { 0, 0, overlayWidth, overlayHeight };
+    ::AdjustWindowRectEx(&wr, style, FALSE, exStyle);
+
+    const int wndW = wr.right - wr.left;
+    const int wndH = wr.bottom - wr.top;
+
     g_hwnd = ::CreateWindowEx(
-        WS_EX_TOPMOST | WS_EX_LAYERED,
+        exStyle,
         wc.lpszClassName, _T("Chrome"),
-        WS_POPUP, 0, 0, overlayWidth, overlayHeight,
+        style,
+        0, 0, wndW, wndH,
         NULL, NULL, wc.hInstance, NULL);
 
     if (g_hwnd == NULL)
         return false;
-    
-    if (config.overlay_opacity <= 20)
+
+    BOOL dwm = FALSE;
+    if (SUCCEEDED(DwmIsCompositionEnabled(&dwm)) && dwm)
     {
-        config.overlay_opacity = 20;
-        config.saveConfig("config.ini");
+        MARGINS m = { -1, -1, -1, -1 };
+        DwmExtendFrameIntoClientArea(g_hwnd, &m);
     }
 
-    if (config.overlay_opacity >= 256)
-    {
-        config.overlay_opacity = 255;
-        config.saveConfig("config.ini");
-    }
+    if (config.overlay_opacity <= 20)  config.overlay_opacity = 20;
+    if (config.overlay_opacity >= 256) config.overlay_opacity = 255;
 
-    BYTE opacity = config.overlay_opacity;
-
-    SetLayeredWindowAttributes(g_hwnd, 0, opacity, LWA_ALPHA);
+    Overlay_SetOpacity(config.overlay_opacity);
 
     if (!CreateDeviceD3D(g_hwnd))
     {
@@ -376,24 +534,20 @@ void OverlayThread()
     SetupImGui();
 
     bool show_overlay = false;
-    int prev_opacity = config.overlay_opacity;
 
     for (const auto& pair : KeyCodes::key_code_map)
-    {
         key_names.push_back(pair.first);
-    }
-    std::sort(key_names.begin(), key_names.end());
 
+    std::sort(key_names.begin(), key_names.end());
     key_names_cstrs.reserve(key_names.size());
     for (const auto& name : key_names)
-    {
         key_names_cstrs.push_back(name.c_str());
-    }
-    
-    std::vector<std::string> availableModels = getAvailableModels();
+
+    availableModels = getAvailableModels();
 
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
+
     while (!shouldExit)
     {
         while (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
@@ -403,9 +557,10 @@ void OverlayThread()
             if (msg.message == WM_QUIT)
             {
                 shouldExit = true;
-                return;
+                break;
             }
         }
+        if (shouldExit) break;
 
         if (isAnyKeyPressed(config.button_open_overlay) & 0x1)
         {
@@ -424,62 +579,75 @@ void OverlayThread()
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
         }
 
-        if (show_overlay)
-        {
-            ImGui_ImplDX11_NewFrame();
-            ImGui_ImplWin32_NewFrame();
-            ImGui::NewFrame();
-
-            ImGui::SetNextWindowPos(ImVec2(0, 0));
-            ImGui::SetNextWindowSize(ImVec2((float)overlayWidth, (float)overlayHeight));
-
-            ImGui::Begin("Options", &show_overlay, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
-            {
-                std::lock_guard<std::mutex> lock(configMutex);
-
-                if (ImGui::BeginTabBar("Options tab bar"))
-                {
-                    if (ImGui::BeginTabItem("Capture")) { draw_capture_settings(); ImGui::EndTabItem(); }
-                    if (ImGui::BeginTabItem("Target")) { draw_target(); ImGui::EndTabItem(); }
-                    if (ImGui::BeginTabItem("Mouse")) { draw_mouse(); ImGui::EndTabItem();}
-                    if (ImGui::BeginTabItem("AI")) { draw_ai(); ImGui::EndTabItem(); }
-                    if (ImGui::BeginTabItem("Buttons")) { draw_buttons(); ImGui::EndTabItem(); }
-                    if (ImGui::BeginTabItem("Overlay")) { draw_overlay(); ImGui::EndTabItem(); }
-                    if (ImGui::BeginTabItem("Game Overlay")) { draw_game_overlay_settings(); ImGui::EndTabItem(); }
-                    if (ImGui::BeginTabItem("Stats")) { draw_stats(); ImGui::EndTabItem(); }
-                    if (ImGui::BeginTabItem("Debug")) { draw_debug(); ImGui::EndTabItem(); }
-
-                    if (prev_opacity != config.overlay_opacity)
-                    {
-                        BYTE opacity = config.overlay_opacity;
-                        SetLayeredWindowAttributes(g_hwnd, 0, opacity, LWA_ALPHA);
-                        config.saveConfig();
-                    }
-
-                ImGui::EndTabBar();
-                }
-            }
-
-            ImGui::End();
-            ImGui::Render();
-
-            const float clear_color_with_alpha[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-            g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
-            g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
-            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-
-            HRESULT result = g_pSwapChain->Present(0, 0);
-
-            if (result == DXGI_STATUS_OCCLUDED || result == DXGI_ERROR_ACCESS_LOST)
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-        else
+        if (!show_overlay)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            continue;
         }
+
+        ImGui_ImplDX11_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+
+        const float w = (float)overlayWidth;
+        const float h = (float)overlayHeight;
+        const float drag_h = (float)DRAG_BAR_HEIGHT_PX;
+        const float content_h = (h > drag_h) ? (h - drag_h) : 1.0f;
+
+        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(w, drag_h), ImGuiCond_Always);
+        ImGui::Begin("##dragbar", nullptr,
+            ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoNav |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse);
+
+        ImGui::TextUnformatted("Config Editor");
+        ImGui::End();
+
+        ImGui::SetNextWindowPos(ImVec2(0.0f, drag_h), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(w, content_h), ImGuiCond_Always);
+
+        ImGuiWindowFlags mainFlags =
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoResize;
+
+        ImGui::Begin("All Options", &show_overlay, mainFlags);
+
+        {
+            std::lock_guard<std::mutex> lock(configMutex);
+
+            if (ImGui::BeginTabBar("Options tab bar"))
+            {
+                if (ImGui::BeginTabItem("Capture")) { draw_capture_settings();            ImGui::EndTabItem(); }
+                if (ImGui::BeginTabItem("Target")) { draw_target();                       ImGui::EndTabItem(); }
+                if (ImGui::BeginTabItem("Mouse")) { draw_mouse();                         ImGui::EndTabItem(); }
+                if (ImGui::BeginTabItem("AI")) { draw_ai();                               ImGui::EndTabItem(); }
+                if (ImGui::BeginTabItem("Buttons")) { draw_buttons();                     ImGui::EndTabItem(); }
+                if (ImGui::BeginTabItem("Overlay")) { draw_overlay();                     ImGui::EndTabItem(); }
+                if (ImGui::BeginTabItem("Game Overlay")) { draw_game_overlay_settings();  ImGui::EndTabItem(); }
+                if (ImGui::BeginTabItem("Stats")) { draw_stats();                         ImGui::EndTabItem(); }
+                if (ImGui::BeginTabItem("Debug")) { draw_debug();                         ImGui::EndTabItem(); }
+
+                ImGui::EndTabBar();
+            }
+        }
+
+        ImGui::End();
+        ImGui::Render();
+
+        const float clear_color_with_alpha[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
+        g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
+        ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+        HRESULT result = g_pSwapChain->Present(0, 0);
+        if (result == DXGI_STATUS_OCCLUDED || result == DXGI_ERROR_ACCESS_LOST)
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     release_body_texture();

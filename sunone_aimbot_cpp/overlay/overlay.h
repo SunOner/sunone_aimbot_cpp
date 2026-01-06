@@ -2,6 +2,10 @@
 #define OVERLAY_H
 
 #include <d3d11.h>
+#include <dxgi1_2.h>
+#include <dwmapi.h>
+#include <dcomp.h>
+
 #include <vector>
 #include <string>
 #include <atomic>
@@ -10,7 +14,10 @@
 
 extern ID3D11Device* g_pd3dDevice;
 extern ID3D11DeviceContext* g_pd3dDeviceContext;
-extern IDXGISwapChain* g_pSwapChain;
+extern IDXGISwapChain1* g_pSwapChain;
+extern IDCompositionDevice* g_dcompDevice;
+extern IDCompositionTarget* g_dcompTarget;
+extern IDCompositionVisual* g_dcompVisual;
 extern ID3D11RenderTargetView* g_mainRenderTargetView;
 extern HWND g_hwnd;
 
@@ -32,5 +39,6 @@ extern const int BASE_OVERLAY_WIDTH;
 extern const int BASE_OVERLAY_HEIGHT;
 extern int overlayWidth;
 extern int overlayHeight;
+void Overlay_SetOpacity(int opacity255);
 
 #endif // OVERLAY_H
