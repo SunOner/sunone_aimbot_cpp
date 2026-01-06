@@ -39,7 +39,6 @@
     <ClCompile Include="mouse\kmbox_net\kmboxNet.cpp" />
     <ClCompile Include="mouse\kmboxNetConnection.cpp" />
     <ClCompile Include="overlay\Game_overlay.cpp" />
-    <ClCompile Include="overlay\draw_game_overlay.h" />
     <ClCompile Include="overlay\draw_game_overlay.cpp" />
     <ClCompile Include="mem\gpu_resource_manager.cpp" />
     <ClCompile Include="mem\cpu_affinity_manager.cpp" />
@@ -79,7 +78,6 @@
     <ClInclude Include="capture\duplication_api_capture.h" />
     <ClInclude Include="capture\virtual_camera.h" />
     <ClInclude Include="sunone_aimbot_cpp.h" />
-    <ClInclude Include="overlay\draw_settings.h" />
     <ClInclude Include="mouse\Kmbox_b.h" />
     <ClInclude Include="detector\dml_detector.h" />
     <ClInclude Include="tensorrt\trt_monitor.h" />
@@ -93,6 +91,7 @@
     <ClInclude Include="mem\gpu_resource_manager.h" />
     <ClInclude Include="mem\cpu_affinity_manager.h" />
     <ClInclude Include="detector\cuda_preprocess.h" />
+    <ClInclude Include="overlay\draw_settings.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -11,5 +11,6 @@ void draw_stats();
 void draw_debug();
 void load_body_texture();
 void release_body_texture();
+void draw_game_overlay_settings();
 
 #endif // DRAW_SETTINGS_H

@@ -1,6 +1,4 @@
-﻿#include "Game_overlay.h"
-
-#define WIN32_LEAN_AND_MEAN
+﻿#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <dwmapi.h>
 #include <d3d11.h>
@@ -28,6 +26,8 @@
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "windowscodecs.lib")
 #pragma comment(lib, "dcomp.lib")
+
+#include "Game_overlay.h"
 
 using Microsoft::WRL::ComPtr;
 

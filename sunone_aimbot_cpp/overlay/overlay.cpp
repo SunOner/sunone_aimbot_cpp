@@ -25,7 +25,6 @@
 #include "keyboard_listener.h"
 #include "other_tools.h"
 #include "virtual_camera.h"
-#include "draw_game_overlay.h"
 #ifdef USE_CUDA
 #include "trt_detector.h"
 #endif
