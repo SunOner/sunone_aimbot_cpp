@@ -28,8 +28,7 @@ static ID3D11Texture2D* g_debugTex = nullptr;
 static ID3D11ShaderResourceView* g_debugSRV = nullptr;
 static int texW = 0, texH = 0;
 
-
-static float debug_scale = 1.0f;
+static float debug_scale = 0.5f;
 
 static void uploadDebugFrame(const cv::Mat& bgr)
 {
@@ -223,19 +222,6 @@ void draw_debug()
 
     ImGui::InputInt("Screenshot delay", &config.screenshot_delay, 50, 500);
     ImGui::Checkbox("Verbose console output", &config.verbose);
-
-    ImGui::Separator();
-
-    ImGui::Text("Test functions");
-    if (ImGui::Button("Free terminal"))
-    {
-        HideConsole();
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Restore terminal"))
-    {
-        ShowConsole();
-    }
 
     if (prev_screenshot_delay != config.screenshot_delay ||
         prev_verbose != config.verbose)

@@ -104,21 +104,6 @@ std::string replace_extension(const std::string& filename, const std::string& ne
     }
 }
 
-void HideConsole()
-{
-    FreeConsole();
-}
-
-void ShowConsole()
-{
-    AllocConsole();
-}
-
-bool IsConsoleVisible()
-{
-    return ::IsWindowVisible(::GetConsoleWindow()) != FALSE;
-}
-
 std::string intToString(int value)
 {
     return std::to_string(value);

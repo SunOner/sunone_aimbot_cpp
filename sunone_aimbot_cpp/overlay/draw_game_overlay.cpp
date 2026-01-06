@@ -11,7 +11,6 @@
 #include "sunone_aimbot_cpp.h"
 
 extern std::string g_iconLastError;
-extern Config config;
 
 void draw_game_overlay_settings()
 {
