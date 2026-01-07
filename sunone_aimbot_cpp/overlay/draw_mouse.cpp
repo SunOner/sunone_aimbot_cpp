@@ -56,12 +56,16 @@ static void draw_target_correction_demo()
         dl->AddCircle(center, near_px, IM_COL32(80, 120, 255, 180), 64, 2.0f);
         dl->AddCircle(center, snap_px, IM_COL32(255, 100, 100, 180), 64, 2.0f);
 
-        static float  dist_px = near_px;
+        static float  dist_px = 0.0f;
         static float  vel_px = 0.0f;
         static double last_t = ImGui::GetTime();
         double now = ImGui::GetTime();
         double dt = now - last_t;
         last_t = now;
+        dt = ImClamp(dt, 0.0, 0.1);
+
+        if (dist_px <= 0.0f || dist_px > near_px)
+            dist_px = near_px;
 
         double dist_units = dist_px / scale;
         double speed_mult;
@@ -81,8 +85,10 @@ static void draw_target_correction_demo()
                 (config.maxSpeedMultiplier - config.minSpeedMultiplier) * norm;
         }
 
-        double base_px_s = 60.0;
-        vel_px = static_cast<float>(base_px_s * speed_mult);
+        float max_multiplier = ImMax(0.1f, config.maxSpeedMultiplier);
+        float demo_duration_s = ImClamp(2.2f / max_multiplier, 0.6f, 3.0f);
+        float base_px_s = near_px / demo_duration_s;
+        vel_px = base_px_s * static_cast<float>(speed_mult);
         dist_px -= vel_px * static_cast<float>(dt);
         if (dist_px <= 0.0f) dist_px = near_px;
 
