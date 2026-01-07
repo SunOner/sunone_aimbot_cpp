@@ -298,7 +298,12 @@ sunone_aimbot_cpp/
 
   ```bash
   pip install ultralytics -U
+  
+  # TensorRT
   yolo export model=sunxds_0.5.6.pt format=onnx dynamic=true simplify=true
+  
+  # DML
+  yolo export model=sunxds_0.5.6.pt format=onnx simplify=true
   ```
 * To convert `.onnx` to `.engine` for TensorRT, use the overlay export tab (open overlay with HOME).
 
