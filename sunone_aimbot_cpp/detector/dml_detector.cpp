@@ -167,16 +167,8 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
         const float* ptr = outData + b * rows * cols;
         std::vector<Detection> detections;
 
-        if (config.postprocess == "yolo10")
-        {
-            std::vector<int64_t> shp = { batch_size, rows, cols };
-            detections = postProcessYolo10DML(ptr, shp, num_classes, conf_thr, nms_thr, &nmsTimeTmp);
-        }
-        else
-        {
-            std::vector<int64_t> shp = { rows, cols };
-            detections = postProcessYolo11DML(ptr, shp, num_classes, conf_thr, nms_thr, &nmsTimeTmp);
-        }
+        std::vector<int64_t> shp = { rows, cols };
+        detections = postProcessYoloDML(ptr, shp, num_classes, conf_thr, nms_thr, &nmsTimeTmp);
 
         if (useFixed && (target_w != config.detection_resolution))
         {

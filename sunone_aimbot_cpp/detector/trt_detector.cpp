@@ -338,7 +338,7 @@ void TrtDetector::initialize(const std::string& modelFile)
     {
         const std::string& mainOut = outputNames[0];
         nvinfer1::Dims outDims = context->getTensorShape(mainOut.c_str());
-        numClasses = (config.postprocess == "yolo10") ? 11 : (outDims.d[1] - 4);
+        numClasses = (outDims.d[1] > 4) ? (outDims.d[1] - 4) : 1;
     }
 
     int c = inputDims.d[1];
@@ -661,41 +661,21 @@ void TrtDetector::postProcess(const float* output, const std::string& outputName
 
     std::vector<Detection> detections;
 
-    if (config.postprocess == "yolo10")
+    auto shape = context->getTensorShape(outputName.c_str());
+    std::vector<int64_t> engineShape;
+    for (int i = 0; i < shape.nbDims; ++i)
     {
-        const std::vector<int64_t>& shape = outputShapes[outputName];
-        detections = postProcessYolo10(
-            output,
-            shape,
-            numClasses,
-            config.confidence_threshold,
-            config.nms_threshold,
-            nmsTime
-        );
+        engineShape.push_back(shape.d[i]);
     }
-    else if (
-        config.postprocess == "yolo8" ||
-        config.postprocess == "yolo9" ||
-        config.postprocess == "yolo11" ||
-        config.postprocess == "yolo12"
-        )
-    {
-        auto shape = context->getTensorShape(outputName.c_str());
-        std::vector<int64_t> engineShape;
-        for (int i = 0; i < shape.nbDims; ++i)
-        {
-            engineShape.push_back(shape.d[i]);
-        }
-
-        detections = postProcessYolo11(
-            output,
-            engineShape,
-            numClasses,
-            config.confidence_threshold,
-            config.nms_threshold,
-            nmsTime
-        );
-    }
+    
+    detections = postProcessYolo(
+        output,
+        engineShape,
+        numClasses,
+        config.confidence_threshold,
+        config.nms_threshold,
+        nmsTime
+    );
 
     {
         std::lock_guard<std::mutex> lock(detectionBuffer.mutex);

@@ -18,16 +18,7 @@ void NMS(
 );
 
 #ifdef USE_CUDA
-std::vector<Detection> postProcessYolo10(
-    const float* output,
-    const std::vector<int64_t>& shape,
-    int numClasses,
-    float confThreshold,
-    float nmsThreshold,
-    std::chrono::duration<double, std::milli>* nmsTime = nullptr
-);
-
-std::vector<Detection> postProcessYolo11(
+std::vector<Detection> postProcessYolo(
     const float* output,
     const std::vector<int64_t>& shape,
     int numClasses,
@@ -37,16 +28,7 @@ std::vector<Detection> postProcessYolo11(
 );
 #endif
 
-std::vector<Detection> postProcessYolo10DML(
-    const float* output,
-    const std::vector<int64_t>& shape,
-    int numClasses,
-    float confThreshold,
-    float nmsThreshold,
-    std::chrono::duration<double, std::milli>* nmsTime = nullptr
-);
-
-std::vector<Detection> postProcessYolo11DML(
+std::vector<Detection> postProcessYoloDML(
     const float* output,
     const std::vector<int64_t>& shape,
     int numClasses,

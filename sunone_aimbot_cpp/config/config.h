@@ -81,7 +81,6 @@ public:
     float confidence_threshold;
     float nms_threshold;
     int max_detections;
-    std::string postprocess;
 #ifdef USE_CUDA
     bool export_enable_fp8;
     bool export_enable_fp16;
