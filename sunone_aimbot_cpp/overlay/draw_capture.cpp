@@ -22,6 +22,7 @@ int monitors = get_active_monitors();
 
 static std::vector<std::string> virtual_cameras;
 static char virtual_camera_filter_buf[128] = "";
+static char gstreamer_pipeline_buf[1024] = "";
 
 void ensureVirtualCamerasLoaded()
 {
@@ -81,7 +82,7 @@ void draw_capture_settings()
         config.saveConfig();
     }
 
-    std::vector<std::string> captureMethodOptions = { "duplication_api", "winrt", "virtual_camera" };
+    std::vector<std::string> captureMethodOptions = { "duplication_api", "winrt", "virtual_camera", "gstreamer" };
     std::vector<const char*> captureMethodItems;
 
     for (const auto& option : captureMethodOptions)
@@ -288,6 +289,29 @@ void draw_capture_settings()
 
         if (ImGui::SliderInt("Virtual camera heigth", &config.virtual_camera_heigth, 128, 2160))
         {
+            config.saveConfig();
+            capture_method_changed.store(true);
+        }
+    }
+
+    if (config.capture_method == "gstreamer")
+    {
+        static bool initPipeline = false;
+        if (!initPipeline)
+        {
+            memset(gstreamer_pipeline_buf, 0, sizeof(gstreamer_pipeline_buf));
+            std::string pipeline = config.gstreamer_pipeline;
+            if (pipeline.size() >= sizeof(gstreamer_pipeline_buf))
+                pipeline = pipeline.substr(0, sizeof(gstreamer_pipeline_buf) - 1);
+            memcpy(gstreamer_pipeline_buf, pipeline.c_str(), pipeline.size());
+            initPipeline = true;
+        }
+
+        ImGui::TextWrapped("GStreamer pipeline (appsink required).");
+        ImGui::InputText("##gstreamer_pipeline", gstreamer_pipeline_buf, IM_ARRAYSIZE(gstreamer_pipeline_buf));
+        if (ImGui::Button("Apply GStreamer Pipeline"))
+        {
+            config.gstreamer_pipeline = gstreamer_pipeline_buf;
             config.saveConfig();
             capture_method_changed.store(true);
         }

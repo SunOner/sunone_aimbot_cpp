@@ -17,6 +17,7 @@
     <ClCompile Include="capture\capture.cpp" />
     <ClCompile Include="capture\capture_utils.cpp" />
     <ClCompile Include="capture\duplication_api_capture.cpp" />
+    <ClCompile Include="capture\gstreamer_capture.cpp" />
     <ClCompile Include="capture\virtual_camera.cpp" />
     <ClCompile Include="capture\winrt_capture.cpp" />
     <ClCompile Include="config\config.cpp" />
@@ -66,6 +67,7 @@
     <ClInclude Include="capture\capture.h" />
     <ClInclude Include="capture\capture_utils.h" />
     <ClInclude Include="capture\duplication_api_capture.h" />
+    <ClInclude Include="capture\gstreamer_capture.h" />
     <ClInclude Include="capture\virtual_camera.h" />
     <ClInclude Include="capture\winrt_capture.h" />
     <ClInclude Include="config\config.h" />
@@ -145,7 +147,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.8.props" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 13.1.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -158,14 +160,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='CUDA|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(MSBuildProjectDirectory)\modules\serial\include;$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\imgui;$(MSBuildProjectDirectory)\keyboard;$(MSBuildProjectDirectory)\config;$(MSBuildProjectDirectory)\tensorrt;$(MSBuildProjectDirectory)\detector;$(MSBuildProjectDirectory)\mouse;$(MSBuildProjectDirectory)\overlay;$(MSBuildProjectDirectory)\capture;$(MSBuildProjectDirectory)\modules\opencv\build\install\include;$(WindowsSDK_IncludePath);$(WindowsSDK_IncludePath)\cppwinrt;$(MSBuildProjectDirectory)\modules\TensorRT-10.14.1.48\include;include;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v12.8\include;$(ProgramW6432)\NVIDIA\CUDNN\v9.7\include\12.8;$(IncludePath)</IncludePath>
-    <LibraryPath>$(MSBuildProjectDirectory)\modules\serial\visual_studio\x64\Release;$(MSBuildProjectDirectory)\modules\glfw-3.4.bin.WIN64\lib-vc2019;$(MSBuildProjectDirectory)\modules\opencv\build\install\x64\vc16\lib;$(MSBuildProjectDirectory)\modules\\TensorRT-10.14.1.48\lib;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v12.8\lib\x64;$(ProgramW6432)\NVIDIA\CUDNN\v9.7\lib\12.8;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(MSBuildProjectDirectory)\modules\serial\include;$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\imgui;$(MSBuildProjectDirectory)\keyboard;$(MSBuildProjectDirectory)\config;$(MSBuildProjectDirectory)\tensorrt;$(MSBuildProjectDirectory)\detector;$(MSBuildProjectDirectory)\mouse;$(MSBuildProjectDirectory)\overlay;$(MSBuildProjectDirectory)\capture;$(MSBuildProjectDirectory)\modules\opencv\build\install\include;$(WindowsSDK_IncludePath);$(WindowsSDK_IncludePath)\cppwinrt;$(MSBuildProjectDirectory)\modules\TensorRT-10.14.1.48\include;include;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v13.1\include;$(ProgramW6432)\NVIDIA\CUDNN\v9.17\include\13.1;$(IncludePath)</IncludePath>
+    <LibraryPath>$(MSBuildProjectDirectory)\modules\serial\visual_studio\x64\Release;$(MSBuildProjectDirectory)\modules\glfw-3.4.bin.WIN64\lib-vc2019;$(MSBuildProjectDirectory)\modules\opencv\build\install\x64\vc17\lib;$(MSBuildProjectDirectory)\modules\\TensorRT-10.14.1.48\lib;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v13.1\lib\x64;$(ProgramW6432)\NVIDIA\CUDNN\v9.17\lib\13.1;$(LibraryPath)</LibraryPath>
     <TargetName>ai</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DML|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(MSBuildProjectDirectory)\modules\serial\include;$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\imgui;$(MSBuildProjectDirectory)\keyboard;$(MSBuildProjectDirectory)\config;$(MSBuildProjectDirectory)\detector;$(MSBuildProjectDirectory)\mouse;$(MSBuildProjectDirectory)\overlay;$(MSBuildProjectDirectory)\capture;$(MSBuildProjectDirectory)\modules\opencv\build\install\include;$(WindowsSDK_IncludePath);$(WindowsSDK_IncludePath)\cppwinrt;include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(MSBuildProjectDirectory)\modules\serial\visual_studio\x64\Release;$(MSBuildProjectDirectory)\modules\glfw-3.4.bin.WIN64\lib-vc2019;$(MSBuildProjectDirectory)\modules\opencv\build\install\x64\vc16\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(MSBuildProjectDirectory)\modules\serial\visual_studio\x64\Release;$(MSBuildProjectDirectory)\modules\glfw-3.4.bin.WIN64\lib-vc2019;$(MSBuildProjectDirectory)\modules\opencv\build\install\x64\vc17\lib;$(LibraryPath)</LibraryPath>
     <TargetName>ai</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='CUDA|x64'">
@@ -191,7 +193,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalDependencies>opencv_world4100.lib;nvinfer_10.lib;nvonnxparser_10.lib;WindowsApp.lib;d3d11.lib;dxgi.lib;d2d1.lib;cuda.lib;cudart.lib;glfw3_mt.lib;glfw3dll.lib;serial.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_world4130.lib;nvinfer_10.lib;nvonnxparser_10.lib;WindowsApp.lib;d3d11.lib;dxgi.lib;d2d1.lib;cuda.lib;cudart.lib;glfw3_mt.lib;glfw3dll.lib;serial.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <CETCompat>true</CETCompat>
     </Link>
@@ -219,7 +221,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opencv_world4100.lib;WindowsApp.lib;d3d11.lib;dxgi.lib;d2d1.lib;glfw3_mt.lib;glfw3dll.lib;serial.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_world4130.lib;WindowsApp.lib;d3d11.lib;dxgi.lib;d2d1.lib;glfw3_mt.lib;glfw3dll.lib;serial.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <GenerateCatalogFiles>false</GenerateCatalogFiles>
@@ -230,7 +232,7 @@
     <Import Project="..\packages\Microsoft.Windows.CppWinRT.2.0.240405.15\build\native\Microsoft.Windows.CppWinRT.targets" Condition="Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.240405.15\build\native\Microsoft.Windows.CppWinRT.targets')" />
     <Import Project="..\packages\Microsoft.AI.DirectML.1.15.4\build\Microsoft.AI.DirectML.targets" Condition="Exists('..\packages\Microsoft.AI.DirectML.1.15.4\build\Microsoft.AI.DirectML.targets')" />
     <Import Project="..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.0\build\native\Microsoft.ML.OnnxRuntime.DirectML.targets" Condition="Exists('..\packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.0\build\native\Microsoft.ML.OnnxRuntime.DirectML.targets')" />
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.8.targets" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 13.1.targets" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>

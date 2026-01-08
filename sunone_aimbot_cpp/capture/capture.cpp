@@ -22,6 +22,7 @@
 #include "duplication_api_capture.h"
 #include "winrt_capture.h"
 #include "virtual_camera.h"
+#include "gstreamer_capture.h"
 #include "capture_utils.h"
 
 #pragma comment(lib, "d3d11.lib")
@@ -84,6 +85,12 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             }
             if (config.verbose)
                 std::cout << "[Capture] Using Virtual Camera" << std::endl;
+        }
+        else if (config.capture_method == "gstreamer")
+        {
+            capturer = new GStreamerCapture(config.gstreamer_pipeline, CAPTURE_WIDTH, CAPTURE_HEIGHT);
+            if (config.verbose)
+                std::cout << "[Capture] Using GStreamer (network)" << std::endl;
         }
         else
         {
@@ -163,6 +170,12 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     }
                     if (config.verbose)
                         std::cout << "[Capture] Re-init with Virtual Camera." << std::endl;
+                }
+                else if (config.capture_method == "gstreamer")
+                {
+                    capturer = new GStreamerCapture(config.gstreamer_pipeline, newWidth, newHeight);
+                    if (config.verbose)
+                        std::cout << "[Capture] Re-init with GStreamer (network)." << std::endl;
                 }
                 else
                 {

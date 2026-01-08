@@ -5,7 +5,8 @@
 [![C++](https://img.shields.io/badge/C%2B%2B-17-blue)](https://github.com/SunOner/sunone_aimbot_cpp)
 [![License MIT](https://badgen.net/github/license/SunOner/sunone_aimbot_cpp)](https://github.com/SunOner/sunone_aimbot_cpp/blob/main/LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/SunOner/sunone_aimbot_cpp?color=ffb500)](https://github.com/SunOner/sunone_aimbot_cpp)
-[![Discord server](https://badgen.net/discord/online-members/sunone)](https://discord.gg/37WVp6sNEh)
+[![CUDA 13.1](https://img.shields.io/badge/CUDA-13.1-76B900?logo=nvidia&logoColor=white)](https://developer.nvidia.com/cuda-downloads)
+[![Discord server](https://badgen.net/discord/online-members/37WVp6sNEh)](https://discord.gg/37WVp6sNEh)
 
   <p>
     <a href="https://github.com/SunOner/sunone_aimbot_cpp/releases" target="_blank">
@@ -29,7 +30,7 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 
   * Any modern GPU (NVIDIA, AMD, Intel, including integrated graphics)
   * Windows 10/11 (x64)
-  * No need for CUDA or special drivers!
+  * No need for CUDA or special drivers
 * **Recommended for:**
 
   * GTX 10xx/9xx/7xx series (old NVIDIA)
@@ -42,8 +43,8 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 
 * **Works on:**
 
-  * NVIDIA GPUs **GTX 1660, RTX 2000/3000/4000 or newer**
-  * **Requires:** CUDA 12.8, TensorRT-10.14.1.48 (included in build)
+  * NVIDIA GPUs **GTX 1660, RTX 2000/3000/4000/5000**
+  * **Requires:** CUDA 13.1, TensorRT-10.14.1.48 (included in build)
   * Windows 10/11 (x64)
 * **Not supported:** GTX 10xx/Pascal and older (TensorRT 10 limitation)
 * **Includes both CUDA+TensorRT and DML support (switchable in settings)**
@@ -57,7 +58,7 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 ## How to Run (For Precompiled Builds)
 
 1. **Download and unpack your chosen version (see links above).**
-2. For CUDA build, install [CUDA 12.8](https://developer.nvidia.com/cuda-12-8-0-download-archive) if not already installed.
+2. For CUDA build, install [CUDA 13.1](https://developer.nvidia.com/cuda-13-1-0-download-archive) if not already installed.
 3. For DML build, no extra software is needed.
 4. **Run `ai.exe`.**
    On first launch, the model will be exported (may take up to 5 minutes).
@@ -85,15 +86,15 @@ If you want to compile the project yourself or modify code, follow these instruc
 * **Windows 10 or 11 (x64)**
 * **Windows SDK 10.0.26100.0** or newer
 * **CMake** ([Download](https://cmake.org/))
-* **OpenCV 4.10.0**
+* **OpenCV 4.13.0**
 * **\[For CUDA version]**
 
-  * [CUDA Toolkit 12.8](https://developer.nvidia.com/cuda-12-8-0-download-archive)
-  * [cuDNN 9.7.1](https://developer.nvidia.com/cudnn-downloads)
+  * [CUDA Toolkit 13.1](https://developer.nvidia.com/cuda-13-1-0-download-archive)
+  * [cuDNN 9.17.1](https://developer.nvidia.com/cudnn-downloads)
   * [TensorRT-10.14.1.48](https://developer.nvidia.com/tensorrt/download/10x)
 * **\[For DML version]**
 
-  * You can use [pre-built OpenCV DLLs](https://github.com/opencv/opencv/releases/tag/4.10.0) (just copy `opencv_world4100.dll` to your exe folder)
+  * You can use [pre-built OpenCV DLLs](https://github.com/opencv/opencv/releases/tag/4.13.0) (just copy `opencv_world4130.dll` to your exe folder)
 * Other dependencies:
 
   * [simpleIni](https://github.com/brofield/simpleini/blob/master/SimpleIni.h)
@@ -133,7 +134,6 @@ sunone_aimbot_cpp/
 | TensorRT  | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/TensorRT-10.14.1.48/` |
 | GLFW      | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/glfw-3.4.bin.WIN64/` |
 | OpenCV    | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/`             |
-| cuDNN     | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/cudnn/`              |
 
 * **SimpleIni:**
   Download [`SimpleIni.h`](https://github.com/brofield/simpleini/blob/master/SimpleIni.h)
@@ -163,27 +163,22 @@ sunone_aimbot_cpp/
   Use your custom build or official DLLs (see CUDA/DML notes below).
   Place DLLs either next to your exe or in `modules/opencv/`.
 
-* **cuDNN:**
-  Place cuDNN files here (for CUDA build):
-  `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/cudnn/`
-
 **Example structure after setup:**
 
 ```
 sunone_aimbot_cpp/
 └── sunone_aimbot_cpp/
-    └── modules/
-        ├── SimpleIni.h
+	└── modules/
+		├── SimpleIni.h
         ├── serial/
         ├── TensorRT-10.14.1.48/
         ├── glfw-3.4.bin.WIN64/
-        ├── opencv/
-        └── cudnn/
+        └── opencv/
 ```
 
 ---
 
-## 4. How to Build OpenCV 4.10.0 with CUDA Support (For CUDA Version Only)
+## 4. How to Build OpenCV 4.13.0 with CUDA Support (For CUDA Version Only)
 
 > This section is **only required** if you want to use the CUDA (TensorRT) version and need OpenCV with CUDA support.
 > For DML build, skip this step — you can use the pre-built OpenCV DLL.
@@ -192,63 +187,144 @@ sunone_aimbot_cpp/
 
 1. **Download Sources**
 
-   * [OpenCV 4.10.0](https://github.com/opencv/opencv/releases/tag/4.10.0)
-   * [OpenCV Contrib 4.10.0](https://github.com/opencv/opencv_contrib/releases/tag/4.10.0)
-   * [CMake](https://cmake.org/download/)
-   * [CUDA Toolkit 12.8](https://developer.nvidia.com/cuda-12-8-0-download-archive)
-   * [cuDNN 9.7.1](https://developer.nvidia.com/cudnn-downloads)
+	* [OpenCV 4.13.0](https://github.com/opencv/opencv/releases/tag/4.13.0)
+	* [OpenCV Contrib 4.13.0](https://github.com/opencv/opencv_contrib/releases/tag/4.13.0)
+	* [CMake](https://cmake.org/download/)
+	* [CUDA Toolkit 13.1](https://developer.nvidia.com/cuda-13-1-0-download-archive)
+	* [cuDNN 9.17.1](https://developer.nvidia.com/cudnn-downloads)
 
 2. **Prepare Directories**
 
-   * Create:
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/`
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build`
-   * Extract `opencv-4.10.0` into
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv-4.10.0`
-   * Extract `opencv_contrib-4.10.0` into
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv_contrib-4.10.0`
-   * Extract cuDNN to
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/cudnn`
+	* Create:
+		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/`
+		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build`
+	* Extract `opencv-4.13.0` into
+		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv-4.13.0`
+	* Extract `opencv_contrib-4.13.0` into
+		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv_contrib-4.13.0`
+	* install cuDNN
+		Default install path `C:/Program Files/NVIDIA/CUDNN/v9.17`
 
 3. **Configure with CMake**
 
-   * Open CMake GUI
-   * Source code:
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv-4.10.0`
-   * Build directory:
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build`
-   * Click **Configure**
-     (Choose "Visual Studio 17 2022", x64)
+	* Open CMake GUI
+	* Source code:
+		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv-4.13.0`
+	* Build directory:
+		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build`
+	* Click **Configure**
+		(Choose "Visual Studio 17 2022", x64)
 
 4. **Enable CUDA Options**
 
-   * After first configure, set the following:
+	* After first configure, set the following:
 
-     * `WITH_CUDA` = ON
-     * `WITH_CUBLAS` = ON
-     * `ENABLE_FAST_MATH` = ON
-     * `CUDA_FAST_MATH` = ON
-     * `WITH_CUDNN` = ON
-     * `CUDNN_LIBRARY` =
-       `full_path_to/sunone_aimbot_cpp/sunone_aimbot_cpp/modules/cudnn/lib/x64/cudnn.lib`
-     * `CUDNN_INCLUDE_DIR` =
-       `full_path_to/sunone_aimbot_cpp/sunone_aimbot_cpp/modules/cudnn/include`
-     * `CUDA_ARCH_BIN` =
-       See [CUDA Wikipedia](https://en.wikipedia.org/wiki/CUDA) for your GPU.
-       Example for RTX 3080-Ti: `8.6`
-     * `OPENCV_DNN_CUDA` = ON
-     * `OPENCV_EXTRA_MODULES_PATH` =
-       `full_path_to/sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv_contrib-4.10.0/modules`
-     * `BUILD_opencv_world` = ON
-   * Uncheck:
+		* `WITH_CUDA` = ON
+		* `WITH_CUBLAS` = ON
+		* `ENABLE_FAST_MATH` = ON
+		* `CUDA_FAST_MATH` = ON
+		* `WITH_CUDNN` = ON
+		* `CUDNN_LIBRARY` =
+			`.../sunone_aimbot_cpp/sunone_aimbot_cpp/modules/cudnn/lib/x64/cudnn.lib`
+		* `CUDNN_INCLUDE_DIR` =
+			`.../sunone_aimbot_cpp/sunone_aimbot_cpp/modules/cudnn/include`
+		* `CUDA_ARCH_BIN` =
+			See [CUDA Wikipedia](https://en.wikipedia.org/wiki/CUDA) for your GPU.
+			Example for RTX 3080-Ti: `8.6`
+		* `OPENCV_DNN_CUDA` = ON
+		* `OPENCV_EXTRA_MODULES_PATH` =
+			`.../sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv_contrib-4.13.0/modules`
+		* `BUILD_opencv_world` = ON
+	* Uncheck:
 
-     * `WITH_NVCUVENC`
-     * `WITH_NVCUVID`
-   * Click **Configure** again
-     (make sure nothing is reset)
-   * Click **Generate**
+		* `WITH_NVCUVENC`
+		* `WITH_NVCUVID`
+	 
+	* Click **Configure** again
+		(make sure nothing is reset)
+	* Click **Generate**
 
-5. **Build in Visual Studio**
+5. **Enable GStreamer Options (Optional)**
+
+If you want to use **GStreamer**, install both **Runtime** and **Development** packages from:
+
+[https://gstreamer.freedesktop.org/download/#windows](https://gstreamer.freedesktop.org/download/#windows)
+
+Choose:
+
+* **MSVC 64-bit (VS 2019, Release CRT)**
+  * **1.26.10 runtime installer**
+  * **1.26.10 development installer**
+
+Then in **CMake GUI**:
+
+* Set:
+  * `WITH_GSTREAMER` = **ON**
+
+#### If `GSTREAMER_DIR` is NOT visible in CMake GUI
+
+Sometimes OpenCV CMake does not show it automatically. In that case you must add it manually:
+
+* Click **Add Entry**
+
+  * **Name:** `GSTREAMER_DIR`
+  * **Type:** `PATH`
+  * **Value:** `C:/Program Files/gstreamer/1.0/msvc_x86_64`
+
+Then click **Configure** again (this usually auto-fills the rest).
+If it still doesn’t, fill the variables manually like below.
+
+#### Verify / Fill these GStreamer paths (import libs + includes)
+
+Assuming:
+`GSTREAMER_DIR = C:/Program Files/gstreamer/1.0/msvc_x86_64`
+
+Set:
+
+* `GSTREAMER_app_LIBRARY` =
+  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstapp-1.0.lib`
+* `GSTREAMER_audio_LIBRARY` =
+  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstaudio-1.0.lib`
+* `GSTREAMER_base_LIBRARY` =
+  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstbase-1.0.lib`
+* `GSTREAMER_gstreamer_LIBRARY` =
+  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstreamer-1.0.lib`
+* `GSTREAMER_pbutils_LIBRARY` =
+  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstpbutils-1.0.lib`
+* `GSTREAMER_riff_LIBRARY` =
+  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstriff-1.0.lib`
+* `GSTREAMER_video_LIBRARY` =
+  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstvideo-1.0.lib`
+
+And GLib deps:
+
+* `GSTREAMER_glib_LIBRARY` =
+  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/glib-2.0.lib`
+* `GSTREAMER_gobject_LIBRARY` =
+  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gobject-2.0.lib`
+
+Include dirs:
+
+* `GSTREAMER_gst_INCLUDE_DIR` =
+  `C:/Program Files/gstreamer/1.0/msvc_x86_64/include/gstreamer-1.0`
+* `GSTREAMER_glib_INCLUDE_DIR` =
+  `C:/Program Files/gstreamer/1.0/msvc_x86_64/include/glib-2.0`
+* `GSTREAMER_glibconfig_INCLUDE_DIR` =
+  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/glib-2.0/include`
+
+After that:
+
+* Click **Configure** again (make sure nothing is reset)
+* Click **Generate**
+
+---
+
+### Runtime note (important)
+Even if OpenCV links successfully, GStreamer must be available at runtime:
+* Add to **PATH**:
+  * `C:\Program Files\gstreamer\1.0\msvc_x86_64\bin`
+
+6. **Build in Visual Studio**
 
    * Open `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/OpenCV.sln`
      or click "Open Project" in CMake
@@ -256,15 +332,15 @@ sunone_aimbot_cpp/
    * Build `ALL_BUILD` target (can take up to 2 hours)
    * Then build `INSTALL` target
 
-6. **Copy Resulting DLLs**
+7. **Copy Resulting DLLs**
 
    * DLLs:
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc16/bin/`
+     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc17/bin/`
    * LIBs:
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc16/lib/`
+     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc17/lib/`
    * Includes:
      `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/include/opencv2`
-   * Copy needed DLLs (`opencv_world4100.dll`, etc.) next to your project’s executable.
+   * Copy needed DLLs (`opencv_world4130.dll`, etc.) next to your project’s executable.
 
 ---
 
@@ -273,7 +349,7 @@ sunone_aimbot_cpp/
 * **For CUDA build (TensorRT backend):**
 
   * You **must** build OpenCV with CUDA support (see the guide above).
-  * Place all built DLLs (e.g., `opencv_world4100.dll`) next to your executable or in the `modules` folder.
+  * Place all built DLLs (e.g., `opencv_world4130.dll`) next to your executable or in the `modules` folder.
 * **For DML build (DirectML backend):**
 
   * You can use the official pre-built OpenCV DLLs if you **only** plan to use DirectML.
@@ -331,6 +407,7 @@ sunone_aimbot_cpp/
 * [GLFW](https://www.glfw.org/)
 * [WindMouse](https://ben.land/post/2021/04/25/windmouse-human-mouse-movement/)
 * [KMBOX](https://www.kmbox.top/)
+* [GStreamer](https://gstreamer.freedesktop.org/)
 * [Python AI Version](https://github.com/SunOner/sunone_aimbot)
 
 ---

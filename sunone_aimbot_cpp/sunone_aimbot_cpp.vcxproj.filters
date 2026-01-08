@@ -42,6 +42,7 @@
     <ClCompile Include="overlay\draw_game_overlay.cpp" />
     <ClCompile Include="mem\gpu_resource_manager.cpp" />
     <ClCompile Include="mem\cpu_affinity_manager.cpp" />
+    <ClCompile Include="capture\gstreamer_capture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -92,6 +93,7 @@
     <ClInclude Include="mem\cpu_affinity_manager.h" />
     <ClInclude Include="detector\cuda_preprocess.h" />
     <ClInclude Include="overlay\draw_settings.h" />
+    <ClInclude Include="capture\gstreamer_capture.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
