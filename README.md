@@ -246,76 +246,74 @@ sunone_aimbot_cpp/
 
 5. **Enable GStreamer Options (Optional)**
 
-If you want to use **GStreamer**, install both **Runtime** and **Development** packages from:
+	* If you want to use **GStreamer**, install both **Runtime** and **Development** packages from [here](https://gstreamer.freedesktop.org/download/#windows)
 
-[https://gstreamer.freedesktop.org/download/#windows](https://gstreamer.freedesktop.org/download/#windows)
+	* Choose:
 
-Choose:
+		* **MSVC 64-bit (VS 2019, Release CRT)**
+		* **1.26.10 runtime installer**
+		* **1.26.10 development installer**
 
-* **MSVC 64-bit (VS 2019, Release CRT)**
-  * **1.26.10 runtime installer**
-  * **1.26.10 development installer**
+	* Then in **CMake GUI**:
 
-Then in **CMake GUI**:
+		* Set:
+		* `WITH_GSTREAMER` = **ON**
 
-* Set:
-  * `WITH_GSTREAMER` = **ON**
+	* If `GSTREAMER_DIR` is NOT visible in CMake GUI
 
-#### If `GSTREAMER_DIR` is NOT visible in CMake GUI
+		* Sometimes OpenCV CMake does not show it automatically. In that case you must add it manually:
 
-Sometimes OpenCV CMake does not show it automatically. In that case you must add it manually:
+		* Click **Add Entry**
+		
+		* **Name:** `GSTREAMER_DIR`
+		* **Type:** `PATH`
+		* **Value:** `C:/Program Files/gstreamer/1.0/msvc_x86_64`
 
-* Click **Add Entry**
+	* Then click **Configure** again (this usually auto-fills the rest).
+	* If it still doesn’t, fill the variables manually like below.
 
-  * **Name:** `GSTREAMER_DIR`
-  * **Type:** `PATH`
-  * **Value:** `C:/Program Files/gstreamer/1.0/msvc_x86_64`
+	* Verify / Fill these GStreamer paths (import libs + includes)
 
-Then click **Configure** again (this usually auto-fills the rest).
-If it still doesn’t, fill the variables manually like below.
+	* Assuming:
+		`GSTREAMER_DIR = C:/Program Files/gstreamer/1.0/msvc_x86_64`
 
-#### Verify / Fill these GStreamer paths (import libs + includes)
+	* Set:
 
-Assuming:
-`GSTREAMER_DIR = C:/Program Files/gstreamer/1.0/msvc_x86_64`
+		* `GSTREAMER_app_LIBRARY` =
+		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstapp-1.0.lib`
+		* `GSTREAMER_audio_LIBRARY` =
+		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstaudio-1.0.lib`
+		* `GSTREAMER_base_LIBRARY` =
+		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstbase-1.0.lib`
+		* `GSTREAMER_gstreamer_LIBRARY` =
+		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstreamer-1.0.lib`
+		* `GSTREAMER_pbutils_LIBRARY` =
+		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstpbutils-1.0.lib`
+		* `GSTREAMER_riff_LIBRARY` =
+		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstriff-1.0.lib`
+		* `GSTREAMER_video_LIBRARY` =
+		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstvideo-1.0.lib`
 
-Set:
+	* And GLib deps:
 
-* `GSTREAMER_app_LIBRARY` =
-  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstapp-1.0.lib`
-* `GSTREAMER_audio_LIBRARY` =
-  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstaudio-1.0.lib`
-* `GSTREAMER_base_LIBRARY` =
-  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstbase-1.0.lib`
-* `GSTREAMER_gstreamer_LIBRARY` =
-  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstreamer-1.0.lib`
-* `GSTREAMER_pbutils_LIBRARY` =
-  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstpbutils-1.0.lib`
-* `GSTREAMER_riff_LIBRARY` =
-  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstriff-1.0.lib`
-* `GSTREAMER_video_LIBRARY` =
-  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstvideo-1.0.lib`
+		* `GSTREAMER_glib_LIBRARY` =
+			`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/glib-2.0.lib`
+		* `GSTREAMER_gobject_LIBRARY` =
+			`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gobject-2.0.lib`
 
-And GLib deps:
+	* Include dirs:
 
-* `GSTREAMER_glib_LIBRARY` =
-  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/glib-2.0.lib`
-* `GSTREAMER_gobject_LIBRARY` =
-  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gobject-2.0.lib`
+		* `GSTREAMER_gst_INCLUDE_DIR` =
+			`C:/Program Files/gstreamer/1.0/msvc_x86_64/include/gstreamer-1.0`
+		* `GSTREAMER_glib_INCLUDE_DIR` =
+			`C:/Program Files/gstreamer/1.0/msvc_x86_64/include/glib-2.0`
+		* `GSTREAMER_glibconfig_INCLUDE_DIR` =
+			`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/glib-2.0/include`
 
-Include dirs:
+	* After that:
 
-* `GSTREAMER_gst_INCLUDE_DIR` =
-  `C:/Program Files/gstreamer/1.0/msvc_x86_64/include/gstreamer-1.0`
-* `GSTREAMER_glib_INCLUDE_DIR` =
-  `C:/Program Files/gstreamer/1.0/msvc_x86_64/include/glib-2.0`
-* `GSTREAMER_glibconfig_INCLUDE_DIR` =
-  `C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/glib-2.0/include`
-
-After that:
-
-* Click **Configure** again (make sure nothing is reset)
-* Click **Generate**
+		* Click **Configure** again (make sure nothing is reset)
+		* Click **Generate**
 
 ---
 
