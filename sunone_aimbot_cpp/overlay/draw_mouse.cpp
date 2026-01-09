@@ -327,7 +327,7 @@ void draw_mouse()
     }
 
     ImGui::SeparatorText("Input method");
-    std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX_B", "KMBOX_NET"};
+    std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX_B", "KMBOX_NET", "MAKCU" };
 
     std::vector<const char*> method_items;
     method_items.reserve(input_methods.size());
@@ -578,6 +578,75 @@ void draw_mouse()
                 kmboxNetSerial->lcdColor(0);
                 kmboxNetSerial->lcdPicture(gImage_128x160);
             }
+        }
+    }
+    else if (config.input_method == "MAKCU")
+    {
+        std::vector<std::string> port_list;
+        for (int i = 1; i <= 30; ++i)
+        {
+            port_list.push_back("COM" + std::to_string(i));
+        }
+
+        std::vector<const char*> port_items;
+        port_items.reserve(port_list.size());
+        for (const auto& port : port_list)
+        {
+            port_items.push_back(port.c_str());
+        }
+
+        int port_index = 0;
+        for (size_t i = 0; i < port_list.size(); ++i)
+        {
+            if (port_list[i] == config.makcu_port)
+            {
+                port_index = static_cast<int>(i);
+                break;
+            }
+        }
+
+        if (ImGui::Combo("Makcu Port", &port_index, port_items.data(), static_cast<int>(port_items.size())))
+        {
+            config.makcu_port = port_list[port_index];
+            config.saveConfig();
+            input_method_changed.store(true);
+        }
+
+        std::vector<int> baud_list = { 9600, 19200, 38400, 57600, 115200 };
+        std::vector<std::string> baud_str_list;
+        for (int b : baud_list) baud_str_list.push_back(std::to_string(b));
+
+        std::vector<const char*> baud_items;
+        baud_items.reserve(baud_list.size());
+        for (const auto& baud : baud_str_list)
+        {
+            baud_items.push_back(baud.c_str());
+        }
+
+        int baud_index = 0;
+        for (size_t i = 0; i < baud_list.size(); ++i)
+        {
+            if (baud_list[i] == config.makcu_baudrate)
+            {
+                baud_index = static_cast<int>(i);
+                break;
+            }
+        }
+
+        if (ImGui::Combo("Makcu Baudrate", &baud_index, baud_items.data(), static_cast<int>(baud_items.size())))
+        {
+            config.makcu_baudrate = baud_list[baud_index];
+            config.saveConfig();
+            input_method_changed.store(true);
+        }
+
+        if (makcuSerial && makcuSerial->isOpen())
+        {
+            ImGui::TextColored(ImVec4(0, 255, 0, 255), "Makcu connected");
+        }
+        else
+        {
+            ImGui::TextColored(ImVec4(255, 0, 0, 255), "Makcu not connected");
         }
     }
 

@@ -16,6 +16,7 @@
 #include "sunone_aimbot_cpp.h"
 #include "capture.h"
 #include "KmboxNetConnection.h"
+#include "Makcu.h"
 
 extern std::atomic<bool> shouldExit;
 extern std::atomic<bool> aiming;
@@ -78,7 +79,8 @@ void keyboardListener()
             aiming = isAnyKeyPressed(config.button_targeting) ||
                 (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->aiming_active) ||
                 (kmboxSerial && kmboxSerial->isOpen() && kmboxSerial->aiming_active) ||
-                (kmboxNetSerial && kmboxNetSerial->isOpen() && kmboxNetSerial->aiming_active);
+                (kmboxNetSerial && kmboxNetSerial->isOpen() && kmboxNetSerial->aiming_active) ||
+                (makcuSerial && makcuSerial->isOpen() && makcuSerial->aiming_active);
         }
         else
         {
@@ -89,12 +91,14 @@ void keyboardListener()
         shooting = isAnyKeyPressed(config.button_shoot) ||
             (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->shooting_active) ||
             (kmboxSerial && kmboxSerial->isOpen() && kmboxSerial->shooting_active) ||
-            (kmboxNetSerial && kmboxNetSerial->isOpen() && kmboxNetSerial->shooting_active);
+            (kmboxNetSerial && kmboxNetSerial->isOpen() && kmboxNetSerial->shooting_active) ||
+            (makcuSerial && makcuSerial->isOpen() && makcuSerial->shooting_active);
 
         // Zooming
         zooming = isAnyKeyPressed(config.button_zoom) ||
             (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->zooming_active) ||
-            (kmboxSerial && kmboxSerial->isOpen() && kmboxSerial->zooming_active);
+            (kmboxSerial && kmboxSerial->isOpen() && kmboxSerial->zooming_active) ||
+            (makcuSerial && makcuSerial->isOpen() && makcuSerial->zooming_active);
 
         // Exit
         if (isAnyKeyPressed(config.button_exit))

@@ -53,6 +53,7 @@ GhubMouse* gHub = nullptr;
 SerialConnection* arduinoSerial = nullptr;
 Kmbox_b_Connection* kmboxSerial = nullptr;
 KmboxNetConnection* kmboxNetSerial = nullptr;
+MakcuConnection* makcuSerial = nullptr;
 
 std::atomic<bool> detection_resolution_changed(false);
 std::atomic<bool> capture_method_changed(false);
@@ -185,6 +186,12 @@ void createInputDevices()
         kmboxNetSerial = nullptr;
     }
 
+    if (makcuSerial)
+    {
+        delete makcuSerial;
+        makcuSerial = nullptr;
+    }
+
     if (config.input_method == "ARDUINO")
     {
         std::cout << "[Mouse] Using Arduino method input." << std::endl;
@@ -222,6 +229,17 @@ void createInputDevices()
             delete kmboxNetSerial; kmboxNetSerial = nullptr;
         }
     }
+    else if (config.input_method == "MAKCU")
+    {
+        std::cout << "[Mouse] Using MAKCU input." << std::endl;
+        makcuSerial = new MakcuConnection(config.makcu_port, config.makcu_baudrate);
+        if (!makcuSerial->isOpen())
+        {
+            std::cerr << "[Makcu] Error connecting." << std::endl;
+            delete makcuSerial;
+            makcuSerial = nullptr;
+        }
+    }
     else
     {
         std::cout << "[Mouse] Using default Win32 method input." << std::endl;
@@ -236,6 +254,7 @@ void assignInputDevices()
         globalMouseThread->setGHubMouse(gHub);
         globalMouseThread->setKmboxConnection(kmboxSerial);
         globalMouseThread->setKmboxNetConnection(kmboxNetSerial);
+        globalMouseThread->setMakcuConnection(makcuSerial);
     }
 }
 
@@ -261,6 +280,10 @@ void handleEasyNoRecoil(MouseThread& mouseThread)
         else if (kmboxNetSerial)
         {
             kmboxNetSerial->move(0, recoil_compensation);
+        }
+        else if (makcuSerial)
+        {
+            makcuSerial->move(0, recoil_compensation);
         }
         else
         {

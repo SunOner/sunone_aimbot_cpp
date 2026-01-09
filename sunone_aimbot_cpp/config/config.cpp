@@ -107,6 +107,10 @@ bool Config::loadConfig(const std::string& filename)
         kmbox_net_port = "1984";
         kmbox_net_uuid = "DEADC0DE";
 
+        // makcu
+        makcu_baudrate = 115;
+        makcu_port = "COM0";
+
         // Mouse shooting
         auto_shoot = false;
         bScope_multiplier = 1.0f;
@@ -339,6 +343,10 @@ bool Config::loadConfig(const std::string& filename)
     kmbox_net_port = get_string("kmbox_net_port", "1984");
     kmbox_net_uuid = get_string("kmbox_net_uuid", "DEADC0DE");
 
+    // makcu
+    makcu_baudrate = get_long("makcu_baudrate", 115200);
+    makcu_port = get_string("makcu_port", "COM0");
+
     // Mouse shooting
     auto_shoot = get_bool("auto_shoot", false);
     bScope_multiplier = (float)get_double("bScope_multiplier", 1.2);
@@ -484,7 +492,7 @@ bool Config::saveConfig(const std::string& filename)
         << std::fixed << std::setprecision(1)
         << "easynorecoilstrength = " << easynorecoilstrength << "\n"
 
-        << "# WIN32, GHUB, ARDUINO, KMBOX_B, KMBOX_NET\n"
+        << "# WIN32, GHUB, ARDUINO, KMBOX_B, KMBOX_NET, MAKCU\n"
         << "input_method = " << input_method << "\n\n";
 
     // Wind mouse
@@ -512,6 +520,11 @@ bool Config::saveConfig(const std::string& filename)
         << "kmbox_net_ip = " << kmbox_net_ip << "\n"
         << "kmbox_net_port = " << kmbox_net_port << "\n"
         << "kmbox_net_uuid = " << kmbox_net_uuid << "\n\n";
+
+    // makcu
+    file << "# Makcu\n"
+        << "makcu_baudrate = " << makcu_baudrate << "\n"
+		<< "makcu_port = " << makcu_port << "\n\n";
 
     // Mouse shooting
     file << "# Mouse shooting\n"

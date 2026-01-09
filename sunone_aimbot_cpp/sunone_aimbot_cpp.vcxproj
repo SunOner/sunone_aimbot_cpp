@@ -39,10 +39,15 @@
     <ClCompile Include="keyboard\keycodes.cpp" />
     <ClCompile Include="mem\cpu_affinity_manager.cpp" />
     <ClCompile Include="mem\gpu_resource_manager.cpp" />
+    <ClCompile Include="modules\makcu\src\makcu.cpp">
+	  <ObjectFileName>$(IntDir)makcu_lib.obj</ObjectFileName>
+	</ClCompile>
+    <ClCompile Include="modules\makcu\src\serialport.cpp" />
     <ClCompile Include="mouse\ghub.cpp" />
     <ClCompile Include="mouse\kmboxNetConnection.cpp" />
     <ClCompile Include="mouse\Kmbox_b.cpp" />
     <ClCompile Include="mouse\kmbox_net\kmboxNet.cpp" />
+    <ClCompile Include="mouse\Makcu.cpp" />
     <ClCompile Include="mouse\mouse.cpp" />
     <ClCompile Include="mouse\SerialConnection.cpp" />
     <ClCompile Include="mouse\AimbotTarget.cpp" />
@@ -94,12 +99,15 @@
     <ClInclude Include="keyboard\keycodes.h" />
     <ClInclude Include="mem\cpu_affinity_manager.h" />
     <ClInclude Include="mem\gpu_resource_manager.h" />
+    <ClInclude Include="modules\makcu\include\makcu.h" />
+    <ClInclude Include="modules\makcu\include\serialport.h" />
     <ClInclude Include="mouse\ghub.h" />
     <ClInclude Include="mouse\kmboxNetConnection.h" />
     <ClInclude Include="mouse\Kmbox_b.h" />
     <ClInclude Include="mouse\kmbox_net\HidTable.h" />
     <ClInclude Include="mouse\kmbox_net\kmboxNet.h" />
     <ClInclude Include="mouse\kmbox_net\picture.h" />
+    <ClInclude Include="mouse\Makcu.h" />
     <ClInclude Include="mouse\mouse.h" />
     <ClInclude Include="mouse\SerialConnection.h" />
     <ClInclude Include="mouse\AimbotTarget.h" />
