@@ -406,6 +406,7 @@ Even if OpenCV links successfully, GStreamer must be available at runtime:
 * [WindMouse](https://ben.land/post/2021/04/25/windmouse-human-mouse-movement/)
 * [KMBOX](https://www.kmbox.top/)
 * [GStreamer](https://gstreamer.freedesktop.org/)
+* [MAKCU](https://makcu.com)
 * [Python AI Version](https://github.com/SunOner/sunone_aimbot)
 
 ---
