@@ -770,6 +770,17 @@ static void gameOverlayRenderLoop()
 
 int main()
 {
+    SetConsoleOutputCP(CP_UTF8);
+    SetRandomConsoleTitle();
+    cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_FATAL);
+
+    if (!config.loadConfig())
+    {
+        std::cerr << "[Config] Error with loading config!" << std::endl;
+        std::cin.get();
+        return -1;
+    }
+
     CPUAffinityManager cpuManager;
 
     if (config.cpuCoreReserveCount > 0)
@@ -785,6 +796,32 @@ int main()
     try
     {
 #ifdef USE_CUDA
+        int cuda_runtime_version = 0;
+        cudaError_t runtime_status = cudaRuntimeGetVersion(&cuda_runtime_version);
+
+        if (runtime_status != cudaSuccess)
+        {
+            std::cerr << "[MAIN] CUDA runtime check failed: " << cudaGetErrorString(runtime_status) << std::endl;
+            std::cin.get();
+            return -1;
+        }
+
+        if (config.verbose)
+            std::cout << "[CUDA] Version: " << cuda_runtime_version << std::endl;
+
+        const int required_cuda_version = 13010;
+        if (cuda_runtime_version < required_cuda_version)
+        {
+            int required_major = required_cuda_version / 1000;
+            int required_minor = (required_cuda_version % 1000) / 10;
+            int runtime_major = cuda_runtime_version / 1000;
+            int runtime_minor = (cuda_runtime_version % 1000) / 10;
+            std::cerr << "[MAIN] CUDA " << required_major << "." << required_minor
+                << " required. Detected " << runtime_major << "." << runtime_minor << "." << std::endl;
+            std::cin.get();
+            return -1;
+        }
+
         GPUResourceManager gpuManager;
         if (config.gpuMemoryReserveMB > 0)
         {
@@ -804,12 +841,6 @@ int main()
             return -1;
         }
 #endif
-
-        SetConsoleOutputCP(CP_UTF8);
-        SetRandomConsoleTitle();
-
-        cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_FATAL);
-
         if (!CreateDirectory(L"screenshots", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
         {
             std::cout << "[MAIN] Error with screenshot folder" << std::endl;
@@ -820,13 +851,6 @@ int main()
         if (!CreateDirectory(L"models", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
         {
             std::cout << "[MAIN] Error with models folder" << std::endl;
-            std::cin.get();
-            return -1;
-        }
-
-        if (!config.loadConfig())
-        {
-            std::cerr << "[Config] Error with loading config!" << std::endl;
             std::cin.get();
             return -1;
         }
