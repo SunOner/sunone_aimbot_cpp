@@ -197,9 +197,22 @@ bool Config::loadConfig(const std::string& filename)
 
         // Debug
         show_window = true;
+        show_fps = false;
         screenshot_button = splitString("None");
         screenshot_delay = 500;
         verbose = false;
+
+        // Game profiles
+        game_profiles.clear();
+        GameProfile uni;
+        uni.name = "UNIFIED";
+        uni.sens = 1.0;
+        uni.yaw = 0.022;
+        uni.pitch = uni.yaw;
+        uni.fovScaled = false;
+        uni.baseFOV = 0.0;
+        game_profiles[uni.name] = uni;
+        active_game = uni.name;
 
         saveConfig(filename);
         return true;
