@@ -108,7 +108,7 @@ bool Config::loadConfig(const std::string& filename)
         kmbox_net_uuid = "DEADC0DE";
 
         // makcu
-        makcu_baudrate = 115;
+        makcu_baudrate = 115200;
         makcu_port = "COM0";
 
         // Mouse shooting

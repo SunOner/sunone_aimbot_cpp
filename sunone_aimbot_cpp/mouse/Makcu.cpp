@@ -22,6 +22,15 @@ MakcuConnection::MakcuConnection(const std::string& port, unsigned int baud_rate
 
         if (device_.connect(port))
         {
+            if (baud_rate > 0)
+            {
+                if (!device_.setBaudRate(baud_rate, true))
+                {
+                    std::cerr << "[Makcu] Failed to set baud rate to " << baud_rate
+                        << ", continuing with current baud rate." << std::endl;
+                }
+            }
+
             is_open_ = true;
             std::cout << "[Makcu] Connected! PORT: " << port << std::endl;
         }
