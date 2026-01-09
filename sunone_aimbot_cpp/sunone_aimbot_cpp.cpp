@@ -423,13 +423,43 @@ static void gameOverlayRenderLoop()
 
     while (!gameOverlayShouldExit.load())
     {
-        if (!config.game_overlay_enabled ||
-            !gameOverlayPtr ||
-            !gameOverlayPtr->IsRunning())
+        if (!config.game_overlay_enabled)
+        {
+            if (gameOverlayPtr)
+            {
+                gameOverlayPtr->Stop();
+                delete gameOverlayPtr;
+                gameOverlayPtr = nullptr;
+                std::lock_guard<std::mutex> lk(g_iconMutex);
+                g_lastIconPath.clear();
+                g_iconImageId = 0;
+                g_iconLastError.clear();
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(150));
+            continue;
+        }
+
+        if (!gameOverlayPtr)
+        {
+            gameOverlayPtr = new Game_overlay();
+            gameOverlayPtr->SetWindowBounds(0, 0, pw, ph);
+            gameOverlayPtr->SetMaxFPS(config.game_overlay_max_fps > 0 ? (unsigned)config.game_overlay_max_fps : 0);
+            gameOverlayPtr->Start();
+        }
+        else if (!gameOverlayPtr->IsRunning())
+        {
+            gameOverlayPtr->SetWindowBounds(0, 0, pw, ph);
+            gameOverlayPtr->SetMaxFPS(config.game_overlay_max_fps > 0 ? (unsigned)config.game_overlay_max_fps : 0);
+            gameOverlayPtr->Start();
+        }
+
+        if (!gameOverlayPtr || !gameOverlayPtr->IsRunning())
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(150));
             continue;
         }
+
+        gameOverlayPtr->SetMaxFPS(config.game_overlay_max_fps > 0 ? (unsigned)config.game_overlay_max_fps : 0);
 
         const int detRes = config.detection_resolution;
         if (detRes <= 0)
@@ -705,6 +735,13 @@ static void gameOverlayRenderLoop()
             std::this_thread::sleep_for(std::chrono::milliseconds(1000 / fpsCap));
         else
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    if (gameOverlayPtr)
+    {
+        gameOverlayPtr->Stop();
+        delete gameOverlayPtr;
+        gameOverlayPtr = nullptr;
     }
 }
 
