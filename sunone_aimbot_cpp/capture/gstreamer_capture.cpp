@@ -18,7 +18,7 @@ bool GStreamerCapture::openCapture()
     capture_.release();
     if (!capture_.open(pipeline_, cv::CAP_GSTREAMER))
     {
-        std::cerr << "[Capture] Failed to open GStreamer pipeline." << std::endl;
+        std::cerr << "[Capture] Failed to open GStreamer pipeline. Make sure you have built OpenCV with GStreamer support." << std::endl;
         return false;
     }
 

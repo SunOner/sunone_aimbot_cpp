@@ -222,6 +222,11 @@ void draw_debug()
 
     ImGui::InputInt("Screenshot delay", &config.screenshot_delay, 50, 500);
     ImGui::Checkbox("Verbose console output", &config.verbose);
+    
+    if (ImGui::Button("Print OpenCV build information##button_cv2_build_info"))
+    {
+        std::cout << cv::getBuildInformation() << std::endl;
+    }
 
     if (prev_screenshot_delay != config.screenshot_delay ||
         prev_verbose != config.verbose)
