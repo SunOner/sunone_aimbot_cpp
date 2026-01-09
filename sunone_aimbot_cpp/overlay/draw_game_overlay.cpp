@@ -70,6 +70,41 @@ void draw_game_overlay_settings()
         config.clampGameOverlayColor();
 
     ImGui::Separator();
+    ImGui::Text("Capture Frame");
+
+    if (ImGui::Checkbox("Draw Capture Frame", &config.game_overlay_draw_frame))
+        markDirty();
+
+    bool frameColorChanged = false;
+
+    ImGui::SliderInt("A##go_frame_a", &config.game_overlay_frame_a, 0, 255);
+    frameColorChanged |= ImGui::IsItemEdited();
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        markDirty();
+
+    ImGui::SliderInt("R##go_frame_r", &config.game_overlay_frame_r, 0, 255);
+    frameColorChanged |= ImGui::IsItemEdited();
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        markDirty();
+
+    ImGui::SliderInt("G##go_frame_g", &config.game_overlay_frame_g, 0, 255);
+    frameColorChanged |= ImGui::IsItemEdited();
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        markDirty();
+
+    ImGui::SliderInt("B##go_frame_b", &config.game_overlay_frame_b, 0, 255);
+    frameColorChanged |= ImGui::IsItemEdited();
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        markDirty();
+
+    ImGui::SliderFloat("Frame Thickness", &config.game_overlay_frame_thickness, 0.5f, 10.0f, "%.1f");
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        markDirty();
+
+    if (frameColorChanged)
+        config.clampGameOverlayColor();
+
+    ImGui::Separator();
     ImGui::Text("Future Point Style");
 
     ImGui::SliderFloat("Point Radius", &config.game_overlay_future_point_radius, 1.0f, 20.0f, "%.1f");

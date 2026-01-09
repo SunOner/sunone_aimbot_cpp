@@ -123,11 +123,17 @@ public:
     int game_overlay_max_fps;
     bool game_overlay_draw_boxes;
     bool game_overlay_draw_future;
+    bool game_overlay_draw_frame;
     int game_overlay_box_a;
     int game_overlay_box_r;
     int game_overlay_box_g;
     int game_overlay_box_b;
+    int game_overlay_frame_a;
+    int game_overlay_frame_r;
+    int game_overlay_frame_g;
+    int game_overlay_frame_b;
     float game_overlay_box_thickness;
+    float game_overlay_frame_thickness;
     float game_overlay_future_point_radius;
     float game_overlay_future_alpha_falloff;
 
@@ -146,6 +152,10 @@ public:
         clamp255(game_overlay_box_r);
         clamp255(game_overlay_box_g);
         clamp255(game_overlay_box_b);
+        clamp255(game_overlay_frame_a);
+        clamp255(game_overlay_frame_r);
+        clamp255(game_overlay_frame_g);
+        clamp255(game_overlay_frame_b);
     }
 
     // Classes

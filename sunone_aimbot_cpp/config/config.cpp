@@ -169,11 +169,17 @@ bool Config::loadConfig(const std::string& filename)
         game_overlay_max_fps = 0;
         game_overlay_draw_boxes = true;
         game_overlay_draw_future = true;
+        game_overlay_draw_frame = true;
         game_overlay_box_a = 255;
         game_overlay_box_r = 0;
         game_overlay_box_g = 255;
         game_overlay_box_b = 0;
+        game_overlay_frame_a = 180;
+        game_overlay_frame_r = 255;
+        game_overlay_frame_g = 255;
+        game_overlay_frame_b = 255;
         game_overlay_box_thickness = 2.0f;
+        game_overlay_frame_thickness = 1.5f;
         game_overlay_future_point_radius = 5.0f;
         game_overlay_future_alpha_falloff = 1.0f;
 
@@ -404,11 +410,17 @@ bool Config::loadConfig(const std::string& filename)
     game_overlay_max_fps = get_long("game_overlay_max_fps", 0);
     game_overlay_draw_boxes = get_bool("game_overlay_draw_boxes", true);
     game_overlay_draw_future = get_bool("game_overlay_draw_future", true);
+    game_overlay_draw_frame = get_bool("game_overlay_draw_frame", true);
     game_overlay_box_a = get_long("game_overlay_box_a", 255);
     game_overlay_box_r = get_long("game_overlay_box_r", 0);
     game_overlay_box_g = get_long("game_overlay_box_g", 255);
     game_overlay_box_b = get_long("game_overlay_box_b", 0);
+    game_overlay_frame_a = get_long("game_overlay_frame_a", 180);
+    game_overlay_frame_r = get_long("game_overlay_frame_r", 255);
+    game_overlay_frame_g = get_long("game_overlay_frame_g", 255);
+    game_overlay_frame_b = get_long("game_overlay_frame_b", 255);
     game_overlay_box_thickness = (float)get_double("game_overlay_box_thickness", 2.0);
+    game_overlay_frame_thickness = (float)get_double("game_overlay_frame_thickness", 1.5);
     game_overlay_future_point_radius = (float)get_double("game_overlay_future_point_radius", 5.0);
     game_overlay_future_alpha_falloff = (float)get_double("game_overlay_future_alpha_falloff", 1.0);
     clampGameOverlayColor();
@@ -584,12 +596,18 @@ bool Config::saveConfig(const std::string& filename)
         << "game_overlay_max_fps = " << game_overlay_max_fps << "\n"
         << "game_overlay_draw_boxes = " << (game_overlay_draw_boxes ? "true" : "false") << "\n"
         << "game_overlay_draw_future = " << (game_overlay_draw_future ? "true" : "false") << "\n"
+        << "game_overlay_draw_frame = " << (game_overlay_draw_frame ? "true" : "false") << "\n"
         << "game_overlay_box_a = " << game_overlay_box_a << "\n"
         << "game_overlay_box_r = " << game_overlay_box_r << "\n"
         << "game_overlay_box_g = " << game_overlay_box_g << "\n"
         << "game_overlay_box_b = " << game_overlay_box_b << "\n"
+        << "game_overlay_frame_a = " << game_overlay_frame_a << "\n"
+        << "game_overlay_frame_r = " << game_overlay_frame_r << "\n"
+        << "game_overlay_frame_g = " << game_overlay_frame_g << "\n"
+        << "game_overlay_frame_b = " << game_overlay_frame_b << "\n"
         << std::fixed << std::setprecision(2)
         << "game_overlay_box_thickness = " << game_overlay_box_thickness << "\n"
+        << "game_overlay_frame_thickness = " << game_overlay_frame_thickness << "\n"
         << "game_overlay_future_point_radius = " << game_overlay_future_point_radius << "\n"
         << "game_overlay_future_alpha_falloff = " << game_overlay_future_alpha_falloff << "\n\n";
 

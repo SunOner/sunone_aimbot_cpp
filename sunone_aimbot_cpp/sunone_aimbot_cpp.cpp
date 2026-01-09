@@ -523,6 +523,42 @@ static void gameOverlayRenderLoop()
 
         gameOverlayPtr->BeginFrame();
 
+        // CAPTURE FRAME
+        if (config.game_overlay_draw_frame)
+        {
+            int A = config.game_overlay_frame_a;
+            int R = config.game_overlay_frame_r;
+            int G = config.game_overlay_frame_g;
+            int B = config.game_overlay_frame_b;
+            auto clamp255 = [](int& v) { if (v < 0) v = 0; else if (v > 255) v = 255; };
+            clamp255(A); clamp255(R); clamp255(G); clamp255(B);
+            const uint32_t col =
+                (uint32_t(A) << 24) |
+                (uint32_t(R) << 16) |
+                (uint32_t(G) << 8) |
+                uint32_t(B);
+
+            float thickness = config.game_overlay_frame_thickness;
+            if (thickness <= 0.f) thickness = 1.f;
+
+            if (config.circle_mask)
+            {
+                float cx = baseX + regionW * 0.5f;
+                float cy = baseY + regionH * 0.5f;
+                float radius = std::min(regionW, regionH) * 0.5f;
+                gameOverlayPtr->AddCircle({ cx, cy, radius }, col, thickness);
+            }
+            else
+            {
+                gameOverlayPtr->AddRect(
+                    { static_cast<float>(baseX),
+                      static_cast<float>(baseY),
+                      static_cast<float>(regionW),
+                      static_cast<float>(regionH) },
+                    col, thickness);
+            }
+        }
+
         // BOXES
         if (config.game_overlay_draw_boxes && !boxesCopy.empty())
         {
