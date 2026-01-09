@@ -10,6 +10,7 @@
 #include <condition_variable>
 #include <array>
 #include <random>
+#include <filesystem>
 
 #include "capture.h"
 #include "mouse.h"
@@ -497,10 +498,30 @@ static void gameOverlayRenderLoop()
             std::lock_guard<std::mutex> lk(g_iconMutex);
             if (config.game_overlay_icon_path != g_lastIconPath)
             {
+                if (g_iconImageId != 0)
+                {
+                    gameOverlayPtr->UnloadImage(g_iconImageId);
+                    g_iconImageId = 0;
+                }
                 g_lastIconPath = config.game_overlay_icon_path;
-                g_iconImageId = 0;
-                std::filesystem::path p(g_lastIconPath);
-                if (std::filesystem::exists(p) && p.has_filename())
+                std::error_code fsErr;
+                std::filesystem::path p;
+                try
+                {
+                    p = std::filesystem::u8path(g_lastIconPath);
+                }
+                catch (const std::exception&)
+                {
+                    p = std::filesystem::path(g_lastIconPath);
+                }
+                const bool hasFile = !g_lastIconPath.empty() && p.has_filename() && std::filesystem::is_regular_file(p, fsErr);
+                if (fsErr)
+                {
+                    g_iconImageId = 0;
+                    g_iconLastError = "[GameOverlay] Failed to read icon path: " + g_lastIconPath + " (" + fsErr.message() + ")";
+                    std::cerr << g_iconLastError << std::endl;
+                }
+                else if (hasFile)
                 {
                     const std::wstring wpath = p.wstring();
                     g_iconLastError.clear();
@@ -546,7 +567,9 @@ static void gameOverlayRenderLoop()
                 }
                 else
                 {
-                    std::cerr << "[GameOverlay] Icon file not found: " << g_lastIconPath << std::endl;
+                    g_iconImageId = 0;
+                    g_iconLastError = "[GameOverlay] Icon file not found: " + g_lastIconPath;
+                    std::cerr << g_iconLastError << std::endl;
                 }
             }
         }

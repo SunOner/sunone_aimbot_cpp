@@ -261,6 +261,7 @@ HRESULT Game_overlay::Impl::EnsureWic()
 
 int Game_overlay::Impl::LoadImageFromFile(const std::wstring& path)
 {
+    if (path.empty()) return 0;
     if (FAILED(EnsureWic())) return 0;
 
     ComPtr<IWICBitmapDecoder> dec;
@@ -273,9 +274,15 @@ int Game_overlay::Impl::LoadImageFromFile(const std::wstring& path)
     ComPtr<IWICFormatConverter> conv;
     if (FAILED(wic->CreateFormatConverter(&conv))) return 0;
 
+    bool premultiplied = true;
     if (FAILED(conv->Initialize(frame.Get(), GUID_WICPixelFormat32bppPBGRA,
         WICBitmapDitherTypeNone, nullptr, 0.f, WICBitmapPaletteTypeCustom)))
-        return 0;
+    {
+        premultiplied = false;
+        if (FAILED(conv->Initialize(frame.Get(), GUID_WICPixelFormat32bppBGRA,
+            WICBitmapDitherTypeNone, nullptr, 0.f, WICBitmapPaletteTypeCustom)))
+            return 0;
+    }
 
     if (!d2dCtx) return 0;
 
@@ -283,7 +290,7 @@ int Game_overlay::Impl::LoadImageFromFile(const std::wstring& path)
         D2D1::BitmapProperties1(
             D2D1_BITMAP_OPTIONS_NONE,
             D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM,
-                D2D1_ALPHA_MODE_PREMULTIPLIED),
+                premultiplied ? D2D1_ALPHA_MODE_PREMULTIPLIED : D2D1_ALPHA_MODE_IGNORE),
             96.f, 96.f);
 
     ComPtr<ID2D1Bitmap1> bmp;

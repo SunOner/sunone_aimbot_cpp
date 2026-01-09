@@ -3,6 +3,7 @@
 #include <winsock2.h>
 #include <Windows.h>
 
+#include <commdlg.h>
 #include <string>
 #include <cstring>
 
@@ -133,11 +134,31 @@ void draw_game_overlay_settings()
         memcpy(iconPathBuf, p.c_str(), p.size());
     }
 
-    ImGui::InputText("Icon Path", iconPathBuf, IM_ARRAYSIZE(iconPathBuf));
-    if (ImGui::IsItemDeactivatedAfterEdit())
+    if (ImGui::InputText("Icon Path", iconPathBuf, IM_ARRAYSIZE(iconPathBuf)))
     {
         config.game_overlay_icon_path = iconPathBuf;
         markDirty();
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Browse##icon_path"))
+    {
+        char filePath[MAX_PATH] = {};
+        OPENFILENAMEA ofn = {};
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = nullptr;
+        ofn.lpstrFile = filePath;
+        ofn.nMaxFile = sizeof(filePath);
+        ofn.lpstrFilter = "Image Files\0*.png;*.jpg;*.jpeg;*.bmp;*.ico\0All Files\0*.*\0";
+        ofn.nFilterIndex = 1;
+        ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+
+        if (GetOpenFileNameA(&ofn))
+        {
+            strncpy_s(iconPathBuf, filePath, sizeof(iconPathBuf) - 1);
+            config.game_overlay_icon_path = iconPathBuf;
+            markDirty();
+        }
     }
 
     ImGui::SliderInt("Icon Width", &config.game_overlay_icon_width, 4, 512);
