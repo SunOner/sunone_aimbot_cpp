@@ -26,30 +26,29 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 
 ### DirectML (DML) Build — Universal (All GPUs)
 
+* **Download**
+	* Pre-built binaries can be downloaded from the [Discord server](https://discord.gg/37WVp6sNEh) in the **pre-releases** channel.
+
 * **Works on:**
 
-  * Any modern GPU (NVIDIA, AMD, Intel, including integrated graphics)
-  * Windows 10/11 (x64)
-  * No need for CUDA or special drivers
+	* Any modern GPU (NVIDIA, AMD, Intel, including integrated graphics)
+	* Windows 10/11 (x64)
+	* No need for CUDA or special drivers
 * **Recommended for:**
 
-  * GTX 10xx/9xx/7xx series (old NVIDIA)
-  * Any AMD Radeon or Intel Iris/Xe GPU
-  * Laptops and office PCs with integrated graphics
-* **Download DML build:**
-  [DirectML Release](https://disk.yandex.ru/d/gBUCRa9pEHHMqA)
+	* GTX 10xx/9xx/7xx series (old NVIDIA)
+	* Any AMD Radeon or Intel Iris/Xe GPU
+	* Laptops and office PCs with integrated graphics
 
 ### CUDA + TensorRT Build — High Performance (NVIDIA Only)
 
 * **Works on:**
 
-  * NVIDIA GPUs **GTX 1660, RTX 2000/3000/4000/5000**
-  * **Requires:** CUDA 13.1, TensorRT-10.14.1.48 (included in build)
-  * Windows 10/11 (x64)
+	* NVIDIA GPUs **GTX 1660, RTX 2000/3000/4000/5000**
+	* **Requires:** CUDA 13.1, TensorRT-10.14.1.48 (included in build)
+	* Windows 10/11 (x64)
 * **Not supported:** GTX 10xx/Pascal and older (TensorRT 10 limitation)
 * **Includes both CUDA+TensorRT and DML support (switchable in settings)**
-* **Download CUDA build:**
-  [DML + CUDA + TensorRT Release](https://disk.yandex.ru/d/sWFNmQnSjAB2Kg)
 
 **Both versions are ready-to-use: just download, unpack, run `ai.exe` and follow instructions in the overlay.**
 
