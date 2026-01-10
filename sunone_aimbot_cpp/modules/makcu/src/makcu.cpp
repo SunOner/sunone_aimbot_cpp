@@ -212,11 +212,18 @@ namespace makcu {
                 return false;
             }
 
-            // Small delay for device to be ready
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-            // Enable button monitoring - fire and forget for performance
-            return serialPort->sendCommand("km.buttons(1)");
+            serialPort->flush();
+
+            serialPort->sendCommand("km.buttons(1)");
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+            auto response = serialPort->sendTrackedCommand("km.buttons()", true,
+                std::chrono::milliseconds(100));
+
+            return true;
         }
 
         void handleButtonEvent(uint8_t button, bool pressed) {

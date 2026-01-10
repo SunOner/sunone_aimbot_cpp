@@ -19,6 +19,7 @@ KmboxNetConnection::KmboxNetConnection(const std::string& ip, const std::string&
 
     aiming_active = false;
     shooting_active = false;
+    zooming_active = false;
 
     monitor_ = false;
     if (monitor_thread_.joinable())

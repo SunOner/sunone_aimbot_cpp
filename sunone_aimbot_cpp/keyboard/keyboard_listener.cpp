@@ -44,27 +44,95 @@ bool prevRightArrow = false;
 
 bool isAnyKeyPressed(const std::vector<std::string>& keys)
 {
+    bool usePhysicalDevice = false;
+
+    if (makcuSerial && makcuSerial->isOpen()) {
+        usePhysicalDevice = true;
+    }
+    else if (kmboxSerial && kmboxSerial->isOpen()) {
+        usePhysicalDevice = true;
+    }
+    else if (kmboxNetSerial && kmboxNetSerial->isOpen()) {
+        usePhysicalDevice = true;
+    }
+    else if (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen()) {
+        usePhysicalDevice = true;
+    }
+
     for (const auto& key_name : keys)
     {
         int key_code = KeyCodes::getKeyCode(key_name);
-
         bool pressed = false;
 
-        // kmbox net
+        // KmboxNet
         if (kmboxNetSerial && kmboxNetSerial->isOpen())
         {
-            if  (key_name == "LeftMouseButton")      pressed = kmboxNetSerial->monitorMouseLeft()   == 1;
-            else if(key_name == "RightMouseButton")  pressed = kmboxNetSerial->monitorMouseRight()  == 1;
-            else if(key_name == "MiddleMouseButton") pressed = kmboxNetSerial->monitorMouseMiddle() == 1;
-            else if(key_name == "X1MouseButton")     pressed = kmboxNetSerial->monitorMouseSide1()  == 1;
-            else if(key_name == "X2MouseButton")     pressed = kmboxNetSerial->monitorMouseSide2()  == 1;
+            if (key_name == "LeftMouseButton")       pressed = kmboxNetSerial->monitorMouseLeft() == 1;
+            else if (key_name == "RightMouseButton")  pressed = kmboxNetSerial->monitorMouseRight() == 1;
+            else if (key_name == "MiddleMouseButton") pressed = kmboxNetSerial->monitorMouseMiddle() == 1;
+            else if (key_name == "X1MouseButton")     pressed = kmboxNetSerial->monitorMouseSide1() == 1;
+            else if (key_name == "X2MouseButton")     pressed = kmboxNetSerial->monitorMouseSide2() == 1;
         }
 
-        // local mouse
-        if (!pressed && key_code != -1 && (GetAsyncKeyState(key_code) & 0x8000))
-            pressed = true;
+        // MAKCU
+        if (!pressed && makcuSerial && makcuSerial->isOpen())
+        {
+            if (key_name == "LeftMouseButton")       pressed = makcuSerial->shooting_active;
+            else if (key_name == "RightMouseButton")  pressed = makcuSerial->zooming_active;
+            else if (key_name == "X2MouseButton")     pressed = makcuSerial->aiming_active;
+        }
+
+        // Kmbox_b
+        if (!pressed && kmboxSerial && kmboxSerial->isOpen())
+        {
+            if (key_name == "LeftMouseButton")       pressed = kmboxSerial->shooting_active;
+            else if (key_name == "RightMouseButton")  pressed = kmboxSerial->zooming_active;
+            else if (key_name == "X2MouseButton")     pressed = kmboxSerial->aiming_active;
+        }
+
+        // KmboxNet
+        if (!pressed && kmboxNetSerial && kmboxNetSerial->isOpen())
+        {
+            if (key_name == "LeftMouseButton")       pressed = kmboxNetSerial->shooting_active;
+            else if (key_name == "RightMouseButton")  pressed = kmboxNetSerial->zooming_active;
+            else if (key_name == "X2MouseButton")     pressed = kmboxNetSerial->aiming_active;
+        }
+
+        // Arduino
+        if (!pressed && config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen())
+        {
+            if (key_name == "LeftMouseButton")       pressed = arduinoSerial->shooting_active;
+            else if (key_name == "RightMouseButton")  pressed = arduinoSerial->zooming_active;
+            else if (key_name == "X2MouseButton")     pressed = arduinoSerial->aiming_active;
+        }
+
+        // Win32 API
+        if (!pressed && key_code != -1)
+        {
+            bool isMouse = (key_name == "LeftMouseButton" ||
+                key_name == "RightMouseButton" ||
+                key_name == "MiddleMouseButton" ||
+                key_name == "X1MouseButton" ||
+                key_name == "X2MouseButton");
+
+            if (!isMouse || !usePhysicalDevice)
+            {
+                pressed = (GetAsyncKeyState(key_code) & 0x8000) != 0;
+            }
+        }
 
         if (pressed) return true;
+    }
+    return false;
+}
+
+bool isAnyKeyPressedWin32Only(const std::vector<std::string>& keys)
+{
+    for (const auto& key_name : keys)
+    {
+        int key_code = KeyCodes::getKeyCode(key_name);
+        if (key_code != -1 && (GetAsyncKeyState(key_code) & 0x8000))
+            return true;
     }
     return false;
 }
@@ -98,18 +166,19 @@ void keyboardListener()
         zooming = isAnyKeyPressed(config.button_zoom) ||
             (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->zooming_active) ||
             (kmboxSerial && kmboxSerial->isOpen() && kmboxSerial->zooming_active) ||
+            (kmboxNetSerial && kmboxNetSerial->isOpen() && kmboxNetSerial->zooming_active) ||
             (makcuSerial && makcuSerial->isOpen() && makcuSerial->zooming_active);
 
-        // Exit
-        if (isAnyKeyPressed(config.button_exit))
+        // Exit - Win32
+        if (isAnyKeyPressedWin32Only(config.button_exit))
         {
             shouldExit = true;
             quick_exit(0);
         }
 
-        // Pause detection
+        // Pause detection - Win32
         static bool pausePressed = false;
-        if (isAnyKeyPressed(config.button_pause))
+        if (isAnyKeyPressedWin32Only(config.button_pause))
         {
             if (!pausePressed)
             {
@@ -122,14 +191,14 @@ void keyboardListener()
             pausePressed = false;
         }
 
-        // Reload config
+        // Reload config - Win32
         static bool reloadPressed = false;
-        if (isAnyKeyPressed(config.button_reload_config))
+        if (isAnyKeyPressedWin32Only(config.button_reload_config))
         {
             if (!reloadPressed)
             {
                 config.loadConfig();
-                
+
                 if (globalMouseThread)
                 {
                     globalMouseThread->updateConfig(
@@ -151,12 +220,26 @@ void keyboardListener()
             reloadPressed = false;
         }
 
-        // Arrow key detection logic using isAnyKeyPressed
-        bool upArrow = isAnyKeyPressed(upArrowKeys);
-        bool downArrow = isAnyKeyPressed(downArrowKeys);
-        bool leftArrow = isAnyKeyPressed(leftArrowKeys);
-        bool rightArrow = isAnyKeyPressed(rightArrowKeys);
-        bool shiftKey = isAnyKeyPressed(shiftKeys);
+        // Open overlay - Win32
+        static bool overlayPressed = false;
+        if (isAnyKeyPressedWin32Only(config.button_open_overlay))
+        {
+            if (!overlayPressed)
+            {
+                overlayPressed = true;
+            }
+        }
+        else
+        {
+            overlayPressed = false;
+        }
+
+        // Arrow key detection - Win32
+        bool upArrow = isAnyKeyPressedWin32Only(upArrowKeys);
+        bool downArrow = isAnyKeyPressedWin32Only(downArrowKeys);
+        bool leftArrow = isAnyKeyPressedWin32Only(leftArrowKeys);
+        bool rightArrow = isAnyKeyPressedWin32Only(rightArrowKeys);
+        bool shiftKey = isAnyKeyPressedWin32Only(shiftKeys);
 
         // Adjust offsets based on arrow keys and shift combination
         if (config.enable_arrows_settings)

@@ -60,6 +60,7 @@ public:
 
     std::atomic<bool> aiming_active;
     std::atomic<bool> shooting_active;
+    std::atomic<bool> zooming_active;
 
 private:
     bool is_open_;
