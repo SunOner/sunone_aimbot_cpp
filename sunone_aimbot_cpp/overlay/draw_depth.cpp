@@ -3,6 +3,7 @@
 #include <winsock2.h>
 #include <Windows.h>
 
+#include <commdlg.h>
 #include <chrono>
 #include <string>
 
@@ -108,6 +109,24 @@ void draw_depth()
     }
 
     ImGui::InputText("Depth model path", modelPathBuf, IM_ARRAYSIZE(modelPathBuf));
+    ImGui::SameLine();
+    if (ImGui::Button("Browse##depth_model_path"))
+    {
+        char filePath[MAX_PATH] = {};
+        OPENFILENAMEA ofn = {};
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = nullptr;
+        ofn.lpstrFile = filePath;
+        ofn.nMaxFile = sizeof(filePath);
+        ofn.lpstrFilter = "Model Files\0*.engine;*.onnx;*.trt;*.plan\0All Files\0*.*\0";
+        ofn.nFilterIndex = 1;
+        ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+
+        if (GetOpenFileNameA(&ofn))
+        {
+            strncpy_s(modelPathBuf, filePath, sizeof(modelPathBuf) - 1);
+        }
+    }
     if (ImGui::Button("Load depth model"))
     {
         config.depth_model_path = modelPathBuf;
