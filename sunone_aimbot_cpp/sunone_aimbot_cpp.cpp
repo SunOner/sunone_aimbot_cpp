@@ -11,6 +11,8 @@
 #include <array>
 #include <random>
 #include <filesystem>
+#include <algorithm>
+#include <cmath>
 
 #include "capture.h"
 #include "mouse.h"
@@ -74,6 +76,63 @@ static int g_iconImageId = 0;
 static std::mutex g_iconMutex;
 
 std::string g_iconLastError;
+
+static void draw_target_correction_demo_game_overlay(Game_overlay* overlay, float centerX, float centerY)
+{
+    if (!overlay)
+        return;
+
+    const float scale = 4.0f;
+    float near_px = config.nearRadius * scale;
+    float snap_px = config.snapRadius * scale;
+    near_px = std::max(10.0f, near_px);
+    snap_px = std::max(6.0f, std::min(snap_px, near_px - 4.0f));
+
+    overlay->AddCircle({ centerX, centerY, near_px }, ARGB(180, 80, 120, 255), 2.0f);
+    overlay->AddCircle({ centerX, centerY, snap_px }, ARGB(180, 255, 100, 100), 2.0f);
+
+    static float dist_px = 0.0f;
+    static float vel_px = 0.0f;
+    static auto last_t = std::chrono::steady_clock::now();
+
+    auto now = std::chrono::steady_clock::now();
+    double dt = std::chrono::duration<double>(now - last_t).count();
+    last_t = now;
+    dt = std::max(0.0, std::min(dt, 0.1));
+
+    if (dist_px <= 0.0f || dist_px > near_px)
+        dist_px = near_px;
+
+    double dist_units = dist_px / scale;
+    double speed_mult;
+    if (dist_units < config.snapRadius)
+    {
+        speed_mult = config.minSpeedMultiplier * config.snapBoostFactor;
+    }
+    else if (dist_units < config.nearRadius)
+    {
+        double t = dist_units / config.nearRadius;
+        double crv = 1.0 - std::pow(1.0 - t, config.speedCurveExponent);
+        speed_mult = config.minSpeedMultiplier +
+            (config.maxSpeedMultiplier - config.minSpeedMultiplier) * crv;
+    }
+    else
+    {
+        double norm = std::max(0.0, std::min(dist_units / config.nearRadius, 1.0));
+        speed_mult = config.minSpeedMultiplier +
+            (config.maxSpeedMultiplier - config.minSpeedMultiplier) * norm;
+    }
+
+    float max_multiplier = std::max(0.1f, config.maxSpeedMultiplier);
+    float demo_duration_s = std::max(0.6f, std::min(2.2f / max_multiplier, 3.0f));
+    float base_px_s = near_px / demo_duration_s;
+    vel_px = base_px_s * static_cast<float>(speed_mult);
+    dist_px -= vel_px * static_cast<float>(dt);
+    if (dist_px <= 0.0f)
+        dist_px = near_px;
+
+    overlay->FillCircle({ centerX - dist_px, centerY, 4.0f }, ARGB(255, 255, 255, 80));
+}
 
 static std::string hr_to_string(HRESULT hr)
 {
@@ -744,6 +803,14 @@ static void gameOverlayRenderLoop()
                 gameOverlayPtr->DrawImage(g_iconImageId, drawX, drawY, (float)iconW, (float)iconH, 1.0f);
                 i++;
             }
+        }
+
+        if (config.game_overlay_show_target_correction)
+        {
+            draw_target_correction_demo_game_overlay(
+                gameOverlayPtr,
+                static_cast<float>(baseX) + regionW * 0.5f,
+                static_cast<float>(baseY) + regionH * 0.5f);
         }
 
         gameOverlayPtr->EndFrame();

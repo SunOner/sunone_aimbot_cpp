@@ -118,12 +118,17 @@ public:
     int overlay_opacity;
     float overlay_ui_scale;
 
+    // Depth
+    std::string depth_model_path;
+    int depth_fps;
+
     // Game Overlay
     bool game_overlay_enabled;
     int game_overlay_max_fps;
     bool game_overlay_draw_boxes;
     bool game_overlay_draw_future;
     bool game_overlay_draw_frame;
+    bool game_overlay_show_target_correction;
     int game_overlay_box_a;
     int game_overlay_box_r;
     int game_overlay_box_g;

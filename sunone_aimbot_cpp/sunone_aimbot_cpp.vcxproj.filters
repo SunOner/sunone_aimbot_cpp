@@ -44,9 +44,11 @@
     <ClCompile Include="mem\cpu_affinity_manager.cpp" />
     <ClCompile Include="capture\gstreamer_capture.cpp" />
     <ClCompile Include="modules\makcu\src\makcu.cpp" />
-    <ClCompile Include="modules\makcu\src\makcu_c.cpp" />
     <ClCompile Include="modules\makcu\src\serialport.cpp" />
     <ClCompile Include="mouse\Makcu.cpp" />
+    <ClCompile Include="depth\depth_anything_trt.cpp" />
+    <ClCompile Include="depth\depth_utils.cpp" />
+    <ClCompile Include="overlay\draw_depth.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -99,9 +101,10 @@
     <ClInclude Include="overlay\draw_settings.h" />
     <ClInclude Include="capture\gstreamer_capture.h" />
     <ClInclude Include="modules\makcu\include\makcu.h" />
-    <ClInclude Include="modules\makcu\include\makcu_c.h" />
     <ClInclude Include="modules\makcu\include\serialport.h" />
     <ClInclude Include="mouse\Makcu.h" />
+    <ClInclude Include="depth\depth_anything_trt.h" />
+    <ClInclude Include="depth\depth_utils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -9,6 +9,7 @@ void draw_buttons();
 void draw_overlay();
 void draw_stats();
 void draw_debug();
+void draw_depth();
 void load_body_texture();
 void release_body_texture();
 void draw_game_overlay_settings();

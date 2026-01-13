@@ -630,6 +630,7 @@ void OverlayThread()
                 if (ImGui::BeginTabItem("Game Overlay")) { draw_game_overlay_settings();  ImGui::EndTabItem(); }
                 if (ImGui::BeginTabItem("Stats")) { draw_stats();                         ImGui::EndTabItem(); }
                 if (ImGui::BeginTabItem("Debug")) { draw_debug();                         ImGui::EndTabItem(); }
+                if (ImGui::BeginTabItem("Depth")) { draw_depth();                         ImGui::EndTabItem(); }
 
                 ImGui::EndTabBar();
             }

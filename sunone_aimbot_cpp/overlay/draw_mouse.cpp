@@ -33,75 +33,6 @@ float prev_wind_D = config.wind_D;
 bool prev_auto_shoot = config.auto_shoot;
 float prev_bScope_multiplier = config.bScope_multiplier;
 
-static void draw_target_correction_demo()
-{
-    if (ImGui::CollapsingHeader("Visual demo"))
-    {
-        ImVec2 canvas_sz(220, 220);
-        ImGui::InvisibleButton("##tc_canvas", canvas_sz);
-
-        ImVec2 p0 = ImGui::GetItemRectMin();
-        ImVec2 p1 = ImGui::GetItemRectMax();
-        ImVec2 center{ (p0.x + p1.x) * 0.5f, (p0.y + p1.y) * 0.5f };
-
-        ImDrawList* dl = ImGui::GetWindowDrawList();
-        dl->AddRectFilled(p0, p1, IM_COL32(25, 25, 25, 255));
-
-        const float scale = 4.0f;
-        float near_px = config.nearRadius * scale;
-        float snap_px = config.snapRadius * scale;
-        near_px = ImClamp(near_px, 10.0f, canvas_sz.x * 0.45f);
-        snap_px = ImClamp(snap_px, 6.0f, near_px - 4.0f);
-
-        dl->AddCircle(center, near_px, IM_COL32(80, 120, 255, 180), 64, 2.0f);
-        dl->AddCircle(center, snap_px, IM_COL32(255, 100, 100, 180), 64, 2.0f);
-
-        static float  dist_px = 0.0f;
-        static float  vel_px = 0.0f;
-        static double last_t = ImGui::GetTime();
-        double now = ImGui::GetTime();
-        double dt = now - last_t;
-        last_t = now;
-        dt = ImClamp(dt, 0.0, 0.1);
-
-        if (dist_px <= 0.0f || dist_px > near_px)
-            dist_px = near_px;
-
-        double dist_units = dist_px / scale;
-        double speed_mult;
-        if (dist_units < config.snapRadius)
-            speed_mult = config.minSpeedMultiplier * config.snapBoostFactor;
-        else if (dist_units < config.nearRadius)
-        {
-            double t = dist_units / config.nearRadius;
-            double crv = 1.0 - pow(1.0 - t, config.speedCurveExponent);
-            speed_mult = config.minSpeedMultiplier +
-                (config.maxSpeedMultiplier - config.minSpeedMultiplier) * crv;
-        }
-        else
-        {
-            double norm = ImClamp(dist_units / config.nearRadius, 0.0, 1.0);
-            speed_mult = config.minSpeedMultiplier +
-                (config.maxSpeedMultiplier - config.minSpeedMultiplier) * norm;
-        }
-
-        float max_multiplier = ImMax(0.1f, config.maxSpeedMultiplier);
-        float demo_duration_s = ImClamp(2.2f / max_multiplier, 0.6f, 3.0f);
-        float base_px_s = near_px / demo_duration_s;
-        vel_px = base_px_s * static_cast<float>(speed_mult);
-        dist_px -= vel_px * static_cast<float>(dt);
-        if (dist_px <= 0.0f) dist_px = near_px;
-
-        ImVec2 dot{ center.x - dist_px, center.y };
-        dl->AddCircleFilled(dot, 4.0f, IM_COL32(255, 255, 80, 255));
-
-        ImGui::Dummy(ImVec2(0, 4));
-        ImGui::TextColored(ImVec4(0.31f, 0.48f, 1.0f, 1.0f), "Near radius");
-        ImGui::SameLine(130);
-        ImGui::TextColored(ImVec4(1.0f, 0.39f, 0.39f, 1.0f), "Snap radius");
-    }
-}
-
 void draw_mouse()
 {
     ImGui::SeparatorText("FOV");
@@ -140,7 +71,6 @@ void draw_mouse()
     ImGui::SliderFloat("Near Radius", &config.nearRadius, 1.0f, 40.0f, "%.1f");
     ImGui::SliderFloat("Speed Curve Exponent", &config.speedCurveExponent, 0.1f, 10.0f, "%.1f");
     ImGui::SliderFloat("Snap Boost Factor", &config.snapBoostFactor, 0.01f, 4.00f, "%.2f");
-    draw_target_correction_demo();
 
     ImGui::SeparatorText("Game Profile");
     std::vector<std::string> profile_names;

@@ -38,6 +38,9 @@ void draw_game_overlay_settings()
     if (ImGui::Checkbox("Draw Future Positions", &config.game_overlay_draw_future))
         markDirty();
 
+    if (ImGui::Checkbox("Show Target Correction", &config.game_overlay_show_target_correction))
+        markDirty();
+
     ImGui::Separator();
     ImGui::Text("Box Color (ARGB 0-255)");
 

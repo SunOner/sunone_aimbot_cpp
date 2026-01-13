@@ -21,6 +21,8 @@
     <ClCompile Include="capture\virtual_camera.cpp" />
     <ClCompile Include="capture\winrt_capture.cpp" />
     <ClCompile Include="config\config.cpp" />
+    <ClCompile Include="depth\depth_anything_trt.cpp" />
+    <ClCompile Include="depth\depth_utils.cpp" />
     <ClCompile Include="detector\detection_buffer.cpp" />
     <ClCompile Include="detector\trt_detector.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DML|x64'">true</ExcludedFromBuild>
@@ -40,8 +42,8 @@
     <ClCompile Include="mem\cpu_affinity_manager.cpp" />
     <ClCompile Include="mem\gpu_resource_manager.cpp" />
     <ClCompile Include="modules\makcu\src\makcu.cpp">
-	  <ObjectFileName>$(IntDir)makcu_lib.obj</ObjectFileName>
-	</ClCompile>
+      <ObjectFileName>$(IntDir)makcu_lib.obj</ObjectFileName>
+    </ClCompile>
     <ClCompile Include="modules\makcu\src\serialport.cpp" />
     <ClCompile Include="mouse\ghub.cpp" />
     <ClCompile Include="mouse\kmboxNetConnection.cpp" />
@@ -55,6 +57,7 @@
     <ClCompile Include="overlay\draw_buttons.cpp" />
     <ClCompile Include="overlay\draw_capture.cpp" />
     <ClCompile Include="overlay\draw_debug.cpp" />
+    <ClCompile Include="overlay\draw_depth.cpp" />
     <ClCompile Include="overlay\draw_game_overlay.cpp" />
     <ClCompile Include="overlay\draw_mouse.cpp" />
     <ClCompile Include="overlay\draw_overlay.cpp" />
@@ -76,6 +79,8 @@
     <ClInclude Include="capture\virtual_camera.h" />
     <ClInclude Include="capture\winrt_capture.h" />
     <ClInclude Include="config\config.h" />
+    <ClInclude Include="depth\depth_anything_trt.h" />
+    <ClInclude Include="depth\depth_utils.h" />
     <ClInclude Include="detector\cuda_preprocess.h" />
     <ClInclude Include="detector\detection_buffer.h" />
     <ClInclude Include="detector\trt_detector.h">
