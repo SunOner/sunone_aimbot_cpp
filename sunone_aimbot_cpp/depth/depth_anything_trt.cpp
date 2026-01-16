@@ -15,12 +15,12 @@ namespace depth_anything
         constexpr bool kEnableFp16 = true;
         constexpr int kMinInputSize = 160;
         constexpr int kMaxInputSize = 640;
-        constexpr int kOptInputSize = 518;
+        constexpr int kOptInputSize = 224;
     }
 
     DepthAnythingTrt::DepthAnythingTrt()
-        : input_w(518)
-        , input_h(518)
+        : input_w(kOptInputSize)
+        , input_h(kOptInputSize)
         , min_input_size(kMinInputSize)
         , max_input_size(kMaxInputSize)
         , dynamic_input(false)
