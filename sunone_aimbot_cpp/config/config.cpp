@@ -167,6 +167,7 @@ bool Config::loadConfig(const std::string& filename)
         // Depth
         depth_model_path = "depth_anything_v2.engine";
         depth_fps = 100;
+        depth_colormap = 18;
 
         // Game overlay
         game_overlay_enabled = false;
@@ -428,6 +429,8 @@ bool Config::loadConfig(const std::string& filename)
     depth_model_path = get_string("depth_model_path", "depth_anything_v2.engine");
     depth_fps = get_long("depth_fps", 100);
     if (depth_fps < 0) depth_fps = 0;
+    depth_colormap = get_long("depth_colormap", 18);
+    if (depth_colormap < 0 || depth_colormap > 21) depth_colormap = 18;
 
     game_overlay_enabled = get_bool("game_overlay_enabled", false);
     game_overlay_max_fps = get_long("game_overlay_max_fps", 0);
@@ -617,7 +620,8 @@ bool Config::saveConfig(const std::string& filename)
 
     file << "# Depth\n"
         << "depth_model_path = " << depth_model_path << "\n"
-        << "depth_fps = " << depth_fps << "\n\n";
+        << "depth_fps = " << depth_fps << "\n"
+        << "depth_colormap = " << depth_colormap << "\n\n";
 
     file << "# Game Overlay\n"
         << "game_overlay_enabled = " << (game_overlay_enabled ? "true" : "false") << "\n"

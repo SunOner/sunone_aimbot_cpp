@@ -26,6 +26,7 @@ namespace depth_anything
         , dynamic_input(false)
         , mean{ 123.675f, 116.28f, 103.53f }
         , std{ 58.395f, 57.12f, 57.375f }
+        , colormap_type(COLORMAP_TWILIGHT)
         , runtime(nullptr)
         , engine(nullptr)
         , context(nullptr)
@@ -48,6 +49,21 @@ namespace depth_anything
     const std::string& DepthAnythingTrt::lastError() const
     {
         return last_error;
+    }
+
+    void DepthAnythingTrt::setColormap(int type)
+    {
+        if (type < COLORMAP_AUTUMN || type > COLORMAP_DEEPGREEN)
+        {
+            colormap_type = COLORMAP_TWILIGHT;
+            return;
+        }
+        colormap_type = type;
+    }
+
+    int DepthAnythingTrt::colormapType() const
+    {
+        return colormap_type;
     }
 
     void DepthAnythingTrt::reset()
@@ -195,7 +211,7 @@ namespace depth_anything
         cv::normalize(depth_mat, depth_norm, 0, 255, cv::NORM_MINMAX, CV_8U);
 
         cv::Mat colormap;
-        cv::applyColorMap(depth_norm, colormap, cv::COLORMAP_INFERNO);
+        cv::applyColorMap(depth_norm, colormap, colormap_type);
 
         cv::Mat output;
         cv::resize(colormap, output, image.size());

@@ -19,6 +19,8 @@ namespace depth_anything
 
         bool initialize(const std::string& modelPath, nvinfer1::ILogger& logger);
         cv::Mat predict(const cv::Mat& image);
+        void setColormap(int type);
+        int colormapType() const;
         bool ready() const;
         const std::string& lastError() const;
         void reset();
@@ -31,6 +33,7 @@ namespace depth_anything
         bool dynamic_input;
         float mean[3];
         float std[3];
+        int colormap_type;
 
         std::unique_ptr<nvinfer1::IRuntime> runtime;
         std::unique_ptr<nvinfer1::ICudaEngine> engine;

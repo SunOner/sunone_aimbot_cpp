@@ -121,6 +121,7 @@ public:
     // Depth
     std::string depth_model_path;
     int depth_fps;
+    int depth_colormap;
 
     // Game Overlay
     bool game_overlay_enabled;

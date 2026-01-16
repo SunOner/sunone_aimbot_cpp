@@ -38,6 +38,30 @@ static float depth_scale = 0.5f;
 
 #ifdef USE_CUDA
 static depth_anything::DepthAnythingTrt g_depthModel;
+static const char* kDepthColormapNames[] = {
+    "Autumn",
+    "Bone",
+    "Jet",
+    "Winter",
+    "Rainbow",
+    "Ocean",
+    "Summer",
+    "Spring",
+    "Cool",
+    "HSV",
+    "Pink",
+    "Hot",
+    "Parula",
+    "Magma",
+    "Inferno",
+    "Plasma",
+    "Viridis",
+    "Cividis",
+    "Twilight",
+    "Twilight Shifted",
+    "Turbo",
+    "Deepgreen"
+};
 #endif
 
 static void uploadDepthFrame(const cv::Mat& bgr)
@@ -97,6 +121,7 @@ void draw_depth()
     static std::string depthStatus = "Depth model not loaded.";
     static std::chrono::steady_clock::time_point lastUpdate = std::chrono::steady_clock::now();
     static float lastInferenceMs = 0.0f;
+    static int lastColormap = -1;
 
     if (!bufferInit)
     {
@@ -135,6 +160,7 @@ void draw_depth()
         if (g_depthModel.initialize(config.depth_model_path, gLogger))
         {
             depthStatus = "Depth model loaded.";
+            g_depthModel.setColormap(config.depth_colormap);
         }
         else
         {
@@ -172,7 +198,20 @@ void draw_depth()
         config.saveConfig();
     }
 
+    int colormapIndex = config.depth_colormap;
+    if (ImGui::Combo("Depth colormap", &colormapIndex, kDepthColormapNames, IM_ARRAYSIZE(kDepthColormapNames)))
+    {
+        config.depth_colormap = colormapIndex;
+        config.saveConfig();
+        g_depthModel.setColormap(config.depth_colormap);
+    }
+
     ImGui::Text("Status: %s", depthStatus.c_str());
+    if (config.depth_colormap != lastColormap)
+    {
+        g_depthModel.setColormap(config.depth_colormap);
+        lastColormap = config.depth_colormap;
+    }
     if (g_depthModel.ready())
     {
         cv::Mat frameCopy;
