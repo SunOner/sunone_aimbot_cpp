@@ -141,6 +141,31 @@ void draw_depth()
             depthStatus = g_depthModel.lastError();
         }
     }
+    ImGui::SameLine();
+    if (ImGui::Button("Export depth engine"))
+    {
+        std::string exportPath = modelPathBuf;
+        if (exportPath.empty())
+        {
+            depthStatus = "Set a depth ONNX path to export.";
+        }
+        else if (exportPath.find(".onnx") == std::string::npos)
+        {
+            depthStatus = "Export expects an .onnx depth model path.";
+        }
+        else
+        {
+            depth_anything::DepthAnythingTrt exporter;
+            if (exporter.initialize(exportPath, gLogger))
+            {
+                depthStatus = "Depth engine exported next to the ONNX file.";
+            }
+            else
+            {
+                depthStatus = exporter.lastError();
+            }
+        }
+    }
 
     if (ImGui::SliderInt("Depth FPS", &config.depth_fps, 0, 120))
     {
