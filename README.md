@@ -406,6 +406,7 @@ Even if OpenCV links successfully, GStreamer must be available at runtime:
 * [KMBOX](https://www.kmbox.top/)
 * [GStreamer](https://gstreamer.freedesktop.org/)
 * [MAKCU](https://makcu.com)
+* [depth-anything-tensorrt](https://github.com/spacewalk01/depth-anything-tensorrt)
 * [Python AI Version](https://github.com/SunOner/sunone_aimbot)
 
 ---
@@ -429,3 +430,7 @@ This project is actively developed thanks to the people who support it on [Boost
 ---
 
 **Need help or want to contribute? Join our [Discord server](https://discord.gg/37WVp6sNEh) or open an issue on GitHub!**
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=SunOner/sunone_aimbot_cpp&type=date&legend=top-left)](https://www.star-history.com/#SunOner/sunone_aimbot_cpp&type=date&legend=top-left)
