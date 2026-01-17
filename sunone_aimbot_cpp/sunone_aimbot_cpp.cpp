@@ -1218,17 +1218,8 @@ int main()
         std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
         std::thread overlayThread(OverlayThread);
 
-        if (config.game_overlay_enabled)
-        {
-            gameOverlayPtr = new Game_overlay();
-            int pw = GetSystemMetrics(SM_CXSCREEN);
-            int ph = GetSystemMetrics(SM_CYSCREEN);
-            gameOverlayPtr->SetWindowBounds(0, 0, pw, ph);
-            gameOverlayPtr->SetMaxFPS(config.game_overlay_max_fps > 0 ? (unsigned)config.game_overlay_max_fps : 0);
-            gameOverlayPtr->Start();
-            gameOverlayShouldExit.store(false);
-            gameOverlayThread = std::thread(gameOverlayRenderLoop);
-        }
+        gameOverlayShouldExit.store(false);
+        gameOverlayThread = std::thread(gameOverlayRenderLoop);
 
         welcome_message();
 
