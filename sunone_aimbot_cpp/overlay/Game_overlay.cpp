@@ -84,6 +84,11 @@ struct ImageRes
     ComPtr<ID2D1Bitmap1> bmp;
     float w = 0.f;
     float h = 0.f;
+    std::vector<uint8_t> pending;
+    int pendingW = 0;
+    int pendingH = 0;
+    int pendingStride = 0;
+    bool pendingDirty = false;
 };
 
 struct Game_overlay::Impl
@@ -113,6 +118,7 @@ struct Game_overlay::Impl
     ComPtr<IDCompositionTarget>    dcompTarget;
     ComPtr<IDCompositionVisual>    dcompRoot;
 
+    std::mutex d2dMutex;
     std::thread thread;
     std::atomic<bool> running{ false };
     std::atomic<bool> visible{ true };
@@ -139,6 +145,7 @@ struct Game_overlay::Impl
     int  LoadImageFromFile(const std::wstring& path);
     void UnloadImage(int id);
     void DrawImage(int id, float x, float y, float w, float h, float opacity);
+    int  UpdateImageFromBGRA(const void* data, int width, int height, int strideBytes, int imageId);
 
     static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
     bool    CreateWindowAndDevices();
@@ -202,6 +209,10 @@ void Game_overlay::AddText(float x, float y, const std::wstring& text,
 int  Game_overlay::LoadImageFromFile(const std::wstring& path) { return impl_->LoadImageFromFile(path); }
 void Game_overlay::UnloadImage(int id) { impl_->UnloadImage(id); }
 void Game_overlay::DrawImage(int id, float x, float y, float w, float h, float op) { impl_->DrawImage(id, x, y, w, h, op); }
+int  Game_overlay::UpdateImageFromBGRA(const void* data, int width, int height, int strideBytes, int imageId)
+{
+    return impl_->UpdateImageFromBGRA(data, width, height, strideBytes, imageId);
+}
 
 bool Game_overlay::Impl::Start()
 {
@@ -286,6 +297,7 @@ int Game_overlay::Impl::LoadImageFromFile(const std::wstring& path)
 
     if (!d2dCtx) return 0;
 
+    std::lock_guard<std::mutex> d2dLock(d2dMutex);
     D2D1_BITMAP_PROPERTIES1 props =
         D2D1::BitmapProperties1(
             D2D1_BITMAP_OPTIONS_NONE,
@@ -320,6 +332,41 @@ void Game_overlay::Impl::DrawImage(int id, float x, float y, float w, float h, f
     c.type = DrawCmd::Image;
     c.image = { x, y, w, h, opacity, id };
     AddCmd(c);
+}
+
+int Game_overlay::Impl::UpdateImageFromBGRA(const void* data, int width, int height, int strideBytes, int imageId)
+{
+    if (!data || width <= 0 || height <= 0 || strideBytes <= 0)
+        return 0;
+
+    std::lock_guard<std::mutex> il(imgMutex);
+    ImageRes* target = nullptr;
+    if (imageId != 0)
+    {
+        auto it = images.find(imageId);
+        if (it != images.end())
+            target = &it->second;
+    }
+    if (!target)
+    {
+        imageId = nextImageId++;
+        auto [it, _] = images.emplace(imageId, ImageRes{});
+        target = &it->second;
+    }
+
+    target->pendingW = width;
+    target->pendingH = height;
+    target->pendingStride = strideBytes;
+    target->pending.resize(static_cast<size_t>(strideBytes) * static_cast<size_t>(height));
+    const uint8_t* src = static_cast<const uint8_t*>(data);
+    for (int y = 0; y < height; ++y)
+    {
+        memcpy(target->pending.data() + static_cast<size_t>(y) * strideBytes,
+            src + static_cast<size_t>(y) * strideBytes,
+            strideBytes);
+    }
+    target->pendingDirty = true;
+    return imageId;
 }
 
 LRESULT CALLBACK Game_overlay::Impl::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -632,8 +679,49 @@ void Game_overlay::Impl::RenderOne()
         ShowWindow(hwnd, SW_SHOWNA);
     }
 
+    std::lock_guard<std::mutex> d2dLock(d2dMutex);
     d2dCtx->BeginDraw();
     d2dCtx->Clear(D2D1::ColorF(0.f, 0.f, 0.f, 0.f));
+
+    {
+        std::lock_guard<std::mutex> il(imgMutex);
+        for (auto& kv : images)
+        {
+            auto& img = kv.second;
+            if (!img.pendingDirty || img.pending.empty())
+                continue;
+
+            D2D1_BITMAP_PROPERTIES1 props =
+                D2D1::BitmapProperties1(
+                    D2D1_BITMAP_OPTIONS_NONE,
+                    D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
+                    96.f, 96.f);
+
+            if (!img.bmp || img.w != img.pendingW || img.h != img.pendingH)
+            {
+                ComPtr<ID2D1Bitmap1> bmp;
+                HRESULT hr = d2dCtx->CreateBitmap(
+                    D2D1::SizeU(static_cast<UINT32>(img.pendingW), static_cast<UINT32>(img.pendingH)),
+                    img.pending.data(),
+                    static_cast<UINT32>(img.pendingStride),
+                    props,
+                    &bmp);
+                if (FAILED(hr))
+                    continue;
+
+                img.bmp = bmp;
+                img.w = static_cast<float>(img.pendingW);
+                img.h = static_cast<float>(img.pendingH);
+            }
+            else
+            {
+                if (FAILED(img.bmp->CopyFromMemory(nullptr, img.pending.data(), static_cast<UINT32>(img.pendingStride))))
+                    continue;
+            }
+
+            img.pendingDirty = false;
+        }
+    }
 
     auto dl = std::atomic_load_explicit(&current, std::memory_order_acquire);
     if (dl)

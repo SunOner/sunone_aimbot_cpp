@@ -7,6 +7,7 @@
 #include "imgui/imgui.h"
 
 #include "overlay.h"
+#include "overlay/config_dirty.h"
 #include "draw_settings.h"
 #include "sunone_aimbot_cpp.h"
 #include "other_tools.h"
@@ -81,7 +82,7 @@ void draw_target()
         prev_auto_aim = config.auto_aim;
         prev_easynorecoil = config.easynorecoil;
         prev_easynorecoilstrength = config.easynorecoilstrength;
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 }
 

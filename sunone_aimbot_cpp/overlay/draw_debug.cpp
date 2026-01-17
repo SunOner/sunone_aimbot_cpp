@@ -4,12 +4,18 @@
 #include <Windows.h>
 
 #include <d3d11.h>
+#include <vector>
 
 #include "imgui/imgui.h"
 #include "sunone_aimbot_cpp.h"
 #include "overlay.h"
+#include "overlay/config_dirty.h"
 #include "include/other_tools.h"
 #include "capture.h"
+
+#ifdef USE_CUDA
+#include "depth/depth_mask.h"
+#endif
 
 #ifndef SAFE_RELEASE
 #define SAFE_RELEASE(p)       \
@@ -27,6 +33,10 @@ bool prev_verbose = config.verbose;
 static ID3D11Texture2D* g_debugTex = nullptr;
 static ID3D11ShaderResourceView* g_debugSRV = nullptr;
 static int texW = 0, texH = 0;
+
+static ID3D11Texture2D* g_maskTex = nullptr;
+static ID3D11ShaderResourceView* g_maskSRV = nullptr;
+static int maskTexW = 0, maskTexH = 0;
 
 static float debug_scale = 0.5f;
 
@@ -74,6 +84,48 @@ static void uploadDebugFrame(const cv::Mat& bgr)
     }
 }
 
+static void uploadMaskFrame(const cv::Mat& rgba)
+{
+    if (rgba.empty()) return;
+
+    if (!g_maskTex || rgba.cols != maskTexW || rgba.rows != maskTexH)
+    {
+        SAFE_RELEASE(g_maskTex);
+        SAFE_RELEASE(g_maskSRV);
+
+        maskTexW = rgba.cols;
+        maskTexH = rgba.rows;
+
+        D3D11_TEXTURE2D_DESC td = {};
+        td.Width = maskTexW;
+        td.Height = maskTexH;
+        td.MipLevels = td.ArraySize = 1;
+        td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        td.SampleDesc.Count = 1;
+        td.Usage = D3D11_USAGE_DYNAMIC;
+        td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        td.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+        g_pd3dDevice->CreateTexture2D(&td, nullptr, &g_maskTex);
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC sd = {};
+        sd.Format = td.Format;
+        sd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        sd.Texture2D.MipLevels = 1;
+        g_pd3dDevice->CreateShaderResourceView(g_maskTex, &sd, &g_maskSRV);
+    }
+
+    D3D11_MAPPED_SUBRESOURCE ms;
+    if (SUCCEEDED(g_pd3dDeviceContext->Map(g_maskTex, 0,
+        D3D11_MAP_WRITE_DISCARD, 0, &ms)))
+    {
+        for (int y = 0; y < maskTexH; ++y)
+            memcpy((uint8_t*)ms.pData + ms.RowPitch * y,
+                rgba.ptr(y), maskTexW * 4);
+        g_pd3dDeviceContext->Unmap(g_maskTex, 0);
+    }
+}
+
 void draw_debug_frame()
 {
     cv::Mat frameCopy;
@@ -94,6 +146,35 @@ void draw_debug_frame()
 
     ImVec2 image_pos = ImGui::GetItemRectMin();
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+#ifdef USE_CUDA
+    if (config.depth_mask_enabled)
+    {
+        auto& depthMask = depth_anything::GetDepthMaskGenerator();
+        cv::Mat mask = depthMask.getMask();
+        if (!mask.empty() && mask.size() == frameCopy.size())
+        {
+            cv::Mat alpha(mask.size(), CV_8U, cv::Scalar(0));
+            alpha.setTo(config.depth_mask_alpha, mask);
+
+            std::vector<cv::Mat> channels(4);
+            channels[0] = cv::Mat(mask.size(), CV_8U, cv::Scalar(255));
+            channels[1] = cv::Mat(mask.size(), CV_8U, cv::Scalar(0));
+            channels[2] = cv::Mat(mask.size(), CV_8U, cv::Scalar(0));
+            channels[3] = alpha;
+
+            cv::Mat rgba;
+            cv::merge(channels, rgba);
+            uploadMaskFrame(rgba);
+
+            if (g_maskSRV)
+            {
+                ImVec2 overlay_max(image_pos.x + image_size.x, image_pos.y + image_size.y);
+                draw_list->AddImage(g_maskSRV, image_pos, overlay_max);
+            }
+        }
+    }
+#endif
 
     {
         std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
@@ -190,7 +271,7 @@ void draw_debug()
         if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
         {
             current_key_name = key_names[current_index];
-            config.saveConfig("config.ini");
+            OverlayConfig_MarkDirty();
         }
 
         ImGui::SameLine();
@@ -200,13 +281,13 @@ void draw_debug()
             if (config.screenshot_button.size() <= 1)
             {
                 config.screenshot_button[0] = std::string("None");
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
             else
             {
                 config.screenshot_button.erase(config.screenshot_button.begin() + i);
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
         }
@@ -217,7 +298,7 @@ void draw_debug()
     if (ImGui::Button("Add button##button_screenshot"))
     {
         config.screenshot_button.push_back("None");
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     ImGui::InputInt("Screenshot delay", &config.screenshot_delay, 50, 500);
@@ -233,6 +314,6 @@ void draw_debug()
     {
         prev_screenshot_delay = config.screenshot_delay;
         prev_verbose = config.verbose;
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 }

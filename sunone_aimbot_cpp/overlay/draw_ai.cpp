@@ -8,6 +8,7 @@
 #include "sunone_aimbot_cpp.h"
 #include "include/other_tools.h"
 #include "overlay.h"
+#include "overlay/config_dirty.h"
 #ifdef USE_CUDA
 #include "trt_monitor.h"
 #endif
@@ -18,9 +19,19 @@ float prev_nms_threshold = config.nms_threshold;
 int prev_max_detections = config.max_detections;
 
 static bool wasExporting = false;
+static bool ai_state_initialized = false;
 
 void draw_ai()
 {
+    if (!ai_state_initialized)
+    {
+        prev_backend = config.backend;
+        prev_confidence_threshold = config.confidence_threshold;
+        prev_nms_threshold = config.nms_threshold;
+        prev_max_detections = config.max_detections;
+        ai_state_initialized = true;
+    }
+
 #ifdef USE_CUDA
     if (gIsTrtExporting)
     {
@@ -76,7 +87,7 @@ void draw_ai()
             if (config.ai_model != availableModels[currentModelIndex])
             {
                 config.ai_model = availableModels[currentModelIndex];
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 detector_model_changed.store(true);
             }
         }
@@ -96,7 +107,7 @@ void draw_ai()
         if (config.backend != newBackend)
         {
             config.backend = newBackend;
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             detector_model_changed.store(true);
         }
     }
@@ -112,7 +123,7 @@ void draw_ai()
     if (ImGui::Checkbox("Fixed model size", &config.fixed_input_size))
     {
         capture_method_changed.store(true);
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
         detector_model_changed.store(true);
     }
         
@@ -123,13 +134,13 @@ void draw_ai()
         prev_nms_threshold = config.nms_threshold;
         prev_confidence_threshold = config.confidence_threshold;
         prev_max_detections = config.max_detections;
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     if (prev_backend != config.backend)
     {
         prev_backend = config.backend;
         detector_model_changed.store(true);
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 }

@@ -6,6 +6,7 @@
 #include "imgui/imgui.h"
 #include "sunone_aimbot_cpp.h"
 #include "overlay.h"
+#include "overlay/config_dirty.h"
 
 void draw_buttons()
 {
@@ -35,7 +36,7 @@ void draw_buttons()
         if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
         {
             current_key_name = key_names[current_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         ImGui::SameLine();
@@ -45,13 +46,13 @@ void draw_buttons()
             if (config.button_targeting.size() <= 1)
             {
                 config.button_targeting[0] = std::string("None");
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
             else
             {
                 config.button_targeting.erase(config.button_targeting.begin() + i);
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
         }
@@ -62,7 +63,7 @@ void draw_buttons()
     if (ImGui::Button("Add button##targeting"))
     {
         config.button_targeting.push_back("None");
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     ImGui::Separator();
@@ -93,7 +94,7 @@ void draw_buttons()
         if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
         {
             current_key_name = key_names[current_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         ImGui::SameLine();
@@ -103,13 +104,13 @@ void draw_buttons()
             if (config.button_shoot.size() <= 1)
             {
                 config.button_shoot[0] = std::string("None");
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
             else
             {
                 config.button_shoot.erase(config.button_shoot.begin() + i);
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
         }
@@ -120,7 +121,7 @@ void draw_buttons()
     if (ImGui::Button("Add button##shoot"))
     {
         config.button_shoot.push_back("None");
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     ImGui::Separator();
@@ -151,7 +152,7 @@ void draw_buttons()
         if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
         {
             current_key_name = key_names[current_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         ImGui::SameLine();
@@ -161,13 +162,13 @@ void draw_buttons()
             if (config.button_zoom.size() <= 1)
             {
                 config.button_zoom[0] = std::string("None");
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
             else
             {
                 config.button_zoom.erase(config.button_zoom.begin() + i);
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
         }
@@ -178,7 +179,7 @@ void draw_buttons()
     if (ImGui::Button("Add button##zoom"))
     {
         config.button_zoom.push_back("None");
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     ImGui::Separator();
@@ -209,7 +210,7 @@ void draw_buttons()
         if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
         {
             current_key_name = key_names[current_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         ImGui::SameLine();
@@ -219,13 +220,13 @@ void draw_buttons()
             if (config.button_exit.size() <= 1)
             {
                 config.button_exit[0] = std::string("None");
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
             else
             {
                 config.button_exit.erase(config.button_exit.begin() + i);
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
         }
@@ -236,7 +237,7 @@ void draw_buttons()
     if (ImGui::Button("Add button##exit"))
     {
         config.button_exit.push_back("None");
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     ImGui::Separator();
@@ -267,7 +268,7 @@ void draw_buttons()
         if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
         {
             current_key_name = key_names[current_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         ImGui::SameLine();
@@ -277,13 +278,13 @@ void draw_buttons()
             if (config.button_pause.size() <= 1)
             {
                 config.button_pause[0] = std::string("None");
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
             else
             {
                 config.button_pause.erase(config.button_pause.begin() + i);
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
         }
@@ -293,7 +294,7 @@ void draw_buttons()
     if (ImGui::Button("Add button##pause"))
     {
         config.button_pause.push_back("None");
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     ImGui::Separator();
@@ -324,7 +325,7 @@ void draw_buttons()
         if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
         {
             current_key_name = key_names[current_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         ImGui::SameLine();
@@ -334,13 +335,13 @@ void draw_buttons()
             if (config.button_reload_config.size() <= 1)
             {
                 config.button_reload_config[0] = std::string("None");
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
             else
             {
                 config.button_reload_config.erase(config.button_reload_config.begin() + i);
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 continue;
             }
         }
@@ -351,7 +352,7 @@ void draw_buttons()
     if (ImGui::Button("Add button##reload_config"))
     {
         config.button_reload_config.push_back("None");
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     ImGui::Separator();
@@ -382,7 +383,7 @@ void draw_buttons()
         if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
         {
             current_key_name = key_names[current_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         ImGui::SameLine();
@@ -390,7 +391,7 @@ void draw_buttons()
         if (ImGui::Button(remove_button_label.c_str()))
         {
             config.button_open_overlay.erase(config.button_open_overlay.begin() + i);
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             continue;
         }
 
@@ -400,13 +401,13 @@ void draw_buttons()
     if (ImGui::Button("Add button##overlay"))
     {
         config.button_open_overlay.push_back("None");
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     ImGui::Separator();
 
     if (ImGui::Checkbox("Enable arrows keys options", &config.enable_arrows_settings))
     {
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 }

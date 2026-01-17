@@ -40,6 +40,7 @@
     <ClCompile Include="mouse\kmboxNetConnection.cpp" />
     <ClCompile Include="overlay\Game_overlay.cpp" />
     <ClCompile Include="overlay\draw_game_overlay.cpp" />
+    <ClCompile Include="overlay\config_dirty.cpp" />
     <ClCompile Include="mem\gpu_resource_manager.cpp" />
     <ClCompile Include="mem\cpu_affinity_manager.cpp" />
     <ClCompile Include="capture\gstreamer_capture.cpp" />
@@ -47,6 +48,7 @@
     <ClCompile Include="modules\makcu\src\serialport.cpp" />
     <ClCompile Include="mouse\Makcu.cpp" />
     <ClCompile Include="depth\depth_anything_trt.cpp" />
+    <ClCompile Include="depth\depth_mask.cpp" />
     <ClCompile Include="depth\depth_utils.cpp" />
     <ClCompile Include="overlay\draw_depth.cpp" />
   </ItemGroup>
@@ -95,6 +97,7 @@
     <ClInclude Include="mouse\kmbox_net\picture.h" />
     <ClInclude Include="mouse\kmboxNetConnection.h" />
     <ClInclude Include="overlay\Game_overlay.h" />
+    <ClInclude Include="overlay\config_dirty.h" />
     <ClInclude Include="mem\gpu_resource_manager.h" />
     <ClInclude Include="mem\cpu_affinity_manager.h" />
     <ClInclude Include="detector\cuda_preprocess.h" />
@@ -104,6 +107,7 @@
     <ClInclude Include="modules\makcu\include\serialport.h" />
     <ClInclude Include="mouse\Makcu.h" />
     <ClInclude Include="depth\depth_anything_trt.h" />
+    <ClInclude Include="depth\depth_mask.h" />
     <ClInclude Include="depth\depth_utils.h" />
   </ItemGroup>
   <ItemGroup>

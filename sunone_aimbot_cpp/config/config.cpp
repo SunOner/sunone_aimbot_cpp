@@ -42,9 +42,14 @@ std::string Config::joinStrings(const std::vector<std::string>& vec, const std::
 
 bool Config::loadConfig(const std::string& filename)
 {
-    if (!std::filesystem::exists(filename))
+    std::string target = filename.empty() ? "config.ini" : filename;
+    std::error_code absEc;
+    std::filesystem::path absPath = std::filesystem::absolute(target, absEc);
+    config_path = absEc ? target : absPath.string();
+
+    if (!std::filesystem::exists(target))
     {
-        std::cerr << "[Config] Config file does not exist, creating default config: " << filename << std::endl;
+        std::cerr << "[Config] Config file does not exist, creating default config: " << target << std::endl;
 
         // Capture
         capture_method = "duplication_api";
@@ -168,6 +173,12 @@ bool Config::loadConfig(const std::string& filename)
         depth_model_path = "depth_anything_v2.engine";
         depth_fps = 100;
         depth_colormap = 18;
+        depth_mask_enabled = false;
+        depth_mask_fps = 5;
+        depth_mask_near_percent = 20;
+        depth_mask_alpha = 90;
+        depth_mask_invert = false;
+        depth_debug_overlay_enabled = false;
 
         // Game overlay
         game_overlay_enabled = false;
@@ -220,16 +231,16 @@ bool Config::loadConfig(const std::string& filename)
         game_profiles[uni.name] = uni;
         active_game = uni.name;
 
-        saveConfig(filename);
+        saveConfig(target);
         return true;
     }
 
     CSimpleIniA ini;
     ini.SetUnicode();
-    SI_Error rc = ini.LoadFile(filename.c_str());
+    SI_Error rc = ini.LoadFile(target.c_str());
     if (rc < 0)
     {
-        std::cerr << "[Config] Error parsing INI file: " << filename << std::endl;
+        std::cerr << "[Config] Error parsing INI file: " << target << std::endl;
         return false;
     }
 
@@ -431,6 +442,17 @@ bool Config::loadConfig(const std::string& filename)
     if (depth_fps < 0) depth_fps = 0;
     depth_colormap = get_long("depth_colormap", 18);
     if (depth_colormap < 0 || depth_colormap > 21) depth_colormap = 18;
+    depth_mask_enabled = get_bool("depth_mask_enabled", false);
+    depth_mask_fps = get_long("depth_mask_fps", 5);
+    if (depth_mask_fps < 0) depth_mask_fps = 0;
+    depth_mask_near_percent = get_long("depth_mask_near_percent", 20);
+    if (depth_mask_near_percent < 1) depth_mask_near_percent = 1;
+    if (depth_mask_near_percent > 100) depth_mask_near_percent = 100;
+    depth_mask_alpha = get_long("depth_mask_alpha", 90);
+    if (depth_mask_alpha < 0) depth_mask_alpha = 0;
+    if (depth_mask_alpha > 255) depth_mask_alpha = 255;
+    depth_mask_invert = get_bool("depth_mask_invert", false);
+    depth_debug_overlay_enabled = get_bool("depth_debug_overlay_enabled", false);
 
     game_overlay_enabled = get_bool("game_overlay_enabled", false);
     game_overlay_max_fps = get_long("game_overlay_max_fps", 0);
@@ -475,10 +497,16 @@ bool Config::loadConfig(const std::string& filename)
 
 bool Config::saveConfig(const std::string& filename)
 {
-    std::ofstream file(filename);
+    std::string target = filename.empty() ? "config.ini" : filename;
+    if (target == "config.ini" && !config_path.empty())
+    {
+        target = config_path;
+    }
+
+    std::ofstream file(target);
     if (!file.is_open())
     {
-        std::cerr << "Error opening config for writing: " << filename << std::endl;
+        std::cerr << "Error opening config for writing: " << target << std::endl;
         return false;
     }
 
@@ -621,7 +649,13 @@ bool Config::saveConfig(const std::string& filename)
     file << "# Depth\n"
         << "depth_model_path = " << depth_model_path << "\n"
         << "depth_fps = " << depth_fps << "\n"
-        << "depth_colormap = " << depth_colormap << "\n\n";
+        << "depth_colormap = " << depth_colormap << "\n"
+        << "depth_mask_enabled = " << (depth_mask_enabled ? "true" : "false") << "\n"
+        << "depth_mask_fps = " << depth_mask_fps << "\n"
+        << "depth_mask_near_percent = " << depth_mask_near_percent << "\n"
+        << "depth_mask_alpha = " << depth_mask_alpha << "\n"
+        << "depth_mask_invert = " << (depth_mask_invert ? "true" : "false") << "\n"
+        << "depth_debug_overlay_enabled = " << (depth_debug_overlay_enabled ? "true" : "false") << "\n\n";
 
     file << "# Game Overlay\n"
         << "game_overlay_enabled = " << (game_overlay_enabled ? "true" : "false") << "\n"

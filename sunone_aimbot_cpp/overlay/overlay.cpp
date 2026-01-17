@@ -25,6 +25,7 @@
 
 #include "overlay.h"
 #include "overlay/draw_settings.h"
+#include "overlay/config_dirty.h"
 #include "config.h"
 #include "keycodes.h"
 #include "sunone_aimbot_cpp.h"
@@ -634,6 +635,8 @@ void OverlayThread()
 
                 ImGui::EndTabBar();
             }
+
+            OverlayConfig_TrySave();
         }
 
         ImGui::End();

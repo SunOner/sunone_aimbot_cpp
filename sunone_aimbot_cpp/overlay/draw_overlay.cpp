@@ -6,6 +6,7 @@
 #include "imgui/imgui.h"
 #include "sunone_aimbot_cpp.h"
 #include "overlay.h"
+#include "overlay/config_dirty.h"
 
 void draw_overlay()
 {
@@ -18,7 +19,7 @@ void draw_overlay()
         Overlay_SetOpacity(config.overlay_opacity);
 
         if (config.overlay_opacity != prev_opacity)
-            config.saveConfig("config.ini");
+            OverlayConfig_MarkDirty();
     }
 
     static float ui_scale = config.overlay_ui_scale;
@@ -28,7 +29,7 @@ void draw_overlay()
         ImGui::GetIO().FontGlobalScale = ui_scale;
 
         config.overlay_ui_scale = ui_scale;
-        config.saveConfig("config.ini");
+        OverlayConfig_MarkDirty();
 
         extern const int BASE_OVERLAY_WIDTH;
         extern const int BASE_OVERLAY_HEIGHT;

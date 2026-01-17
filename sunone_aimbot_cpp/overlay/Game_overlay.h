@@ -38,6 +38,7 @@ public:
     int  LoadImageFromFile(const std::wstring& path);
     void UnloadImage(int imageId);
     void DrawImage(int imageId, float x, float y, float w, float h, float opacity = 1.0f);
+    int  UpdateImageFromBGRA(const void* data, int width, int height, int strideBytes, int imageId = 0);
 
     void UseVirtualScreen();
     void SetWindowBounds(int x, int y, int w, int h);

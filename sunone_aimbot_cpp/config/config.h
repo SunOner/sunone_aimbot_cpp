@@ -122,6 +122,12 @@ public:
     std::string depth_model_path;
     int depth_fps;
     int depth_colormap;
+    bool depth_mask_enabled;
+    int depth_mask_fps;
+    int depth_mask_near_percent;
+    int depth_mask_alpha;
+    bool depth_mask_invert;
+    bool depth_debug_overlay_enabled;
 
     // Game Overlay
     bool game_overlay_enabled;
@@ -197,6 +203,7 @@ public:
     std::string joinStrings(const std::vector<std::string>& vec, const std::string& delimiter = ",");
 private:
     std::vector<std::string> splitString(const std::string& str, char delimiter = ',');
+    std::string config_path;
 };
 
 #endif // CONFIG_H

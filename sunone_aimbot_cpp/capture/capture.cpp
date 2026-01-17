@@ -14,6 +14,8 @@
 #include "capture.h"
 #ifdef USE_CUDA
 #include "trt_detector.h"
+#include "depth/depth_mask.h"
+#include "tensorrt/nvinf.h"
 #endif
 #include "sunone_aimbot_cpp.h"
 #include "keycodes.h"
@@ -212,6 +214,44 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             if (config.circle_mask)
                 screenshotCpu = apply_circle_mask(screenshotCpu);
 
+            cv::Mat detectionFrame = screenshotCpu;
+#ifdef USE_CUDA
+            if (config.depth_mask_enabled)
+            {
+                if (config.verbose)
+                {
+                    static auto lastMaskLog = std::chrono::steady_clock::time_point::min();
+                    auto now = std::chrono::steady_clock::now();
+                    if (now - lastMaskLog > std::chrono::seconds(2))
+                    {
+                        std::cout << "[DepthMask] update frame " << screenshotCpu.cols << "x" << screenshotCpu.rows
+                                  << " model=" << config.depth_model_path
+                                  << " fps=" << config.depth_mask_fps
+                                  << " near=" << config.depth_mask_near_percent
+                                  << " invert=" << (config.depth_mask_invert ? "true" : "false")
+                                  << std::endl;
+                        lastMaskLog = now;
+                    }
+                }
+
+                depth_anything::DepthMaskOptions maskOptions;
+                maskOptions.enabled = config.depth_mask_enabled;
+                maskOptions.fps = config.depth_mask_fps;
+                maskOptions.near_percent = config.depth_mask_near_percent;
+                maskOptions.invert = config.depth_mask_invert;
+
+                auto& depthMask = depth_anything::GetDepthMaskGenerator();
+                depthMask.update(screenshotCpu, maskOptions, config.depth_model_path, gLogger);
+
+                cv::Mat mask = depthMask.getMask();
+                if (!mask.empty() && mask.size() == screenshotCpu.size())
+                {
+                    detectionFrame = screenshotCpu.clone();
+                    detectionFrame.setTo(cv::Scalar(0, 0, 0), mask);
+                }
+            }
+#endif
+
             {
                 std::lock_guard<std::mutex> lock(frameMutex);
                 latestFrame = screenshotCpu.clone();
@@ -223,12 +263,12 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
             if (config.backend == "DML" && dml_detector)
             {
-                dml_detector->processFrame(screenshotCpu);
+                dml_detector->processFrame(detectionFrame);
             }
 #ifdef USE_CUDA
             else if (config.backend == "TRT")
             {
-                trt_detector.processFrame(screenshotCpu);
+                trt_detector.processFrame(detectionFrame);
             }
 #endif
             if (!config.screenshot_button.empty() && config.screenshot_button[0] != "None")

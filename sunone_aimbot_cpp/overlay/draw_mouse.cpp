@@ -9,6 +9,7 @@
 #include <imgui_internal.h>
 
 #include "sunone_aimbot_cpp.h"
+#include "overlay/config_dirty.h"
 #include "include/other_tools.h"
 #include "kmbox_net/picture.h"
 
@@ -55,14 +56,14 @@ void draw_mouse()
         
         if (ImGui::SliderInt("Future Positions", &config.prediction_futurePositions, 1, 40))
         {
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
 
         ImGui::SameLine();
         if (ImGui::Checkbox("Draw##draw_future_positions_button", &config.draw_futurePositions))
         {
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
     }
 
@@ -94,7 +95,7 @@ void draw_mouse()
     if (ImGui::Combo("Active Game Profile", &selected_index, profile_items.data(), static_cast<int>(profile_items.size())))
     {
         config.active_game = profile_names[selected_index];
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
         globalMouseThread->updateConfig(
             config.detection_resolution,
             config.fovX,
@@ -148,7 +149,7 @@ void draw_mouse()
 
             modifiable.baseFOV = static_cast<double>(baseFOV_f);
 
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
     }
@@ -172,7 +173,7 @@ void draw_mouse()
             gp.baseFOV = 90.0;
             config.game_profiles[name] = gp;
             config.active_game = name;
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
             new_profile_name[0] = '\0'; // clear
         }
@@ -189,7 +190,7 @@ void draw_mouse()
             else
                 config.active_game = "UNIFIED";
 
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
         ImGui::PopStyleColor();
@@ -220,7 +221,7 @@ void draw_mouse()
 
     if (ImGui::Checkbox("Enable WindMouse", &config.wind_mouse_enabled))
     {
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
         input_method_changed.store(true);
     }
 
@@ -228,22 +229,22 @@ void draw_mouse()
     {
         if (ImGui::SliderFloat("Gravity force", &config.wind_G, 4.00f, 40.00f, "%.2f"))
         {
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         if (ImGui::SliderFloat("Wind fluctuation", &config.wind_W, 1.00f, 40.00f, "%.2f"))
         {
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         if (ImGui::SliderFloat("Max step (velocity clip)", &config.wind_M, 1.00f, 40.00f, "%.2f"))
         {
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         if (ImGui::SliderFloat("Distance where behaviour changes", &config.wind_D, 1.00f, 40.00f, "%.2f"))
         {
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         if (ImGui::Button("Reset Wind Mouse to default settings"))
@@ -252,7 +253,7 @@ void draw_mouse()
             config.wind_W = 15.0f;
             config.wind_M = 10.0f;
             config.wind_D = 8.0f;
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
     }
 
@@ -284,7 +285,7 @@ void draw_mouse()
         if (new_input_method != config.input_method)
         {
             config.input_method = new_input_method;
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
     }
@@ -329,7 +330,7 @@ void draw_mouse()
         if (ImGui::Combo("Arduino Port", &port_index, port_items.data(), static_cast<int>(port_items.size())))
         {
             config.arduino_port = port_list[port_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
 
@@ -360,18 +361,18 @@ void draw_mouse()
         if (ImGui::Combo("Arduino Baudrate", &baud_rate_index, baud_rate_items.data(), static_cast<int>(baud_rate_items.size())))
         {
             config.arduino_baudrate = baud_rate_list[baud_rate_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
 
         if (ImGui::Checkbox("Arduino 16-bit Mouse", &config.arduino_16_bit_mouse))
         {
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
         if (ImGui::Checkbox("Arduino Enable Keys", &config.arduino_enable_keys))
         {
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
     }
@@ -421,7 +422,7 @@ void draw_mouse()
         if (ImGui::Combo("kmbox Port", &port_index, port_items.data(), (int)port_items.size()))
         {
             config.kmbox_b_port = port_list[port_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
 
@@ -445,7 +446,7 @@ void draw_mouse()
         if (ImGui::Combo("kmbox Baudrate", &baud_index, baud_items.data(), (int)baud_items.size()))
         {
             config.kmbox_b_baudrate = baud_list[baud_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
 
@@ -480,7 +481,7 @@ void draw_mouse()
             config.kmbox_net_ip = ip;
             config.kmbox_net_port = port;
             config.kmbox_net_uuid = uuid;
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
 
@@ -538,7 +539,7 @@ void draw_mouse()
         if (ImGui::Combo("Makcu Port", &port_index, port_items.data(), static_cast<int>(port_items.size())))
         {
             config.makcu_port = port_list[port_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
 
@@ -566,7 +567,7 @@ void draw_mouse()
         if (ImGui::Combo("Makcu Baudrate", &baud_index, baud_items.data(), static_cast<int>(baud_items.size())))
         {
             config.makcu_baudrate = baud_list[baud_index];
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
 
@@ -613,7 +614,7 @@ void draw_mouse()
             config.auto_shoot,
             config.bScope_multiplier);
 
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     if (prev_wind_mouse_enabled != config.wind_mouse_enabled ||
@@ -638,7 +639,7 @@ void draw_mouse()
             config.auto_shoot,
             config.bScope_multiplier);
 
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     if (prev_auto_shoot != config.auto_shoot ||
@@ -657,6 +658,6 @@ void draw_mouse()
             config.auto_shoot,
             config.bScope_multiplier);
 
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 }

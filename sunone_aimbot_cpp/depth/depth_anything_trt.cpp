@@ -177,11 +177,11 @@ namespace depth_anything
         return input_tensor;
     }
 
-    cv::Mat DepthAnythingTrt::predict(const cv::Mat& image)
+    bool DepthAnythingTrt::runInference(const cv::Mat& image, cv::Mat& depth_norm)
     {
         if (!initialized || image.empty())
         {
-            return {};
+            return false;
         }
 
         cv::Mat clone_image;
@@ -192,7 +192,7 @@ namespace depth_anything
         {
             if (!setInputShape(target_size, target_size))
             {
-                return {};
+                return false;
             }
         }
 
@@ -207,14 +207,36 @@ namespace depth_anything
         cudaStreamSynchronize(stream);
 
         cv::Mat depth_mat(input_h, input_w, CV_32FC1, depth_data.data());
-        cv::Mat depth_norm;
         cv::normalize(depth_mat, depth_norm, 0, 255, cv::NORM_MINMAX, CV_8U);
+        return true;
+    }
+
+    cv::Mat DepthAnythingTrt::predict(const cv::Mat& image)
+    {
+        cv::Mat depth_norm;
+        if (!runInference(image, depth_norm))
+        {
+            return {};
+        }
 
         cv::Mat colormap;
         cv::applyColorMap(depth_norm, colormap, colormap_type);
 
         cv::Mat output;
         cv::resize(colormap, output, image.size());
+        return output;
+    }
+
+    cv::Mat DepthAnythingTrt::predictDepth(const cv::Mat& image)
+    {
+        cv::Mat depth_norm;
+        if (!runInference(image, depth_norm))
+        {
+            return {};
+        }
+
+        cv::Mat output;
+        cv::resize(depth_norm, output, image.size(), 0.0, 0.0, cv::INTER_LINEAR);
         return output;
     }
 

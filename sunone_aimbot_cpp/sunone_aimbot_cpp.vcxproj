@@ -22,6 +22,7 @@
     <ClCompile Include="capture\winrt_capture.cpp" />
     <ClCompile Include="config\config.cpp" />
     <ClCompile Include="depth\depth_anything_trt.cpp" />
+    <ClCompile Include="depth\depth_mask.cpp" />
     <ClCompile Include="depth\depth_utils.cpp" />
     <ClCompile Include="detector\detection_buffer.cpp" />
     <ClCompile Include="detector\trt_detector.cpp">
@@ -56,6 +57,7 @@
     <ClCompile Include="overlay\draw_ai.cpp" />
     <ClCompile Include="overlay\draw_buttons.cpp" />
     <ClCompile Include="overlay\draw_capture.cpp" />
+    <ClCompile Include="overlay\config_dirty.cpp" />
     <ClCompile Include="overlay\draw_debug.cpp" />
     <ClCompile Include="overlay\draw_depth.cpp" />
     <ClCompile Include="overlay\draw_game_overlay.cpp" />
@@ -80,6 +82,7 @@
     <ClInclude Include="capture\winrt_capture.h" />
     <ClInclude Include="config\config.h" />
     <ClInclude Include="depth\depth_anything_trt.h" />
+    <ClInclude Include="depth\depth_mask.h" />
     <ClInclude Include="depth\depth_utils.h" />
     <ClInclude Include="detector\cuda_preprocess.h" />
     <ClInclude Include="detector\detection_buffer.h" />
@@ -116,6 +119,7 @@
     <ClInclude Include="mouse\mouse.h" />
     <ClInclude Include="mouse\SerialConnection.h" />
     <ClInclude Include="mouse\AimbotTarget.h" />
+    <ClInclude Include="overlay\config_dirty.h" />
     <ClInclude Include="overlay\draw_settings.h" />
     <ClInclude Include="overlay\Game_overlay.h" />
     <ClInclude Include="overlay\overlay.h" />

@@ -19,6 +19,7 @@ namespace depth_anything
 
         bool initialize(const std::string& modelPath, nvinfer1::ILogger& logger);
         cv::Mat predict(const cv::Mat& image);
+        cv::Mat predictDepth(const cv::Mat& image);
         void setColormap(int type);
         int colormapType() const;
         bool ready() const;
@@ -49,6 +50,7 @@ namespace depth_anything
         std::vector<float> preprocess(const cv::Mat& image);
         int selectInputSize(const cv::Mat& image) const;
         bool setInputShape(int w, int h);
+        bool runInference(const cv::Mat& image, cv::Mat& depth_norm);
         bool loadEngine(const std::string& modelPath, nvinfer1::ILogger& logger);
         bool buildEngine(const std::string& onnxPath, nvinfer1::ILogger& logger);
         bool saveEngine(const std::string& onnxPath);

@@ -16,6 +16,7 @@
 #include "virtual_camera.h"
 #include "draw_settings.h"
 #include "overlay.h"
+#include "overlay/config_dirty.h"
 
 bool disable_winrt_futures = checkwin1903();
 int monitors = get_active_monitors();
@@ -56,13 +57,13 @@ void draw_capture_settings()
             config.predictionInterval,
             config.auto_shoot,
             config.bScope_multiplier);
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     if (ImGui::SliderInt("Capture FPS", &config.capture_fps, 0, 240))
     {
         capture_fps_changed.store(true);
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     if (config.capture_fps == 0)
@@ -79,7 +80,7 @@ void draw_capture_settings()
     if (ImGui::Checkbox("Circle mask", &config.circle_mask))
     {
         capture_method_changed.store(true);
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
     }
 
     std::vector<std::string> captureMethodOptions = { "duplication_api", "winrt", "virtual_camera", "gstreamer" };
@@ -102,7 +103,7 @@ void draw_capture_settings()
 
     if (ImGui::Combo("Capture method", &currentcaptureMethodIndex, captureMethodItems.data(), static_cast<int>(captureMethodItems.size()))) {
         config.capture_method = captureMethodOptions[currentcaptureMethodIndex];
-        config.saveConfig();
+        OverlayConfig_MarkDirty();
         capture_method_changed.store(true);
     }
 
@@ -120,7 +121,7 @@ void draw_capture_settings()
                 }, (void*)&targetOptions, (int)targetOptions.size()))
             {
                 config.capture_target = targetOptions[currentTargetIndex];
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 capture_method_changed.store(true);
             }
         }
@@ -156,7 +157,7 @@ void draw_capture_settings()
             if (ImGui::Button("Apply Window Target"))
             {
                 config.capture_window_title = titleBuf;
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 capture_method_changed.store(true);
             }
         }
@@ -170,13 +171,13 @@ void draw_capture_settings()
         if (ImGui::Checkbox("Capture Borders", &config.capture_borders))
         {
             capture_borders_changed.store(true);
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         if (ImGui::Checkbox("Capture Cursor", &config.capture_cursor))
         {
             capture_cursor_changed.store(true);
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
         }
 
         if (disable_winrt_futures)
@@ -209,7 +210,7 @@ void draw_capture_settings()
 
         if (ImGui::Combo("Capture monitor", &config.monitor_idx, monitorItems.data(), static_cast<int>(monitorItems.size())))
         {
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             capture_method_changed.store(true);
         }
     }
@@ -264,7 +265,7 @@ void draw_capture_settings()
             if (ImGui::Combo("##virtual_camera_combo", &currentIndex, items.data(), static_cast<int>(items.size())))
             {
                 config.virtual_camera_name = virtual_cameras[filtered_indices[currentIndex]];
-                config.saveConfig();
+                OverlayConfig_MarkDirty();
                 capture_method_changed.store(true);
             }
         }
@@ -283,13 +284,13 @@ void draw_capture_settings()
 
         if (ImGui::SliderInt("Virtual camera width", &config.virtual_camera_width, 128, 3840))
         {
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             capture_method_changed.store(true);
         }
 
         if (ImGui::SliderInt("Virtual camera heigth", &config.virtual_camera_heigth, 128, 2160))
         {
-            config.saveConfig();
+            OverlayConfig_MarkDirty();
             capture_method_changed.store(true);
         }
     }
@@ -312,7 +313,7 @@ void draw_capture_settings()
         if (ImGui::Button("Apply GStreamer Pipeline"))
         {
             config.gstreamer_pipeline = gstreamer_pipeline_buf;
-            config.saveConfig();
+        OverlayConfig_MarkDirty();
             capture_method_changed.store(true);
         }
     }
