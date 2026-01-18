@@ -290,7 +290,6 @@ void TrtDetector::initialize(const std::string& modelFile)
     if (isStatic != config.fixed_input_size)
     {
         config.fixed_input_size = isStatic;
-        config.saveConfig();
         detector_model_changed.store(true);
         std::cout << "[Detector] Automatically set fixed_input_size = " << (isStatic ? "true" : "false") << std::endl;
     }

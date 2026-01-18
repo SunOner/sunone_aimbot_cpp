@@ -408,8 +408,6 @@ bool Config::loadConfig(const std::string& filename)
     export_enable_fp8 = get_bool("export_enable_fp8", true);
     export_enable_fp16 = get_bool("export_enable_fp16", true);
 #endif
-    fixed_input_size = get_bool("fixed_input_size", false);
-
     // CUDA
 #ifdef USE_CUDA
     use_cuda_graph = get_bool("use_cuda_graph", false);
@@ -613,7 +611,7 @@ bool Config::saveConfig(const std::string& filename)
         << "export_enable_fp8 = " << (export_enable_fp8 ? "true" : "false") << "\n"
         << "export_enable_fp16 = " << (export_enable_fp16 ? "true" : "false") << "\n"
 #endif
-        << "fixed_input_size = " << (fixed_input_size ? "true" : "false") << "\n";
+        ;
 
     // CUDA
 #ifdef USE_CUDA

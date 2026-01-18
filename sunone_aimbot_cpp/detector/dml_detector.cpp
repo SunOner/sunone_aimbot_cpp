@@ -84,7 +84,6 @@ void DirectMLDetector::initializeModel(const std::string& model_path)
     if (isStatic != config.fixed_input_size)
     {
         config.fixed_input_size = isStatic;
-        config.saveConfig();
         detector_model_changed.store(true);
         std::cout << "[DML] Automatically set fixed_input_size = " << (isStatic ? "true" : "false") << std::endl;
     }

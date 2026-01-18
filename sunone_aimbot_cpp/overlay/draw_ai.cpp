@@ -120,12 +120,7 @@ void draw_ai()
     ImGui::SliderFloat("NMS Threshold", &config.nms_threshold, 0.00f, 1.00f, "%.2f");
     ImGui::SliderInt("Max Detections", &config.max_detections, 1, 100);
 
-    if (ImGui::Checkbox("Fixed model size", &config.fixed_input_size))
-    {
-        capture_method_changed.store(true);
-        OverlayConfig_MarkDirty();
-        detector_model_changed.store(true);
-    }
+    ImGui::Text("Fixed model size: %s", config.fixed_input_size ? "Enabled" : "Disabled");
         
     if (prev_confidence_threshold != config.confidence_threshold ||
         prev_nms_threshold != config.nms_threshold ||
