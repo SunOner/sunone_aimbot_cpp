@@ -351,24 +351,58 @@ HMONITOR GetMonitorHandleByIndex(int monitorIndex)
 std::vector<std::string> getAvailableModels()
 {
     std::vector<std::string> availableModels;
-    std::vector<std::string> engineFiles = getEngineFiles();
-    std::vector<std::string> onnxFiles = getOnnxFiles();
 
-    std::set<std::string> engineModels;
-    for (const auto& file : engineFiles)
+    std::vector<std::string> engineFiles;
+    std::vector<std::string> onnxFiles;
+
+    for (const auto& entry : std::filesystem::directory_iterator("models/"))
     {
-        engineModels.insert(std::filesystem::path(file).stem().string());
+        if (!entry.is_regular_file())
+        {
+            continue;
+        }
+
+        const auto ext = entry.path().extension();
+        if (ext == ".engine")
+        {
+            engineFiles.push_back(entry.path().filename().string());
+        }
+        else if (ext == ".onnx")
+        {
+            onnxFiles.push_back(entry.path().filename().string());
+        }
     }
 
-    for (const auto& file : engineFiles)
+    if (config.backend == "TRT")
     {
-        availableModels.push_back(file);
-    }
+        std::set<std::string> engineModels;
+        for (const auto& file : engineFiles)
+        {
+            engineModels.insert(std::filesystem::path(file).stem().string());
+        }
 
-    for (const auto& file : onnxFiles)
+        for (const auto& file : engineFiles)
+        {
+            availableModels.push_back(file);
+        }
+
+        for (const auto& file : onnxFiles)
+        {
+            std::string modelName = std::filesystem::path(file).stem().string();
+            if (engineModels.find(modelName) == engineModels.end())
+            {
+                availableModels.push_back(file);
+            }
+        }
+    }
+    else
     {
-        std::string modelName = std::filesystem::path(file).stem().string();
-        if (engineModels.find(modelName) == engineModels.end())
+        for (const auto& file : engineFiles)
+        {
+            availableModels.push_back(file);
+        }
+
+        for (const auto& file : onnxFiles)
         {
             availableModels.push_back(file);
         }
