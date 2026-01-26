@@ -243,85 +243,7 @@ sunone_aimbot_cpp/
 		(make sure nothing is reset)
 	* Click **Generate**
 
-5. **Enable GStreamer Options (Optional)**
-
-	* If you want to use **GStreamer**, install both **Runtime** and **Development** packages from [here](https://gstreamer.freedesktop.org/download/#windows)
-
-	* Choose:
-
-		* **MSVC 64-bit (VS 2019, Release CRT)**
-		* **1.26.10 runtime installer**
-		* **1.26.10 development installer**
-
-	* Then in **CMake GUI**:
-
-		* Set:
-		* `WITH_GSTREAMER` = **ON**
-
-	* If `GSTREAMER_DIR` is NOT visible in CMake GUI
-
-		* Sometimes OpenCV CMake does not show it automatically. In that case you must add it manually:
-
-		* Click **Add Entry**
-		
-		* **Name:** `GSTREAMER_DIR`
-		* **Type:** `PATH`
-		* **Value:** `C:/Program Files/gstreamer/1.0/msvc_x86_64`
-
-	* Then click **Configure** again (this usually auto-fills the rest).
-	* If it still doesn’t, fill the variables manually like below.
-
-	* Verify / Fill these GStreamer paths (import libs + includes)
-
-	* Assuming:
-		`GSTREAMER_DIR = C:/Program Files/gstreamer/1.0/msvc_x86_64`
-
-	* Set:
-
-		* `GSTREAMER_app_LIBRARY` =
-		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstapp-1.0.lib`
-		* `GSTREAMER_audio_LIBRARY` =
-		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstaudio-1.0.lib`
-		* `GSTREAMER_base_LIBRARY` =
-		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstbase-1.0.lib`
-		* `GSTREAMER_gstreamer_LIBRARY` =
-		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstreamer-1.0.lib`
-		* `GSTREAMER_pbutils_LIBRARY` =
-		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstpbutils-1.0.lib`
-		* `GSTREAMER_riff_LIBRARY` =
-		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstriff-1.0.lib`
-		* `GSTREAMER_video_LIBRARY` =
-		`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gstvideo-1.0.lib`
-
-	* And GLib deps:
-
-		* `GSTREAMER_glib_LIBRARY` =
-			`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/glib-2.0.lib`
-		* `GSTREAMER_gobject_LIBRARY` =
-			`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/gobject-2.0.lib`
-
-	* Include dirs:
-
-		* `GSTREAMER_gst_INCLUDE_DIR` =
-			`C:/Program Files/gstreamer/1.0/msvc_x86_64/include/gstreamer-1.0`
-		* `GSTREAMER_glib_INCLUDE_DIR` =
-			`C:/Program Files/gstreamer/1.0/msvc_x86_64/include/glib-2.0`
-		* `GSTREAMER_glibconfig_INCLUDE_DIR` =
-			`C:/Program Files/gstreamer/1.0/msvc_x86_64/lib/glib-2.0/include`
-
-	* After that:
-
-		* Click **Configure** again (make sure nothing is reset)
-		* Click **Generate**
-
----
-
-### Runtime note (important)
-Even if OpenCV links successfully, GStreamer must be available at runtime:
-* Add to **PATH**:
-  * `C:\Program Files\gstreamer\1.0\msvc_x86_64\bin`
-
-6. **Build in Visual Studio**
+5. **Build in Visual Studio**
 
    * Open `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/OpenCV.sln`
      or click "Open Project" in CMake
@@ -329,7 +251,7 @@ Even if OpenCV links successfully, GStreamer must be available at runtime:
    * Build `ALL_BUILD` target (can take up to 2 hours)
    * Then build `INSTALL` target
 
-7. **Copy Resulting DLLs**
+6. **Copy Resulting DLLs**
 
    * DLLs:
      `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc17/bin/`
@@ -388,6 +310,28 @@ Even if OpenCV links successfully, GStreamer must be available at runtime:
 
 ---
 
+## UDP Capture (Network)
+
+This mode receives an MJPEG byte stream over UDP and decodes JPEG frames on the receiver PC.
+
+**Receiver (this app)**
+1. Open the overlay and set `capture_method = udp_capture`.
+2. Set `udp_ip` to the sender PC IP (filter) and `udp_port` to the listening port (default `1234`).
+
+**Sender (other PC)**
+Send MJPEG over UDP to the receiver. Example using FFmpeg on Windows:
+
+```bash
+ffmpeg -f gdigrab -framerate 60 -i desktop -vf scale=320:320 -vcodec mjpeg -f mjpeg udp://RECEIVER_IP:1234
+```
+
+Notes:
+* Use the receiver IP in the command above.
+* It is best to match the stream size to your detection resolution (160/320/640).
+* Make sure the UDP port is allowed by your firewall on the receiver PC.
+
+---
+
 ## 📋 Configuration
 
 * See all configuration options and documentation here:
@@ -404,7 +348,6 @@ Even if OpenCV links successfully, GStreamer must be available at runtime:
 * [GLFW](https://www.glfw.org/)
 * [WindMouse](https://ben.land/post/2021/04/25/windmouse-human-mouse-movement/)
 * [KMBOX](https://www.kmbox.top/)
-* [GStreamer](https://gstreamer.freedesktop.org/)
 * [MAKCU](https://makcu.com)
 * [depth-anything-tensorrt](https://github.com/spacewalk01/depth-anything-tensorrt)
 * [Python AI Version](https://github.com/SunOner/sunone_aimbot)

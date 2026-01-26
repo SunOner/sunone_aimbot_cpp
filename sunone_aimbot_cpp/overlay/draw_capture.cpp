@@ -23,7 +23,9 @@ int monitors = get_active_monitors();
 
 static std::vector<std::string> virtual_cameras;
 static char virtual_camera_filter_buf[128] = "";
-static char gstreamer_pipeline_buf[1024] = "";
+static char udp_ip_buf[64] = "";
+static int udp_port_buf = 1234;
+static bool udp_settings_init = false;
 
 void ensureVirtualCamerasLoaded()
 {
@@ -83,7 +85,7 @@ void draw_capture_settings()
         OverlayConfig_MarkDirty();
     }
 
-    std::vector<std::string> captureMethodOptions = { "duplication_api", "winrt", "virtual_camera", "gstreamer" };
+    std::vector<std::string> captureMethodOptions = { "duplication_api", "winrt", "virtual_camera", "udp_capture" };
     std::vector<const char*> captureMethodItems;
 
     for (const auto& option : captureMethodOptions)
@@ -295,25 +297,27 @@ void draw_capture_settings()
         }
     }
 
-    if (config.capture_method == "gstreamer")
+    if (config.capture_method == "udp_capture")
     {
-        static bool initPipeline = false;
-        if (!initPipeline)
+        if (!udp_settings_init)
         {
-            memset(gstreamer_pipeline_buf, 0, sizeof(gstreamer_pipeline_buf));
-            std::string pipeline = config.gstreamer_pipeline;
-            if (pipeline.size() >= sizeof(gstreamer_pipeline_buf))
-                pipeline = pipeline.substr(0, sizeof(gstreamer_pipeline_buf) - 1);
-            memcpy(gstreamer_pipeline_buf, pipeline.c_str(), pipeline.size());
-            initPipeline = true;
+            memset(udp_ip_buf, 0, sizeof(udp_ip_buf));
+            std::string ip = config.udp_ip;
+            if (ip.size() >= sizeof(udp_ip_buf))
+                ip = ip.substr(0, sizeof(udp_ip_buf) - 1);
+            memcpy(udp_ip_buf, ip.c_str(), ip.size());
+            udp_port_buf = config.udp_port;
+            udp_settings_init = true;
         }
 
-        ImGui::TextWrapped("GStreamer pipeline (appsink required).");
-        ImGui::InputText("##gstreamer_pipeline", gstreamer_pipeline_buf, IM_ARRAYSIZE(gstreamer_pipeline_buf));
-        if (ImGui::Button("Apply GStreamer Pipeline"))
+        ImGui::InputText("UDP IP", udp_ip_buf, IM_ARRAYSIZE(udp_ip_buf));
+        ImGui::InputInt("UDP Port", &udp_port_buf);
+        if (ImGui::Button("Apply UDP Settings"))
         {
-            config.gstreamer_pipeline = gstreamer_pipeline_buf;
-        OverlayConfig_MarkDirty();
+            udp_port_buf = std::clamp(udp_port_buf, 1, 65535);
+            config.udp_ip = udp_ip_buf;
+            config.udp_port = udp_port_buf;
+            OverlayConfig_MarkDirty();
             capture_method_changed.store(true);
         }
     }

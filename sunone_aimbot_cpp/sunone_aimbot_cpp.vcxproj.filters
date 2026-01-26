@@ -43,7 +43,7 @@
     <ClCompile Include="overlay\config_dirty.cpp" />
     <ClCompile Include="mem\gpu_resource_manager.cpp" />
     <ClCompile Include="mem\cpu_affinity_manager.cpp" />
-    <ClCompile Include="capture\gstreamer_capture.cpp" />
+    <ClCompile Include="capture\udp_capture.cpp" />
     <ClCompile Include="modules\makcu\src\makcu.cpp" />
     <ClCompile Include="modules\makcu\src\serialport.cpp" />
     <ClCompile Include="mouse\Makcu.cpp" />
@@ -102,7 +102,7 @@
     <ClInclude Include="mem\cpu_affinity_manager.h" />
     <ClInclude Include="detector\cuda_preprocess.h" />
     <ClInclude Include="overlay\draw_settings.h" />
-    <ClInclude Include="capture\gstreamer_capture.h" />
+    <ClInclude Include="capture\udp_capture.h" />
     <ClInclude Include="modules\makcu\include\makcu.h" />
     <ClInclude Include="modules\makcu\include\serialport.h" />
     <ClInclude Include="mouse\Makcu.h" />

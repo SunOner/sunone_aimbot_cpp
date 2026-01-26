@@ -24,7 +24,7 @@
 #include "duplication_api_capture.h"
 #include "winrt_capture.h"
 #include "virtual_camera.h"
-#include "gstreamer_capture.h"
+#include "udp_capture.h"
 #include "capture_utils.h"
 
 #pragma comment(lib, "d3d11.lib")
@@ -88,11 +88,11 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             if (config.verbose)
                 std::cout << "[Capture] Using Virtual Camera" << std::endl;
         }
-        else if (config.capture_method == "gstreamer")
+        else if (config.capture_method == "udp_capture")
         {
-            capturer = new GStreamerCapture(config.gstreamer_pipeline, CAPTURE_WIDTH, CAPTURE_HEIGHT);
+            capturer = new UDPCapture(CAPTURE_WIDTH, CAPTURE_HEIGHT, config.udp_ip, config.udp_port);
             if (config.verbose)
-                std::cout << "[Capture] Using GStreamer (network)" << std::endl;
+                std::cout << "[Capture] Using UDP capture" << std::endl;
         }
         else
         {
@@ -173,11 +173,11 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                     if (config.verbose)
                         std::cout << "[Capture] Re-init with Virtual Camera." << std::endl;
                 }
-                else if (config.capture_method == "gstreamer")
+                else if (config.capture_method == "udp_capture")
                 {
-                    capturer = new GStreamerCapture(config.gstreamer_pipeline, newWidth, newHeight);
+                    capturer = new UDPCapture(newWidth, newHeight, config.udp_ip, config.udp_port);
                     if (config.verbose)
-                        std::cout << "[Capture] Re-init with GStreamer (network)." << std::endl;
+                        std::cout << "[Capture] Re-init with UDP capture." << std::endl;
                 }
                 else
                 {

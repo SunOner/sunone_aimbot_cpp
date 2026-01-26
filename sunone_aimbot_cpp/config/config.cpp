@@ -55,6 +55,8 @@ bool Config::loadConfig(const std::string& filename)
         capture_method = "duplication_api";
         capture_target = "monitor";
         capture_window_title = "";
+        udp_ip = "127.0.0.1";
+        udp_port = 1234;
         detection_resolution = 320;
         capture_fps = 60;
         monitor_idx = 0;
@@ -318,7 +320,10 @@ bool Config::loadConfig(const std::string& filename)
     capture_method = get_string("capture_method", "duplication_api");
     capture_target = get_string("capture_target", "monitor");
     capture_window_title = get_string("capture_window_title", "");
-    gstreamer_pipeline = get_string("gstreamer_pipeline", "");
+    udp_ip = get_string("udp_ip", "127.0.0.1");
+    udp_port = get_long("udp_port", 1234);
+    if (udp_port < 1 || udp_port > 65535)
+        udp_port = 1234;
     detection_resolution = get_long("detection_resolution", 320);
     if (detection_resolution != 160 && detection_resolution != 320 && detection_resolution != 640)
         detection_resolution = 320;
@@ -516,7 +521,8 @@ bool Config::saveConfig(const std::string& filename)
         << "capture_method = " << capture_method << "\n"
         << "capture_target = " << capture_target << "\n"
         << "capture_window_title = " << capture_window_title << "\n"
-        << "gstreamer_pipeline = " << gstreamer_pipeline << "\n"
+        << "udp_ip = " << udp_ip << "\n"
+        << "udp_port = " << udp_port << "\n"
         << "detection_resolution = " << detection_resolution << "\n"
         << "capture_fps = " << capture_fps << "\n"
         << "monitor_idx = " << monitor_idx << "\n"

@@ -10,10 +10,11 @@ class Config
 {
 public:
     // Capture
-    std::string capture_method; // "duplication_api", "winrt", "virtual_camera", "gstreamer"
+    std::string capture_method; // "duplication_api", "winrt", "virtual_camera", "udp_capture"
     std::string capture_target;
     std::string capture_window_title;
-    std::string gstreamer_pipeline;
+    std::string udp_ip;
+    int udp_port;
     int detection_resolution;
     int capture_fps;
     int monitor_idx;
