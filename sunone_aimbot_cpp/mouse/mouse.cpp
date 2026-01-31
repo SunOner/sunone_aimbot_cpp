@@ -392,7 +392,7 @@ void MouseThread::pressMouse(const AimbotTarget& target)
     {
         if (kmbox_net)
         {
-            kmbox_net->keyDown(0);
+            kmbox_net->leftDown();
         }
         else if (makcu)
         {
@@ -419,7 +419,7 @@ void MouseThread::pressMouse(const AimbotTarget& target)
     {
         if (kmbox_net)
         {
-            kmbox_net->keyUp(0);
+            kmbox_net->leftUp();
         }
         else if (makcu)
         {
@@ -452,7 +452,7 @@ void MouseThread::releaseMouse()
     {
         if (kmbox_net)
         {
-            kmbox_net->keyUp(0);
+            kmbox_net->leftUp();
         }
         else if (makcu)
         {
