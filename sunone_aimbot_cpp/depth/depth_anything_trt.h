@@ -33,21 +33,32 @@ namespace depth_anything
         int max_input_size;
         bool dynamic_input;
         float mean[3];
-        float std[3];
+        float stddev[3];
         int colormap_type;
 
         std::unique_ptr<nvinfer1::IRuntime> runtime;
         std::unique_ptr<nvinfer1::ICudaEngine> engine;
         std::unique_ptr<nvinfer1::IExecutionContext> context;
 
-        void* buffer[2];
+        std::string input_name;
+        std::string output_name;
+        void* input_buffer;
+        void* output_buffer;
+        size_t input_capacity;
+        size_t output_capacity;
+        int output_w;
+        int output_h;
         std::vector<float> depth_data;
         cudaStream_t stream;
 
         bool initialized;
         std::string last_error;
 
-        std::vector<float> preprocess(const cv::Mat& image);
+        bool preprocess(const cv::Mat& image, std::vector<float>& input_tensor);
+        bool getOutputShape(int& out_h, int& out_w, size_t& out_elements);
+        bool ensureInputCapacity(size_t elements);
+        bool ensureOutputCapacity(size_t elements);
+        bool setTensorAddresses();
         int selectInputSize(const cv::Mat& image) const;
         bool setInputShape(int w, int h);
         bool runInference(const cv::Mat& image, cv::Mat& depth_norm);
