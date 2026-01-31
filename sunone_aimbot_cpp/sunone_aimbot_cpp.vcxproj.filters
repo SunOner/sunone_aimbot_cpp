@@ -31,7 +31,6 @@
     <ClCompile Include="overlay\draw_buttons.cpp" />
     <ClCompile Include="overlay\draw_overlay.cpp" />
     <ClCompile Include="overlay\draw_debug.cpp" />
-    <ClCompile Include="mouse\Kmbox_b.cpp" />
     <ClCompile Include="detector\dml_detector.cpp" />
     <ClCompile Include="overlay\draw_stats.cpp" />
     <ClCompile Include="capture\capture_utils.cpp" />
@@ -87,7 +86,6 @@
     <ClInclude Include="capture\duplication_api_capture.h" />
     <ClInclude Include="capture\virtual_camera.h" />
     <ClInclude Include="sunone_aimbot_cpp.h" />
-    <ClInclude Include="mouse\Kmbox_b.h" />
     <ClInclude Include="detector\dml_detector.h" />
     <ClInclude Include="tensorrt\trt_monitor.h" />
     <ClInclude Include="capture\capture_utils.h" />

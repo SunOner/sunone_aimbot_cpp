@@ -9,7 +9,6 @@
 #include "mouse.h"
 #include "SerialConnection.h"
 #include "detection_buffer.h"
-#include "Kmbox_b.h"
 #include "KmboxNetConnection.h"
 #include "Makcu.h"
 
@@ -21,7 +20,6 @@ extern DirectMLDetector* dml_detector;
 extern DetectionBuffer detectionBuffer;
 extern MouseThread* globalMouseThread;
 extern SerialConnection* arduinoSerial;
-extern Kmbox_b_Connection* kmboxSerial;
 extern KmboxNetConnection* kmboxNetSerial;
 extern MakcuConnection* makcuSerial;
 extern std::atomic<bool> input_method_changed;

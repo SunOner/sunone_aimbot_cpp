@@ -27,7 +27,6 @@ MouseThread::MouseThread(
     float bScope_multiplier,
     SerialConnection* serialConnection,
     GhubMouse* gHubMouse,
-    Kmbox_b_Connection* kmboxConnection,
     KmboxNetConnection* Kmbox_Net_Connection,
     MakcuConnection* makcuConnection)
     : screen_width(resolution),
@@ -43,7 +42,6 @@ MouseThread::MouseThread(
     auto_shoot(auto_shoot),
     bScope_multiplier(bScope_multiplier),
     serial(serialConnection),
-    kmbox(kmboxConnection),
     kmbox_net(Kmbox_Net_Connection),
     makcu(makcuConnection),
     gHub(gHubMouse),
@@ -241,11 +239,7 @@ void MouseThread::sendMovementToDriver(int dx, int dy)
 
     std::lock_guard<std::mutex> lock(input_method_mutex);
 
-    if (kmbox)
-    {
-        kmbox->move(dx, dy);
-    }
-    else if (kmbox_net)
+    if (kmbox_net)
     {
         kmbox_net->move(dx, dy);
     }
@@ -396,11 +390,7 @@ void MouseThread::pressMouse(const AimbotTarget& target)
     bool bScope = check_target_in_scope(target.x, target.y, target.w, target.h, bScope_multiplier);
     if (bScope && !mouse_pressed)
     {
-        if (kmbox)
-        {
-            kmbox->press(0);
-        }
-        else if (kmbox_net)
+        if (kmbox_net)
         {
             kmbox_net->keyDown(0);
         }
@@ -427,11 +417,7 @@ void MouseThread::pressMouse(const AimbotTarget& target)
     }
     else if (!bScope && mouse_pressed)
     {
-        if (kmbox)
-        {
-            kmbox->release(0);
-        }
-        else if (kmbox_net)
+        if (kmbox_net)
         {
             kmbox_net->keyUp(0);
         }
@@ -464,11 +450,7 @@ void MouseThread::releaseMouse()
 
     if (mouse_pressed)
     {
-        if (kmbox)
-        {
-            kmbox->release(0);
-        }
-        else if (kmbox_net)
+        if (kmbox_net)
         {
             kmbox_net->keyUp(0);
         }
@@ -570,12 +552,6 @@ void MouseThread::setSerialConnection(SerialConnection* newSerial)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
     serial = newSerial;
-}
-
-void MouseThread::setKmboxConnection(Kmbox_b_Connection* newKmbox)
-{
-    std::lock_guard<std::mutex> lock(input_method_mutex);
-    kmbox = newKmbox;
 }
 
 void MouseThread::setKmboxNetConnection(KmboxNetConnection* newKmbox_net)

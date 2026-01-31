@@ -49,9 +49,6 @@ bool isAnyKeyPressed(const std::vector<std::string>& keys)
     if (makcuSerial && makcuSerial->isOpen()) {
         usePhysicalDevice = true;
     }
-    else if (kmboxSerial && kmboxSerial->isOpen()) {
-        usePhysicalDevice = true;
-    }
     else if (kmboxNetSerial && kmboxNetSerial->isOpen()) {
         usePhysicalDevice = true;
     }
@@ -80,14 +77,6 @@ bool isAnyKeyPressed(const std::vector<std::string>& keys)
             if (key_name == "LeftMouseButton")       pressed = makcuSerial->shooting_active;
             else if (key_name == "RightMouseButton")  pressed = makcuSerial->zooming_active;
             else if (key_name == "X2MouseButton")     pressed = makcuSerial->aiming_active;
-        }
-
-        // Kmbox_b
-        if (!pressed && kmboxSerial && kmboxSerial->isOpen())
-        {
-            if (key_name == "LeftMouseButton")       pressed = kmboxSerial->shooting_active;
-            else if (key_name == "RightMouseButton")  pressed = kmboxSerial->zooming_active;
-            else if (key_name == "X2MouseButton")     pressed = kmboxSerial->aiming_active;
         }
 
         // KmboxNet
@@ -146,7 +135,6 @@ void keyboardListener()
         {
             aiming = isAnyKeyPressed(config.button_targeting) ||
                 (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->aiming_active) ||
-                (kmboxSerial && kmboxSerial->isOpen() && kmboxSerial->aiming_active) ||
                 (kmboxNetSerial && kmboxNetSerial->isOpen() && kmboxNetSerial->aiming_active) ||
                 (makcuSerial && makcuSerial->isOpen() && makcuSerial->aiming_active);
         }
@@ -158,14 +146,12 @@ void keyboardListener()
         // Shooting
         shooting = isAnyKeyPressed(config.button_shoot) ||
             (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->shooting_active) ||
-            (kmboxSerial && kmboxSerial->isOpen() && kmboxSerial->shooting_active) ||
             (kmboxNetSerial && kmboxNetSerial->isOpen() && kmboxNetSerial->shooting_active) ||
             (makcuSerial && makcuSerial->isOpen() && makcuSerial->shooting_active);
 
         // Zooming
         zooming = isAnyKeyPressed(config.button_zoom) ||
             (config.arduino_enable_keys && arduinoSerial && arduinoSerial->isOpen() && arduinoSerial->zooming_active) ||
-            (kmboxSerial && kmboxSerial->isOpen() && kmboxSerial->zooming_active) ||
             (kmboxNetSerial && kmboxNetSerial->isOpen() && kmboxNetSerial->zooming_active) ||
             (makcuSerial && makcuSerial->isOpen() && makcuSerial->zooming_active);
 

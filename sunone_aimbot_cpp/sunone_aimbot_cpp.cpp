@@ -60,7 +60,6 @@ std::atomic<bool> gameOverlayShouldExit(false);
 
 GhubMouse* gHub = nullptr;
 SerialConnection* arduinoSerial = nullptr;
-Kmbox_b_Connection* kmboxSerial = nullptr;
 KmboxNetConnection* kmboxNetSerial = nullptr;
 MakcuConnection* makcuSerial = nullptr;
 
@@ -240,12 +239,6 @@ void createInputDevices()
         gHub = nullptr;
     }
 
-    if (kmboxSerial)
-    {
-        delete kmboxSerial;
-        kmboxSerial = nullptr;
-    }
-
     if (kmboxNetSerial)
     {
         delete kmboxNetSerial;
@@ -272,17 +265,6 @@ void createInputDevices()
             std::cerr << "[Ghub] Error with opening mouse." << std::endl;
             delete gHub;
             gHub = nullptr;
-        }
-    }
-    else if (config.input_method == "KMBOX_B")
-    {
-        std::cout << "[Mouse] Using KMBOX_B method input." << std::endl;
-        kmboxSerial = new Kmbox_b_Connection(config.kmbox_b_port, config.kmbox_b_baudrate);
-        if (!kmboxSerial->isOpen())
-        {
-            std::cerr << "[Kmbox] Error connecting to Kmbox serial." << std::endl;
-            delete kmboxSerial;
-            kmboxSerial = nullptr;
         }
     }
     else if (config.input_method == "KMBOX_NET")
@@ -318,7 +300,6 @@ void assignInputDevices()
     {
         globalMouseThread->setSerialConnection(arduinoSerial);
         globalMouseThread->setGHubMouse(gHub);
-        globalMouseThread->setKmboxConnection(kmboxSerial);
         globalMouseThread->setKmboxNetConnection(kmboxNetSerial);
         globalMouseThread->setMakcuConnection(makcuSerial);
     }
@@ -338,10 +319,6 @@ void handleEasyNoRecoil(MouseThread& mouseThread)
         else if (gHub)
         {
             gHub->mouse_xy(0, recoil_compensation);
-        }
-        else if (kmboxSerial)
-        {
-            kmboxSerial->move(0, recoil_compensation);
         }
         else if (kmboxNetSerial)
         {
@@ -1181,8 +1158,8 @@ int main()
             config.bScope_multiplier,
             arduinoSerial,
             gHub,
-            kmboxSerial,
-            kmboxNetSerial
+            kmboxNetSerial,
+            makcuSerial
         );
 
         globalMouseThread = &mouseThread;

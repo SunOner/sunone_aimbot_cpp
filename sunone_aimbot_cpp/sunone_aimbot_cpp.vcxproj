@@ -50,7 +50,6 @@
     <ClCompile Include="modules\makcu\src\serialport.cpp" />
     <ClCompile Include="mouse\ghub.cpp" />
     <ClCompile Include="mouse\kmboxNetConnection.cpp" />
-    <ClCompile Include="mouse\Kmbox_b.cpp" />
     <ClCompile Include="mouse\kmbox_net\kmboxNet.cpp" />
     <ClCompile Include="mouse\Makcu.cpp" />
     <ClCompile Include="mouse\mouse.cpp" />
@@ -113,7 +112,6 @@
     <ClInclude Include="modules\makcu\include\serialport.h" />
     <ClInclude Include="mouse\ghub.h" />
     <ClInclude Include="mouse\kmboxNetConnection.h" />
-    <ClInclude Include="mouse\Kmbox_b.h" />
     <ClInclude Include="mouse\kmbox_net\HidTable.h" />
     <ClInclude Include="mouse\kmbox_net\kmboxNet.h" />
     <ClInclude Include="mouse\kmbox_net\picture.h" />

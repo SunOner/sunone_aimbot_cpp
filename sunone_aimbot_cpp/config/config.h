@@ -48,7 +48,7 @@ public:
 
     bool easynorecoil;
     float easynorecoilstrength;
-    std::string input_method; // "WIN32", "GHUB", "ARDUINO", "KMBOX_B", "KMBOX_NET", "MAKCU"
+    std::string input_method; // "WIN32", "GHUB", "ARDUINO", "KMBOX_NET", "MAKCU"
 
     // Wind mouse
     bool wind_mouse_enabled;
@@ -62,10 +62,6 @@ public:
     std::string arduino_port;
     bool arduino_16_bit_mouse;
     bool arduino_enable_keys;
-
-    // kmbox_b
-    int kmbox_b_baudrate;
-    std::string kmbox_b_port;
 
     // kmbox_net
     std::string kmbox_net_ip;
