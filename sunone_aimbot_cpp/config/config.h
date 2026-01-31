@@ -120,6 +120,7 @@ public:
     float overlay_ui_scale;
 
     // Depth
+    bool depth_inference_enabled;
     std::string depth_model_path;
     int depth_fps;
     int depth_colormap;

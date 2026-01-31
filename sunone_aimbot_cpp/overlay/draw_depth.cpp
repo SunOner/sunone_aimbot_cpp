@@ -70,6 +70,16 @@ void draw_depth()
         bufferInit = true;
     }
 
+    if (ImGui::Checkbox("Enable Depth Inference", &config.depth_inference_enabled))
+    {
+        OverlayConfig_MarkDirty();
+        if (!config.depth_inference_enabled && g_depthModel.ready())
+        {
+            g_depthModel.reset();
+            depthStatus = "Depth inference disabled.";
+        }
+    }
+
     if (ImGui::InputText("Depth model path", modelPathBuf, IM_ARRAYSIZE(modelPathBuf)))
     {
         if (config.depth_model_path != modelPathBuf)

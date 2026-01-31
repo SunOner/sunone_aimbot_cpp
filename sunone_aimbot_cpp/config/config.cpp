@@ -172,6 +172,7 @@ bool Config::loadConfig(const std::string& filename)
         overlay_ui_scale = 1.0f;
 
         // Depth
+        depth_inference_enabled = true;
         depth_model_path = "depth_anything_v2.engine";
         depth_fps = 100;
         depth_colormap = 18;
@@ -440,6 +441,7 @@ bool Config::loadConfig(const std::string& filename)
     overlay_ui_scale = (float)get_double("overlay_ui_scale", 1.0);
 
     // Depth
+    depth_inference_enabled = get_bool("depth_inference_enabled", true);
     depth_model_path = get_string("depth_model_path", "depth_anything_v2.engine");
     depth_fps = get_long("depth_fps", 100);
     if (depth_fps < 0) depth_fps = 0;
@@ -651,6 +653,7 @@ bool Config::saveConfig(const std::string& filename)
         << "overlay_ui_scale = " << overlay_ui_scale << "\n\n";
 
     file << "# Depth\n"
+        << "depth_inference_enabled = " << (depth_inference_enabled ? "true" : "false") << "\n"
         << "depth_model_path = " << depth_model_path << "\n"
         << "depth_fps = " << depth_fps << "\n"
         << "depth_colormap = " << depth_colormap << "\n"

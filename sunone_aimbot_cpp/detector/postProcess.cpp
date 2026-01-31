@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <numeric>
 #include <chrono>
+#include <limits>
 
 #include "postProcess.h"
 #include "sunone_aimbot_cpp.h"
@@ -182,14 +183,18 @@ std::vector<Detection> postProcessYoloDML(
 
     int64_t rows = shape[0];
     int64_t cols = shape[1];
+    if (rows <= 0 || cols <= 0) return detections;
+    if (rows > std::numeric_limits<int>::max() || cols > std::numeric_limits<int>::max()) return detections;
+    const int rows_i = static_cast<int>(rows);
+    const int cols_i = static_cast<int>(cols);
 
-    if (cols == 6)
+    if (cols_i == 6)
     {
-        int64_t numDetections = rows;
-        detections.reserve(numDetections);
+        const int numDetections = rows_i;
+        detections.reserve(static_cast<size_t>(numDetections));
         for (int i = 0; i < numDetections; ++i)
         {
-            const float* det = output + i * cols;
+            const float* det = output + i * cols_i;
             float confidence = det[4];
             if (confidence > confThreshold)
             {
@@ -211,8 +216,8 @@ std::vector<Detection> postProcessYoloDML(
         return detections;
     }
 
-    cv::Mat det_output(rows, cols, CV_32F, (void*)output);
-    for (int i = 0; i < cols; ++i) {
+    cv::Mat det_output(rows_i, cols_i, CV_32F, (void*)output);
+    for (int i = 0; i < cols_i; ++i) {
         cv::Mat classes_scores = det_output.col(i).rowRange(4, 4 + numClasses);
         cv::Point class_id_point;
         double score;

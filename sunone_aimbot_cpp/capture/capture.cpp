@@ -216,7 +216,22 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
             cv::Mat detectionFrame = screenshotCpu;
 #ifdef USE_CUDA
-            if (config.depth_mask_enabled)
+            static bool lastDepthInferenceEnabled = true;
+            if (!config.depth_inference_enabled)
+            {
+                if (lastDepthInferenceEnabled)
+                {
+                    auto& depthMask = depth_anything::GetDepthMaskGenerator();
+                    depthMask.reset();
+                }
+                lastDepthInferenceEnabled = false;
+            }
+            else
+            {
+                lastDepthInferenceEnabled = true;
+            }
+
+            if (config.depth_inference_enabled && config.depth_mask_enabled)
             {
                 if (config.verbose)
                 {

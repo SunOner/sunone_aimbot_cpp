@@ -12,6 +12,7 @@
 #include <opencv2/cudaimgproc.hpp>
 #include <algorithm>
 #include <atomic>
+#include <limits>
 #include <numeric>
 #include <vector>
 #include <queue>
@@ -33,18 +34,41 @@ extern std::atomic<bool> detection_resolution_changed;
 
 static bool error_logged = false;
 
+namespace {
+bool tryGetDimInt(int64_t value, int* out)
+{
+    if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max())
+        return false;
+    *out = static_cast<int>(value);
+    return true;
+}
+
+bool tryGetPositiveDimInt(int64_t value, int* out)
+{
+    if (value <= 0)
+        return false;
+    return tryGetDimInt(value, out);
+}
+} // namespace
+
 TrtDetector::TrtDetector()
     : frameReady(false),
     shouldExit(false),
+    useCudaGraph(false),
+    cudaGraphCaptured(false),
+    cudaGraph(nullptr),
+    cudaGraphExec(nullptr),
     inputBufferDevice(nullptr),
     img_scale(1.0f),
     numClasses(0)
 {
+    stream = nullptr;
     cudaStreamCreate(&stream);
 }
 
 TrtDetector::~TrtDetector()
 {
+    destroyCudaGraph();
     freePinnedOutputs();
 
     for (auto& binding : inputBindings) if (binding.second) cudaFree(binding.second);
@@ -53,6 +77,7 @@ TrtDetector::~TrtDetector()
     if (inferenceStartEvent) cudaEventDestroy(inferenceStartEvent);
     if (inferenceCompleteEvent) cudaEventDestroy(inferenceCompleteEvent);
     if (copyCompleteEvent) cudaEventDestroy(copyCompleteEvent);
+    if (stream) cudaStreamDestroy(stream);
 }
 
 void TrtDetector::freePinnedOutputs()
@@ -95,19 +120,24 @@ void TrtDetector::allocatePinnedOutputs()
 
 void TrtDetector::destroyCudaGraph()
 {
-    cudaStreamDestroy(stream);
-
-    if (cudaGraphCaptured)
+    if (cudaGraphExec)
     {
         cudaGraphExecDestroy(cudaGraphExec);
-        cudaGraphDestroy(cudaGraph);
-        cudaGraphCaptured = false;
+        cudaGraphExec = nullptr;
     }
+    if (cudaGraph)
+    {
+        cudaGraphDestroy(cudaGraph);
+        cudaGraph = nullptr;
+    }
+    cudaGraphCaptured = false;
 }
 
 void TrtDetector::captureCudaGraph()
 {
     if (!useCudaGraph || cudaGraphCaptured) return;
+
+    destroyCudaGraph();
 
     cudaStreamSynchronize(stream);
 
@@ -119,7 +149,6 @@ void TrtDetector::captureCudaGraph()
     }
 
     context->enqueueV3(stream);
-    cudaStreamSynchronize(stream);
 
     for (const auto& name : outputNames)
         if (pinnedOutputBuffers.count(name))
@@ -140,6 +169,8 @@ void TrtDetector::captureCudaGraph()
     if (st != cudaSuccess) {
         std::cerr << "[Detector] GraphInstantiate failed: "
             << cudaGetErrorString(st) << std::endl;
+        cudaGraphDestroy(cudaGraph);
+        cudaGraph = nullptr;
         return;
     }
 
@@ -337,12 +368,27 @@ void TrtDetector::initialize(const std::string& modelFile)
     {
         const std::string& mainOut = outputNames[0];
         nvinfer1::Dims outDims = context->getTensorShape(mainOut.c_str());
-        numClasses = (outDims.d[1] > 4) ? (outDims.d[1] - 4) : 1;
+        const int64_t outChannels = outDims.d[1];
+        const int64_t classes64 = (outChannels > 4) ? (outChannels - 4) : 1;
+        int classes = 0;
+        if (!tryGetDimInt(classes64, &classes) || classes <= 0)
+        {
+            std::cerr << "[Detector] Invalid output dimensions for classes" << std::endl;
+            return;
+        }
+        numClasses = classes;
     }
 
-    int c = inputDims.d[1];
-    int h = inputDims.d[2];
-    int w = inputDims.d[3];
+    int c = 0;
+    int h = 0;
+    int w = 0;
+    if (!tryGetPositiveDimInt(inputDims.d[1], &c)
+        || !tryGetPositiveDimInt(inputDims.d[2], &h)
+        || !tryGetPositiveDimInt(inputDims.d[3], &w))
+    {
+        std::cerr << "[Detector] Invalid input dimensions" << std::endl;
+        return;
+    }
 
     // Pre-allocate GPU buffers
     gpuResizedBuffer.create(h, w, CV_8UC3);
@@ -370,6 +416,12 @@ void TrtDetector::initialize(const std::string& modelFile)
     cudaEventCreateWithFlags(&inferenceStartEvent, cudaEventDisableTiming);
     cudaEventCreateWithFlags(&inferenceCompleteEvent, cudaEventDisableTiming);
     cudaEventCreateWithFlags(&copyCompleteEvent, cudaEventDisableTiming);
+
+    useCudaGraph = config.use_cuda_graph;
+    if (useCudaGraph)
+    {
+        captureCudaGraph();
+    }
 
     if (config.verbose)
     {
@@ -479,6 +531,7 @@ void TrtDetector::inferenceThread()
         {
             {
                 std::unique_lock<std::mutex> lock(inferenceMutex);
+                destroyCudaGraph();
                 context.reset();
                 engine.reset();
 
@@ -494,6 +547,19 @@ void TrtDetector::inferenceThread()
             initialize("models/" + config.ai_model);
             detection_resolution_changed.store(true);
             detector_model_changed.store(false);
+        }
+
+        if (useCudaGraph != config.use_cuda_graph)
+        {
+            useCudaGraph = config.use_cuda_graph;
+            if (!useCudaGraph)
+            {
+                destroyCudaGraph();
+            }
+            else if (context)
+            {
+                captureCudaGraph();
+            }
         }
 
         cv::Mat frame;
@@ -539,38 +605,53 @@ void TrtDetector::inferenceThread()
 
                 auto t1 = std::chrono::steady_clock::now();
                 auto t_inf_start = std::chrono::steady_clock::now();
+                std::chrono::steady_clock::time_point t_inf_end;
+                std::chrono::steady_clock::time_point t_copy_start;
+                std::chrono::steady_clock::time_point t_copy_end;
 
                 cudaEventRecord(inferenceStartEvent, stream);
-                context->enqueueV3(stream);
-                cudaEventRecord(inferenceCompleteEvent, stream);
-
-                cudaEventSynchronize(inferenceCompleteEvent);
-
-                auto t_inf_end = std::chrono::steady_clock::now();
-                auto t_copy_start = std::chrono::steady_clock::now();
-
-                for (const auto& name : outputNames)
+                bool usedGraph = useCudaGraph && cudaGraphCaptured;
+                if (usedGraph)
                 {
-                    const size_t size = outputSizes[name];
+                    launchCudaGraph();
+                    cudaEventRecord(copyCompleteEvent, stream);
+                    cudaEventSynchronize(copyCompleteEvent);
 
-                    auto itPinned = pinnedOutputBuffers.find(name);
-                    if (itPinned == pinnedOutputBuffers.end() || !itPinned->second)
-                        continue;
-
-                    cudaMemcpyAsync(
-                        itPinned->second,
-                        outputBindings[name],
-                        size,
-                        cudaMemcpyDeviceToHost,
-                        stream
-                    );
+                    t_inf_end = std::chrono::steady_clock::now();
+                    t_copy_start = t_inf_end;
+                    t_copy_end = t_inf_end;
                 }
+                else
+                {
+                    context->enqueueV3(stream);
+                    cudaEventRecord(inferenceCompleteEvent, stream);
+                    cudaEventSynchronize(inferenceCompleteEvent);
 
-                cudaEventRecord(copyCompleteEvent, stream);
+                    t_inf_end = std::chrono::steady_clock::now();
+                    t_copy_start = std::chrono::steady_clock::now();
 
-                cudaEventSynchronize(copyCompleteEvent);
+                    for (const auto& name : outputNames)
+                    {
+                        const size_t size = outputSizes[name];
 
-                auto t_copy_end = std::chrono::steady_clock::now();
+                        auto itPinned = pinnedOutputBuffers.find(name);
+                        if (itPinned == pinnedOutputBuffers.end() || !itPinned->second)
+                            continue;
+
+                        cudaMemcpyAsync(
+                            itPinned->second,
+                            outputBindings[name],
+                            size,
+                            cudaMemcpyDeviceToHost,
+                            stream
+                        );
+                    }
+
+                    cudaEventRecord(copyCompleteEvent, stream);
+                    cudaEventSynchronize(copyCompleteEvent);
+
+                    t_copy_end = std::chrono::steady_clock::now();
+                }
 
                 // Post-processing (CPU)
                 auto t_post_start = std::chrono::steady_clock::now();
@@ -625,9 +706,15 @@ void TrtDetector::preProcess(const cv::Mat& frame)
     if (!inputBuffer) return;
 
     nvinfer1::Dims dims = context->getTensorShape(inputName.c_str());
-    int c = dims.d[1];
-    int h = dims.d[2];
-    int w = dims.d[3];
+    int c = 0;
+    int h = 0;
+    int w = 0;
+    if (!tryGetPositiveDimInt(dims.d[1], &c)
+        || !tryGetPositiveDimInt(dims.d[2], &h)
+        || !tryGetPositiveDimInt(dims.d[3], &w))
+    {
+        return;
+    }
 
     if (c != 3) return;
 

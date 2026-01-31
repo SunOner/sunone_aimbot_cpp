@@ -495,6 +495,7 @@ static void gameOverlayRenderLoop()
     static int depthMaskImageId = 0;
     static cv::Mat depthDebugFrame;
     static auto lastDepthUpdate = std::chrono::steady_clock::time_point::min();
+    static bool lastDepthInferenceEnabled = true;
 #endif
 
     while (!gameOverlayShouldExit.load())
@@ -661,129 +662,163 @@ static void gameOverlayRenderLoop()
         gameOverlayPtr->BeginFrame();
 
 #ifdef USE_CUDA
-        if (config.depth_debug_overlay_enabled)
+        if (!config.depth_inference_enabled)
         {
-            cv::Mat frameCopy;
+            if (lastDepthInferenceEnabled)
             {
-                std::lock_guard<std::mutex> lk(frameMutex);
-                if (!latestFrame.empty())
-                    latestFrame.copyTo(frameCopy);
-            }
-
-            if (config.depth_model_path.empty())
-            {
-                if (depthDebugModel.ready())
-                    depthDebugModel.reset();
-                depthDebugModelPath.clear();
-            }
-            else if (depthDebugModelPath != config.depth_model_path || !depthDebugModel.ready())
-            {
-                if (depthDebugModel.initialize(config.depth_model_path, gLogger))
+                if (gameOverlayPtr)
                 {
-                    depthDebugModelPath = config.depth_model_path;
-                }
-            }
-
-            if (config.depth_colormap != depthDebugColormap)
-            {
-                depthDebugModel.setColormap(config.depth_colormap);
-                depthDebugColormap = config.depth_colormap;
-            }
-
-            if (depthDebugModel.ready() && !frameCopy.empty())
-            {
-                auto now = std::chrono::steady_clock::now();
-                bool shouldUpdate = depthDebugFrame.empty();
-                if (config.depth_fps <= 0)
-                {
-                    shouldUpdate = true;
-                }
-                else if (!shouldUpdate)
-                {
-                    auto interval = std::chrono::milliseconds(1000 / config.depth_fps);
-                    shouldUpdate = (now - lastDepthUpdate) >= interval;
-                }
-                if (shouldUpdate)
-                {
-                    cv::Mat depthFrame = depthDebugModel.predict(frameCopy);
-                    if (!depthFrame.empty())
+                    if (depthDebugImageId != 0)
                     {
-                        depthDebugFrame = depthFrame;
-                        lastDepthUpdate = now;
+                        gameOverlayPtr->UnloadImage(depthDebugImageId);
+                        depthDebugImageId = 0;
+                    }
+                    if (depthMaskImageId != 0)
+                    {
+                        gameOverlayPtr->UnloadImage(depthMaskImageId);
+                        depthMaskImageId = 0;
                     }
                 }
-            }
 
-            float depthW = 0.0f;
-            float depthH = 0.0f;
-            if (!depthDebugFrame.empty())
-            {
-                cv::Mat depthBGRA;
-                cv::cvtColor(depthDebugFrame, depthBGRA, cv::COLOR_BGR2BGRA);
-                int newId = gameOverlayPtr->UpdateImageFromBGRA(
-                    depthBGRA.data,
-                    depthBGRA.cols,
-                    depthBGRA.rows,
-                    static_cast<int>(depthBGRA.step),
-                    depthDebugImageId);
-                if (newId != 0)
-                    depthDebugImageId = newId;
-                depthW = static_cast<float>(regionW);
-                depthH = static_cast<float>(regionH);
-            }
+                depthDebugModel.reset();
+                depthDebugModelPath.clear();
+                depthDebugColormap = -1;
+                depthDebugFrame.release();
+                lastDepthUpdate = std::chrono::steady_clock::time_point::min();
 
-            float maskW = 0.0f;
-            float maskH = 0.0f;
-            if (config.depth_mask_enabled)
-            {
                 auto& depthMask = depth_anything::GetDepthMaskGenerator();
-                cv::Mat mask = depthMask.getMask();
-                if (!mask.empty())
-                {
-                    cv::Mat alpha(mask.size(), CV_8U, cv::Scalar(0));
-                    alpha.setTo(config.depth_mask_alpha, mask);
-
-                    std::vector<cv::Mat> channels(4);
-                    channels[0] = alpha;
-                    channels[1] = cv::Mat(mask.size(), CV_8U, cv::Scalar(0));
-                    channels[2] = cv::Mat(mask.size(), CV_8U, cv::Scalar(0));
-                    channels[3] = alpha;
-
-                    cv::Mat maskBGRA;
-                    cv::merge(channels, maskBGRA);
-
-                    int newId = gameOverlayPtr->UpdateImageFromBGRA(
-                        maskBGRA.data,
-                        maskBGRA.cols,
-                        maskBGRA.rows,
-                        static_cast<int>(maskBGRA.step),
-                        depthMaskImageId);
-                    if (newId != 0)
-                        depthMaskImageId = newId;
-
-                    maskW = static_cast<float>(regionW);
-                    maskH = static_cast<float>(regionH);
-                }
+                depthMask.reset();
             }
+            lastDepthInferenceEnabled = false;
+        }
+        else
+        {
+            lastDepthInferenceEnabled = true;
 
-            if (depthDebugImageId != 0 || depthMaskImageId != 0)
+            if (config.depth_debug_overlay_enabled)
             {
-                const float pad = 8.0f;
-                float depthX = static_cast<float>(baseX);
-                float depthY = static_cast<float>(baseY);
-                float maskX = depthX;
-                float maskY = depthY;
-
-                if (depthDebugImageId != 0 && depthW > 0.0f && depthH > 0.0f)
+                cv::Mat frameCopy;
                 {
-                    gameOverlayPtr->DrawImage(depthDebugImageId, depthX, depthY, depthW, depthH, 1.0f);
-                    gameOverlayPtr->AddRect({ depthX, depthY, depthW, depthH }, ARGB(120, 255, 255, 255), 1.0f);
+                    std::lock_guard<std::mutex> lk(frameMutex);
+                    if (!latestFrame.empty())
+                        latestFrame.copyTo(frameCopy);
                 }
 
-                if (depthMaskImageId != 0 && maskW > 0.0f && maskH > 0.0f)
+                if (config.depth_model_path.empty())
                 {
-                    gameOverlayPtr->DrawImage(depthMaskImageId, maskX, maskY, maskW, maskH, 1.0f);
-                    gameOverlayPtr->AddText(maskX + pad, maskY + pad + 18.0f, L"Depth mask", 16.0f, ARGB(220, 255, 255, 255));
+                    if (depthDebugModel.ready())
+                        depthDebugModel.reset();
+                    depthDebugModelPath.clear();
+                }
+                else if (depthDebugModelPath != config.depth_model_path || !depthDebugModel.ready())
+                {
+                    if (depthDebugModel.initialize(config.depth_model_path, gLogger))
+                    {
+                        depthDebugModelPath = config.depth_model_path;
+                    }
+                }
+
+                if (config.depth_colormap != depthDebugColormap)
+                {
+                    depthDebugModel.setColormap(config.depth_colormap);
+                    depthDebugColormap = config.depth_colormap;
+                }
+
+                if (depthDebugModel.ready() && !frameCopy.empty())
+                {
+                    auto now = std::chrono::steady_clock::now();
+                    bool shouldUpdate = depthDebugFrame.empty();
+                    if (config.depth_fps <= 0)
+                    {
+                        shouldUpdate = true;
+                    }
+                    else if (!shouldUpdate)
+                    {
+                        auto interval = std::chrono::milliseconds(1000 / config.depth_fps);
+                        shouldUpdate = (now - lastDepthUpdate) >= interval;
+                    }
+                    if (shouldUpdate)
+                    {
+                        cv::Mat depthFrame = depthDebugModel.predict(frameCopy);
+                        if (!depthFrame.empty())
+                        {
+                            depthDebugFrame = depthFrame;
+                            lastDepthUpdate = now;
+                        }
+                    }
+                }
+
+                float depthW = 0.0f;
+                float depthH = 0.0f;
+                if (!depthDebugFrame.empty())
+                {
+                    cv::Mat depthBGRA;
+                    cv::cvtColor(depthDebugFrame, depthBGRA, cv::COLOR_BGR2BGRA);
+                    int newId = gameOverlayPtr->UpdateImageFromBGRA(
+                        depthBGRA.data,
+                        depthBGRA.cols,
+                        depthBGRA.rows,
+                        static_cast<int>(depthBGRA.step),
+                        depthDebugImageId);
+                    if (newId != 0)
+                        depthDebugImageId = newId;
+                    depthW = static_cast<float>(regionW);
+                    depthH = static_cast<float>(regionH);
+                }
+
+                float maskW = 0.0f;
+                float maskH = 0.0f;
+                if (config.depth_mask_enabled)
+                {
+                    auto& depthMask = depth_anything::GetDepthMaskGenerator();
+                    cv::Mat mask = depthMask.getMask();
+                    if (!mask.empty())
+                    {
+                        cv::Mat alpha(mask.size(), CV_8U, cv::Scalar(0));
+                        alpha.setTo(config.depth_mask_alpha, mask);
+
+                        std::vector<cv::Mat> channels(4);
+                        channels[0] = alpha;
+                        channels[1] = cv::Mat(mask.size(), CV_8U, cv::Scalar(0));
+                        channels[2] = cv::Mat(mask.size(), CV_8U, cv::Scalar(0));
+                        channels[3] = alpha;
+
+                        cv::Mat maskBGRA;
+                        cv::merge(channels, maskBGRA);
+
+                        int newId = gameOverlayPtr->UpdateImageFromBGRA(
+                            maskBGRA.data,
+                            maskBGRA.cols,
+                            maskBGRA.rows,
+                            static_cast<int>(maskBGRA.step),
+                            depthMaskImageId);
+                        if (newId != 0)
+                            depthMaskImageId = newId;
+
+                        maskW = static_cast<float>(regionW);
+                        maskH = static_cast<float>(regionH);
+                    }
+                }
+
+                if (depthDebugImageId != 0 || depthMaskImageId != 0)
+                {
+                    const float pad = 8.0f;
+                    float depthX = static_cast<float>(baseX);
+                    float depthY = static_cast<float>(baseY);
+                    float maskX = depthX;
+                    float maskY = depthY;
+
+                    if (depthDebugImageId != 0 && depthW > 0.0f && depthH > 0.0f)
+                    {
+                        gameOverlayPtr->DrawImage(depthDebugImageId, depthX, depthY, depthW, depthH, 1.0f);
+                        gameOverlayPtr->AddRect({ depthX, depthY, depthW, depthH }, ARGB(120, 255, 255, 255), 1.0f);
+                    }
+
+                    if (depthMaskImageId != 0 && maskW > 0.0f && maskH > 0.0f)
+                    {
+                        gameOverlayPtr->DrawImage(depthMaskImageId, maskX, maskY, maskW, maskH, 1.0f);
+                        gameOverlayPtr->AddText(maskX + pad, maskY + pad + 18.0f, L"Depth mask", 16.0f, ARGB(220, 255, 255, 255));
+                    }
                 }
             }
         }
