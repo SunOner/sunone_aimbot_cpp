@@ -24,6 +24,25 @@ std::chrono::duration<double, std::milli> lastCopyTimeDML{};
 std::chrono::duration<double, std::milli> lastPostprocessTimeDML{};
 std::chrono::duration<double, std::milli> lastNmsTimeDML{};
 
+namespace
+{
+    std::string WideToUtf8(const std::wstring& ws)
+    {
+        if (ws.empty())
+            return {};
+
+        int len = WideCharToMultiByte(CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()),
+            nullptr, 0, nullptr, nullptr);
+        if (len <= 0)
+            return {};
+
+        std::string out(len, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()),
+            out.data(), len, nullptr, nullptr);
+        return out;
+    }
+}
+
 std::string GetDMLDeviceName(int deviceId)
 {
     Microsoft::WRL::ComPtr<IDXGIFactory1> dxgiFactory;
@@ -39,7 +58,7 @@ std::string GetDMLDeviceName(int deviceId)
         return "Failed to get description";
 
     std::wstring wname(desc.Description);
-    return std::string(wname.begin(), wname.end());
+    return WideToUtf8(wname);
 }
 
 DirectMLDetector::DirectMLDetector(const std::string& model_path)
