@@ -540,8 +540,8 @@ static void gameOverlayRenderLoop()
         const int baseX = (pw - regionW) / 2;
         const int baseY = (ph - regionH) / 2;
 
-        const float scaleX = 1.0f;
-        const float scaleY = 1.0f;
+        const float scaleX = detRes > 0 ? (static_cast<float>(regionW) / static_cast<float>(detRes)) : 1.0f;
+        const float scaleY = detRes > 0 ? (static_cast<float>(regionH) / static_cast<float>(detRes)) : 1.0f;
 
         std::vector<cv::Rect> boxesCopy;
         std::vector<int> classesCopy;
@@ -918,11 +918,14 @@ static void gameOverlayRenderLoop()
             const float offXIcon = config.game_overlay_icon_offset_x;
             const float offYIcon = config.game_overlay_icon_offset_y;
             std::string anchor = config.game_overlay_icon_anchor;
-            int i = 0;
-            for (const auto& b : boxesCopy)
+            const int wantedClass = config.game_overlay_icon_class;
+            const size_t count = boxesCopy.size();
+            for (size_t i = 0; i < count; ++i)
             {
-                // temporary: only draw for players
-                if (classesCopy[i] != 0)
+                const auto& b = boxesCopy[i];
+                int cls = (i < classesCopy.size()) ? classesCopy[i] : -1;
+                // Class filter (-1 = all)
+                if (wantedClass >= 0 && cls != wantedClass)
                 {
                     continue;
                 }
@@ -967,7 +970,6 @@ static void gameOverlayRenderLoop()
                 drawY += offYIcon;
 
                 gameOverlayPtr->DrawImage(g_iconImageId, drawX, drawY, (float)iconW, (float)iconH, 1.0f);
-                i++;
             }
         }
 

@@ -154,6 +154,7 @@ public:
     float game_overlay_icon_offset_x;
     float game_overlay_icon_offset_y;
     std::string game_overlay_icon_anchor; // "center", "top", "bottom", "head"
+    int game_overlay_icon_class; // -1 = all
 
     void clampGameOverlayColor()
     {

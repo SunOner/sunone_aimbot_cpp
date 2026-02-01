@@ -171,6 +171,12 @@ void draw_game_overlay_settings()
     if (ImGui::IsItemDeactivatedAfterEdit())
         OverlayConfig_MarkDirty();
 
+    if (ImGui::InputInt("Icon Class (-1 = all)", &config.game_overlay_icon_class))
+    {
+        if (config.game_overlay_icon_class < -1) config.game_overlay_icon_class = -1;
+        OverlayConfig_MarkDirty();
+    }
+
     const char* anchors[] = { "center", "top", "bottom", "head" };
     int currentAnchor = 0;
     for (int i = 0; i < (int)(sizeof(anchors) / sizeof(anchors[0])); ++i)

@@ -206,6 +206,7 @@ bool Config::loadConfig(const std::string& filename)
         game_overlay_icon_offset_x = 0.0f;
         game_overlay_icon_offset_y = 0.0f;
         game_overlay_icon_anchor = "center";
+        game_overlay_icon_class = -1;
 
         // Classes
         class_player = 0;
@@ -478,6 +479,7 @@ bool Config::loadConfig(const std::string& filename)
     game_overlay_icon_offset_x = (float)get_double("game_overlay_icon_offset_x", 0.0f);
     game_overlay_icon_offset_y = (float)get_double("game_overlay_icon_offset_y", 0.0f);
     game_overlay_icon_anchor = get_string("game_overlay_icon_anchor", "center");
+    game_overlay_icon_class = get_long("game_overlay_icon_class", -1);
 
     // Classes
     class_player = get_long("class_player", 0);
@@ -680,7 +682,8 @@ bool Config::saveConfig(const std::string& filename)
         << "game_overlay_icon_offset_x = " << game_overlay_icon_offset_x << "\n"
         << std::fixed << std::setprecision(2)
         << "game_overlay_icon_offset_y = " << game_overlay_icon_offset_y << "\n"
-        << "game_overlay_icon_anchor = " << game_overlay_icon_anchor << "\n\n";
+        << "game_overlay_icon_anchor = " << game_overlay_icon_anchor << "\n"
+        << "game_overlay_icon_class = " << game_overlay_icon_class << "\n\n";
 
     // Classes
     file << "# Custom Classes\n"
