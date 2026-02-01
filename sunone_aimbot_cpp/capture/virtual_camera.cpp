@@ -117,7 +117,7 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
     {
         std::cout << "[VirtualCamera] Actual capture: "
             << roiW_ << 'x' << roiH_ << " @ "
-            << cap_->get(cv::CAP_PROP_FPS) << " FPS" << std::endl;
+            << cap_->get(cv::CAP_PROP_FPS) << " FPS" << std::endl;
     }
 }
 
