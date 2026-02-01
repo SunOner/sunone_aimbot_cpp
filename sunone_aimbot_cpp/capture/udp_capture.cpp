@@ -134,73 +134,84 @@ cv::Mat UDPCapture::GetNextFrameCpu()
 
 void UDPCapture::ReceiveThread()
 {
-    std::vector<uint8_t> buffer(MAX_FRAME_SIZE);
-    std::vector<uint8_t> frame_data;
-
-    while (!should_stop_)
+    try
     {
-        sockaddr_in from_addr;
-        int from_len = sizeof(from_addr);
+        std::vector<uint8_t> buffer(MAX_FRAME_SIZE);
+        std::vector<uint8_t> frame_data;
 
-        int bytes_received = recvfrom(
-            socket_,
-            (char*)buffer.data(),
-            (int)buffer.size(),
-            0,
-            (sockaddr*)&from_addr,
-            &from_len
-        );
-
-        if (bytes_received == SOCKET_ERROR)
+        while (!should_stop_)
         {
-            int error = WSAGetLastError();
-            if (error == WSAEWOULDBLOCK)
+            sockaddr_in from_addr;
+            int from_len = sizeof(from_addr);
+
+            int bytes_received = recvfrom(
+                socket_,
+                (char*)buffer.data(),
+                (int)buffer.size(),
+                0,
+                (sockaddr*)&from_addr,
+                &from_len
+            );
+
+            if (bytes_received == SOCKET_ERROR)
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                int error = WSAGetLastError();
+                if (error == WSAEWOULDBLOCK)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    continue;
+                }
+
+                std::cerr << "[UDPCapture] Receive error: " << error << std::endl;
+                break;
+            }
+
+            if (bytes_received <= 0)
+                continue;
+
+            if (server_addr_.sin_addr.s_addr != 0 &&
+                from_addr.sin_addr.s_addr != server_addr_.sin_addr.s_addr)
+            {
                 continue;
             }
 
-            std::cerr << "[UDPCapture] Receive error: " << error << std::endl;
-            break;
-        }
-
-        if (bytes_received <= 0)
-            continue;
-
-        if (server_addr_.sin_addr.s_addr != 0 &&
-            from_addr.sin_addr.s_addr != server_addr_.sin_addr.s_addr)
-        {
-            continue;
-        }
-
-        frame_data.insert(frame_data.end(), buffer.begin(), buffer.begin() + bytes_received);
-        if (frame_data.size() > MAX_FRAME_SIZE * 2)
-        {
-            frame_data.clear();
-            continue;
-        }
-
-        cv::Mat frame;
-        if (ParseMJPEGFrame(frame_data, frame))
-        {
-            if (!frame.empty())
+            frame_data.insert(frame_data.end(), buffer.begin(), buffer.begin() + bytes_received);
+            if (frame_data.size() > MAX_FRAME_SIZE * 2)
             {
-                if (frame.cols != width_ || frame.rows != height_)
-                    cv::resize(frame, frame, cv::Size(width_, height_));
-
-                std::lock_guard<std::mutex> lock(frame_mutex_);
-                while (frame_queue_.size() >= MAX_QUEUE_SIZE)
-                {
-                    frame_queue_.pop();
-                    dropped_frames_++;
-                }
-
-                frame_queue_.push(frame.clone());
-                received_frames_++;
+                frame_data.clear();
+                continue;
             }
 
-            frame_data.clear();
+            cv::Mat frame;
+            if (ParseMJPEGFrame(frame_data, frame))
+            {
+                if (!frame.empty())
+                {
+                    if (frame.cols != width_ || frame.rows != height_)
+                        cv::resize(frame, frame, cv::Size(width_, height_));
+
+                    std::lock_guard<std::mutex> lock(frame_mutex_);
+                    while (frame_queue_.size() >= MAX_QUEUE_SIZE)
+                    {
+                        frame_queue_.pop();
+                        dropped_frames_++;
+                    }
+
+                    frame_queue_.push(frame.clone());
+                    received_frames_++;
+                }
+
+                frame_data.clear();
+            }
         }
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[UDPCapture] Receive thread crashed: " << e.what() << std::endl;
+    }
+    catch (...)
+    {
+        std::cerr << "[UDPCapture] Receive thread crashed: unknown exception." << std::endl;
     }
 }
 

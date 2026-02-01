@@ -234,64 +234,81 @@ void DirectMLDetector::processFrame(const cv::Mat& frame)
 
 void DirectMLDetector::dmlInferenceThread()
 {
-    while (!shouldExit)
+    try
     {
-        if (detector_model_changed.load())
+        while (!shouldExit)
         {
-            initializeModel("models/" + config.ai_model);
-            detection_resolution_changed.store(true);
-            detector_model_changed.store(false);
-            std::cout << "[DML] Detector reloaded: " << config.ai_model << std::endl;
-        }
-
-        if (detectionPaused)
-        {
-            std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
-            detectionBuffer.boxes.clear();
-            detectionBuffer.classes.clear();
-            detectionBuffer.version++;
-            detectionBuffer.cv.notify_all();
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            continue;
-        }
-
-        cv::Mat frame;
-        bool hasNewFrame = false;
-        {
-            std::unique_lock<std::mutex> lock(inferenceMutex);
-            if (!frameReady && !shouldExit)
-                inferenceCV.wait(lock, [this] { return frameReady || shouldExit; });
-
-            if (shouldExit) break;
-
-            if (frameReady)
+            if (detector_model_changed.load())
             {
-                frame = std::move(currentFrame);
-                frameReady = false;
-                hasNewFrame = true;
+                initializeModel("models/" + config.ai_model);
+                detection_resolution_changed.store(true);
+                detector_model_changed.store(false);
+                std::cout << "[DML] Detector reloaded: " << config.ai_model << std::endl;
+            }
+
+            if (detectionPaused)
+            {
+                std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
+                detectionBuffer.boxes.clear();
+                detectionBuffer.classes.clear();
+                detectionBuffer.version++;
+                detectionBuffer.cv.notify_all();
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+
+            cv::Mat frame;
+            bool hasNewFrame = false;
+            {
+                std::unique_lock<std::mutex> lock(inferenceMutex);
+                if (!frameReady && !shouldExit)
+                    inferenceCV.wait(lock, [this] { return frameReady || shouldExit; });
+
+                if (shouldExit) break;
+
+                if (frameReady)
+                {
+                    frame = std::move(currentFrame);
+                    frameReady = false;
+                    hasNewFrame = true;
+                }
+            }
+
+            if (hasNewFrame && !frame.empty())
+            {
+                auto start = std::chrono::steady_clock::now();
+
+                std::vector<cv::Mat> batchFrames = { frame };
+                auto detectionsBatch = detectBatch(batchFrames);
+                const std::vector<Detection>& detections = detectionsBatch.back();
+
+                auto end = std::chrono::steady_clock::now();
+                lastInferenceTimeDML = end - start;
+
+                std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
+                detectionBuffer.boxes.clear();
+                detectionBuffer.classes.clear();
+                for (const auto& d : detections) {
+                    detectionBuffer.boxes.push_back(d.box);
+                    detectionBuffer.classes.push_back(d.classId);
+                }
+                detectionBuffer.version++;
+                detectionBuffer.cv.notify_all();
             }
         }
-
-        if (hasNewFrame && !frame.empty())
-        {
-            auto start = std::chrono::steady_clock::now();
-
-            std::vector<cv::Mat> batchFrames = { frame };
-            auto detectionsBatch = detectBatch(batchFrames);
-            const std::vector<Detection>& detections = detectionsBatch.back();
-
-            auto end = std::chrono::steady_clock::now();
-            lastInferenceTimeDML = end - start;
-
-            std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
-            detectionBuffer.boxes.clear();
-            detectionBuffer.classes.clear();
-            for (const auto& d : detections) {
-                detectionBuffer.boxes.push_back(d.box);
-                detectionBuffer.classes.push_back(d.classId);
-            }
-            detectionBuffer.version++;
-            detectionBuffer.cv.notify_all();
-        }
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[DML] Inference thread crashed: " << e.what() << std::endl;
+        shouldExit = true;
+        inferenceCV.notify_all();
+        detectionBuffer.cv.notify_all();
+    }
+    catch (...)
+    {
+        std::cerr << "[DML] Inference thread crashed: unknown exception." << std::endl;
+        shouldExit = true;
+        inferenceCV.notify_all();
+        detectionBuffer.cv.notify_all();
     }
 }

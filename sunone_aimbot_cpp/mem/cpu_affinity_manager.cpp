@@ -1,5 +1,7 @@
 #include "cpu_affinity_manager.h"
 
+#include <iostream>
+
 bool CPUAffinityManager::reserveCPUCores(int numCores)
 {
     DWORD_PTR mask = 0;
@@ -9,11 +11,26 @@ bool CPUAffinityManager::reserveCPUCores(int numCores)
     }
 
     originalMask = SetThreadAffinityMask(GetCurrentThread(), mask);
+    if (originalMask == 0)
+    {
+        std::cerr << "[CPU] Failed to set thread affinity mask. GetLastError="
+                  << GetLastError() << std::endl;
+        return false;
+    }
 
-    SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
-    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+    if (!SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS))
+    {
+        std::cerr << "[CPU] Failed to set process priority. GetLastError="
+                  << GetLastError() << std::endl;
+    }
 
-    return originalMask != 0;
+    if (!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST))
+    {
+        std::cerr << "[CPU] Failed to set thread priority. GetLastError="
+                  << GetLastError() << std::endl;
+    }
+
+    return true;
 }
 
 bool CPUAffinityManager::reserveSystemMemory(size_t reservedMemoryMB)
@@ -26,5 +43,6 @@ bool CPUAffinityManager::reserveSystemMemory(size_t reservedMemoryMB)
         memset(reservedMemory, 0, reservedSize);
         return true;
     }
+    std::cerr << "[CPU] Failed to reserve system memory: " << reservedMemoryMB << " MB." << std::endl;
     return false;
 }

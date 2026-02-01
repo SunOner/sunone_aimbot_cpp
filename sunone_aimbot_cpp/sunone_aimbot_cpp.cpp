@@ -8,6 +8,7 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+#include <exception>
 #include <filesystem>
 #include <algorithm>
 #include <cmath>
@@ -71,6 +72,42 @@ static int g_iconImageId = 0;
 static std::mutex g_iconMutex;
 
 std::string g_iconLastError;
+
+static int FatalExit(const std::string& message)
+{
+    std::cerr << message << std::endl;
+    std::cout << "Press Enter to exit...";
+    std::cin.get();
+    return -1;
+}
+
+static void HandleThreadCrash(const char* name, const std::exception* ex)
+{
+    std::cerr << "[Thread] " << name << " crashed: "
+              << (ex ? ex->what() : "unknown exception") << std::endl;
+    shouldExit = true;
+    gameOverlayShouldExit.store(true);
+    detectionBuffer.cv.notify_all();
+}
+
+template <typename Func>
+static std::thread StartThreadGuarded(const char* name, Func func)
+{
+    return std::thread([name, func]() mutable {
+        try
+        {
+            func();
+        }
+        catch (const std::exception& e)
+        {
+            HandleThreadCrash(name, &e);
+        }
+        catch (...)
+        {
+            HandleThreadCrash(name, nullptr);
+        }
+        });
+}
 
 static void draw_target_correction_demo_game_overlay(Game_overlay* overlay, float centerX, float centerY)
 {
@@ -939,12 +976,14 @@ int main()
 
     if (config.cpuCoreReserveCount > 0)
     {
-        if (!cpuManager.reserveCPUCores(config.cpuCoreReserveCount)) return -1;
+        if (!cpuManager.reserveCPUCores(config.cpuCoreReserveCount))
+            return FatalExit("[MAIN] Failed to reserve CPU cores.");
     }
 
     if (config.systemMemoryReserveMB > 0)
     {
-        if (!cpuManager.reserveSystemMemory(config.systemMemoryReserveMB)) return -1;
+        if (!cpuManager.reserveSystemMemory(config.systemMemoryReserveMB))
+            return FatalExit("[MAIN] Failed to reserve system memory.");
     }
 
     try
@@ -979,12 +1018,14 @@ int main()
         GPUResourceManager gpuManager;
         if (config.gpuMemoryReserveMB > 0)
         {
-            if (!gpuManager.reserveGPUMemory(config.gpuMemoryReserveMB)) return -1;
+            if (!gpuManager.reserveGPUMemory(config.gpuMemoryReserveMB))
+                return FatalExit("[MAIN] Failed to reserve GPU memory.");
         }
         
         if (config.enableGpuExclusiveMode)
         {
-            if (!gpuManager.setGPUExclusiveMode()) return -1;
+            if (!gpuManager.setGPUExclusiveMode())
+                return FatalExit("[MAIN] Failed to set GPU exclusive mode.");
         }
 
         int cuda_devices = 0;
@@ -1116,7 +1157,9 @@ int main()
         {
             dml_detector = new DirectMLDetector("models/" + config.ai_model);
             std::cout << "[MAIN] DML detector initialized." << std::endl;
-            dml_detThread = std::thread(&DirectMLDetector::dmlInferenceThread, dml_detector);
+            dml_detThread = StartThreadGuarded("DmlDetector", [] {
+                dml_detector->dmlInferenceThread();
+                });
         }
 #ifdef USE_CUDA
         else
@@ -1127,17 +1170,29 @@ int main()
 
         detection_resolution_changed.store(true);
 
-        std::thread keyThread(keyboardListener);
-        std::thread capThread(captureThread, config.detection_resolution, config.detection_resolution);
+        std::thread keyThread = StartThreadGuarded("KeyboardListener", [] {
+            keyboardListener();
+            });
+        std::thread capThread = StartThreadGuarded("CaptureThread", [] {
+            captureThread(config.detection_resolution, config.detection_resolution);
+            });
 
 #ifdef USE_CUDA
-        std::thread trt_detThread(&TrtDetector::inferenceThread, &trt_detector);
+        std::thread trt_detThread = StartThreadGuarded("TrtDetector", [] {
+            trt_detector.inferenceThread();
+            });
 #endif
-        std::thread mouseMovThread(mouseThreadFunction, std::ref(mouseThread));
-        std::thread overlayThread(OverlayThread);
+        std::thread mouseMovThread = StartThreadGuarded("MouseThread", [&mouseThread] {
+            mouseThreadFunction(mouseThread);
+            });
+        std::thread overlayThread = StartThreadGuarded("OverlayThread", [] {
+            OverlayThread();
+            });
 
         gameOverlayShouldExit.store(false);
-        gameOverlayThread = std::thread(gameOverlayRenderLoop);
+        gameOverlayThread = StartThreadGuarded("GameOverlay", [] {
+            gameOverlayRenderLoop();
+            });
 
         welcome_message();
 

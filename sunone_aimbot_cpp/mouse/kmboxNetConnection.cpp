@@ -30,10 +30,21 @@ KmboxNetConnection::KmboxNetConnection(const std::string& ip, const std::string&
 
 void KmboxNetConnection::monitorThread()
 {
-    kmNet_monitor(10000);
+    try
+    {
+        kmNet_monitor(10000);
 
-    while (monitor_running_)
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        while (monitor_running_)
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[KmboxNet] Monitor thread crashed: " << e.what() << std::endl;
+    }
+    catch (...)
+    {
+        std::cerr << "[KmboxNet] Monitor thread crashed: unknown exception." << std::endl;
+    }
 }
 
 KmboxNetConnection::~KmboxNetConnection()

@@ -18,6 +18,7 @@
 #include <string>
 #include <cstdint>
 #include <chrono>
+#include <iostream>
 
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "d3d11.lib")
@@ -220,16 +221,29 @@ bool Game_overlay::Impl::Start()
     running = true;
     thread = std::thread([this] {
         SetPerMonitorV2DpiAwareness();
-        CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-        hinst = GetModuleHandleW(nullptr);
-        if (!CreateWindowAndDevices()) {
-            running = false;
-            CoUninitialize();
-            return;
+        HRESULT cohr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        const bool coinit_ok = SUCCEEDED(cohr);
+        try
+        {
+            hinst = GetModuleHandleW(nullptr);
+            if (!CreateWindowAndDevices()) {
+                running = false;
+                if (coinit_ok) CoUninitialize();
+                return;
+            }
+            RenderLoop();
         }
-        RenderLoop();
+        catch (const std::exception& e)
+        {
+            std::cerr << "[GameOverlay] Render thread crashed: " << e.what() << std::endl;
+        }
+        catch (...)
+        {
+            std::cerr << "[GameOverlay] Render thread crashed: unknown exception." << std::endl;
+        }
         DestroyWindowAndDevices();
-        CoUninitialize();
+        if (coinit_ok) CoUninitialize();
+        running = false;
         });
     return true;
 }

@@ -9,6 +9,7 @@
 #include <mutex>
 #include <atomic>
 #include <vector>
+#include <iostream>
 
 #include "mouse.h"
 #include "capture.h"
@@ -112,19 +113,30 @@ void MouseThread::queueMove(int dx, int dy)
 
 void MouseThread::moveWorkerLoop()
 {
-    while (!workerStop)
+    try
     {
-        std::unique_lock ul(queueMtx);
-        queueCv.wait(ul, [&] { return workerStop || !moveQueue.empty(); });
-
-        while (!moveQueue.empty())
+        while (!workerStop)
         {
-            Move m = moveQueue.front();
-            moveQueue.pop();
-            ul.unlock();
-            sendMovementToDriver(m.dx, m.dy);
-            ul.lock();
+            std::unique_lock ul(queueMtx);
+            queueCv.wait(ul, [&] { return workerStop || !moveQueue.empty(); });
+
+            while (!moveQueue.empty())
+            {
+                Move m = moveQueue.front();
+                moveQueue.pop();
+                ul.unlock();
+                sendMovementToDriver(m.dx, m.dy);
+                ul.lock();
+            }
         }
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[Mouse] Move worker crashed: " << e.what() << std::endl;
+    }
+    catch (...)
+    {
+        std::cerr << "[Mouse] Move worker crashed: unknown exception." << std::endl;
     }
 }
 
