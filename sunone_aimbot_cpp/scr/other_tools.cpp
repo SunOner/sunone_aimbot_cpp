@@ -39,6 +39,22 @@ static inline bool is_base64(unsigned char c)
     return (isalnum(c) || (c == '+') || (c == '/'));
 }
 
+std::string WideToUtf8(const std::wstring& ws)
+{
+    if (ws.empty())
+        return {};
+
+    int len = WideCharToMultiByte(CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()),
+        nullptr, 0, nullptr, nullptr);
+    if (len <= 0)
+        return {};
+
+    std::string out(len, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()),
+        out.data(), len, nullptr, nullptr);
+    return out;
+}
+
 std::vector<unsigned char> Base64Decode(const std::string& encoded_string)
 {
     int in_len = static_cast<int>(encoded_string.size());

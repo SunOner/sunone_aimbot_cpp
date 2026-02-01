@@ -26,4 +26,5 @@ std::vector<std::string> getAvailableModels();
 
 void welcome_message();
 bool checkwin1903();
+std::string WideToUtf8(const std::wstring& ws);
 #endif // OTHER_TOOLS_H

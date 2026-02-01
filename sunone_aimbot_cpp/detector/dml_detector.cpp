@@ -14,6 +14,7 @@
 #include "sunone_aimbot_cpp.h"
 #include "postProcess.h"
 #include "capture.h"
+#include "other_tools.h"
 
 extern std::atomic<bool> detector_model_changed;
 extern std::atomic<bool> detection_resolution_changed;
@@ -23,25 +24,6 @@ std::chrono::duration<double, std::milli> lastPreprocessTimeDML{};
 std::chrono::duration<double, std::milli> lastCopyTimeDML{};
 std::chrono::duration<double, std::milli> lastPostprocessTimeDML{};
 std::chrono::duration<double, std::milli> lastNmsTimeDML{};
-
-namespace
-{
-    std::string WideToUtf8(const std::wstring& ws)
-    {
-        if (ws.empty())
-            return {};
-
-        int len = WideCharToMultiByte(CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()),
-            nullptr, 0, nullptr, nullptr);
-        if (len <= 0)
-            return {};
-
-        std::string out(len, '\0');
-        WideCharToMultiByte(CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()),
-            out.data(), len, nullptr, nullptr);
-        return out;
-    }
-}
 
 std::string GetDMLDeviceName(int deviceId)
 {
