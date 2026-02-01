@@ -18,6 +18,25 @@
 #include "overlay.h"
 #include "overlay/config_dirty.h"
 
+namespace
+{
+    std::string WideToUtf8(const std::wstring& ws)
+    {
+        if (ws.empty())
+            return {};
+
+        int len = WideCharToMultiByte(CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()),
+            nullptr, 0, nullptr, nullptr);
+        if (len <= 0)
+            return {};
+
+        std::string out(len, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, ws.data(), static_cast<int>(ws.size()),
+            out.data(), len, nullptr, nullptr);
+        return out;
+    }
+}
+
 bool disable_winrt_futures = checkwin1903();
 int monitors = get_active_monitors();
 
@@ -150,7 +169,7 @@ void draw_capture_settings()
                 if (fg && ::GetWindowTextW(fg, wbuf, (int)std::size(wbuf)) > 0)
                 {
                     std::wstring ws(wbuf);
-                    std::string s(ws.begin(), ws.end());
+                    std::string s = WideToUtf8(ws);
                     memset(titleBuf, 0, sizeof(titleBuf));
                     auto copy = s.substr(0, sizeof(titleBuf) - 1);
                     memcpy(titleBuf, copy.c_str(), copy.size());
