@@ -2,6 +2,7 @@
 #define OTHER_TOOLS_H
 
 #include <string>
+#include <vector>
 #include <d3d11.h>
 
 static inline bool is_base64(unsigned char c);
@@ -21,6 +22,8 @@ bool LoadTextureFromMemory(const std::string& imageBase64, ID3D11Device* device,
 std::string get_ghub_version();
 int get_active_monitors();
 HMONITOR GetMonitorHandleByIndex(int monitorIndex);
+void SetRandomConsoleTitle();
+bool IsValidImageFile(const std::wstring& wpath, UINT& outW, UINT& outH, std::string& outErr);
 
 std::vector<std::string> getAvailableModels();
 

@@ -8,8 +8,6 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
-#include <array>
-#include <random>
 #include <filesystem>
 #include <algorithm>
 #include <cmath>
@@ -26,19 +24,11 @@
 #include "mem/gpu_resource_manager.h"
 #include "mem/cpu_affinity_manager.h"
 
-#include <wincodec.h>
-#include <wrl/client.h>
-#include <comdef.h>
-
 #ifdef USE_CUDA
 #include "depth/depth_anything_trt.h"
 #include "depth/depth_mask.h"
 #include "tensorrt/nvinf.h"
 #endif
-
-#pragma comment(lib, "windowscodecs.lib")
-
-using Microsoft::WRL::ComPtr;
 
 std::condition_variable frameCV;
 std::atomic<bool> shouldExit(false);
@@ -139,90 +129,6 @@ static void draw_target_correction_demo_game_overlay(Game_overlay* overlay, floa
     overlay->FillCircle({ centerX - dist_px, centerY, 4.0f }, ARGB(255, 255, 255, 80));
 }
 
-static std::string hr_to_string(HRESULT hr)
-{
-    _com_error err(hr);
-    const wchar_t* ws = err.ErrorMessage();
-    int len = WideCharToMultiByte(CP_UTF8, 0, ws, -1, nullptr, 0, nullptr, nullptr);
-    std::string s(len > 0 ? len - 1 : 0, '\0');
-    if (len > 0) WideCharToMultiByte(CP_UTF8, 0, ws, -1, s.data(), len, nullptr, nullptr);
-    return s;
-}
-
-static bool IsValidImageFile(const std::wstring& wpath, UINT& outW, UINT& outH, std::string& outErr)
-{
-    outW = outH = 0;
-    outErr.clear();
-
-    static std::once_flag coinit_flag;
-    static HRESULT coinit_hr = S_OK;
-    std::call_once(coinit_flag, [] {
-        coinit_hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-        });
-
-    ComPtr<IWICImagingFactory> factory;
-    HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory));
-    if (FAILED(hr)) { outErr = "WIC factory error: " + hr_to_string(hr); return false; }
-
-    ComPtr<IWICBitmapDecoder> decoder;
-    hr = factory->CreateDecoderFromFilename(wpath.c_str(), nullptr, GENERIC_READ, WICDecodeMetadataCacheOnLoad, &decoder);
-    if (FAILED(hr)) { outErr = "DecoderFromFilename failed: " + hr_to_string(hr); return false; }
-
-    ComPtr<IWICBitmapFrameDecode> frame;
-    hr = decoder->GetFrame(0, &frame);
-    if (FAILED(hr)) { outErr = "GetFrame(0) failed: " + hr_to_string(hr); return false; }
-
-    UINT w = 0, h = 0;
-    hr = frame->GetSize(&w, &h);
-    if (FAILED(hr)) { outErr = "GetSize failed: " + hr_to_string(hr); return false; }
-
-    const UINT MAX_DIM = 16384;
-    if (w == 0 || h == 0 || w > MAX_DIM || h > MAX_DIM)
-    {
-        outErr = "Invalid image size: " + std::to_string(w) + "x" + std::to_string(h);
-        return false;
-    }
-
-    ComPtr<IWICFormatConverter> conv;
-    hr = factory->CreateFormatConverter(&conv);
-    if (FAILED(hr)) { outErr = "CreateFormatConverter failed: " + hr_to_string(hr); return false; }
-
-    hr = conv->Initialize(frame.Get(), GUID_WICPixelFormat32bppRGBA,
-        WICBitmapDitherTypeNone, nullptr, 0.0f, WICBitmapPaletteTypeCustom);
-    if (FAILED(hr)) { outErr = "Converter Initialize failed: " + hr_to_string(hr); return false; }
-
-    const UINT probe_rows = (std::min)(h, 8u);
-    std::vector<uint8_t> probe;
-    probe.resize((size_t)w * probe_rows * 4);
-    WICRect rect{ 0, 0, (INT)w, (INT)probe_rows };
-    hr = conv->CopyPixels(&rect, (UINT)(w * 4), (UINT)probe.size(), probe.data());
-    if (FAILED(hr)) { outErr = "CopyPixels failed: " + hr_to_string(hr); return false; }
-
-    outW = w; outH = h;
-    return true;
-}
-
-inline void SetRandomConsoleTitle()
-{
-    static constexpr std::array<const wchar_t*, 10> kTitles = {
-        L"Microsoft Edge",
-        L"Google Chrome",
-        L"Notepad",
-        L"Windows Terminal",
-        L"PowerShell",
-        L"Visual Studio Code",
-        L"Task Manager",
-        L"File Explorer",
-        L"Calculator",
-        L"Command Prompt",
-    };
-
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<size_t> dist(0, kTitles.size() - 1);
-
-    ::SetConsoleTitleW(kTitles[dist(gen)]);
-}
 
 void createInputDevices()
 {
