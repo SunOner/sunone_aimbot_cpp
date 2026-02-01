@@ -5,6 +5,7 @@
 
 #include <string>
 #include <iostream>
+#include <cctype>
 #include <cstdint>
 #include <filesystem>
 #include <algorithm>
@@ -14,6 +15,7 @@
 #include <random>
 #include <set>
 #include <unordered_set>
+#include <sys/stat.h>
 #include <tchar.h>
 #include <thread>
 #include <mutex>
@@ -245,7 +247,7 @@ std::vector<std::string> getOnnxFiles()
     return onnxFiles;
 }
 
-std::vector<std::string>::difference_type getModelIndex(std::vector<std::string> engine_models)
+std::vector<std::string>::difference_type getModelIndex(const std::vector<std::string>& engine_models)
 {
     auto it = std::find(engine_models.begin(), engine_models.end(), config.ai_model);
 
@@ -261,6 +263,9 @@ std::vector<std::string>::difference_type getModelIndex(std::vector<std::string>
 
 bool LoadTextureFromFile(const char* filename, ID3D11Device* device, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
 {
+    if (!filename || !device || !out_srv || !out_width || !out_height)
+        return false;
+
     int image_width = 0;
     int image_height = 0;
     int channels = 0;
@@ -287,7 +292,12 @@ bool LoadTextureFromFile(const char* filename, ID3D11Device* device, ID3D11Shade
     subResource.pSysMem = image_data;
     subResource.SysMemPitch = desc.Width * 4;
     subResource.SysMemSlicePitch = 0;
-    device->CreateTexture2D(&desc, &subResource, &pTexture);
+    HRESULT hr = device->CreateTexture2D(&desc, &subResource, &pTexture);
+    if (FAILED(hr))
+    {
+        stbi_image_free(image_data);
+        return false;
+    }
 
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
     ZeroMemory(&srvDesc, sizeof(srvDesc));
@@ -295,7 +305,13 @@ bool LoadTextureFromFile(const char* filename, ID3D11Device* device, ID3D11Shade
     srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels = desc.MipLevels;
     srvDesc.Texture2D.MostDetailedMip = 0;
-    device->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
+    hr = device->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
+    if (FAILED(hr))
+    {
+        pTexture->Release();
+        stbi_image_free(image_data);
+        return false;
+    }
     pTexture->Release();
 
     *out_width = image_width;
@@ -307,6 +323,9 @@ bool LoadTextureFromFile(const char* filename, ID3D11Device* device, ID3D11Shade
 
 bool LoadTextureFromMemory(const std::string& imageBase64, ID3D11Device* device, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
 {
+    if (!device || !out_srv || !out_width || !out_height)
+        return false;
+
     std::vector<unsigned char> decodedData = Base64Decode(imageBase64);
 
     int image_width = 0;
@@ -343,7 +362,12 @@ bool LoadTextureFromMemory(const std::string& imageBase64, ID3D11Device* device,
     subResource.pSysMem = image_data;
     subResource.SysMemPitch = desc.Width * 4;
     subResource.SysMemSlicePitch = 0;
-    device->CreateTexture2D(&desc, &subResource, &pTexture);
+    HRESULT hr = device->CreateTexture2D(&desc, &subResource, &pTexture);
+    if (FAILED(hr))
+    {
+        stbi_image_free(image_data);
+        return false;
+    }
 
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
     ZeroMemory(&srvDesc, sizeof(srvDesc));
@@ -351,7 +375,13 @@ bool LoadTextureFromMemory(const std::string& imageBase64, ID3D11Device* device,
     srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels = desc.MipLevels;
     srvDesc.Texture2D.MostDetailedMip = 0;
-    device->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
+    hr = device->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
+    if (FAILED(hr))
+    {
+        pTexture->Release();
+        stbi_image_free(image_data);
+        return false;
+    }
     pTexture->Release();
 
     *out_width = image_width;
@@ -371,7 +401,7 @@ std::string get_ghub_version()
     }
     in.close();
 
-    if (line.data())
+    if (!line.empty())
     {
         return line;
     }

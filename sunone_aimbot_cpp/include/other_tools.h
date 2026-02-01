@@ -13,7 +13,7 @@ std::string replace_extension(const std::string& filename, const std::string& ne
 std::vector<std::string> getEngineFiles();
 std::vector<std::string> getModelFiles();
 std::vector<std::string> getOnnxFiles();
-std::vector<std::string>::difference_type getModelIndex(std::vector<std::string> engine_models);
+std::vector<std::string>::difference_type getModelIndex(const std::vector<std::string>& engine_models);
 
 std::string intToString(int value);
 bool LoadTextureFromFile(const char* filename, ID3D11Device* device, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height);
