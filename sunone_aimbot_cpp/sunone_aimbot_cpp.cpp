@@ -474,6 +474,7 @@ static void gameOverlayRenderLoop()
     static auto lastDepthUpdate = std::chrono::steady_clock::time_point::min();
     static bool lastDepthInferenceEnabled = true;
 #endif
+    int lastDetectionVersion = -1;
 
     while (!gameOverlayShouldExit.load())
     {
@@ -545,11 +546,19 @@ static void gameOverlayRenderLoop()
 
         std::vector<cv::Rect> boxesCopy;
         std::vector<int> classesCopy;
+        int detectionVersion = lastDetectionVersion;
         {
-            std::lock_guard<std::mutex> lk(detectionBuffer.mutex);
+            std::unique_lock<std::mutex> lk(detectionBuffer.mutex);
+            const unsigned fpsCap = (unsigned)config.game_overlay_max_fps;
+            const int waitMs = (fpsCap > 0) ? static_cast<int>(std::max(1u, 1000u / fpsCap)) : 8;
+            detectionBuffer.cv.wait_for(lk, std::chrono::milliseconds(waitMs), [&] {
+                return detectionBuffer.version != lastDetectionVersion || gameOverlayShouldExit.load();
+                });
             boxesCopy = detectionBuffer.boxes;
             classesCopy = detectionBuffer.classes;
+            detectionVersion = detectionBuffer.version;
         }
+        lastDetectionVersion = detectionVersion;
 
         decltype(globalMouseThread->getFuturePositions()) futurePts;
         if (config.game_overlay_draw_future && globalMouseThread)
@@ -982,17 +991,6 @@ static void gameOverlayRenderLoop()
         }
 
         gameOverlayPtr->EndFrame();
-
-        unsigned fpsCap = (unsigned)config.game_overlay_max_fps;
-        if (boxesCopy.empty() && futurePts.empty())
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(25));
-            continue;
-        }
-        if (fpsCap > 0)
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000 / fpsCap));
-        else
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     if (gameOverlayPtr)
