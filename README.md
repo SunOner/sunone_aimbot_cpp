@@ -81,7 +81,7 @@ If you want to compile the project yourself or modify code, follow these instruc
 
 ## 1. Requirements
 
-* **Visual Studio 2022 Community** ([Download](https://visualstudio.microsoft.com/vs/community/))
+* **Visual Studio 2026 Community** ([Download](https://visualstudio.microsoft.com/vs/community/))
 * **Windows 10 or 11 (x64)**
 * **Windows SDK 10.0.26100.0** or newer
 * **CMake** ([Download](https://cmake.org/))
@@ -212,7 +212,7 @@ sunone_aimbot_cpp/
 	* Build directory:
 		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build`
 	* Click **Configure**
-		(Choose "Visual Studio 17 2022", x64)
+		(Choose "Visual Studio 18 2026", x64)
 
 4. **Enable CUDA Options**
 
@@ -280,7 +280,7 @@ sunone_aimbot_cpp/
 
 ## 6. Build and Run
 
-1. Open the solution in Visual Studio 2022.
+1. Open the solution in Visual Studio 2026.
 2. Choose your configuration (`Release | x64 | DML` or `Release | x64 | CUDA`).
 3. Build the solution.
 4. Run `ai.exe` from the output folder.

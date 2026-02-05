@@ -151,7 +151,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='CUDA|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -217,6 +217,9 @@
     <Manifest>
       <GenerateCatalogFiles>false</GenerateCatalogFiles>
     </Manifest>
+    <CudaCompile>
+      <AdditionalOptions>-allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DML|x64'">
     <ClCompile>
