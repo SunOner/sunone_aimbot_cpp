@@ -176,6 +176,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='CUDA|x64'">
+    <CppWinRTEnableLegacyCoroutines>false</CppWinRTEnableLegacyCoroutines>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DML|x64'">
+    <CppWinRTEnableLegacyCoroutines>false</CppWinRTEnableLegacyCoroutines>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='CUDA|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(MSBuildProjectDirectory)\modules\serial\include;$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\imgui;$(MSBuildProjectDirectory)\keyboard;$(MSBuildProjectDirectory)\config;$(MSBuildProjectDirectory)\tensorrt;$(MSBuildProjectDirectory)\detector;$(MSBuildProjectDirectory)\mouse;$(MSBuildProjectDirectory)\overlay;$(MSBuildProjectDirectory)\capture;$(MSBuildProjectDirectory)\modules\opencv\build\install\include;$(WindowsSDK_IncludePath);$(WindowsSDK_IncludePath)\cppwinrt;$(MSBuildProjectDirectory)\modules\TensorRT-10.14.1.48\include;include;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v13.1\include;$(ProgramW6432)\NVIDIA\CUDNN\v9.17\include\13.1;$(IncludePath)</IncludePath>
     <LibraryPath>$(MSBuildProjectDirectory)\modules\serial\visual_studio\x64\Release;$(MSBuildProjectDirectory)\modules\glfw-3.4.bin.WIN64\lib-vc2019;$(MSBuildProjectDirectory)\modules\opencv\build\install\x64\vc17\lib;$(MSBuildProjectDirectory)\modules\\TensorRT-10.14.1.48\lib;$(ProgramW6432)\NVIDIA GPU Computing Toolkit\CUDA\v13.1\lib\x64;$(ProgramW6432)\NVIDIA\CUDNN\v9.17\lib\13.1;$(LibraryPath)</LibraryPath>

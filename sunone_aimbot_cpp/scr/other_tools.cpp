@@ -1,6 +1,5 @@
 #define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
-#include <winsock2.h>
 #include <Windows.h>
 
 #include <string>
@@ -11,20 +10,12 @@
 #include <algorithm>
 #include <array>
 #include <fstream>
-#include <cstdlib>
 #include <random>
 #include <set>
-#include <unordered_set>
-#include <sys/stat.h>
-#include <tchar.h>
-#include <thread>
-#include <mutex>
-#include <atomic>
 #include <vector>
 
 #include <d3d11.h>
 #include <dxgi.h>
-#include <dxgi1_2.h>
 #include <wincodec.h>
 #include <wrl/client.h>
 #include <comdef.h>
@@ -51,6 +42,114 @@ static const std::string base64_chars =
 static inline bool is_base64(unsigned char c)
 {
     return (isalnum(c) || (c == '+') || (c == '/'));
+}
+
+class ScopedComInit
+{
+public:
+    explicit ScopedComInit(DWORD coinit) noexcept
+        : hr(CoInitializeEx(nullptr, coinit))
+    {
+    }
+
+    ~ScopedComInit()
+    {
+        if (hr == S_OK || hr == S_FALSE)
+        {
+            CoUninitialize();
+        }
+    }
+
+    bool ok() const noexcept
+    {
+        return hr == S_OK || hr == S_FALSE || hr == RPC_E_CHANGED_MODE;
+    }
+
+    HRESULT hr;
+};
+
+static std::filesystem::path MakePathFromUtf8(const char* filename)
+{
+    if (!filename || !*filename)
+    {
+        return {};
+    }
+
+    try
+    {
+        return std::filesystem::u8path(filename);
+    }
+    catch (...)
+    {
+        return std::filesystem::path(filename);
+    }
+}
+
+static bool ReadFileToBuffer(const std::filesystem::path& path, std::vector<unsigned char>& out)
+{
+    out.clear();
+
+    std::error_code ec;
+    if (!std::filesystem::exists(path, ec) || ec)
+    {
+        return false;
+    }
+
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    if (!file)
+    {
+        return false;
+    }
+
+    std::streamsize size = file.tellg();
+    if (size <= 0)
+    {
+        return false;
+    }
+
+    out.resize(static_cast<size_t>(size));
+    file.seekg(0, std::ios::beg);
+    if (!file.read(reinterpret_cast<char*>(out.data()), size))
+    {
+        out.clear();
+        return false;
+    }
+
+    return true;
+}
+
+static std::vector<std::string> GetModelFilesByExt(const std::vector<std::string>& exts)
+{
+    std::vector<std::string> files;
+
+    std::error_code ec;
+    std::filesystem::directory_iterator it("models/", ec);
+    if (ec)
+    {
+        return files;
+    }
+
+    for (const auto& entry : it)
+    {
+        if (!entry.is_regular_file())
+        {
+            continue;
+        }
+
+        std::string ext = entry.path().extension().string();
+        std::transform(ext.begin(), ext.end(), ext.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+        const bool match = std::any_of(exts.begin(), exts.end(),
+            [&ext](const std::string& e) { return ext == e; });
+        if (match)
+        {
+            files.push_back(entry.path().filename().string());
+        }
+    }
+
+    std::sort(files.begin(), files.end());
+    return files;
 }
 
 std::string WideToUtf8(const std::wstring& ws)
@@ -85,11 +184,12 @@ bool IsValidImageFile(const std::wstring& wpath, UINT& outW, UINT& outH, std::st
     outW = outH = 0;
     outErr.clear();
 
-    static std::once_flag coinit_flag;
-    static HRESULT coinit_hr = S_OK;
-    std::call_once(coinit_flag, [] {
-        coinit_hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-        });
+    ScopedComInit com(COINIT_MULTITHREADED);
+    if (!com.ok())
+    {
+        outErr = "CoInitializeEx failed: " + hr_to_string(com.hr);
+        return false;
+    }
 
     ComPtr<IWICImagingFactory> factory;
     HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory));
@@ -135,15 +235,54 @@ bool IsValidImageFile(const std::wstring& wpath, UINT& outW, UINT& outH, std::st
 
 std::vector<unsigned char> Base64Decode(const std::string& encoded_string)
 {
-    int in_len = static_cast<int>(encoded_string.size());
+    std::vector<unsigned char> ret;
+
+    if (encoded_string.empty())
+    {
+        return ret;
+    }
+
+    size_t start = 0;
+    size_t base64_pos = encoded_string.find("base64,");
+    if (base64_pos != std::string::npos)
+    {
+        start = base64_pos + 7;
+    }
+
+    std::string filtered;
+    filtered.reserve(encoded_string.size() - start);
+    for (size_t idx = start; idx < encoded_string.size(); ++idx)
+    {
+        unsigned char c = static_cast<unsigned char>(encoded_string[idx]);
+        if (c == '=')
+        {
+            filtered.push_back('=');
+            continue;
+        }
+        if (is_base64(c))
+        {
+            filtered.push_back(static_cast<char>(c));
+            continue;
+        }
+        if (std::isspace(c))
+        {
+            continue;
+        }
+    }
+
+    if (filtered.empty())
+    {
+        return ret;
+    }
+
+    int in_len = static_cast<int>(filtered.size());
     int i = 0;
     int in_ = 0;
     unsigned char char_array_4[4], char_array_3[3];
-    std::vector<unsigned char> ret;
 
-    while (in_len-- && (encoded_string[in_] != '=') && is_base64(static_cast<unsigned char>(encoded_string[in_])))
+    while (in_len-- && (filtered[in_] != '=') && is_base64(static_cast<unsigned char>(filtered[in_])))
     {
-        char_array_4[i++] = static_cast<unsigned char>(encoded_string[in_]); in_++;
+        char_array_4[i++] = static_cast<unsigned char>(filtered[in_]); in_++;
         if (i == 4)
         {
             for (i = 0; i < 4; i++)
@@ -181,8 +320,18 @@ std::vector<unsigned char> Base64Decode(const std::string& encoded_string)
 
 bool fileExists(const std::string& path)
 {
-    struct stat buffer;
-    return (stat(path.c_str(), &buffer) == 0);
+    std::filesystem::path fsPath;
+    try
+    {
+        fsPath = std::filesystem::u8path(path);
+    }
+    catch (...)
+    {
+        fsPath = std::filesystem::path(path);
+    }
+
+    std::error_code ec;
+    return std::filesystem::exists(fsPath, ec) && !ec;
 }
 
 std::string replace_extension(const std::string& filename, const std::string& new_extension)
@@ -198,53 +347,19 @@ std::string replace_extension(const std::string& filename, const std::string& ne
     }
 }
 
-std::string intToString(int value)
-{
-    return std::to_string(value);
-}
-
 std::vector<std::string> getModelFiles()
 {
-    std::vector<std::string> modelsFiles;
-
-    for (const auto& entry : std::filesystem::directory_iterator("models/"))
-    {
-        if (entry.is_regular_file() && entry.path().extension() == ".engine" ||
-            entry.is_regular_file() && entry.path().extension() == ".onnx")
-        {
-            modelsFiles.push_back(entry.path().filename().string());
-        }
-    }
-    return modelsFiles;
+    return GetModelFilesByExt({ ".engine", ".onnx" });
 }
 
 std::vector<std::string> getEngineFiles()
 {
-    std::vector<std::string> engineFiles;
-
-    for (const auto& entry : std::filesystem::directory_iterator("models/"))
-    {
-        if (entry.is_regular_file() && entry.path().extension() == ".engine" ||
-            entry.is_regular_file() && entry.path().extension() == ".onnx")
-        {
-            engineFiles.push_back(entry.path().filename().string());
-        }
-    }
-    return engineFiles;
+    return GetModelFilesByExt({ ".engine" });
 }
 
 std::vector<std::string> getOnnxFiles()
 {
-    std::vector<std::string> onnxFiles;
-
-    for (const auto& entry : std::filesystem::directory_iterator("models/"))
-    {
-        if (entry.is_regular_file() && entry.path().extension() == ".onnx")
-        {
-            onnxFiles.push_back(entry.path().filename().string());
-        }
-    }
-    return onnxFiles;
+    return GetModelFilesByExt({ ".onnx" });
 }
 
 std::vector<std::string>::difference_type getModelIndex(const std::vector<std::string>& engine_models)
@@ -257,19 +372,45 @@ std::vector<std::string>::difference_type getModelIndex(const std::vector<std::s
     }
     else
     {
-        return 0; // not found
+        return -1; // not found
     }
 }
 
 bool LoadTextureFromFile(const char* filename, ID3D11Device* device, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
 {
+    if (out_srv)
+    {
+        *out_srv = nullptr;
+    }
+    if (out_width)
+    {
+        *out_width = 0;
+    }
+    if (out_height)
+    {
+        *out_height = 0;
+    }
+
     if (!filename || !device || !out_srv || !out_width || !out_height)
         return false;
 
     int image_width = 0;
     int image_height = 0;
     int channels = 0;
-    unsigned char* image_data = stbi_load(filename, &image_width, &image_height, &channels, 4);
+    const std::filesystem::path path = MakePathFromUtf8(filename);
+    std::vector<unsigned char> fileData;
+    if (path.empty() || !ReadFileToBuffer(path, fileData))
+    {
+        return false;
+    }
+
+    unsigned char* image_data = stbi_load_from_memory(
+        fileData.data(),
+        static_cast<int>(fileData.size()),
+        &image_width,
+        &image_height,
+        &channels,
+        4);
     if (image_data == NULL)
         return false;
 
@@ -323,10 +464,27 @@ bool LoadTextureFromFile(const char* filename, ID3D11Device* device, ID3D11Shade
 
 bool LoadTextureFromMemory(const std::string& imageBase64, ID3D11Device* device, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
 {
+    if (out_srv)
+    {
+        *out_srv = nullptr;
+    }
+    if (out_width)
+    {
+        *out_width = 0;
+    }
+    if (out_height)
+    {
+        *out_height = 0;
+    }
+
     if (!device || !out_srv || !out_width || !out_height)
         return false;
 
     std::vector<unsigned char> decodedData = Base64Decode(imageBase64);
+    if (decodedData.empty())
+    {
+        return false;
+    }
 
     int image_width = 0;
     int image_height = 0;
@@ -474,26 +632,8 @@ std::vector<std::string> getAvailableModels()
 {
     std::vector<std::string> availableModels;
 
-    std::vector<std::string> engineFiles;
-    std::vector<std::string> onnxFiles;
-
-    for (const auto& entry : std::filesystem::directory_iterator("models/"))
-    {
-        if (!entry.is_regular_file())
-        {
-            continue;
-        }
-
-        const auto ext = entry.path().extension();
-        if (ext == ".engine")
-        {
-            engineFiles.push_back(entry.path().filename().string());
-        }
-        else if (ext == ".onnx")
-        {
-            onnxFiles.push_back(entry.path().filename().string());
-        }
-    }
+    std::vector<std::string> engineFiles = getEngineFiles();
+    std::vector<std::string> onnxFiles = getOnnxFiles();
 
     if (config.backend == "TRT")
     {
