@@ -1011,8 +1011,13 @@ int main()
             int runtime_minor = (cuda_runtime_version % 1000) / 10;
             std::cerr << "[MAIN] CUDA " << required_major << "." << required_minor
                 << " required. Detected " << runtime_major << "." << runtime_minor << "." << std::endl;
-            std::cin.get();
-            return -1;
+            const wchar_t* title = L"CUDA Update Required";
+            std::wstring message =
+                L"An outdated CUDA version was detected. "
+                L"Please update your graphics drivers to the latest version "
+                L"and install CUDA 13.1.\n\n"
+                L"The program will now attempt to continue.";
+            MessageBoxW(nullptr, message.c_str(), title, MB_OK | MB_ICONWARNING);
         }
 
         GPUResourceManager gpuManager;
