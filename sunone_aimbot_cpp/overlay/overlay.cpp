@@ -69,12 +69,16 @@ int overlayHeight = 0;
 static const int DRAG_BAR_HEIGHT_PX = 30;
 static const int MIN_OVERLAY_W = 420;
 static const int MIN_OVERLAY_H = 300;
+static const int RESIZE_BORDER_PX = 8;
 
 std::vector<std::string> availableModels;
 std::vector<std::string> key_names;
 std::vector<const char*> key_names_cstrs;
 
 ID3D11ShaderResourceView* body_texture = nullptr;
+
+static UINT GetDpiForWindowSafe(HWND hwnd);
+static int GetScaledSystemMetric(int metric, UINT dpi);
 
 void load_body_texture();
 void release_body_texture();
@@ -83,6 +87,24 @@ std::vector<std::string> getAvailableModels();
 static inline int ClampInt(int v, int lo, int hi)
 {
     return (v < lo) ? lo : (v > hi) ? hi : v;
+}
+
+static void TryAutoResizeOverlay(float extraContentHeight)
+{
+    if (!g_hwnd)
+        return;
+
+    if (extraContentHeight <= 8.0f)
+        return;
+
+    const UINT dpi = GetDpiForWindowSafe(g_hwnd);
+    const int maxH = GetScaledSystemMetric(SM_CYSCREEN, dpi) - 20;
+    const int extraPx = (int)(extraContentHeight + 0.5f);
+    int targetH = overlayHeight + extraPx;
+    targetH = ClampInt(targetH, MIN_OVERLAY_H, maxH);
+
+    if (targetH != overlayHeight)
+        SetWindowPos(g_hwnd, NULL, 0, 0, overlayWidth, targetH, SWP_NOMOVE | SWP_NOZORDER);
 }
 
 void Overlay_SetOpacity(int opacity255)
@@ -400,10 +422,40 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             RECT rc;
             ::GetClientRect(hWnd, &rc);
 
+            const UINT dpi = GetDpiForWindowSafe(hWnd);
+            const int border = ::MulDiv(RESIZE_BORDER_PX, (int)dpi, 96);
+            const bool left = pt.x < rc.left + border;
+            const bool right = pt.x >= rc.right - border;
+            const bool top = pt.y < rc.top + border;
+            const bool bottom = pt.y >= rc.bottom - border;
+
+            if (top && left) return HTTOPLEFT;
+            if (top && right) return HTTOPRIGHT;
+            if (bottom && left) return HTBOTTOMLEFT;
+            if (bottom && right) return HTBOTTOMRIGHT;
+            if (left) return HTLEFT;
+            if (right) return HTRIGHT;
+            if (top) return HTTOP;
+            if (bottom) return HTBOTTOM;
+
             if (pt.y >= rc.top && pt.y < rc.top + DRAG_BAR_HEIGHT_PX)
                 return HTCAPTION;
 
             return HTCLIENT;
+        }
+        case WM_GETMINMAXINFO:
+        {
+            MINMAXINFO* mmi = reinterpret_cast<MINMAXINFO*>(lParam);
+            const UINT dpi = GetDpiForWindowSafe(hWnd);
+            const int minW = ::MulDiv(MIN_OVERLAY_W, (int)dpi, 96);
+            const int minH = ::MulDiv(MIN_OVERLAY_H, (int)dpi, 96);
+            const int maxW = GetScaledSystemMetric(SM_CXSCREEN, dpi) - 20;
+            const int maxH = GetScaledSystemMetric(SM_CYSCREEN, dpi) - 20;
+            mmi->ptMinTrackSize.x = minW;
+            mmi->ptMinTrackSize.y = minH;
+            if (maxW > 0) mmi->ptMaxTrackSize.x = maxW;
+            if (maxH > 0) mmi->ptMaxTrackSize.y = maxH;
+            return 0;
         }
     }
 
@@ -614,20 +666,63 @@ void OverlayThread()
         {
             std::lock_guard<std::mutex> lock(configMutex);
 
-            if (ImGui::BeginTabBar("Options tab bar"))
+            struct TabItem
             {
-                if (ImGui::BeginTabItem("Capture")) { draw_capture_settings();            ImGui::EndTabItem(); }
-                if (ImGui::BeginTabItem("Target")) { draw_target();                       ImGui::EndTabItem(); }
-                if (ImGui::BeginTabItem("Mouse")) { draw_mouse();                         ImGui::EndTabItem(); }
-                if (ImGui::BeginTabItem("AI")) { draw_ai();                               ImGui::EndTabItem(); }
-                if (ImGui::BeginTabItem("Buttons")) { draw_buttons();                     ImGui::EndTabItem(); }
-                if (ImGui::BeginTabItem("Overlay")) { draw_overlay();                     ImGui::EndTabItem(); }
-                if (ImGui::BeginTabItem("Game Overlay")) { draw_game_overlay_settings();  ImGui::EndTabItem(); }
-                if (ImGui::BeginTabItem("Stats")) { draw_stats();                         ImGui::EndTabItem(); }
-                if (ImGui::BeginTabItem("Debug")) { draw_debug();                         ImGui::EndTabItem(); }
+                const char* label;
+                void (*draw)();
+            };
 
-                ImGui::EndTabBar();
+            static const TabItem tabs[] = {
+                { "Capture",       draw_capture_settings },
+                { "Target",        draw_target },
+                { "Mouse",         draw_mouse },
+                { "AI",            draw_ai },
+                { "Buttons",       draw_buttons },
+                { "Overlay",       draw_overlay },
+                { "Game Overlay",  draw_game_overlay_settings },
+                { "Stats",         draw_stats },
+                { "Debug",         draw_debug },
+            };
+
+            static int activeTab = 0;
+            const int tabCount = (int)(sizeof(tabs) / sizeof(tabs[0]));
+            if (activeTab < 0 || activeTab >= tabCount)
+                activeTab = 0;
+
+            ImGuiStyle& style = ImGui::GetStyle();
+
+            float maxLabelWidth = 0.0f;
+            for (int i = 0; i < tabCount; ++i)
+                maxLabelWidth = std::max(maxLabelWidth, ImGui::CalcTextSize(tabs[i].label).x);
+
+            float navWidth = maxLabelWidth + style.FramePadding.x * 2.0f + style.ItemSpacing.x * 2.0f;
+            navWidth = std::max(navWidth, 140.0f);
+
+            ImGui::BeginChild("##options_nav", ImVec2(navWidth, 0.0f), true,
+                ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_AlwaysVerticalScrollbar);
+            for (int i = 0; i < tabCount; ++i)
+            {
+                if (ImGui::Selectable(tabs[i].label, activeTab == i))
+                    activeTab = i;
             }
+            ImGui::EndChild();
+
+            ImGui::SameLine(0.0f, style.ItemSpacing.x);
+
+            float contentExtra = 0.0f;
+            ImGui::BeginChild("##options_content", ImVec2(0.0f, 0.0f), true,
+                ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_AlwaysVerticalScrollbar);
+            const float contentStartY = ImGui::GetCursorPosY();
+            const float childHeight = ImGui::GetContentRegionAvail().y;
+
+            tabs[activeTab].draw();
+
+            const float contentEndY = ImGui::GetCursorPosY();
+            const float contentHeight = contentEndY - contentStartY;
+            contentExtra = contentHeight - childHeight + style.WindowPadding.y;
+            ImGui::EndChild();
+
+            TryAutoResizeOverlay(contentExtra);
 
             OverlayConfig_TrySave();
         }
