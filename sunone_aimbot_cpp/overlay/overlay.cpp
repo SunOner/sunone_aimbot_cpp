@@ -11,7 +11,6 @@
 #include <dxgi.h>
 #include <dwmapi.h>
 #include <dcomp.h>
-#include <filesystem>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -21,18 +20,13 @@
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
-#include <imgui/imgui_internal.h>
 
 #include "overlay.h"
 #include "overlay/draw_settings.h"
 #include "overlay/config_dirty.h"
 #include "config.h"
 #include "keycodes.h"
-#include "sunone_aimbot_cpp.h"
-#include "capture.h"
 #include "keyboard_listener.h"
-#include "other_tools.h"
-#include "virtual_camera.h"
 
 #ifdef USE_CUDA
 #include "trt_detector.h"
@@ -631,7 +625,6 @@ void OverlayThread()
                 if (ImGui::BeginTabItem("Game Overlay")) { draw_game_overlay_settings();  ImGui::EndTabItem(); }
                 if (ImGui::BeginTabItem("Stats")) { draw_stats();                         ImGui::EndTabItem(); }
                 if (ImGui::BeginTabItem("Debug")) { draw_debug();                         ImGui::EndTabItem(); }
-                if (ImGui::BeginTabItem("Depth")) { draw_depth();                         ImGui::EndTabItem(); }
 
                 ImGui::EndTabBar();
             }

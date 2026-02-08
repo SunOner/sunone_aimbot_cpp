@@ -7,7 +7,6 @@
 #include <chrono>
 #include <string>
 
-
 #include "imgui/imgui.h"
 #include "sunone_aimbot_cpp.h"
 #include "overlay.h"

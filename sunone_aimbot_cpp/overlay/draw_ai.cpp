@@ -9,6 +9,7 @@
 #include "include/other_tools.h"
 #include "overlay.h"
 #include "overlay/config_dirty.h"
+#include "draw_settings.h"
 #ifdef USE_CUDA
 #include "trt_monitor.h"
 #endif
@@ -91,6 +92,8 @@ void draw_ai()
                 detector_model_changed.store(true);
             }
         }
+        ImGui::SameLine();
+        ImGui::Text("Fixed model size: %s", config.fixed_input_size ? "Enabled" : "Disabled");
     }
 
     ImGui::Separator();
@@ -119,8 +122,13 @@ void draw_ai()
     ImGui::SliderFloat("Confidence Threshold", &config.confidence_threshold, 0.01f, 1.00f, "%.2f");
     ImGui::SliderFloat("NMS Threshold", &config.nms_threshold, 0.00f, 1.00f, "%.2f");
     ImGui::SliderInt("Max Detections", &config.max_detections, 1, 100);
-
-    ImGui::Text("Fixed model size: %s", config.fixed_input_size ? "Enabled" : "Disabled");
+    ImGui::Separator();
+    if (ImGui::CollapsingHeader("Depth"))
+    {
+        ImGui::Indent();
+        draw_depth();
+        ImGui::Unindent();
+    }
         
     if (prev_confidence_threshold != config.confidence_threshold ||
         prev_nms_threshold != config.nms_threshold ||

@@ -3,7 +3,6 @@
 #include "depth_anything_trt.h"
 
 #include <NvOnnxParser.h>
-#include <cuda_runtime.h>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
