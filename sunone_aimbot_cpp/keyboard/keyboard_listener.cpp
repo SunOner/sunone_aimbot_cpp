@@ -9,7 +9,7 @@
 #include <iostream>
 
 #include "config.h"
-#include "SerialConnection.h"
+#include "Arduino.h"
 #include "keyboard_listener.h"
 #include "mouse.h"
 #include "keycodes.h"

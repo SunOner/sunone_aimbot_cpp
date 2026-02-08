@@ -7,7 +7,7 @@
 #endif
 #include "dml_detector.h"
 #include "mouse.h"
-#include "SerialConnection.h"
+#include "Arduino.h"
 #include "detection_buffer.h"
 #include "KmboxNetConnection.h"
 #include "Makcu.h"
@@ -19,7 +19,7 @@ extern TrtDetector trt_detector;
 extern DirectMLDetector* dml_detector;
 extern DetectionBuffer detectionBuffer;
 extern MouseThread* globalMouseThread;
-extern SerialConnection* arduinoSerial;
+extern Arduino* arduinoSerial;
 extern KmboxNetConnection* kmboxNetSerial;
 extern MakcuConnection* makcuSerial;
 extern std::atomic<bool> input_method_changed;

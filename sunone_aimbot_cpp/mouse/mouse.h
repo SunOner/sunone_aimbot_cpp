@@ -16,7 +16,7 @@
 #include <condition_variable>
 
 #include "AimbotTarget.h"
-#include "SerialConnection.h"
+#include "Arduino.h"
 #include "KmboxNetConnection.h"
 #include "Makcu.h"
 #include "ghub.h"
@@ -44,7 +44,7 @@ private:
     std::atomic<bool> target_detected{ false };
     std::atomic<bool> mouse_pressed{ false };
 
-    SerialConnection* serial;
+    Arduino* arduino;
     KmboxNetConnection* kmbox_net;
     MakcuConnection* makcu;
     GhubMouse* gHub;
@@ -85,7 +85,7 @@ public:
         double predictionInterval,
         bool auto_shoot,
         float bScope_multiplier,
-        SerialConnection* serialConnection = nullptr,
+        Arduino* arduinoConnection = nullptr,
         GhubMouse* gHubMouse = nullptr,
         KmboxNetConnection* Kmbox_Net_Connection = nullptr,
         MakcuConnection* makcuConnection = nullptr
@@ -118,7 +118,7 @@ public:
     void clearFuturePositions();
     std::vector<std::pair<double, double>> getFuturePositions();
 
-    void setSerialConnection(SerialConnection* newSerial);
+    void setArduinoConnection(Arduino* newArduino);
     void setKmboxNetConnection(KmboxNetConnection* newKmbox_net);
     void setMakcuConnection(MakcuConnection* newMakcu);
     void setGHubMouse(GhubMouse* newGHub);

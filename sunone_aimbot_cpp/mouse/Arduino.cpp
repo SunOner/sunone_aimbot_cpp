@@ -6,9 +6,9 @@
 #include <algorithm>
 
 #include "sunone_aimbot_cpp.h"
-#include "SerialConnection.h"
+#include "Arduino.h"
 
-SerialConnection::SerialConnection(const std::string& port, unsigned int baud_rate)
+Arduino::Arduino(const std::string& port, unsigned int baud_rate)
     : is_open_(false),
     listening_(false),
     aiming_active(false),
@@ -42,7 +42,7 @@ SerialConnection::SerialConnection(const std::string& port, unsigned int baud_ra
     }
 }
 
-SerialConnection::~SerialConnection()
+Arduino::~Arduino()
 {
     listening_ = false;
     if (serial_.isOpen())
@@ -57,12 +57,12 @@ SerialConnection::~SerialConnection()
     is_open_ = false;
 }
 
-bool SerialConnection::isOpen() const
+bool Arduino::isOpen() const
 {
     return is_open_;
 }
 
-void SerialConnection::write(const std::string& data)
+void Arduino::write(const std::string& data)
 {
     std::lock_guard<std::mutex> lock(write_mutex_);
     if (is_open_)
@@ -78,7 +78,7 @@ void SerialConnection::write(const std::string& data)
     }
 }
 
-std::string SerialConnection::read()
+std::string Arduino::read()
 {
     if (!is_open_)
         return std::string();
@@ -95,22 +95,22 @@ std::string SerialConnection::read()
     return result;
 }
 
-void SerialConnection::click()
+void Arduino::click()
 {
     sendCommand("c");
 }
 
-void SerialConnection::press()
+void Arduino::press()
 {
     sendCommand("p");
 }
 
-void SerialConnection::release()
+void Arduino::release()
 {
     sendCommand("r");
 }
 
-void SerialConnection::move(int x, int y)
+void Arduino::move(int x, int y)
 {
     if (!is_open_)
         return;
@@ -142,12 +142,12 @@ void SerialConnection::move(int x, int y)
     }
 }
 
-void SerialConnection::sendCommand(const std::string& command)
+void Arduino::sendCommand(const std::string& command)
 {
     write(command + "\n");
 }
 
-std::vector<int> SerialConnection::splitValue(int value)
+std::vector<int> Arduino::splitValue(int value)
 {
     std::vector<int> values;
     int sign = (value < 0) ? -1 : 1;
@@ -173,7 +173,7 @@ std::vector<int> SerialConnection::splitValue(int value)
     return values;
 }
 
-void SerialConnection::timerThreadFunc()
+void Arduino::timerThreadFunc()
 {
     while (timer_running_)
     {
@@ -207,16 +207,16 @@ void SerialConnection::timerThreadFunc()
     }
 }
 
-void SerialConnection::startListening()
+void Arduino::startListening()
 {
     listening_ = true;
     if (listening_thread_.joinable())
         listening_thread_.join();
 
-    listening_thread_ = std::thread(&SerialConnection::listeningThreadFunc, this);
+    listening_thread_ = std::thread(&Arduino::listeningThreadFunc, this);
 }
 
-void SerialConnection::listeningThreadFunc()
+void Arduino::listeningThreadFunc()
 {
     std::string buffer;
     while (listening_ && is_open_)
@@ -251,7 +251,7 @@ void SerialConnection::listeningThreadFunc()
     }
 }
 
-void SerialConnection::processIncomingLine(const std::string& line)
+void Arduino::processIncomingLine(const std::string& line)
 {
     try
     {

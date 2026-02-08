@@ -50,7 +50,7 @@ std::thread gameOverlayThread;
 std::atomic<bool> gameOverlayShouldExit(false);
 
 GhubMouse* gHub = nullptr;
-SerialConnection* arduinoSerial = nullptr;
+Arduino* arduinoSerial = nullptr;
 KmboxNetConnection* kmboxNetSerial = nullptr;
 MakcuConnection* makcuSerial = nullptr;
 
@@ -197,7 +197,7 @@ void createInputDevices()
     if (config.input_method == "ARDUINO")
     {
         std::cout << "[Mouse] Using Arduino method input." << std::endl;
-        arduinoSerial = new SerialConnection(config.arduino_port, config.arduino_baudrate);
+        arduinoSerial = new Arduino(config.arduino_port, config.arduino_baudrate);
     }
     else if (config.input_method == "GHUB")
     {
@@ -241,7 +241,7 @@ void assignInputDevices()
 {
     if (globalMouseThread)
     {
-        globalMouseThread->setSerialConnection(arduinoSerial);
+        globalMouseThread->setArduinoConnection(arduinoSerial);
         globalMouseThread->setGHubMouse(gHub);
         globalMouseThread->setKmboxNetConnection(kmboxNetSerial);
         globalMouseThread->setMakcuConnection(makcuSerial);

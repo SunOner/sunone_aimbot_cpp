@@ -1,5 +1,5 @@
-#ifndef SERIALCONNECTION_H
-#define SERIALCONNECTION_H
+#ifndef ARDUINO_H
+#define ARDUINO_H
 
 #define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
@@ -12,11 +12,11 @@
 
 #include "serial/serial.h"
 
-class SerialConnection
+class Arduino
 {
 public:
-    SerialConnection(const std::string& port, unsigned int baud_rate);
-    ~SerialConnection();
+    Arduino(const std::string& port, unsigned int baud_rate);
+    ~Arduino();
 
     bool isOpen() const;
 
@@ -56,4 +56,4 @@ private:
 
 };
 
-#endif // SERIALCONNECTION_H
+#endif // ARDUINO_H

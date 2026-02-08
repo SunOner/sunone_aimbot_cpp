@@ -13,7 +13,7 @@
 
 #include "mouse.h"
 #include "capture.h"
-#include "SerialConnection.h"
+#include "Arduino.h"
 #include "sunone_aimbot_cpp.h"
 #include "ghub.h"
 
@@ -26,7 +26,7 @@ MouseThread::MouseThread(
     double predictionInterval,
     bool auto_shoot,
     float bScope_multiplier,
-    SerialConnection* serialConnection,
+    Arduino* arduinoConnection,
     GhubMouse* gHubMouse,
     KmboxNetConnection* Kmbox_Net_Connection,
     MakcuConnection* makcuConnection)
@@ -42,7 +42,7 @@ MouseThread::MouseThread(
     center_y(resolution / 2.0),
     auto_shoot(auto_shoot),
     bScope_multiplier(bScope_multiplier),
-    serial(serialConnection),
+    arduino(arduinoConnection),
     kmbox_net(Kmbox_Net_Connection),
     makcu(makcuConnection),
     gHub(gHubMouse),
@@ -259,9 +259,9 @@ void MouseThread::sendMovementToDriver(int dx, int dy)
     {
         makcu->move(dx, dy);
     }
-    else if (serial)
+    else if (arduino)
     {
-        serial->move(dx, dy);
+        arduino->move(dx, dy);
     }
     else if (gHub)
     {
@@ -410,9 +410,9 @@ void MouseThread::pressMouse(const AimbotTarget& target)
         {
             makcu->press(0);
         }
-        else if (serial)
+        else if (arduino)
         {
-            serial->press();
+            arduino->press();
         }
         else if (gHub)
         {
@@ -437,9 +437,9 @@ void MouseThread::pressMouse(const AimbotTarget& target)
         {
             makcu->release(0);
         }
-        else if (serial)
+        else if (arduino)
         {
-            serial->release();
+            arduino->release();
         }
         else if (gHub)
         {
@@ -470,9 +470,9 @@ void MouseThread::releaseMouse()
         {
             makcu->release(0);
         }
-        else if (serial)
+        else if (arduino)
         {
-            serial->release();
+            arduino->release();
         }
         else if (gHub)
         {
@@ -560,10 +560,10 @@ std::vector<std::pair<double, double>> MouseThread::getFuturePositions()
     return futurePositions;
 }
 
-void MouseThread::setSerialConnection(SerialConnection* newSerial)
+void MouseThread::setArduinoConnection(Arduino* newArduino)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
-    serial = newSerial;
+    arduino = newArduino;
 }
 
 void MouseThread::setKmboxNetConnection(KmboxNetConnection* newKmbox_net)
