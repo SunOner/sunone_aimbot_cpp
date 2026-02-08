@@ -4,8 +4,12 @@
 
 #include <NvOnnxParser.h>
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
+#include <system_error>
+
+#include "tensorrt/trt_monitor.h"
 
 namespace depth_anything
 {
@@ -15,6 +19,107 @@ namespace depth_anything
         constexpr int kMinInputSize = 160;
         constexpr int kMaxInputSize = 640;
         constexpr int kOptInputSize = 224;
+
+        bool PathComponentEquals(const std::filesystem::path& left, const std::filesystem::path& right)
+        {
+#ifdef _WIN32
+            const std::string leftStr = left.string();
+            const std::string rightStr = right.string();
+            if (leftStr.size() != rightStr.size())
+            {
+                return false;
+            }
+            for (size_t i = 0; i < leftStr.size(); ++i)
+            {
+                if (std::tolower(static_cast<unsigned char>(leftStr[i])) !=
+                    std::tolower(static_cast<unsigned char>(rightStr[i])))
+                {
+                    return false;
+                }
+            }
+            return true;
+#else
+            return left == right;
+#endif
+        }
+
+        bool PathStartsWith(const std::filesystem::path& path, const std::filesystem::path& prefix)
+        {
+            auto pathIt = path.begin();
+            auto prefixIt = prefix.begin();
+            for (; prefixIt != prefix.end(); ++prefixIt, ++pathIt)
+            {
+                if (pathIt == path.end())
+                {
+                    return false;
+                }
+                if (!PathComponentEquals(*pathIt, *prefixIt))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        bool ContainsParentTraversal(const std::filesystem::path& path)
+        {
+            for (const auto& part : path)
+            {
+                if (part == "..")
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool ResolveDepthModelPath(const std::string& modelPath, std::string& resolvedPath, std::string& error)
+        {
+            if (modelPath.empty())
+            {
+                error = "Depth model path is empty.";
+                return false;
+            }
+
+            std::filesystem::path requested(modelPath);
+            if (ContainsParentTraversal(requested))
+            {
+                error = "Depth model path must stay inside models/depth.";
+                return false;
+            }
+
+            const std::filesystem::path base = (std::filesystem::path("models") / "depth").lexically_normal();
+            std::filesystem::path resolved = requested;
+            if (!requested.is_absolute() && !requested.has_root_name() && !requested.has_root_directory())
+            {
+                if (!PathStartsWith(requested, base))
+                {
+                    resolved = base / requested;
+                }
+            }
+            else
+            {
+                resolved = requested;
+            }
+
+            resolved = resolved.lexically_normal();
+            const std::filesystem::path baseAbs = std::filesystem::absolute(base).lexically_normal();
+            const std::filesystem::path resolvedAbs = std::filesystem::absolute(resolved).lexically_normal();
+            std::error_code ec;
+            if (!std::filesystem::exists(baseAbs, ec) || ec || !std::filesystem::is_directory(baseAbs, ec) || ec)
+            {
+                error = "Depth model directory not found: " + baseAbs.string();
+                return false;
+            }
+            if (!PathStartsWith(resolvedAbs, baseAbs))
+            {
+                error = "Depth model path must stay inside models/depth.";
+                return false;
+            }
+
+            resolvedPath = resolvedAbs.string();
+            return true;
+        }
 
         bool CheckCuda(cudaError_t status, const char* action, std::string& last_error)
         {
@@ -123,17 +228,23 @@ namespace depth_anything
         min_input_size = kMinInputSize;
         max_input_size = kMaxInputSize;
 
-        if (!std::filesystem::exists(modelPath))
+        std::string resolvedPath;
+        if (!ResolveDepthModelPath(modelPath, resolvedPath, last_error))
         {
-            last_error = "Depth model file not found: " + modelPath;
             return false;
         }
 
-        if (!loadEngine(modelPath, logger))
+        if (!std::filesystem::exists(resolvedPath))
+        {
+            last_error = "Depth model file not found: " + resolvedPath;
+            return false;
+        }
+
+        if (!loadEngine(resolvedPath, logger))
         {
             if (last_error.empty())
             {
-                last_error = "Failed to load depth model: " + modelPath;
+                last_error = "Failed to load depth model: " + resolvedPath;
             }
             auto err = last_error;
             reset();
@@ -568,6 +679,23 @@ namespace depth_anything
             delete builder;
             return false;
         }
+
+        ImGuiProgressMonitor progressMonitor;
+        config->setProgressMonitor(&progressMonitor);
+        TrtExportResetState();
+        gIsTrtExporting = true;
+
+        struct ScopedExportState
+        {
+            ~ScopedExportState()
+            {
+                std::lock_guard<std::mutex> lock(gProgressMutex);
+                gProgressPhases.clear();
+                gIsTrtExporting = false;
+                gTrtExportCancelRequested = false;
+                gTrtExportLastUpdateMs = TrtNowMs();
+            }
+        } exportState;
 
         if (kEnableFp16)
         {

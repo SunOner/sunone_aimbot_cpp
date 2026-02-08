@@ -1054,6 +1054,12 @@ int main()
             std::cin.get();
             return -1;
         }
+        if (!CreateDirectory(L"models\\depth", NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+        {
+            std::cout << "[MAIN] Error with models\\depth folder" << std::endl;
+            std::cin.get();
+            return -1;
+        }
 
         if (config.capture_method == "virtual_camera")
         {

@@ -105,7 +105,19 @@ nvinfer1::ICudaEngine* buildEngineFromOnnx(const std::string& onnxFile, nvinfer1
 
     ImGuiProgressMonitor progressMonitor;
     cfg->setProgressMonitor(&progressMonitor);
+    TrtExportResetState();
     gIsTrtExporting = true;
+    struct ScopedExportState
+    {
+        ~ScopedExportState()
+        {
+            std::lock_guard<std::mutex> lock(gProgressMutex);
+            gProgressPhases.clear();
+            gIsTrtExporting = false;
+            gTrtExportCancelRequested = false;
+            gTrtExportLastUpdateMs = TrtNowMs();
+        }
+    } exportState;
 
     if (!parser->parseFromFile(onnxFile.c_str(), static_cast<int>(nvinfer1::ILogger::Severity::kWARNING)))
     {

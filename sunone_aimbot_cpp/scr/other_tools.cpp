@@ -118,12 +118,12 @@ static bool ReadFileToBuffer(const std::filesystem::path& path, std::vector<unsi
     return true;
 }
 
-static std::vector<std::string> GetModelFilesByExt(const std::vector<std::string>& exts)
+static std::vector<std::string> GetModelFilesByExtInDir(const std::string& dir, const std::vector<std::string>& exts)
 {
     std::vector<std::string> files;
 
     std::error_code ec;
-    std::filesystem::directory_iterator it("models/", ec);
+    std::filesystem::directory_iterator it(dir, ec);
     if (ec)
     {
         return files;
@@ -150,6 +150,11 @@ static std::vector<std::string> GetModelFilesByExt(const std::vector<std::string
 
     std::sort(files.begin(), files.end());
     return files;
+}
+
+static std::vector<std::string> GetModelFilesByExt(const std::vector<std::string>& exts)
+{
+    return GetModelFilesByExtInDir("models/", exts);
 }
 
 std::string WideToUtf8(const std::wstring& ws)
@@ -360,6 +365,11 @@ std::vector<std::string> getEngineFiles()
 std::vector<std::string> getOnnxFiles()
 {
     return GetModelFilesByExt({ ".onnx" });
+}
+
+std::vector<std::string> getAvailableDepthModels()
+{
+    return GetModelFilesByExtInDir("models/depth", { ".engine", ".onnx", ".trt", ".plan" });
 }
 
 std::vector<std::string>::difference_type getModelIndex(const std::vector<std::string>& engine_models)

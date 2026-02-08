@@ -5,7 +5,13 @@
 
 #include <commdlg.h>
 #include <chrono>
+#include <filesystem>
 #include <string>
+#include <algorithm>
+#include <cctype>
+#include <thread>
+#include <atomic>
+#include <mutex>
 
 #include "imgui/imgui.h"
 #include "sunone_aimbot_cpp.h"
@@ -13,11 +19,13 @@
 #include "overlay/config_dirty.h"
 #include "capture.h"
 #include "draw_settings.h"
+#include "include/other_tools.h"
 
 #ifdef USE_CUDA
 #include "depth/depth_anything_trt.h"
 #include "depth/depth_mask.h"
 #include "tensorrt/nvinf.h"
+#include "tensorrt/trt_monitor.h"
 #endif
 
 #ifdef USE_CUDA
@@ -46,6 +54,26 @@ static const char* kDepthColormapNames[] = {
     "Turbo",
     "Deepgreen"
 };
+
+namespace
+{
+    bool HasExtensionCaseInsensitive(const std::string& path, const char* ext)
+    {
+        if (!ext || !*ext)
+        {
+            return false;
+        }
+
+        std::filesystem::path p(path);
+        std::string current = p.extension().string();
+        std::string expected = ext;
+        std::transform(current.begin(), current.end(), current.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        std::transform(expected.begin(), expected.end(), expected.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return current == expected;
+    }
+}
 #endif
 
 void draw_depth()
@@ -54,19 +82,24 @@ void draw_depth()
     ImGui::TextUnformatted("Depth requires a CUDA build.");
     return;
 #else
-    static bool bufferInit = false;
-    static char modelPathBuf[260]{};
     static std::string depthStatus = "Depth model not loaded.";
     static int lastColormap = -1;
+    static std::atomic<bool> depthExportRunning{ false };
+    static std::thread depthExportThread;
+    static std::mutex depthExportMutex;
+    static std::string depthExportResult;
 
-    if (!bufferInit)
+    if (depthExportThread.joinable() && !depthExportRunning.load())
     {
-        memset(modelPathBuf, 0, sizeof(modelPathBuf));
-        std::string initial = config.depth_model_path;
-        if (initial.size() >= sizeof(modelPathBuf))
-            initial = initial.substr(0, sizeof(modelPathBuf) - 1);
-        memcpy(modelPathBuf, initial.c_str(), initial.size());
-        bufferInit = true;
+        depthExportThread.join();
+    }
+    {
+        std::lock_guard<std::mutex> lock(depthExportMutex);
+        if (!depthExportResult.empty())
+        {
+            depthStatus = depthExportResult;
+            depthExportResult.clear();
+        }
     }
 
     if (ImGui::Checkbox("Enable Depth Inference", &config.depth_inference_enabled))
@@ -79,41 +112,59 @@ void draw_depth()
         }
     }
 
-    if (ImGui::InputText("Depth model path", modelPathBuf, IM_ARRAYSIZE(modelPathBuf)))
+    std::vector<std::string> availableDepthModels = getAvailableDepthModels();
+    std::string selectedModel;
+    bool hasModels = !availableDepthModels.empty();
+    if (!hasModels)
     {
-        if (config.depth_model_path != modelPathBuf)
-        {
-            config.depth_model_path = modelPathBuf;
-            OverlayConfig_MarkDirty();
-        }
+        ImGui::Text("No depth models available in 'models/depth'.");
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Browse##depth_model_path"))
+    else
     {
-        char filePath[MAX_PATH] = {};
-        OPENFILENAMEA ofn = {};
-        ofn.lStructSize = sizeof(ofn);
-        ofn.hwndOwner = nullptr;
-        ofn.lpstrFile = filePath;
-        ofn.nMaxFile = sizeof(filePath);
-        ofn.lpstrFilter = "Model Files\0*.engine;*.onnx;*.trt;*.plan\0All Files\0*.*\0";
-        ofn.nFilterIndex = 1;
-        ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
-
-        if (GetOpenFileNameA(&ofn))
+        int currentModelIndex = 0;
+        auto it = std::find(availableDepthModels.begin(), availableDepthModels.end(), config.depth_model_path);
+        if (it == availableDepthModels.end())
         {
-            strncpy_s(modelPathBuf, filePath, sizeof(modelPathBuf) - 1);
-            if (config.depth_model_path != modelPathBuf)
+            std::string configFile = std::filesystem::path(config.depth_model_path).filename().string();
+            it = std::find(availableDepthModels.begin(), availableDepthModels.end(), configFile);
+        }
+        if (it != availableDepthModels.end())
+        {
+            currentModelIndex = static_cast<int>(std::distance(availableDepthModels.begin(), it));
+        }
+
+        std::vector<const char*> modelItems;
+        modelItems.reserve(availableDepthModels.size());
+        for (const auto& modelName : availableDepthModels)
+        {
+            modelItems.push_back(modelName.c_str());
+        }
+
+        if (ImGui::Combo("Depth model", &currentModelIndex, modelItems.data(), static_cast<int>(modelItems.size())))
+        {
+            if (config.depth_model_path != availableDepthModels[currentModelIndex])
             {
-                config.depth_model_path = modelPathBuf;
+                config.depth_model_path = availableDepthModels[currentModelIndex];
                 OverlayConfig_MarkDirty();
             }
         }
+
+        selectedModel = availableDepthModels[currentModelIndex];
+    }
+
+    const bool selectedIsOnnx = hasModels && HasExtensionCaseInsensitive(selectedModel, ".onnx");
+    const bool exportBusy = depthExportRunning.load();
+    if (!hasModels || selectedIsOnnx || exportBusy)
+    {
+        ImGui::BeginDisabled();
     }
     if (ImGui::Button("Load depth model"))
     {
-        config.depth_model_path = modelPathBuf;
-        OverlayConfig_MarkDirty();
+        if (config.depth_model_path != selectedModel)
+        {
+            config.depth_model_path = selectedModel;
+            OverlayConfig_MarkDirty();
+        }
 
         if (g_depthModel.initialize(config.depth_model_path, gLogger))
         {
@@ -125,30 +176,69 @@ void draw_depth()
             depthStatus = g_depthModel.lastError();
         }
     }
+    if (!hasModels || selectedIsOnnx || exportBusy)
+    {
+        ImGui::EndDisabled();
+    }
+
     ImGui::SameLine();
+
+    if (!hasModels || !selectedIsOnnx || exportBusy)
+    {
+        ImGui::BeginDisabled();
+    }
     if (ImGui::Button("Export depth engine"))
     {
-        std::string exportPath = modelPathBuf;
-        if (exportPath.empty())
+        if (!depthExportRunning.load())
         {
-            depthStatus = "Set a depth ONNX path to export.";
-        }
-        else if (exportPath.find(".onnx") == std::string::npos)
-        {
-            depthStatus = "Export expects an .onnx depth model path.";
-        }
-        else
-        {
-            depth_anything::DepthAnythingTrt exporter;
-            if (exporter.initialize(exportPath, gLogger))
+            if (config.depth_model_path != selectedModel)
             {
-                depthStatus = "Depth engine exported next to the ONNX file.";
+                config.depth_model_path = selectedModel;
+                OverlayConfig_MarkDirty();
+            }
+
+            std::string exportPath = selectedModel;
+            if (exportPath.empty())
+            {
+                depthStatus = "Set a depth ONNX path to export.";
+            }
+            else if (!HasExtensionCaseInsensitive(exportPath, ".onnx"))
+            {
+                depthStatus = "Export expects an .onnx depth model path.";
             }
             else
             {
-                depthStatus = exporter.lastError();
+                depthExportRunning.store(true);
+                depthExportThread = std::thread([exportPath] {
+                    depth_anything::DepthAnythingTrt exporter;
+                    std::string result;
+                    if (exporter.initialize(exportPath, gLogger))
+                    {
+                        result = "Depth engine exported next to the ONNX file.";
+                    }
+                    else
+                    {
+                        if (gTrtExportCancelRequested.load())
+                        {
+                            result = "Depth export canceled.";
+                        }
+                        else
+                        {
+                            result = exporter.lastError();
+                        }
+                    }
+                    {
+                        std::lock_guard<std::mutex> lock(depthExportMutex);
+                        depthExportResult = result;
+                    }
+                    depthExportRunning.store(false);
+                });
             }
         }
+    }
+    if (!hasModels || !selectedIsOnnx || exportBusy)
+    {
+        ImGui::EndDisabled();
     }
 
     if (ImGui::SliderInt("Depth FPS", &config.depth_fps, 0, 120))

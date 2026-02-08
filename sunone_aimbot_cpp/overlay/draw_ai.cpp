@@ -41,22 +41,46 @@ void draw_ai()
 
     if (ImGui::BeginPopupModal("TensorRT Export Progress", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        std::lock_guard<std::mutex> lock(gProgressMutex);
-        if (!gProgressPhases.empty())
+        bool hasPhases = false;
         {
-            for (auto& [name, phase] : gProgressPhases)
+            std::lock_guard<std::mutex> lock(gProgressMutex);
+            hasPhases = !gProgressPhases.empty();
+            if (hasPhases)
             {
-                float percent = phase.max > 0 ? phase.current / float(phase.max) : 0.0f;
-                ImGui::Text("%s: %d/%d", name.c_str(), phase.current, phase.max);
-                ImGui::ProgressBar(percent, ImVec2(300, 0));
+                for (auto& [name, phase] : gProgressPhases)
+                {
+                    float percent = phase.max > 0 ? phase.current / float(phase.max) : 0.0f;
+                    ImGui::Text("%s: %d/%d", name.c_str(), phase.current, phase.max);
+                    ImGui::ProgressBar(percent, ImVec2(300, 0));
+                }
             }
         }
-        else
+        if (!hasPhases)
         {
             ImGui::CloseCurrentPopup();
         }
 
         ImGui::Text("Engine export in progress, please wait...");
+        long long lastUpdate = gTrtExportLastUpdateMs.load();
+        if (lastUpdate > 0)
+        {
+            double secondsSince = (TrtNowMs() - lastUpdate) / 1000.0;
+            ImGui::Text("Last progress update: %.1f s ago", secondsSince);
+        }
+        bool cancelRequested = gTrtExportCancelRequested.load();
+        if (cancelRequested)
+        {
+            ImGui::BeginDisabled();
+        }
+        if (ImGui::Button("Cancel export"))
+        {
+            gTrtExportCancelRequested = true;
+        }
+        if (cancelRequested)
+        {
+            ImGui::EndDisabled();
+            ImGui::Text("Cancel requested...");
+        }
         ImGui::EndPopup();
     }
 #endif

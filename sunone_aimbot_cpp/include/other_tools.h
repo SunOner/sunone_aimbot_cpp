@@ -12,6 +12,7 @@ std::vector<std::string> getEngineFiles();
 std::vector<std::string> getModelFiles();
 std::vector<std::string> getOnnxFiles();
 std::vector<std::string>::difference_type getModelIndex(const std::vector<std::string>& engine_models);
+std::vector<std::string> getAvailableDepthModels();
 
 bool LoadTextureFromFile(const char* filename, ID3D11Device* device, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height);
 bool LoadTextureFromMemory(const std::string& imageBase64, ID3D11Device* device, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height);
