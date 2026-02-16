@@ -48,7 +48,7 @@ public:
 
     bool easynorecoil;
     float easynorecoilstrength;
-    std::string input_method; // "WIN32", "GHUB", "ARDUINO", "KMBOX_NET", "MAKCU"
+    std::string input_method; // "WIN32", "GHUB", "ARDUINO", "KMBOX_NET", "KMBOX_A", "MAKCU"
 
     // Wind mouse
     bool wind_mouse_enabled;
@@ -67,6 +67,9 @@ public:
     std::string kmbox_net_ip;
     std::string kmbox_net_port;
     std::string kmbox_net_uuid;
+
+    // kmbox_a
+    std::string kmbox_a_pidvid; // PIDVID in one field, format: PPPPVVVV
 
     // makcu
     int makcu_baudrate;
