@@ -28,6 +28,7 @@ MouseThread::MouseThread(
     float bScope_multiplier,
     Arduino* arduinoConnection,
     GhubMouse* gHubMouse,
+    KmboxAConnection* Kmbox_A_Connection,
     KmboxNetConnection* Kmbox_Net_Connection,
     MakcuConnection* makcuConnection)
     : screen_width(resolution),
@@ -43,6 +44,7 @@ MouseThread::MouseThread(
     auto_shoot(auto_shoot),
     bScope_multiplier(bScope_multiplier),
     arduino(arduinoConnection),
+    kmbox_a(Kmbox_A_Connection),
     kmbox_net(Kmbox_Net_Connection),
     makcu(makcuConnection),
     gHub(gHubMouse),
@@ -255,6 +257,10 @@ void MouseThread::sendMovementToDriver(int dx, int dy)
     {
         kmbox_net->move(dx, dy);
     }
+    else if (kmbox_a)
+    {
+        kmbox_a->move(dx, dy);
+    }
     else if (makcu)
     {
         makcu->move(dx, dy);
@@ -406,6 +412,10 @@ void MouseThread::pressMouse(const AimbotTarget& target)
         {
             kmbox_net->leftDown();
         }
+        else if (kmbox_a)
+        {
+            kmbox_a->leftDown();
+        }
         else if (makcu)
         {
             makcu->press(0);
@@ -432,6 +442,10 @@ void MouseThread::pressMouse(const AimbotTarget& target)
         if (kmbox_net)
         {
             kmbox_net->leftUp();
+        }
+        else if (kmbox_a)
+        {
+            kmbox_a->leftUp();
         }
         else if (makcu)
         {
@@ -465,6 +479,10 @@ void MouseThread::releaseMouse()
         if (kmbox_net)
         {
             kmbox_net->leftUp();
+        }
+        else if (kmbox_a)
+        {
+            kmbox_a->leftUp();
         }
         else if (makcu)
         {
@@ -564,6 +582,12 @@ void MouseThread::setArduinoConnection(Arduino* newArduino)
 {
     std::lock_guard<std::mutex> lock(input_method_mutex);
     arduino = newArduino;
+}
+
+void MouseThread::setKmboxAConnection(KmboxAConnection* newKmbox_a)
+{
+    std::lock_guard<std::mutex> lock(input_method_mutex);
+    kmbox_a = newKmbox_a;
 }
 
 void MouseThread::setKmboxNetConnection(KmboxNetConnection* newKmbox_net)

@@ -52,6 +52,7 @@ std::atomic<bool> gameOverlayShouldExit(false);
 GhubMouse* gHub = nullptr;
 Arduino* arduinoSerial = nullptr;
 KmboxNetConnection* kmboxNetSerial = nullptr;
+KmboxAConnection* kmboxASerial = nullptr;
 MakcuConnection* makcuSerial = nullptr;
 
 std::atomic<bool> detection_resolution_changed(false);
@@ -188,6 +189,12 @@ void createInputDevices()
         kmboxNetSerial = nullptr;
     }
 
+    if (kmboxASerial)
+    {
+        delete kmboxASerial;
+        kmboxASerial = nullptr;
+    }
+
     if (makcuSerial)
     {
         delete makcuSerial;
@@ -220,6 +227,22 @@ void createInputDevices()
             delete kmboxNetSerial; kmboxNetSerial = nullptr;
         }
     }
+    else if (config.input_method == "KMBOX_A")
+    {
+        std::cout << "[Mouse] Using KMBOX_A input." << std::endl;
+        if (config.kmbox_a_pidvid.empty())
+        {
+            std::cerr << "[KmboxA] PIDVID is empty." << std::endl;
+            return;
+        }
+        kmboxASerial = new KmboxAConnection(config.kmbox_a_pidvid);
+        if (!kmboxASerial->isOpen())
+        {
+            std::cerr << "[KmboxA] Error connecting." << std::endl;
+            delete kmboxASerial;
+            kmboxASerial = nullptr;
+        }
+    }
     else if (config.input_method == "MAKCU")
     {
         std::cout << "[Mouse] Using MAKCU input." << std::endl;
@@ -243,6 +266,7 @@ void assignInputDevices()
     {
         globalMouseThread->setArduinoConnection(arduinoSerial);
         globalMouseThread->setGHubMouse(gHub);
+        globalMouseThread->setKmboxAConnection(kmboxASerial);
         globalMouseThread->setKmboxNetConnection(kmboxNetSerial);
         globalMouseThread->setMakcuConnection(makcuSerial);
     }
@@ -266,6 +290,10 @@ void handleEasyNoRecoil(MouseThread& mouseThread)
         else if (kmboxNetSerial)
         {
             kmboxNetSerial->move(0, recoil_compensation);
+        }
+        else if (kmboxASerial)
+        {
+            kmboxASerial->move(0, recoil_compensation);
         }
         else if (makcuSerial)
         {
@@ -1116,6 +1144,7 @@ int main()
             config.bScope_multiplier,
             arduinoSerial,
             gHub,
+            kmboxASerial,
             kmboxNetSerial,
             makcuSerial
         );
@@ -1231,6 +1260,12 @@ int main()
         {
             gHub->mouse_close();
             delete gHub;
+        }
+
+        if (kmboxASerial)
+        {
+            delete kmboxASerial;
+            kmboxASerial = nullptr;
         }
 
         if (dml_detector)

@@ -49,6 +49,9 @@
     </ClCompile>
     <ClCompile Include="modules\makcu\src\serialport.cpp" />
     <ClCompile Include="mouse\ghub.cpp" />
+    <ClCompile Include="mouse\hid.c" />
+    <ClCompile Include="mouse\KmboxAConnection.cpp" />
+    <ClCompile Include="mouse\kmboxA.cpp" />
     <ClCompile Include="mouse\kmboxNetConnection.cpp" />
     <ClCompile Include="mouse\kmbox_net\kmboxNet.cpp" />
     <ClCompile Include="mouse\Makcu.cpp" />
@@ -111,6 +114,9 @@
     <ClInclude Include="modules\makcu\include\makcu.h" />
     <ClInclude Include="modules\makcu\include\serialport.h" />
     <ClInclude Include="mouse\ghub.h" />
+    <ClInclude Include="mouse\hidapi.h" />
+    <ClInclude Include="mouse\KmboxAConnection.h" />
+    <ClInclude Include="mouse\kmboxA.h" />
     <ClInclude Include="mouse\kmboxNetConnection.h" />
     <ClInclude Include="mouse\kmbox_net\HidTable.h" />
     <ClInclude Include="mouse\kmbox_net\kmboxNet.h" />
@@ -216,7 +222,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalDependencies>opencv_world4130.lib;nvinfer_10.lib;nvonnxparser_10.lib;WindowsApp.lib;d3d11.lib;dxgi.lib;d2d1.lib;cuda.lib;cudart.lib;glfw3_mt.lib;glfw3dll.lib;serial.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_world4130.lib;nvinfer_10.lib;nvonnxparser_10.lib;WindowsApp.lib;d3d11.lib;dxgi.lib;d2d1.lib;setupapi.lib;cuda.lib;cudart.lib;glfw3_mt.lib;glfw3dll.lib;serial.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <CETCompat>true</CETCompat>
     </Link>
@@ -247,7 +253,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opencv_world4130.lib;WindowsApp.lib;d3d11.lib;dxgi.lib;d2d1.lib;glfw3_mt.lib;glfw3dll.lib;serial.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencv_world4130.lib;WindowsApp.lib;d3d11.lib;dxgi.lib;d2d1.lib;setupapi.lib;glfw3_mt.lib;glfw3dll.lib;serial.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <GenerateCatalogFiles>false</GenerateCatalogFiles>

@@ -110,6 +110,9 @@ bool Config::loadConfig(const std::string& filename)
         kmbox_net_port = "1984";
         kmbox_net_uuid = "DEADC0DE";
 
+        // kmbox_a
+        kmbox_a_pidvid = "";
+
         // makcu
         makcu_baudrate = 115200;
         makcu_port = "COM0";
@@ -378,6 +381,9 @@ bool Config::loadConfig(const std::string& filename)
     kmbox_net_port = get_string("kmbox_net_port", "1984");
     kmbox_net_uuid = get_string("kmbox_net_uuid", "DEADC0DE");
 
+    // kmbox_a
+    kmbox_a_pidvid = get_string("kmbox_a_pidvid", "");
+
     // makcu
     makcu_baudrate = get_long("makcu_baudrate", 115200);
     makcu_port = get_string("makcu_port", "COM0");
@@ -559,7 +565,7 @@ bool Config::saveConfig(const std::string& filename)
         << std::fixed << std::setprecision(1)
         << "easynorecoilstrength = " << easynorecoilstrength << "\n"
 
-        << "# WIN32, GHUB, ARDUINO, KMBOX_NET, MAKCU\n"
+        << "# WIN32, GHUB, ARDUINO, KMBOX_NET, KMBOX_A, MAKCU\n"
         << "input_method = " << input_method << "\n\n";
 
     // Wind mouse
@@ -582,6 +588,9 @@ bool Config::saveConfig(const std::string& filename)
         << "kmbox_net_ip = " << kmbox_net_ip << "\n"
         << "kmbox_net_port = " << kmbox_net_port << "\n"
         << "kmbox_net_uuid = " << kmbox_net_uuid << "\n\n";
+
+    file << "# Kmbox_a\n"
+        << "kmbox_a_pidvid = " << kmbox_a_pidvid << "\n\n";
 
     // makcu
     file << "# Makcu\n"

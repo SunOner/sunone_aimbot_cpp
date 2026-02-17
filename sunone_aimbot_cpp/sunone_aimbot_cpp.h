@@ -10,6 +10,7 @@
 #include "Arduino.h"
 #include "detection_buffer.h"
 #include "KmboxNetConnection.h"
+#include "KmboxAConnection.h"
 #include "Makcu.h"
 
 extern Config config;
@@ -21,6 +22,7 @@ extern DetectionBuffer detectionBuffer;
 extern MouseThread* globalMouseThread;
 extern Arduino* arduinoSerial;
 extern KmboxNetConnection* kmboxNetSerial;
+extern KmboxAConnection* kmboxASerial;
 extern MakcuConnection* makcuSerial;
 extern std::atomic<bool> input_method_changed;
 extern std::atomic<bool> aiming;

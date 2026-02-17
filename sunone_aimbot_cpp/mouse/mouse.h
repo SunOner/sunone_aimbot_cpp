@@ -17,6 +17,7 @@
 
 #include "AimbotTarget.h"
 #include "Arduino.h"
+#include "KmboxAConnection.h"
 #include "KmboxNetConnection.h"
 #include "Makcu.h"
 #include "ghub.h"
@@ -45,6 +46,7 @@ private:
     std::atomic<bool> mouse_pressed{ false };
 
     Arduino* arduino;
+    KmboxAConnection* kmbox_a;
     KmboxNetConnection* kmbox_net;
     MakcuConnection* makcu;
     GhubMouse* gHub;
@@ -87,6 +89,7 @@ public:
         float bScope_multiplier,
         Arduino* arduinoConnection = nullptr,
         GhubMouse* gHubMouse = nullptr,
+        KmboxAConnection* Kmbox_A_Connection = nullptr,
         KmboxNetConnection* Kmbox_Net_Connection = nullptr,
         MakcuConnection* makcuConnection = nullptr
     );
@@ -119,6 +122,7 @@ public:
     std::vector<std::pair<double, double>> getFuturePositions();
 
     void setArduinoConnection(Arduino* newArduino);
+    void setKmboxAConnection(KmboxAConnection* newKmbox_a);
     void setKmboxNetConnection(KmboxNetConnection* newKmbox_net);
     void setMakcuConnection(MakcuConnection* newMakcu);
     void setGHubMouse(GhubMouse* newGHub);

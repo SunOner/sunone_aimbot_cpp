@@ -5,6 +5,9 @@
     <ClCompile Include="capture\capture.cpp" />
     <ClCompile Include="overlay\overlay.cpp" />
     <ClCompile Include="mouse\ghub.cpp" />
+    <ClCompile Include="mouse\hid.c" />
+    <ClCompile Include="mouse\KmboxAConnection.cpp" />
+    <ClCompile Include="mouse\kmboxA.cpp" />
     <ClCompile Include="mouse\mouse.cpp" />
     <ClCompile Include="mouse\Arduino.cpp" />
     <ClCompile Include="mouse\AimbotTarget.cpp" />
@@ -65,6 +68,9 @@
     <ClInclude Include="capture\capture.h" />
     <ClInclude Include="overlay\overlay.h" />
     <ClInclude Include="mouse\ghub.h" />
+    <ClInclude Include="mouse\hidapi.h" />
+    <ClInclude Include="mouse\KmboxAConnection.h" />
+    <ClInclude Include="mouse\kmboxA.h" />
     <ClInclude Include="mouse\mouse.h" />
     <ClInclude Include="mouse\Arduino.h" />
     <ClInclude Include="mouse\AimbotTarget.h" />

@@ -258,7 +258,7 @@ void draw_mouse()
     }
 
     ImGui::SeparatorText("Input method");
-    std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX_NET", "MAKCU" };
+    std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX_NET", "KMBOX_A", "MAKCU" };
 
     std::vector<const char*> method_items;
     method_items.reserve(input_methods.size());
@@ -400,10 +400,25 @@ void draw_mouse()
     }
     else if (config.input_method == "KMBOX_NET")
     {
-        static char ip[32], port[8], uuid[16];
-        strncpy(ip, config.kmbox_net_ip.c_str(), sizeof(ip));
-        strncpy(port, config.kmbox_net_port.c_str(), sizeof(port));
-        strncpy(uuid, config.kmbox_net_uuid.c_str(), sizeof(uuid));
+        static char ip[32] = "";
+        static char port[8] = "";
+        static char uuid[16] = "";
+        static std::string last_ip;
+        static std::string last_port;
+        static std::string last_uuid;
+
+        if (last_ip != config.kmbox_net_ip || last_port != config.kmbox_net_port || last_uuid != config.kmbox_net_uuid)
+        {
+            strncpy(ip, config.kmbox_net_ip.c_str(), sizeof(ip));
+            strncpy(port, config.kmbox_net_port.c_str(), sizeof(port));
+            strncpy(uuid, config.kmbox_net_uuid.c_str(), sizeof(uuid));
+            ip[sizeof(ip) - 1] = '\0';
+            port[sizeof(port) - 1] = '\0';
+            uuid[sizeof(uuid) - 1] = '\0';
+            last_ip = config.kmbox_net_ip;
+            last_port = config.kmbox_net_port;
+            last_uuid = config.kmbox_net_uuid;
+        }
 
         ImGui::InputText("IP", ip, sizeof(ip));
         ImGui::InputText("Port", port, sizeof(port));
@@ -414,6 +429,9 @@ void draw_mouse()
             config.kmbox_net_ip = ip;
             config.kmbox_net_port = port;
             config.kmbox_net_uuid = uuid;
+            last_ip = config.kmbox_net_ip;
+            last_port = config.kmbox_net_port;
+            last_uuid = config.kmbox_net_uuid;
             OverlayConfig_MarkDirty();
             input_method_changed.store(true);
         }
@@ -442,6 +460,38 @@ void draw_mouse()
                 kmboxNetSerial->lcdColor(0);
                 kmboxNetSerial->lcdPicture(gImage_128x160);
             }
+        }
+    }
+    else if (config.input_method == "KMBOX_A")
+    {
+        static char pidvid[32] = "";
+        static std::string last_pidvid;
+
+        if (last_pidvid != config.kmbox_a_pidvid)
+        {
+            strncpy(pidvid, config.kmbox_a_pidvid.c_str(), sizeof(pidvid));
+            pidvid[sizeof(pidvid) - 1] = '\0';
+            last_pidvid = config.kmbox_a_pidvid;
+        }
+
+        ImGui::InputText("PIDVID", pidvid, sizeof(pidvid));
+        ImGui::TextDisabled("Format: PPPPVVVV (one field)");
+
+        if (ImGui::Button("Save & Reconnect##kmbox_a"))
+        {
+            config.kmbox_a_pidvid = pidvid;
+            last_pidvid = config.kmbox_a_pidvid;
+            OverlayConfig_MarkDirty();
+            input_method_changed.store(true);
+        }
+
+        if (kmboxASerial && kmboxASerial->isOpen())
+        {
+            ImGui::TextColored(ImVec4(0, 255, 0, 255), "kmboxA connected");
+        }
+        else
+        {
+            ImGui::TextColored(ImVec4(255, 0, 0, 255), "kmboxA not connected");
         }
     }
     else if (config.input_method == "MAKCU")
