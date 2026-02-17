@@ -59,6 +59,13 @@ KmboxAConnection::KmboxAConnection(const std::string& pidvid)
     }
 }
 
+KmboxAConnection::~KmboxAConnection()
+{
+    if (!is_open_) return;
+    KM_close();
+    is_open_ = false;
+}
+
 void KmboxAConnection::move(int x, int y)
 {
     if (!is_open_) return;
@@ -104,7 +111,8 @@ void KmboxAConnection::middleUp()
 void KmboxAConnection::wheel(int delta)
 {
     if (!is_open_) return;
-    const int clamped = std::clamp(delta, 0, 255);
-    KM_wheel(static_cast<unsigned char>(clamped));
+    const int clamped = std::clamp(delta, -127, 127);
+    const signed char wheel_delta = static_cast<signed char>(clamped);
+    KM_wheel(static_cast<unsigned char>(wheel_delta));
 }
 

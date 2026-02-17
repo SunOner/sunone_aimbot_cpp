@@ -6,6 +6,7 @@ class KmboxAConnection
 {
 public:
     explicit KmboxAConnection(const std::string& pidvid);
+    ~KmboxAConnection();
 
     bool isOpen() const { return is_open_; }
 

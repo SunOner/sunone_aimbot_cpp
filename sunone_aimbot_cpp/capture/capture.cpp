@@ -48,12 +48,13 @@ std::vector<cv::Mat> getBatchFromQueue(int batch_size)
 {
     std::vector<cv::Mat> batch;
     std::lock_guard<std::mutex> lk(frameMutex);
-    int n = std::min((int)frameQueue.size(), batch_size);
+    const size_t target_size = (batch_size > 0) ? static_cast<size_t>(batch_size) : 0;
+    const size_t n = std::min(frameQueue.size(), target_size);
 
-    for (int i = 0; i < n; ++i)
+    for (size_t i = 0; i < n; ++i)
         batch.push_back(frameQueue[frameQueue.size() - n + i]);
 
-    while (batch.size() < batch_size && !batch.empty())
+    while (batch.size() < target_size && !batch.empty())
         batch.push_back(batch.back().clone());
     return batch;
 }

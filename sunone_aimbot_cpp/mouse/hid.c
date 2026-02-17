@@ -41,12 +41,37 @@ extern "C" {
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
 
 #include "hidapi.h"
 
 #undef MIN
 #define MIN(x,y) ((x) < (y)? (x): (y))
+
+static int size_to_dword(size_t value, DWORD *out)
+{
+	if (!out || value > (size_t)MAXDWORD)
+		return 0;
+	*out = (DWORD)value;
+	return 1;
+}
+
+static int size_to_ulong(size_t value, ULONG *out)
+{
+	if (!out || value > (size_t)ULONG_MAX)
+		return 0;
+	*out = (ULONG)value;
+	return 1;
+}
+
+static int size_to_int(size_t value, int *out)
+{
+	if (!out || value > (size_t)INT_MAX)
+		return 0;
+	*out = (int)value;
+	return 1;
+}
 
 #ifdef _MSC_VER
 	/* Thanks Microsoft, but I know how to use strncpy(). */
@@ -588,14 +613,13 @@ err:
 }
 void HID_API_EXPORT HID_API_CALL hid_write2(hid_device *dev, const unsigned char *data, size_t length)
 {
-	OVERLAPPED ol;
-		printf ("output_report_length %d \n",dev->output_report_length);
-	 WriteFile(dev->device_handle, (unsigned char *)data, 64, NULL, &ol);
+	(void)hid_write(dev, data, length);
 }
 
 int HID_API_EXPORT HID_API_CALL hid_write(hid_device *dev, const unsigned char *data, size_t length)
 {
 	DWORD bytes_written;
+	DWORD write_len;
 	BOOL res;
 
 	OVERLAPPED ol;
@@ -620,7 +644,13 @@ int HID_API_EXPORT HID_API_CALL hid_write(hid_device *dev, const unsigned char *
 		length = dev->output_report_length;
 	}
 
-	res = WriteFile(dev->device_handle, buf, length, NULL, &ol);
+	if (!size_to_dword(length, &write_len)) {
+		register_error(dev, "WriteFile");
+		bytes_written = (DWORD)-1;
+		goto end_of_function;
+	}
+
+	res = WriteFile(dev->device_handle, buf, write_len, NULL, &ol);
 	
 	if (!res) {
 		if (GetLastError() != ERROR_IO_PENDING) {
@@ -645,14 +675,18 @@ end_of_function:
 	if (buf != data)
 		free(buf);
 
-	return bytes_written;
+	if (bytes_written == (DWORD)-1 || bytes_written > (DWORD)INT_MAX)
+		return -1;
+	return (int)bytes_written;
 }
 
 
 int HID_API_EXPORT HID_API_CALL hid_read_timeout(hid_device *dev, unsigned char *data, size_t length, int milliseconds)
 {
 	DWORD bytes_read = 0;
+	DWORD read_len = 0;
 	size_t copy_len = 0;
+	int copy_len_i = 0;
 	BOOL res;
 
 	/* Copy the handle for convenience. */
@@ -663,7 +697,12 @@ int HID_API_EXPORT HID_API_CALL hid_read_timeout(hid_device *dev, unsigned char 
 		dev->read_pending = TRUE;
 		memset(dev->read_buf, 0, dev->input_report_length);
 		ResetEvent(ev);
-		res = ReadFile(dev->device_handle, dev->read_buf, dev->input_report_length, &bytes_read, &dev->ol);
+		if (!size_to_dword(dev->input_report_length, &read_len)) {
+			register_error(dev, "ReadFile");
+			dev->read_pending = FALSE;
+			return -1;
+		}
+		res = ReadFile(dev->device_handle, dev->read_buf, read_len, &bytes_read, &dev->ol);
 		
 		if (!res) {
 			if (GetLastError() != ERROR_IO_PENDING) {
@@ -717,7 +756,9 @@ end_of_function:
 		return -1;
 	}
 	
-	return copy_len;
+	if (!size_to_int(copy_len, &copy_len_i))
+		return -1;
+	return copy_len_i;
 }
 
 int HID_API_EXPORT HID_API_CALL hid_read(hid_device *dev, unsigned char *data, size_t length)
@@ -733,13 +774,22 @@ int HID_API_EXPORT HID_API_CALL hid_set_nonblocking(hid_device *dev, int nonbloc
 
 int HID_API_EXPORT HID_API_CALL hid_send_feature_report(hid_device *dev, const unsigned char *data, size_t length)
 {
-	BOOL res = HidD_SetFeature(dev->device_handle, (PVOID)data, length);
+	ULONG feature_len = 0;
+	int length_i = 0;
+	BOOL res;
+
+	if (!size_to_ulong(length, &feature_len) || !size_to_int(length, &length_i)) {
+		register_error(dev, "HidD_SetFeature");
+		return -1;
+	}
+
+	res = HidD_SetFeature(dev->device_handle, (PVOID)data, feature_len);
 	if (!res) {
 		register_error(dev, "HidD_SetFeature");
 		return -1;
 	}
 
-	return length;
+	return length_i;
 }
 
 
@@ -755,14 +805,20 @@ int HID_API_EXPORT HID_API_CALL hid_get_feature_report(hid_device *dev, unsigned
 	return 0; /* HidD_GetFeature() doesn't give us an actual length, unfortunately */
 #else
 	DWORD bytes_returned;
+	DWORD io_len = 0;
 
 	OVERLAPPED ol;
 	memset(&ol, 0, sizeof(ol));
 
+	if (!size_to_dword(length, &io_len)) {
+		register_error(dev, "Send Feature Report DeviceIoControl");
+		return -1;
+	}
+
 	res = DeviceIoControl(dev->device_handle,
 		IOCTL_HID_GET_FEATURE,
-		data, length,
-		data, length,
+		data, io_len,
+		data, io_len,
 		&bytes_returned, &ol);
 
 	if (!res) {
@@ -787,7 +843,9 @@ int HID_API_EXPORT HID_API_CALL hid_get_feature_report(hid_device *dev, unsigned
 	   bytes_returned. */
 	bytes_returned++;
 
-	return bytes_returned;
+	if (bytes_returned > (DWORD)INT_MAX)
+		return -1;
+	return (int)bytes_returned;
 #endif
 }
 
@@ -801,9 +859,17 @@ void HID_API_EXPORT HID_API_CALL hid_close(hid_device *dev)
 
 int HID_API_EXPORT_CALL HID_API_CALL hid_get_manufacturer_string(hid_device *dev, wchar_t *string, size_t maxlen)
 {
+	size_t clamped_wchars;
+	ULONG buffer_len;
 	BOOL res;
 
-	res = HidD_GetManufacturerString(dev->device_handle, string, sizeof(wchar_t) * MIN(maxlen, MAX_STRING_WCHARS));
+	clamped_wchars = MIN(maxlen, (size_t)MAX_STRING_WCHARS);
+	if (!size_to_ulong(sizeof(wchar_t) * clamped_wchars, &buffer_len)) {
+		register_error(dev, "HidD_GetManufacturerString");
+		return -1;
+	}
+
+	res = HidD_GetManufacturerString(dev->device_handle, string, buffer_len);
 	if (!res) {
 		register_error(dev, "HidD_GetManufacturerString");
 		return -1;
@@ -814,9 +880,17 @@ int HID_API_EXPORT_CALL HID_API_CALL hid_get_manufacturer_string(hid_device *dev
 
 int HID_API_EXPORT_CALL HID_API_CALL hid_get_product_string(hid_device *dev, wchar_t *string, size_t maxlen)
 {
+	size_t clamped_wchars;
+	ULONG buffer_len;
 	BOOL res;
 
-	res = HidD_GetProductString(dev->device_handle, string, sizeof(wchar_t) * MIN(maxlen, MAX_STRING_WCHARS));
+	clamped_wchars = MIN(maxlen, (size_t)MAX_STRING_WCHARS);
+	if (!size_to_ulong(sizeof(wchar_t) * clamped_wchars, &buffer_len)) {
+		register_error(dev, "HidD_GetProductString");
+		return -1;
+	}
+
+	res = HidD_GetProductString(dev->device_handle, string, buffer_len);
 	if (!res) {
 		register_error(dev, "HidD_GetProductString");
 		return -1;
@@ -827,9 +901,17 @@ int HID_API_EXPORT_CALL HID_API_CALL hid_get_product_string(hid_device *dev, wch
 
 int HID_API_EXPORT_CALL HID_API_CALL hid_get_serial_number_string(hid_device *dev, wchar_t *string, size_t maxlen)
 {
+	size_t clamped_wchars;
+	ULONG buffer_len;
 	BOOL res;
 
-	res = HidD_GetSerialNumberString(dev->device_handle, string, sizeof(wchar_t) * MIN(maxlen, MAX_STRING_WCHARS));
+	clamped_wchars = MIN(maxlen, (size_t)MAX_STRING_WCHARS);
+	if (!size_to_ulong(sizeof(wchar_t) * clamped_wchars, &buffer_len)) {
+		register_error(dev, "HidD_GetSerialNumberString");
+		return -1;
+	}
+
+	res = HidD_GetSerialNumberString(dev->device_handle, string, buffer_len);
 	if (!res) {
 		register_error(dev, "HidD_GetSerialNumberString");
 		return -1;
@@ -840,9 +922,17 @@ int HID_API_EXPORT_CALL HID_API_CALL hid_get_serial_number_string(hid_device *de
 
 int HID_API_EXPORT_CALL HID_API_CALL hid_get_indexed_string(hid_device *dev, int string_index, wchar_t *string, size_t maxlen)
 {
+	size_t clamped_wchars;
+	ULONG buffer_len;
 	BOOL res;
 
-	res = HidD_GetIndexedString(dev->device_handle, string_index, string, sizeof(wchar_t) * MIN(maxlen, MAX_STRING_WCHARS));
+	clamped_wchars = MIN(maxlen, (size_t)MAX_STRING_WCHARS);
+	if (!size_to_ulong(sizeof(wchar_t) * clamped_wchars, &buffer_len)) {
+		register_error(dev, "HidD_GetIndexedString");
+		return -1;
+	}
+
+	res = HidD_GetIndexedString(dev->device_handle, string_index, string, buffer_len);
 	if (!res) {
 		register_error(dev, "HidD_GetIndexedString");
 		return -1;

@@ -8,6 +8,7 @@
 #include <thread>
 #include <atomic>
 #include <chrono>
+#include <limits>
 #include <dxgi.h>
 
 #include "dml_detector.h"
@@ -24,6 +25,26 @@ std::chrono::duration<double, std::milli> lastPreprocessTimeDML{};
 std::chrono::duration<double, std::milli> lastCopyTimeDML{};
 std::chrono::duration<double, std::milli> lastPostprocessTimeDML{};
 std::chrono::duration<double, std::milli> lastNmsTimeDML{};
+
+namespace
+{
+bool tryInt64ToInt(int64_t value, int* out)
+{
+    if (!out)
+    {
+        return false;
+    }
+
+    if (value < static_cast<int64_t>(std::numeric_limits<int>::min()) ||
+        value > static_cast<int64_t>(std::numeric_limits<int>::max()))
+    {
+        return false;
+    }
+
+    *out = static_cast<int>(value);
+    return true;
+}
+}
 
 std::string GetDMLDeviceName(int deviceId)
 {
@@ -104,20 +125,36 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
 {
     std::vector<std::vector<Detection>> empty;
     if (frames.empty()) return empty;
+    const size_t batch_size = frames.size();
 
-    const int batch_size = static_cast<int>(frames.size());
-
-    int model_h = (input_shape.size() > 2) ? static_cast<int>(input_shape[2]) : -1;
-    int model_w = (input_shape.size() > 3) ? static_cast<int>(input_shape[3]) : -1;
+    int model_h = -1;
+    int model_w = -1;
+    if (input_shape.size() > 2)
+    {
+        int converted = 0;
+        if (tryInt64ToInt(input_shape[2], &converted))
+        {
+            model_h = converted;
+        }
+    }
+    if (input_shape.size() > 3)
+    {
+        int converted = 0;
+        if (tryInt64ToInt(input_shape[3], &converted))
+        {
+            model_w = converted;
+        }
+    }
     const bool useFixed = config.fixed_input_size && model_h > 0 && model_w > 0;
 
     const int target_h = useFixed ? model_h : config.detection_resolution;
     const int target_w = useFixed ? model_w : config.detection_resolution;
 
     auto t0 = std::chrono::steady_clock::now();
-    std::vector<float> input_tensor_values(batch_size * 3 * target_h * target_w);
+    std::vector<float> input_tensor_values(
+        batch_size * static_cast<size_t>(3) * static_cast<size_t>(target_h) * static_cast<size_t>(target_w));
 
-    for (int b = 0; b < batch_size; ++b)
+    for (size_t b = 0; b < batch_size; ++b)
     {
         cv::Mat resized;
         cv::resize(frames[b], resized, cv::Size(target_w, target_h));
@@ -129,13 +166,21 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
             for (int w = 0; w < target_w; ++w)
                 for (int c = 0; c < 3; ++c)
                 {
-                    size_t dstIdx = b * 3 * target_h * target_w + c * target_h * target_w + h * target_w + w;
+                    size_t dstIdx = b * static_cast<size_t>(3) * static_cast<size_t>(target_h) * static_cast<size_t>(target_w)
+                        + static_cast<size_t>(c) * static_cast<size_t>(target_h) * static_cast<size_t>(target_w)
+                        + static_cast<size_t>(h) * static_cast<size_t>(target_w)
+                        + static_cast<size_t>(w);
                     input_tensor_values[dstIdx] = src[(h * target_w + w) * 3 + c];
                 }
     }
     auto t1 = std::chrono::steady_clock::now();
 
-    std::vector<int64_t> ort_input_shape{ batch_size, 3, target_h, target_w };
+    std::vector<int64_t> ort_input_shape{
+        static_cast<int64_t>(batch_size),
+        3,
+        static_cast<int64_t>(target_h),
+        static_cast<int64_t>(target_w)
+    };
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
         memory_info, input_tensor_values.data(), input_tensor_values.size(),
         ort_input_shape.data(), ort_input_shape.size());
@@ -152,9 +197,19 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
     float* outData = output_tensors.front().GetTensorMutableData<float>();
     Ort::TensorTypeAndShapeInfo outInfo = output_tensors.front().GetTensorTypeAndShapeInfo();
     std::vector<int64_t> outShape = outInfo.GetShape(); // [B, rows, cols]
+    if (outShape.size() < 3)
+    {
+        std::cerr << "[DirectMLDetector] Unexpected output tensor rank." << std::endl;
+        return empty;
+    }
 
-    int rows = static_cast<int>(outShape[1]);
-    int cols = static_cast<int>(outShape[2]);
+    int rows = 0;
+    int cols = 0;
+    if (!tryInt64ToInt(outShape[1], &rows) || !tryInt64ToInt(outShape[2], &cols) || rows <= 0 || cols <= 0)
+    {
+        std::cerr << "[DirectMLDetector] Output tensor dimensions are invalid." << std::endl;
+        return empty;
+    }
     const int num_classes = rows - 4;
 
     std::vector<std::vector<Detection>> batchDetections(batch_size);
@@ -164,12 +219,12 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
     auto t4 = std::chrono::steady_clock::now();
     std::chrono::duration<double, std::milli> nmsTimeTmp{ 0 };
 
-    for (int b = 0; b < batch_size; ++b)
+    for (size_t b = 0; b < batch_size; ++b)
     {
         const float* ptr = outData + b * rows * cols;
         std::vector<Detection> detections;
 
-        std::vector<int64_t> shp = { rows, cols };
+        std::vector<int64_t> shp = { static_cast<int64_t>(rows), static_cast<int64_t>(cols) };
         detections = postProcessYoloDML(ptr, shp, num_classes, conf_thr, nms_thr, &nmsTimeTmp);
 
         if (useFixed && (target_w != config.detection_resolution))
@@ -205,7 +260,13 @@ int DirectMLDetector::getNumberOfClasses()
 
     if (output_shape.size() == 3)
     {
-        int num_classes = static_cast<int>(output_shape[1]) - 4;
+        int channels = 0;
+        if (!tryInt64ToInt(output_shape[1], &channels))
+        {
+            std::cerr << "[DirectMLDetector] Output tensor channel dimension is invalid." << std::endl;
+            return -1;
+        }
+        int num_classes = channels - 4;
         return num_classes;
     }
     else

@@ -24,6 +24,7 @@ typedef struct {
 } kmbox_t;
 
 int KM_init(unsigned short vid, unsigned short pid);
+int KM_close(void);
 
 int KM_press(unsigned char vk_key);
 int KM_down(unsigned char vk_key);
