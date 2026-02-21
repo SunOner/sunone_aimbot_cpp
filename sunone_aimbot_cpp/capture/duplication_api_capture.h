@@ -13,7 +13,7 @@ class DDAManager;
 class DuplicationAPIScreenCapture : public IScreenCapture
 {
 public:
-    DuplicationAPIScreenCapture(int desiredWidth, int desiredHeight);
+    DuplicationAPIScreenCapture(int desiredWidth, int desiredHeight, int monitorIndex);
     ~DuplicationAPIScreenCapture();
 
     cv::Mat GetNextFrameCpu() override;

@@ -12,6 +12,7 @@
 #include "KmboxNetConnection.h"
 #include "KmboxAConnection.h"
 #include "Makcu.h"
+#include <mutex>
 
 extern Config config;
 #ifdef USE_CUDA
@@ -28,5 +29,6 @@ extern std::atomic<bool> input_method_changed;
 extern std::atomic<bool> aiming;
 extern std::atomic<bool> shooting;
 extern std::atomic<bool> zooming;
+extern std::mutex configMutex;
 
 #endif // SUNONE_AIMBOT_CPP_H

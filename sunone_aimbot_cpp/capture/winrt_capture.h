@@ -5,6 +5,7 @@
 #include <d3d11.h>
 #include <dxgi1_2.h>
 #include <mutex>
+#include <string>
 
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.System.h>
@@ -23,7 +24,16 @@
 class WinRTScreenCapture : public IScreenCapture
 {
 public:
-    WinRTScreenCapture(int desiredWidth, int desiredHeight);
+    struct Options
+    {
+        std::string target;
+        std::string windowTitle;
+        int monitorIndex = 0;
+        bool captureBorders = true;
+        bool captureCursor = true;
+    };
+
+    WinRTScreenCapture(int desiredWidth, int desiredHeight, const Options& options);
     ~WinRTScreenCapture();
 
     cv::Mat GetNextFrameCpu() override;
@@ -46,6 +56,8 @@ private:
 
     int screenWidth = 0;
     int screenHeight = 0;
+    int desiredRegionWidth = 0;
+    int desiredRegionHeight = 0;
     int regionWidth = 0;
     int regionHeight = 0;
     int regionX = 0;

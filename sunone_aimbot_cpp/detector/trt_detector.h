@@ -101,12 +101,14 @@ private:
     void* inputBufferDevice;
 
     std::unordered_map<std::string, nvinfer1::DataType> outputTypes;
+    std::unordered_map<std::string, std::vector<float>> fp16OutputScratch;
 
     cv::cuda::GpuMat resizedBuffer;
     cv::cuda::GpuMat floatBuffer;
     std::vector<cv::cuda::GpuMat> channelBuffers;
 
     // CUDA Events
+    cudaEvent_t preprocessStartEvent = nullptr;
     cudaEvent_t inferenceStartEvent = nullptr;
     cudaEvent_t inferenceCompleteEvent = nullptr;
     cudaEvent_t copyCompleteEvent = nullptr;

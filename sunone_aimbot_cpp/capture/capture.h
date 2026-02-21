@@ -13,6 +13,7 @@ extern std::atomic<bool> capture_method_changed;
 extern std::atomic<bool> capture_cursor_changed;
 extern std::atomic<bool> capture_borders_changed;
 extern std::atomic<bool> capture_fps_changed;
+extern std::atomic<bool> capture_window_changed;
 extern std::deque<cv::Mat> frameQueue;
 
 void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT);

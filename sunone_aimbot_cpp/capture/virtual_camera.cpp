@@ -64,23 +64,32 @@ namespace {
     }
 }
 
-VirtualCameraCapture::VirtualCameraCapture(int w, int h)
+VirtualCameraCapture::VirtualCameraCapture(
+    int w,
+    int h,
+    const std::string& cameraName,
+    int captureFps,
+    bool verbose)
+    : targetWidth_(w)
+    , targetHeight_(h)
+    , selectedCameraName_(cameraName)
+    , captureFps_(captureFps)
+    , verbose_(verbose)
 {
     int camIdx = 0;
     const auto& cams = VirtualCameraCapture::GetAvailableVirtualCameras();
-    auto it = std::find(cams.begin(), cams.end(), config.virtual_camera_name);
+    auto it = std::find(cams.begin(), cams.end(), selectedCameraName_);
     if (it != cams.end())
     {
         camIdx = static_cast<int>(std::distance(cams.begin(), it));
     }
     else
     {
-        std::cerr << "[VirtualCamera] Camera name not found in cache: " << config.virtual_camera_name << std::endl;
+        std::cerr << "[VirtualCamera] Camera name not found in cache: " << selectedCameraName_ << std::endl;
         if (!cams.empty())
         {
             camIdx = 0;
-            config.virtual_camera_name = cams[0];
-            config.saveConfig("config.ini");
+            selectedCameraName_ = cams[0];
         }
     }
     
@@ -105,15 +114,15 @@ VirtualCameraCapture::VirtualCameraCapture(int w, int h)
         h = static_cast<int>(cap_->get(cv::CAP_PROP_FRAME_HEIGHT));
     }
 
-    if (config.capture_fps > 0)
-        cap_->set(cv::CAP_PROP_FPS, config.capture_fps);
+    if (captureFps_ > 0)
+        cap_->set(cv::CAP_PROP_FPS, captureFps_);
     
     cap_->set(cv::CAP_PROP_BUFFERSIZE, 1);
 
     roiW_ = even(w);
     roiH_ = even(h);
 
-    if (config.verbose)
+    if (verbose_)
     {
         std::cout << "[VirtualCamera] Actual capture: "
             << roiW_ << 'x' << roiH_ << " @ "
@@ -157,8 +166,8 @@ cv::Mat VirtualCameraCapture::GetNextFrameCpu()
 
     frameCpu = frame;
 
-    int target_width = config.virtual_camera_width;
-    int target_height = config.virtual_camera_heigth;
+    int target_width = targetWidth_;
+    int target_height = targetHeight_;
 
     if (target_width > 0 && target_height > 0 && !frameCpu.empty())
     {

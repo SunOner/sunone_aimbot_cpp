@@ -125,6 +125,7 @@ void draw_capture_settings()
                 config.capture_target = targetOptions[currentTargetIndex];
                 OverlayConfig_MarkDirty();
                 capture_method_changed.store(true);
+                capture_window_changed.store(true);
             }
         }
 
@@ -161,6 +162,7 @@ void draw_capture_settings()
                 config.capture_window_title = titleBuf;
                 OverlayConfig_MarkDirty();
                 capture_method_changed.store(true);
+                capture_window_changed.store(true);
             }
         }
 
@@ -192,13 +194,15 @@ void draw_capture_settings()
     if (config.capture_method == "duplication_api" || (config.capture_method == "winrt" && config.capture_target != "window"))
     {
         std::vector<std::string> monitorNames;
-        if (monitors == -1)
+        int monitorCount = monitors;
+        if (monitorCount <= 0)
         {
             monitorNames.push_back("Monitor 1");
+            monitorCount = 1;
         }
         else
         {
-            for (int i = -1; i < monitors; ++i)
+            for (int i = 0; i < monitorCount; ++i)
             {
                 monitorNames.push_back("Monitor " + std::to_string(i + 1));
             }
@@ -210,8 +214,10 @@ void draw_capture_settings()
             monitorItems.push_back(name.c_str());
         }
 
-        if (ImGui::Combo("Capture monitor", &config.monitor_idx, monitorItems.data(), static_cast<int>(monitorItems.size())))
+        int selectedMonitor = std::clamp(config.monitor_idx, 0, monitorCount - 1);
+        if (ImGui::Combo("Capture monitor", &selectedMonitor, monitorItems.data(), static_cast<int>(monitorItems.size())))
         {
+            config.monitor_idx = selectedMonitor;
             OverlayConfig_MarkDirty();
             capture_method_changed.store(true);
         }

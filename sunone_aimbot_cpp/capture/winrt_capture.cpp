@@ -1,12 +1,14 @@
 #define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
+#include <algorithm>
+#include <iostream>
+#include <stdexcept>
 
 #include "winrt_capture.h"
 #include "sunone_aimbot_cpp.h"
-#include "config.h"
-#include "other_tools.h"
 
 #include <dwmapi.h>
 
@@ -19,6 +21,8 @@ using namespace winrt::Windows::Graphics::DirectX::Direct3D11;
 
 static HMONITOR GetMonitorHandleByIndex(int index)
 {
+    index = std::max(0, index);
+
     struct MonitorEnumData
     {
         int targetIndex;
@@ -42,16 +46,14 @@ static HMONITOR GetMonitorHandleByIndex(int index)
     return data.hMonitor;
 }
 
-IGraphicsCaptureItemInterop* GetInteropFactory()
+winrt::com_ptr<IGraphicsCaptureItemInterop> GetInteropFactory()
 {
-    static IGraphicsCaptureItemInterop* s_factory = nullptr;
-    if (!s_factory)
-    {
+    static winrt::com_ptr<IGraphicsCaptureItemInterop> s_factory = [] {
         auto factory = winrt::get_activation_factory<
             GraphicsCaptureItem,
             IGraphicsCaptureItemInterop>();
-        s_factory = factory.as<IGraphicsCaptureItemInterop>().get();
-    }
+        return factory.as<IGraphicsCaptureItemInterop>();
+    }();
     return s_factory;
 }
 
@@ -81,8 +83,10 @@ HWND WinRTScreenCapture::FindWindowByTitleSubstring(const std::wstring& title_su
     return data.found;
 }
 
-WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
-    : regionWidth(desiredWidth)
+WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight, const Options& options)
+    : desiredRegionWidth(desiredWidth)
+    , desiredRegionHeight(desiredHeight)
+    , regionWidth(desiredWidth)
     , regionHeight(desiredHeight)
 {
     D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_0 };
@@ -111,23 +115,23 @@ WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
         throw std::runtime_error("[WinRTCapture] Failed to create IDirect3DDevice.");
     }
 
-    if (config.capture_target == "window")
+    if (options.target == "window")
     {
-        if (config.capture_window_title.empty())
+        if (options.windowTitle.empty())
         {
             throw std::runtime_error("[WinRTCapture] capture_target=window but capture_window_title is empty.");
         }
-        std::wstring wtitle(config.capture_window_title.begin(), config.capture_window_title.end());
+        std::wstring wtitle(options.windowTitle.begin(), options.windowTitle.end());
         HWND hwnd = FindWindowByTitleSubstring(wtitle);
         if (!hwnd)
         {
-            throw std::runtime_error("[WinRTCapture] Target window not found by title substring: " + config.capture_window_title);
+            throw std::runtime_error("[WinRTCapture] Target window not found by title substring: " + options.windowTitle);
         }
         captureItem = CreateCaptureItemForWindow(hwnd);
     }
     else
     {
-        HMONITOR hMonitor = GetMonitorHandleByIndex(config.monitor_idx);
+        HMONITOR hMonitor = GetMonitorHandleByIndex(options.monitorIndex);
         if (!hMonitor)
         {
             throw std::runtime_error("[WinRTCapture] Invalid monitor index in config.");
@@ -141,6 +145,10 @@ WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
 
     screenWidth = captureItem.Size().Width;
     screenHeight = captureItem.Size().Height;
+    desiredRegionWidth = std::max(1, desiredRegionWidth);
+    desiredRegionHeight = std::max(1, desiredRegionHeight);
+    regionWidth = std::clamp(desiredRegionWidth, 1, std::max(1, screenWidth));
+    regionHeight = std::clamp(desiredRegionHeight, 1, std::max(1, screenHeight));
 
     regionX = (screenWidth - regionWidth) / 2;
     regionY = (screenHeight - regionHeight) / 2;
@@ -154,12 +162,12 @@ WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
 
     session = framePool.CreateCaptureSession(captureItem);
 
-    if (!config.capture_borders)
+    if (!options.captureBorders)
     {
         session.IsBorderRequired(false);
     }
 
-    if (!config.capture_cursor)
+    if (!options.captureCursor)
     {
         session.IsCursorCaptureEnabled(false);
     }
@@ -175,8 +183,10 @@ WinRTScreenCapture::WinRTScreenCapture(int desiredWidth, int desiredHeight)
 
 WinRTScreenCapture::~WinRTScreenCapture()
 {
-    session.Close();
-    framePool.Close();
+    if (session)
+        session.Close();
+    if (framePool)
+        framePool.Close();
 
     stagingTextureCPU = nullptr;
     sharedTexture = nullptr;
@@ -186,6 +196,8 @@ WinRTScreenCapture::~WinRTScreenCapture()
 
 bool WinRTScreenCapture::createStagingTextureCPU()
 {
+    stagingTextureCPU = nullptr;
+
     D3D11_TEXTURE2D_DESC desc{};
     desc.Width = regionWidth;
     desc.Height = regionHeight;
@@ -208,6 +220,9 @@ bool WinRTScreenCapture::createStagingTextureCPU()
 
 cv::Mat WinRTScreenCapture::GetNextFrameCpu()
 {
+    if (!framePool || !stagingTextureCPU)
+        return cv::Mat();
+
     Direct3D11CaptureFrame lastFrame{ nullptr };
     while (auto tempFrame = framePool.TryGetNextFrame())
     {
@@ -215,6 +230,29 @@ cv::Mat WinRTScreenCapture::GetNextFrameCpu()
     }
     if (!lastFrame)
         return cv::Mat();
+
+    const auto contentSize = lastFrame.ContentSize();
+    if (contentSize.Width > 0 && contentSize.Height > 0 &&
+        (contentSize.Width != screenWidth || contentSize.Height != screenHeight))
+    {
+        screenWidth = contentSize.Width;
+        screenHeight = contentSize.Height;
+
+        regionWidth = std::clamp(desiredRegionWidth, 1, std::max(1, screenWidth));
+        regionHeight = std::clamp(desiredRegionHeight, 1, std::max(1, screenHeight));
+        regionX = (screenWidth - regionWidth) / 2;
+        regionY = (screenHeight - regionHeight) / 2;
+
+        framePool.Recreate(
+            device,
+            DirectXPixelFormat::B8G8R8A8UIntNormalized,
+            3,
+            contentSize
+        );
+
+        if (!createStagingTextureCPU())
+            return cv::Mat();
+    }
 
     auto frameSurface = lastFrame.Surface();
     auto frameTexture = GetDXGIInterfaceFromObject<ID3D11Texture2D>(frameSurface);
@@ -243,6 +281,8 @@ cv::Mat WinRTScreenCapture::GetNextFrameCpu()
     if (FAILED(hrMap))
     {
         std::cerr << "[WinRTCapture] Map stagingTextureCPU failed hr=" << std::hex << hrMap << std::endl;
+        if (hrMap == DXGI_ERROR_DEVICE_REMOVED || hrMap == DXGI_ERROR_DEVICE_RESET)
+            capture_method_changed.store(true);
         return cv::Mat();
     }
 

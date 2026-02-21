@@ -9,7 +9,7 @@
 class VirtualCameraCapture final : public IScreenCapture
 {
 public:
-    VirtualCameraCapture(int width, int height);
+    VirtualCameraCapture(int width, int height, const std::string& cameraName, int captureFps, bool verbose);
     ~VirtualCameraCapture() override;
 
     cv::Mat GetNextFrameCpu() override;
@@ -20,6 +20,11 @@ public:
 private:
     std::unique_ptr<cv::VideoCapture> cap_;
     int captureWidth{ 0 }, captureHeight{ 0 };
+    int targetWidth_{ 0 };
+    int targetHeight_{ 0 };
+    std::string selectedCameraName_;
+    int captureFps_{ 0 };
+    bool verbose_{ false };
 
     int roiW_, roiH_;
 

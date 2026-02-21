@@ -21,11 +21,6 @@ extern std::atomic<bool> detector_model_changed;
 extern std::atomic<bool> detection_resolution_changed;
 extern std::atomic<bool> detectionPaused;
 
-std::chrono::duration<double, std::milli> lastPreprocessTimeDML{};
-std::chrono::duration<double, std::milli> lastCopyTimeDML{};
-std::chrono::duration<double, std::milli> lastPostprocessTimeDML{};
-std::chrono::duration<double, std::milli> lastNmsTimeDML{};
-
 namespace
 {
 bool tryInt64ToInt(int64_t value, int* out)
@@ -156,8 +151,25 @@ std::vector<std::vector<Detection>> DirectMLDetector::detectBatch(const std::vec
 
     for (size_t b = 0; b < batch_size; ++b)
     {
+        cv::Mat bgrFrame;
+        switch (frames[b].channels())
+        {
+        case 4:
+            cv::cvtColor(frames[b], bgrFrame, cv::COLOR_BGRA2BGR);
+            break;
+        case 3:
+            bgrFrame = frames[b];
+            break;
+        case 1:
+            cv::cvtColor(frames[b], bgrFrame, cv::COLOR_GRAY2BGR);
+            break;
+        default:
+            bgrFrame = cv::Mat::zeros(frames[b].size(), CV_8UC3);
+            break;
+        }
+
         cv::Mat resized;
-        cv::resize(frames[b], resized, cv::Size(target_w, target_h));
+        cv::resize(bgrFrame, resized, cv::Size(target_w, target_h));
         cv::cvtColor(resized, resized, cv::COLOR_BGR2RGB);
         resized.convertTo(resized, CV_32FC3, 1.0f / 255.0f);
 
@@ -288,7 +300,7 @@ void DirectMLDetector::processFrame(const cv::Mat& frame)
         return;
     }
     std::unique_lock<std::mutex> lock(inferenceMutex);
-    currentFrame = frame.clone();
+    currentFrame = frame;
     frameReady = true;
     inferenceCV.notify_one();
 }
@@ -337,14 +349,13 @@ void DirectMLDetector::dmlInferenceThread()
 
             if (hasNewFrame && !frame.empty())
             {
-                auto start = std::chrono::steady_clock::now();
-
                 std::vector<cv::Mat> batchFrames = { frame };
                 auto detectionsBatch = detectBatch(batchFrames);
+                if (detectionsBatch.empty())
+                {
+                    continue;
+                }
                 const std::vector<Detection>& detections = detectionsBatch.back();
-
-                auto end = std::chrono::steady_clock::now();
-                lastInferenceTimeDML = end - start;
 
                 std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
                 detectionBuffer.boxes.clear();

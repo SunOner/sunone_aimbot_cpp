@@ -1,12 +1,13 @@
 #define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
+#include <algorithm>
+#include <iostream>
 
 #include "duplication_api_capture.h"
 #include "sunone_aimbot_cpp.h"
-#include "config.h"
-#include "other_tools.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -24,6 +25,7 @@ inline void SafeRelease(T** ppInterface)
 struct FrameContext
 {
     ID3D11Texture2D* texture = nullptr;
+    bool hasAcquiredFrame = false;
 };
 
 class DDAManager
@@ -34,6 +36,7 @@ public:
         , m_context(nullptr)
         , m_duplication(nullptr)
         , m_output1(nullptr)
+        , m_frameAcquired(false)
     {
         ZeroMemory(&m_duplDesc, sizeof(m_duplDesc));
     }
@@ -45,8 +48,8 @@ public:
 
     HRESULT Initialize(
         int monitorIndex,
-        int captureWidth,
-        int captureHeight,
+        int /*captureWidth*/,
+        int /*captureHeight*/,
         int& outScreenWidth,
         int& outScreenHeight,
         ID3D11Device** outDevice,
@@ -63,35 +66,63 @@ public:
         }
 
         IDXGIAdapter1* adapter = nullptr;
-        hr = factory->EnumAdapters1(monitorIndex, &adapter);
-        if (hr == DXGI_ERROR_NOT_FOUND)
+        IDXGIOutput* output = nullptr;
+        const int targetMonitorIndex = std::max(0, monitorIndex);
+
+        int currentMonitorIndex = 0;
+        bool foundOutput = false;
+        for (UINT adapterIdx = 0; ; ++adapterIdx)
         {
-            std::cerr << "[DDA] No adapter with index " << monitorIndex << std::endl;
-            factory->Release();
-            return hr;
-        }
-        else if (FAILED(hr))
-        {
-            std::cerr << "[DDA] EnumAdapters1 failed hr=" << std::hex << hr << std::endl;
-            factory->Release();
-            return hr;
+            IDXGIAdapter1* candidateAdapter = nullptr;
+            hr = factory->EnumAdapters1(adapterIdx, &candidateAdapter);
+            if (hr == DXGI_ERROR_NOT_FOUND)
+                break;
+            if (FAILED(hr))
+            {
+                std::cerr << "[DDA] EnumAdapters1 failed hr=" << std::hex << hr << std::endl;
+                SafeRelease(&factory);
+                return hr;
+            }
+
+            for (UINT outputIdx = 0; ; ++outputIdx)
+            {
+                IDXGIOutput* candidateOutput = nullptr;
+                hr = candidateAdapter->EnumOutputs(outputIdx, &candidateOutput);
+                if (hr == DXGI_ERROR_NOT_FOUND)
+                    break;
+                if (FAILED(hr))
+                {
+                    std::cerr << "[DDA] EnumOutputs failed hr=" << std::hex << hr << std::endl;
+                    SafeRelease(&candidateAdapter);
+                    SafeRelease(&factory);
+                    return hr;
+                }
+
+                if (currentMonitorIndex == targetMonitorIndex)
+                {
+                    adapter = candidateAdapter;
+                    output = candidateOutput;
+                    foundOutput = true;
+                    break;
+                }
+
+                ++currentMonitorIndex;
+                candidateOutput->Release();
+            }
+
+            if (foundOutput)
+                break;
+
+            candidateAdapter->Release();
         }
 
-        IDXGIOutput* output = nullptr;
-        hr = adapter->EnumOutputs(0, &output);
-        if (hr == DXGI_ERROR_NOT_FOUND)
+        if (!foundOutput || !adapter || !output)
         {
-            std::cerr << "[DDA] The adapter has no outputs" << std::endl;
+            std::cerr << "[DDA] No monitor with index " << targetMonitorIndex << std::endl;
             SafeRelease(&adapter);
+            SafeRelease(&output);
             SafeRelease(&factory);
-            return hr;
-        }
-        else if (FAILED(hr))
-        {
-            std::cerr << "[DDA] EnumOutputs returned error hr=" << std::hex << hr << std::endl;
-            SafeRelease(&adapter);
-            SafeRelease(&factory);
-            return hr;
+            return DXGI_ERROR_NOT_FOUND;
         }
 
         {
@@ -164,12 +195,18 @@ public:
 
     HRESULT AcquireFrame(FrameContext& frameCtx, UINT timeout = 100)
     {
+        frameCtx.texture = nullptr;
+        frameCtx.hasAcquiredFrame = false;
         if (!m_duplication) return E_FAIL;
+
         DXGI_OUTDUPL_FRAME_INFO frameInfo{};
         IDXGIResource* resource = nullptr;
 
         HRESULT hr = m_duplication->AcquireNextFrame(timeout, &frameInfo, &resource);
         if (FAILED(hr)) return hr;
+
+        frameCtx.hasAcquiredFrame = true;
+        m_frameAcquired = true;
 
         if (resource)
         {
@@ -181,15 +218,18 @@ public:
 
     void ReleaseFrame()
     {
-        if (m_duplication)
-            m_duplication->ReleaseFrame();
+        if (!m_duplication || !m_frameAcquired)
+            return;
+
+        m_duplication->ReleaseFrame();
+        m_frameAcquired = false;
     }
 
     void Release()
     {
         if (m_duplication)
         {
-            m_duplication->ReleaseFrame();
+            ReleaseFrame();
             m_duplication->Release();
             m_duplication = nullptr;
         }
@@ -204,9 +244,10 @@ public:
     IDXGIOutputDuplication* m_duplication;
     IDXGIOutput1* m_output1;
     DXGI_OUTDUPL_DESC m_duplDesc;
+    bool m_frameAcquired;
 };
 
-DuplicationAPIScreenCapture::DuplicationAPIScreenCapture(int desiredWidth, int desiredHeight)
+DuplicationAPIScreenCapture::DuplicationAPIScreenCapture(int desiredWidth, int desiredHeight, int monitorIndex)
     : d3dDevice(nullptr)
     , d3dContext(nullptr)
     , deskDupl(nullptr)
@@ -221,7 +262,7 @@ DuplicationAPIScreenCapture::DuplicationAPIScreenCapture(int desiredWidth, int d
     m_ddaManager = std::make_unique<DDAManager>();
 
     HRESULT hr = m_ddaManager->Initialize(
-        config.monitor_idx,
+        monitorIndex,
         regionWidth,
         regionHeight,
         screenWidth,
@@ -234,6 +275,9 @@ DuplicationAPIScreenCapture::DuplicationAPIScreenCapture(int desiredWidth, int d
         std::cerr << "[DDA] DDAManager Initialize failed hr=0x" << std::hex << hr << std::endl;
         return;
     }
+
+    regionWidth = std::clamp(regionWidth, 1, std::max(1, screenWidth));
+    regionHeight = std::clamp(regionHeight, 1, std::max(1, screenHeight));
 
     createStagingTextureCPU();
 }
@@ -271,29 +315,35 @@ cv::Mat DuplicationAPIScreenCapture::GetNextFrameCpu()
         hr == DXGI_ERROR_INVALID_CALL)
     {
         capture_method_changed.store(true);
-        m_ddaManager->ReleaseFrame();
         return cv::Mat();
     }
     else if (FAILED(hr))
     {
         std::cerr << "[DuplicationAPIScreenCapture] AcquireNextFrame (CPU) failed hr=0x"
             << std::hex << hr << std::endl;
-        m_ddaManager->ReleaseFrame();
+        if (frameCtx.hasAcquiredFrame)
+            m_ddaManager->ReleaseFrame();
         return cv::Mat();
     }
 
     if (!frameCtx.texture)
     {
-        m_ddaManager->ReleaseFrame();
+        if (frameCtx.hasAcquiredFrame)
+            m_ddaManager->ReleaseFrame();
         return cv::Mat();
     }
 
+    const int copyWidth = std::min(regionWidth, std::max(1, screenWidth));
+    const int copyHeight = std::min(regionHeight, std::max(1, screenHeight));
+    const int left = std::max(0, (screenWidth - copyWidth) / 2);
+    const int top = std::max(0, (screenHeight - copyHeight) / 2);
+
     D3D11_BOX sourceRegion;
-    sourceRegion.left = (screenWidth - regionWidth) / 2;
-    sourceRegion.top = (screenHeight - regionHeight) / 2;
+    sourceRegion.left = left;
+    sourceRegion.top = top;
     sourceRegion.front = 0;
-    sourceRegion.right = sourceRegion.left + regionWidth;
-    sourceRegion.bottom = sourceRegion.top + regionHeight;
+    sourceRegion.right = sourceRegion.left + copyWidth;
+    sourceRegion.bottom = sourceRegion.top + copyHeight;
     sourceRegion.back = 1;
 
     d3dContext->CopySubresourceRegion(
@@ -313,6 +363,8 @@ cv::Mat DuplicationAPIScreenCapture::GetNextFrameCpu()
     if (FAILED(hrMap))
     {
         std::cerr << "[DDA] Map stagingTextureCPU failed hr=" << std::hex << hrMap << std::endl;
+        if (hrMap == DXGI_ERROR_DEVICE_REMOVED || hrMap == DXGI_ERROR_DEVICE_RESET)
+            capture_method_changed.store(true);
         return cv::Mat();
     }
 
@@ -331,6 +383,8 @@ cv::Mat DuplicationAPIScreenCapture::GetNextFrameCpu()
 bool DuplicationAPIScreenCapture::createStagingTextureCPU()
 {
     if (!d3dDevice) return false;
+
+    SafeRelease(&stagingTextureCPU);
 
     D3D11_TEXTURE2D_DESC desc{};
     desc.Width = regionWidth;

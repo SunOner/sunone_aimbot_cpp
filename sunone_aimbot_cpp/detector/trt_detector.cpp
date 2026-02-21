@@ -74,6 +74,7 @@ TrtDetector::~TrtDetector()
     for (auto& binding : inputBindings) if (binding.second) cudaFree(binding.second);
     for (auto& binding : outputBindings) if (binding.second) cudaFree(binding.second);
     if (inputBufferDevice) cudaFree(inputBufferDevice);
+    if (preprocessStartEvent) cudaEventDestroy(preprocessStartEvent);
     if (inferenceStartEvent) cudaEventDestroy(inferenceStartEvent);
     if (inferenceCompleteEvent) cudaEventDestroy(inferenceCompleteEvent);
     if (copyCompleteEvent) cudaEventDestroy(copyCompleteEvent);
@@ -149,6 +150,7 @@ void TrtDetector::captureCudaGraph()
     }
 
     context->enqueueV3(stream);
+    cudaEventRecord(inferenceCompleteEvent, stream);
 
     for (const auto& name : outputNames)
         if (pinnedOutputBuffers.count(name))
@@ -342,6 +344,7 @@ void TrtDetector::initialize(const std::string& modelFile)
     outputSizes.clear();
     outputShapes.clear();
     outputTypes.clear();
+    fp16OutputScratch.clear();
 
     for (const auto& inName : inputNames)
     {
@@ -413,9 +416,20 @@ void TrtDetector::initialize(const std::string& modelFile)
     for (const auto& n : outputNames)
         context->setTensorAddress(n.c_str(), outputBindings[n]);
 
-    cudaEventCreateWithFlags(&inferenceStartEvent, cudaEventDisableTiming);
-    cudaEventCreateWithFlags(&inferenceCompleteEvent, cudaEventDisableTiming);
-    cudaEventCreateWithFlags(&copyCompleteEvent, cudaEventDisableTiming);
+    if (preprocessStartEvent) cudaEventDestroy(preprocessStartEvent);
+    if (inferenceStartEvent) cudaEventDestroy(inferenceStartEvent);
+    if (inferenceCompleteEvent) cudaEventDestroy(inferenceCompleteEvent);
+    if (copyCompleteEvent) cudaEventDestroy(copyCompleteEvent);
+
+    preprocessStartEvent = nullptr;
+    inferenceStartEvent = nullptr;
+    inferenceCompleteEvent = nullptr;
+    copyCompleteEvent = nullptr;
+
+    cudaEventCreate(&preprocessStartEvent);
+    cudaEventCreate(&inferenceStartEvent);
+    cudaEventCreate(&inferenceCompleteEvent);
+    cudaEventCreate(&copyCompleteEvent);
 
     useCudaGraph = config.use_cuda_graph;
     if (useCudaGraph)
@@ -518,7 +532,7 @@ void TrtDetector::processFrame(const cv::Mat& frame)
     }
 
     std::unique_lock<std::mutex> lock(inferenceMutex);
-    currentFrame = frame.clone();
+    currentFrame = frame;
     frameReady = true;
     inferenceCV.notify_one();
 }
@@ -599,16 +613,8 @@ void TrtDetector::inferenceThread()
         {
             try
             {
-                auto t0 = std::chrono::steady_clock::now();
-
+                cudaEventRecord(preprocessStartEvent, stream);
                 preProcess(frame);
-
-                auto t1 = std::chrono::steady_clock::now();
-                auto t_inf_start = std::chrono::steady_clock::now();
-                std::chrono::steady_clock::time_point t_inf_end;
-                std::chrono::steady_clock::time_point t_copy_start;
-                std::chrono::steady_clock::time_point t_copy_end;
-
                 cudaEventRecord(inferenceStartEvent, stream);
                 bool usedGraph = useCudaGraph && cudaGraphCaptured;
                 if (usedGraph)
@@ -616,19 +622,11 @@ void TrtDetector::inferenceThread()
                     launchCudaGraph();
                     cudaEventRecord(copyCompleteEvent, stream);
                     cudaEventSynchronize(copyCompleteEvent);
-
-                    t_inf_end = std::chrono::steady_clock::now();
-                    t_copy_start = t_inf_end;
-                    t_copy_end = t_inf_end;
                 }
                 else
                 {
                     context->enqueueV3(stream);
                     cudaEventRecord(inferenceCompleteEvent, stream);
-                    cudaEventSynchronize(inferenceCompleteEvent);
-
-                    t_inf_end = std::chrono::steady_clock::now();
-                    t_copy_start = std::chrono::steady_clock::now();
 
                     for (const auto& name : outputNames)
                     {
@@ -649,8 +647,6 @@ void TrtDetector::inferenceThread()
 
                     cudaEventRecord(copyCompleteEvent, stream);
                     cudaEventSynchronize(copyCompleteEvent);
-
-                    t_copy_end = std::chrono::steady_clock::now();
                 }
 
                 // Post-processing (CPU)
@@ -670,7 +666,10 @@ void TrtDetector::inferenceThread()
                         const size_t numElements = outputSizes[name] / sizeof(__half);
                         const __half* halfPtr = reinterpret_cast<const __half*>(itPinned->second);
 
-                        std::vector<float> outputDataFloat(numElements);
+                        auto& outputDataFloat = fp16OutputScratch[name];
+                        if (outputDataFloat.size() != numElements)
+                            outputDataFloat.resize(numElements);
+
                         for (size_t i = 0; i < numElements; ++i)
                             outputDataFloat[i] = __half2float(halfPtr[i]);
 
@@ -685,9 +684,17 @@ void TrtDetector::inferenceThread()
 
                 auto t_post_end = std::chrono::steady_clock::now();
 
-                lastPreprocessTime = t1 - t0;
-                lastInferenceTime = t_inf_end - t_inf_start;
-                lastCopyTime = t_copy_end - t_copy_start;
+                float preprocessMs = 0.0f;
+                float inferenceMs = 0.0f;
+                float copyMs = 0.0f;
+
+                cudaEventElapsedTime(&preprocessMs, preprocessStartEvent, inferenceStartEvent);
+                cudaEventElapsedTime(&inferenceMs, inferenceStartEvent, inferenceCompleteEvent);
+                cudaEventElapsedTime(&copyMs, inferenceCompleteEvent, copyCompleteEvent);
+
+                lastPreprocessTime = std::chrono::duration<double, std::milli>(preprocessMs);
+                lastInferenceTime = std::chrono::duration<double, std::milli>(inferenceMs);
+                lastCopyTime = std::chrono::duration<double, std::milli>(copyMs);
                 lastPostprocessTime = t_post_end - t_post_start;
             }
             catch (const std::exception& e)
@@ -745,18 +752,15 @@ void TrtDetector::postProcess(const float* output, const std::string& outputName
 {
     if (numClasses <= 0) return;
 
-    std::vector<Detection> detections;
+    const auto shapeIt = outputShapes.find(outputName);
+    if (shapeIt == outputShapes.end())
+        return;
 
-    auto shape = context->getTensorShape(outputName.c_str());
-    std::vector<int64_t> engineShape;
-    for (int i = 0; i < shape.nbDims; ++i)
-    {
-        engineShape.push_back(shape.d[i]);
-    }
+    std::vector<Detection> detections;
     
     detections = postProcessYolo(
         output,
-        engineShape,
+        shapeIt->second,
         numClasses,
         config.confidence_threshold,
         config.nms_threshold,
