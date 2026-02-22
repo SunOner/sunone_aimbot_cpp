@@ -8,8 +8,8 @@
 
 struct ProgressPhase {
     std::string name;
-    int current;
-    int max;
+    int current = 0;
+    int max = 0;
 };
 
 inline std::mutex gProgressMutex;
@@ -18,13 +18,13 @@ inline std::atomic<bool> gIsTrtExporting = false;
 inline std::atomic<bool> gTrtExportCancelRequested = false;
 inline std::atomic<long long> gTrtExportLastUpdateMs = 0;
 
-inline long long TrtNowMs()
+inline long long TrtNowMs() noexcept
 {
     using namespace std::chrono;
     return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
 }
 
-inline void TrtExportResetState()
+inline void TrtExportResetState() noexcept
 {
     gTrtExportCancelRequested = false;
     gTrtExportLastUpdateMs = TrtNowMs();

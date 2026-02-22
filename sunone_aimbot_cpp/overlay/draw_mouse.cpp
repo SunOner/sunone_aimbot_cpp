@@ -1,4 +1,4 @@
-﻿#define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
@@ -10,6 +10,7 @@
 
 #include "sunone_aimbot_cpp.h"
 #include "overlay/config_dirty.h"
+#include "overlay/ui_sections.h"
 #include "include/other_tools.h"
 #include "kmbox_net/picture.h"
 
@@ -36,536 +37,656 @@ float prev_bScope_multiplier = config.bScope_multiplier;
 
 void draw_mouse()
 {
-    ImGui::SeparatorText("FOV");
-    ImGui::SliderInt("FOV X", &config.fovX, 10, 120);
-    ImGui::SliderInt("FOV Y", &config.fovY, 10, 120);
-
-    ImGui::SeparatorText("Speed Multiplier");
-    ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 5.0f, "%.1f");
-    ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 5.0f, "%.1f");
-
-    ImGui::SeparatorText("Prediction");
-    ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.00f, 0.5f, "%.2f");
-    if (config.predictionInterval == 0.00f)
+    if (OverlayUI::BeginSection("FOV", "mouse_section_fov"))
     {
+        ImGui::SliderInt("FOV X", &config.fovX, 10, 120);
+        ImGui::SliderInt("FOV Y", &config.fovY, 10, 120);
+        OverlayUI::EndSection();
+    }
+
+    if (OverlayUI::BeginSection("Speed Multiplier", "mouse_section_speed_multiplier"))
+    {
+        ImGui::SliderFloat("Min Speed Multiplier", &config.minSpeedMultiplier, 0.1f, 5.0f, "%.1f");
+        ImGui::SliderFloat("Max Speed Multiplier", &config.maxSpeedMultiplier, 0.1f, 5.0f, "%.1f");
+        OverlayUI::EndSection();
+    }
+
+    if (OverlayUI::BeginSection("Prediction", "mouse_section_prediction"))
+    {
+        ImGui::SliderFloat("Prediction Interval", &config.predictionInterval, 0.00f, 0.5f, "%.2f");
+        if (config.predictionInterval == 0.00f)
+        {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(255, 0, 0, 255), "-> Disabled");
+        }
+
+        if (OverlayUI::BeginSubsection("Prediction Details##prediction_details"))
+        {
+            const bool predictionEnabled = (config.predictionInterval > 0.0f);
+            if (!predictionEnabled)
+            {
+                ImGui::BeginDisabled();
+            }
+
+            if (ImGui::SliderInt("Future Positions", &config.prediction_futurePositions, 1, 40))
+            {
+                OverlayConfig_MarkDirty();
+                input_method_changed.store(true);
+            }
+
+            ImGui::SameLine();
+            if (ImGui::Checkbox("Draw##draw_future_positions_button", &config.draw_futurePositions))
+            {
+                OverlayConfig_MarkDirty();
+            }
+
+            if (!predictionEnabled)
+            {
+                ImGui::EndDisabled();
+                ImGui::TextDisabled("Enable Prediction Interval (> 0) to edit this section.");
+            }
+
+            OverlayUI::EndSubsection();
+        }
+
+        OverlayUI::EndSection();
+    }
+
+    if (OverlayUI::BeginSection("Target correction", "mouse_section_target_correction"))
+    {
+        ImGui::SliderFloat("Snap Radius", &config.snapRadius, 0.1f, 5.0f, "%.1f");
+        ImGui::SliderFloat("Near Radius", &config.nearRadius, 1.0f, 40.0f, "%.1f");
+        ImGui::SliderFloat("Speed Curve Exponent", &config.speedCurveExponent, 0.1f, 10.0f, "%.1f");
+        ImGui::SliderFloat("Snap Boost Factor", &config.snapBoostFactor, 0.01f, 4.00f, "%.2f");
+        OverlayUI::EndSection();
+    }
+
+    if (OverlayUI::BeginSection("Game Profile", "mouse_section_game_profile"))
+    {
+        std::vector<std::string> profile_names;
+        for (const auto& kv : config.game_profiles)
+            profile_names.push_back(kv.first);
+
+        static int selected_index = 0;
+        for (size_t i = 0; i < profile_names.size(); ++i)
+        {
+            if (profile_names[i] == config.active_game)
+            {
+                selected_index = static_cast<int>(i);
+                break;
+            }
+        }
+
+        std::vector<const char*> profile_items;
+        for (const auto& name : profile_names)
+            profile_items.push_back(name.c_str());
+
+        if (ImGui::Combo("Active Game Profile", &selected_index, profile_items.data(), static_cast<int>(profile_items.size())))
+        {
+            config.active_game = profile_names[selected_index];
+            OverlayConfig_MarkDirty();
+            globalMouseThread->updateConfig(
+                config.detection_resolution,
+                config.fovX,
+                config.fovY,
+                config.minSpeedMultiplier,
+                config.maxSpeedMultiplier,
+                config.predictionInterval,
+                config.auto_shoot,
+                config.bScope_multiplier
+            );
+            input_method_changed.store(true);
+        }
+
+        const auto& gp = config.currentProfile();
+
+        ImGui::Text("Current profile: %s", gp.name.c_str());
+        ImGui::Text("Sens: %.4f", gp.sens);
+        ImGui::Text("Yaw:  %.4f", gp.yaw);
+        ImGui::Text("Pitch: %.4f", gp.pitch);
+        ImGui::Text("FOV Scaled: %s", gp.fovScaled ? "true" : "false");
+
+        if (gp.name != "UNIFIED")
+        {
+            Config::GameProfile& modifiable = config.game_profiles[gp.name];
+            bool changed = false;
+
+            float sens_f = static_cast<float>(modifiable.sens);
+            float yaw_f = static_cast<float>(modifiable.yaw);
+            float pitch_f = static_cast<float>(modifiable.pitch);
+            float baseFOV_f = static_cast<float>(modifiable.baseFOV);
+
+            changed |= ImGui::SliderFloat("Sensitivity", &sens_f, 0.001f, 10.0f, "%.4f");
+            changed |= ImGui::SliderFloat("Yaw", &yaw_f, 0.001f, 0.1f, "%.4f");
+            changed |= ImGui::SliderFloat("Pitch", &pitch_f, 0.001f, 0.1f, "%.4f");
+
+            changed |= ImGui::Checkbox("FOV Scaled", &modifiable.fovScaled);
+            if (modifiable.fovScaled)
+            {
+                changed |= ImGui::SliderFloat("Base FOV", &baseFOV_f, 10.0f, 180.0f, "%.1f");
+            }
+
+            if (changed)
+            {
+                modifiable.sens = static_cast<double>(sens_f);
+                modifiable.yaw = static_cast<double>(yaw_f);
+
+                if (gp.pitch == 0.0 || !gp.fovScaled)
+                    modifiable.pitch = modifiable.yaw;
+                else
+                    modifiable.pitch = static_cast<double>(pitch_f);
+
+                modifiable.baseFOV = static_cast<double>(baseFOV_f);
+
+                OverlayConfig_MarkDirty();
+                input_method_changed.store(true);
+            }
+        }
+
+        OverlayUI::EndSection();
+    }
+
+    if (OverlayUI::BeginSection("Manage Profiles", "mouse_section_manage_profiles"))
+    {
+        static char new_profile_name[64] = "";
+        ImGui::InputText("New profile name", new_profile_name, sizeof(new_profile_name));
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(255, 0, 0, 255), "-> Disabled");
-    }
-    else
-    {
-        
-        if (ImGui::SliderInt("Future Positions", &config.prediction_futurePositions, 1, 40))
+        if (ImGui::Button("Add Profile"))
         {
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
-        }
-
-        ImGui::SameLine();
-        if (ImGui::Checkbox("Draw##draw_future_positions_button", &config.draw_futurePositions))
-        {
-            OverlayConfig_MarkDirty();
-        }
-    }
-
-    ImGui::SeparatorText("Target corrention");
-    ImGui::SliderFloat("Snap Radius", &config.snapRadius, 0.1f, 5.0f, "%.1f");
-    ImGui::SliderFloat("Near Radius", &config.nearRadius, 1.0f, 40.0f, "%.1f");
-    ImGui::SliderFloat("Speed Curve Exponent", &config.speedCurveExponent, 0.1f, 10.0f, "%.1f");
-    ImGui::SliderFloat("Snap Boost Factor", &config.snapBoostFactor, 0.01f, 4.00f, "%.2f");
-
-    ImGui::SeparatorText("Game Profile");
-    std::vector<std::string> profile_names;
-    for (const auto& kv : config.game_profiles)
-        profile_names.push_back(kv.first);
-
-    static int selected_index = 0;
-    for (size_t i = 0; i < profile_names.size(); ++i)
-    {
-        if (profile_names[i] == config.active_game)
-        {
-            selected_index = static_cast<int>(i);
-            break;
-        }
-    }
-
-    std::vector<const char*> profile_items;
-    for (const auto& name : profile_names)
-        profile_items.push_back(name.c_str());
-
-    if (ImGui::Combo("Active Game Profile", &selected_index, profile_items.data(), static_cast<int>(profile_items.size())))
-    {
-        config.active_game = profile_names[selected_index];
-        OverlayConfig_MarkDirty();
-        globalMouseThread->updateConfig(
-            config.detection_resolution,
-            config.fovX,
-            config.fovY,
-            config.minSpeedMultiplier,
-            config.maxSpeedMultiplier,
-            config.predictionInterval,
-            config.auto_shoot,
-            config.bScope_multiplier
-        );
-        input_method_changed.store(true);
-    }
-
-    const auto& gp = config.currentProfile();
-
-    ImGui::Text("Current profile: %s", gp.name.c_str());
-    ImGui::Text("Sens: %.4f", gp.sens);
-    ImGui::Text("Yaw:  %.4f", gp.yaw);
-    ImGui::Text("Pitch: %.4f", gp.pitch);
-    ImGui::Text("FOV Scaled: %s", gp.fovScaled ? "true" : "false");
-
-    if (gp.name != "UNIFIED")
-    {
-        Config::GameProfile& modifiable = config.game_profiles[gp.name];
-        bool changed = false;
-
-        float sens_f = static_cast<float>(modifiable.sens);
-        float yaw_f = static_cast<float>(modifiable.yaw);
-        float pitch_f = static_cast<float>(modifiable.pitch);
-        float baseFOV_f = static_cast<float>(modifiable.baseFOV);
-
-        changed |= ImGui::SliderFloat("Sensitivity", &sens_f, 0.001f, 10.0f, "%.4f");
-        changed |= ImGui::SliderFloat("Yaw", &yaw_f, 0.001f, 0.1f, "%.4f");
-        changed |= ImGui::SliderFloat("Pitch", &pitch_f, 0.001f, 0.1f, "%.4f");
-
-        changed |= ImGui::Checkbox("FOV Scaled", &modifiable.fovScaled);
-        if (modifiable.fovScaled)
-        {
-            changed |= ImGui::SliderFloat("Base FOV", &baseFOV_f, 10.0f, 180.0f, "%.1f");
-        }
-
-        if (changed)
-        {
-            modifiable.sens = static_cast<double>(sens_f);
-            modifiable.yaw = static_cast<double>(yaw_f);
-
-            if (gp.pitch == 0.0 || !gp.fovScaled)
-                modifiable.pitch = modifiable.yaw;
-            else
-                modifiable.pitch = static_cast<double>(pitch_f);
-
-            modifiable.baseFOV = static_cast<double>(baseFOV_f);
-
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
-        }
-    }
-
-    ImGui::SeparatorText("Manage Profiles");
-
-    static char new_profile_name[64] = "";
-    ImGui::InputText("New profile name", new_profile_name, sizeof(new_profile_name));
-    ImGui::SameLine();
-    if (ImGui::Button("Add Profile"))
-    {
-        std::string name = std::string(new_profile_name);
-        if (!name.empty() && config.game_profiles.count(name) == 0)
-        {
-            Config::GameProfile gp;
-            gp.name = name;
-            gp.sens = 1.0;
-            gp.yaw = 0.022;
-            gp.pitch = 0.022;
-            gp.fovScaled = false;
-            gp.baseFOV = 90.0;
-            config.game_profiles[name] = gp;
-            config.active_game = name;
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
-            new_profile_name[0] = '\0'; // clear
-        }
-    }
-
-    if (gp.name != "UNIFIED")
-    {
-        ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(200, 50, 50, 255));
-        if (ImGui::Button("Delete Current Profile"))
-        {
-            config.game_profiles.erase(gp.name);
-            if (!config.game_profiles.empty())
-                config.active_game = config.game_profiles.begin()->first;
-            else
-                config.active_game = "UNIFIED";
-
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
-        }
-        ImGui::PopStyleColor();
-    }
-
-    ImGui::SeparatorText("Easy No Recoil");
-    ImGui::Checkbox("Easy No Recoil", &config.easynorecoil);
-    if (config.easynorecoil)
-    {
-        ImGui::SliderFloat("No Recoil Strength", &config.easynorecoilstrength, 0.1f, 500.0f, "%.1f");
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Left/Right Arrow keys: Adjust recoil strength by 10");
-        
-        if (config.easynorecoilstrength >= 100.0f)
-        {
-            ImGui::TextColored(ImVec4(255, 255, 0, 255), "WARNING: High recoil strength may be detected.");
-        }
-    }
-
-    ImGui::SeparatorText("Auto Shoot");
-
-    ImGui::Checkbox("Auto Shoot", &config.auto_shoot);
-    if (config.auto_shoot)
-    {
-        ImGui::SliderFloat("bScope Multiplier", &config.bScope_multiplier, 0.5f, 2.0f, "%.1f");
-    }
-
-    ImGui::SeparatorText("Wind mouse");
-
-    if (ImGui::Checkbox("Enable WindMouse", &config.wind_mouse_enabled))
-    {
-        OverlayConfig_MarkDirty();
-        input_method_changed.store(true);
-    }
-
-    if (config.wind_mouse_enabled)
-    {
-        if (ImGui::SliderFloat("Gravity force", &config.wind_G, 4.00f, 40.00f, "%.2f"))
-        {
-            OverlayConfig_MarkDirty();
-        }
-
-        if (ImGui::SliderFloat("Wind fluctuation", &config.wind_W, 1.00f, 40.00f, "%.2f"))
-        {
-            OverlayConfig_MarkDirty();
-        }
-
-        if (ImGui::SliderFloat("Max step (velocity clip)", &config.wind_M, 1.00f, 40.00f, "%.2f"))
-        {
-            OverlayConfig_MarkDirty();
-        }
-
-        if (ImGui::SliderFloat("Distance where behaviour changes", &config.wind_D, 1.00f, 40.00f, "%.2f"))
-        {
-            OverlayConfig_MarkDirty();
-        }
-
-        if (ImGui::Button("Reset Wind Mouse to default settings"))
-        {
-            config.wind_G = 18.0f;
-            config.wind_W = 15.0f;
-            config.wind_M = 10.0f;
-            config.wind_D = 8.0f;
-            OverlayConfig_MarkDirty();
-        }
-    }
-
-    ImGui::SeparatorText("Input method");
-    std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX_NET", "KMBOX_A", "MAKCU" };
-
-    std::vector<const char*> method_items;
-    method_items.reserve(input_methods.size());
-    for (const auto& item : input_methods)
-    {
-        method_items.push_back(item.c_str());
-    }
-
-    std::string combo_label = "Mouse Input method";
-    int input_method_index = 0;
-    for (size_t i = 0; i < input_methods.size(); ++i)
-    {
-        if (input_methods[i] == config.input_method)
-        {
-            input_method_index = static_cast<int>(i);
-            break;
-        }
-    }
-
-    if (ImGui::Combo("Mouse Input Method", &input_method_index, method_items.data(), static_cast<int>(method_items.size())))
-    {
-        std::string new_input_method = input_methods[input_method_index];
-
-        if (new_input_method != config.input_method)
-        {
-            config.input_method = new_input_method;
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
-        }
-    }
-
-    if (config.input_method == "ARDUINO")
-    {
-        if (arduinoSerial)
-        {
-            if (arduinoSerial->isOpen())
+            std::string name = std::string(new_profile_name);
+            if (!name.empty() && config.game_profiles.count(name) == 0)
             {
-                ImGui::TextColored(ImVec4(0, 255, 0, 255), "Arduino connected");
-            }
-            else
-            {
-                ImGui::TextColored(ImVec4(255, 0, 0, 255), "Arduino not connected");
+                Config::GameProfile gp;
+                gp.name = name;
+                gp.sens = 1.0;
+                gp.yaw = 0.022;
+                gp.pitch = 0.022;
+                gp.fovScaled = false;
+                gp.baseFOV = 90.0;
+                config.game_profiles[name] = gp;
+                config.active_game = name;
+                OverlayConfig_MarkDirty();
+                input_method_changed.store(true);
+                new_profile_name[0] = '\0'; // clear
             }
         }
 
-        std::vector<std::string> port_list;
-        for (int i = 1; i <= 30; ++i)
+        const auto& gp = config.currentProfile();
+        if (gp.name != "UNIFIED")
         {
-            port_list.push_back("COM" + std::to_string(i));
-        }
-
-        std::vector<const char*> port_items;
-        port_items.reserve(port_list.size());
-        for (const auto& port : port_list)
-        {
-            port_items.push_back(port.c_str());
-        }
-
-        int port_index = 0;
-        for (size_t i = 0; i < port_list.size(); ++i)
-        {
-            if (port_list[i] == config.arduino_port)
+            ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(200, 50, 50, 255));
+            if (ImGui::Button("Delete Current Profile"))
             {
-                port_index = static_cast<int>(i);
+                config.game_profiles.erase(gp.name);
+                if (!config.game_profiles.empty())
+                    config.active_game = config.game_profiles.begin()->first;
+                else
+                    config.active_game = "UNIFIED";
+
+                OverlayConfig_MarkDirty();
+                input_method_changed.store(true);
+            }
+            ImGui::PopStyleColor();
+        }
+
+        OverlayUI::EndSection();
+    }
+
+    if (OverlayUI::BeginSection("Easy No Recoil", "mouse_section_easy_no_recoil"))
+    {
+        ImGui::Checkbox("Easy No Recoil", &config.easynorecoil);
+        if (OverlayUI::BeginSubsection("Easy No Recoil Settings##easy_no_recoil_settings"))
+        {
+            if (!config.easynorecoil)
+            {
+                ImGui::BeginDisabled();
+            }
+
+            ImGui::SliderFloat("No Recoil Strength", &config.easynorecoilstrength, 0.1f, 500.0f, "%.1f");
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Left/Right Arrow keys: Adjust recoil strength by 10");
+
+            if (config.easynorecoilstrength >= 100.0f)
+            {
+                ImGui::TextColored(ImVec4(255, 255, 0, 255), "WARNING: High recoil strength may be detected.");
+            }
+
+            if (!config.easynorecoil)
+            {
+                ImGui::EndDisabled();
+                ImGui::TextDisabled("Enable Easy No Recoil to edit this section.");
+            }
+
+            OverlayUI::EndSubsection();
+        }
+
+        OverlayUI::EndSection();
+    }
+
+    if (OverlayUI::BeginSection("Auto Shoot", "mouse_section_auto_shoot"))
+    {
+        ImGui::Checkbox("Auto Shoot", &config.auto_shoot);
+        if (OverlayUI::BeginSubsection("Auto Shoot Settings##auto_shoot_settings"))
+        {
+            if (!config.auto_shoot)
+            {
+                ImGui::BeginDisabled();
+            }
+
+            ImGui::SliderFloat("bScope Multiplier", &config.bScope_multiplier, 0.5f, 2.0f, "%.1f");
+
+            if (!config.auto_shoot)
+            {
+                ImGui::EndDisabled();
+                ImGui::TextDisabled("Enable Auto Shoot to edit this section.");
+            }
+
+            OverlayUI::EndSubsection();
+        }
+
+        OverlayUI::EndSection();
+    }
+
+    if (OverlayUI::BeginSection("Wind Mouse", "mouse_section_wind_mouse"))
+    {
+        if (ImGui::Checkbox("Enable WindMouse", &config.wind_mouse_enabled))
+        {
+            OverlayConfig_MarkDirty();
+            input_method_changed.store(true);
+        }
+
+        if (OverlayUI::BeginSubsection("Wind Mouse Settings##wind_mouse_settings"))
+        {
+            if (!config.wind_mouse_enabled)
+            {
+                ImGui::BeginDisabled();
+            }
+
+            if (ImGui::SliderFloat("Gravity force", &config.wind_G, 4.00f, 40.00f, "%.2f"))
+            {
+                OverlayConfig_MarkDirty();
+            }
+
+            if (ImGui::SliderFloat("Wind fluctuation", &config.wind_W, 1.00f, 40.00f, "%.2f"))
+            {
+                OverlayConfig_MarkDirty();
+            }
+
+            if (ImGui::SliderFloat("Max step (velocity clip)", &config.wind_M, 1.00f, 40.00f, "%.2f"))
+            {
+                OverlayConfig_MarkDirty();
+            }
+
+            if (ImGui::SliderFloat("Distance where behaviour changes", &config.wind_D, 1.00f, 40.00f, "%.2f"))
+            {
+                OverlayConfig_MarkDirty();
+            }
+
+            if (ImGui::Button("Reset Wind Mouse to default settings"))
+            {
+                config.wind_G = 18.0f;
+                config.wind_W = 15.0f;
+                config.wind_M = 10.0f;
+                config.wind_D = 8.0f;
+                OverlayConfig_MarkDirty();
+            }
+
+            if (!config.wind_mouse_enabled)
+            {
+                ImGui::EndDisabled();
+                ImGui::TextDisabled("Enable WindMouse to edit this section.");
+            }
+
+            OverlayUI::EndSubsection();
+        }
+
+        OverlayUI::EndSection();
+    }
+
+    if (OverlayUI::BeginSection("Input Method", "mouse_section_input_method"))
+    {
+        std::vector<std::string> input_methods = { "WIN32", "GHUB", "ARDUINO", "KMBOX_NET", "KMBOX_A", "MAKCU" };
+
+        std::vector<const char*> method_items;
+        method_items.reserve(input_methods.size());
+        for (const auto& item : input_methods)
+        {
+            method_items.push_back(item.c_str());
+        }
+
+        std::string combo_label = "Mouse Input method";
+        int input_method_index = 0;
+        for (size_t i = 0; i < input_methods.size(); ++i)
+        {
+            if (input_methods[i] == config.input_method)
+            {
+                input_method_index = static_cast<int>(i);
                 break;
             }
         }
 
-        if (ImGui::Combo("Arduino Port", &port_index, port_items.data(), static_cast<int>(port_items.size())))
+        if (ImGui::Combo("Mouse Input Method", &input_method_index, method_items.data(), static_cast<int>(method_items.size())))
         {
-            config.arduino_port = port_list[port_index];
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
-        }
+            std::string new_input_method = input_methods[input_method_index];
 
-        std::vector<int> baud_rate_list = { 9600, 19200, 38400, 57600, 115200 };
-        std::vector<std::string> baud_rate_str_list;
-        for (const auto& rate : baud_rate_list)
-        {
-            baud_rate_str_list.push_back(std::to_string(rate));
-        }
-
-        std::vector<const char*> baud_rate_items;
-        baud_rate_items.reserve(baud_rate_str_list.size());
-        for (const auto& rate_str : baud_rate_str_list)
-        {
-            baud_rate_items.push_back(rate_str.c_str());
-        }
-
-        int baud_rate_index = 0;
-        for (size_t i = 0; i < baud_rate_list.size(); ++i)
-        {
-            if (baud_rate_list[i] == config.arduino_baudrate)
+            if (new_input_method != config.input_method)
             {
-                baud_rate_index = static_cast<int>(i);
-                break;
+                config.input_method = new_input_method;
+                OverlayConfig_MarkDirty();
+                input_method_changed.store(true);
             }
         }
 
-        if (ImGui::Combo("Arduino Baudrate", &baud_rate_index, baud_rate_items.data(), static_cast<int>(baud_rate_items.size())))
+        if (config.input_method == "ARDUINO")
         {
-            config.arduino_baudrate = baud_rate_list[baud_rate_index];
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
+            if (OverlayUI::BeginSubsection("ARDUINO Settings##input_method_arduino"))
+            {
+                if (arduinoSerial)
+                {
+                    if (arduinoSerial->isOpen())
+                    {
+                        ImGui::TextColored(ImVec4(0, 255, 0, 255), "Arduino connected");
+                    }
+                    else
+                    {
+                        ImGui::TextColored(ImVec4(255, 0, 0, 255), "Arduino not connected");
+                    }
+                }
+
+                std::vector<std::string> port_list;
+                for (int i = 1; i <= 30; ++i)
+                {
+                    port_list.push_back("COM" + std::to_string(i));
+                }
+
+                std::vector<const char*> port_items;
+                port_items.reserve(port_list.size());
+                for (const auto& port : port_list)
+                {
+                    port_items.push_back(port.c_str());
+                }
+
+                int port_index = 0;
+                for (size_t i = 0; i < port_list.size(); ++i)
+                {
+                    if (port_list[i] == config.arduino_port)
+                    {
+                        port_index = static_cast<int>(i);
+                        break;
+                    }
+                }
+
+                if (ImGui::Combo("Arduino Port", &port_index, port_items.data(), static_cast<int>(port_items.size())))
+                {
+                    config.arduino_port = port_list[port_index];
+                    OverlayConfig_MarkDirty();
+                    input_method_changed.store(true);
+                }
+
+                std::vector<int> baud_rate_list = { 9600, 19200, 38400, 57600, 115200 };
+                std::vector<std::string> baud_rate_str_list;
+                for (const auto& rate : baud_rate_list)
+                {
+                    baud_rate_str_list.push_back(std::to_string(rate));
+                }
+
+                std::vector<const char*> baud_rate_items;
+                baud_rate_items.reserve(baud_rate_str_list.size());
+                for (const auto& rate_str : baud_rate_str_list)
+                {
+                    baud_rate_items.push_back(rate_str.c_str());
+                }
+
+                int baud_rate_index = 0;
+                for (size_t i = 0; i < baud_rate_list.size(); ++i)
+                {
+                    if (baud_rate_list[i] == config.arduino_baudrate)
+                    {
+                        baud_rate_index = static_cast<int>(i);
+                        break;
+                    }
+                }
+
+                if (ImGui::Combo("Arduino Baudrate", &baud_rate_index, baud_rate_items.data(), static_cast<int>(baud_rate_items.size())))
+                {
+                    config.arduino_baudrate = baud_rate_list[baud_rate_index];
+                    OverlayConfig_MarkDirty();
+                    input_method_changed.store(true);
+                }
+
+                if (ImGui::Checkbox("Arduino 16-bit Mouse", &config.arduino_16_bit_mouse))
+                {
+                    OverlayConfig_MarkDirty();
+                    input_method_changed.store(true);
+                }
+                if (ImGui::Checkbox("Arduino Enable Keys", &config.arduino_enable_keys))
+                {
+                    OverlayConfig_MarkDirty();
+                    input_method_changed.store(true);
+                }
+
+                OverlayUI::EndSubsection();
+            }
+        }
+        else if (config.input_method == "GHUB")
+        {
+            if (OverlayUI::BeginSubsection("GHUB Settings##input_method_ghub"))
+            {
+                if (ghub_version == "13.1.4")
+                {
+                    std::string ghub_version_label = "The correct version of Ghub is installed: " + ghub_version;
+                    ImGui::Text(ghub_version_label.c_str());
+                }
+                else
+                {
+                    ImGui::Text("The wrong version of Ghub is installed or the path to Ghub is not set by default.\nDefault system path: C:\\Program Files\\LGHUB");
+                    if (ImGui::Button("GHub Docs"))
+                    {
+                        ShellExecute(0, 0, L"https://github.com/SunOner/sunone_aimbot_docs/blob/main/tips/ghub.md", 0, 0, SW_SHOW);
+                    }
+                }
+
+                ImGui::TextColored(ImVec4(255, 0, 0, 255), "Use at your own risk, the method is detected in some games.");
+                OverlayUI::EndSubsection();
+            }
+        }
+        else if (config.input_method == "WIN32")
+        {
+            if (OverlayUI::BeginSubsection("WIN32 Settings##input_method_win32"))
+            {
+                ImGui::TextColored(ImVec4(255, 255, 255, 255), "This is a standard mouse input method, it may not work in most games. Use GHUB or ARDUINO.");
+                ImGui::TextColored(ImVec4(255, 0, 0, 255), "Use at your own risk, the method is detected in some games.");
+                OverlayUI::EndSubsection();
+            }
+        }
+        else if (config.input_method == "KMBOX_NET")
+        {
+            if (OverlayUI::BeginSubsection("KMBOX_NET Settings##input_method_kmbox_net"))
+            {
+                static char ip[32] = "";
+                static char port[8] = "";
+                static char uuid[16] = "";
+                static std::string last_ip;
+                static std::string last_port;
+                static std::string last_uuid;
+
+                if (last_ip != config.kmbox_net_ip || last_port != config.kmbox_net_port || last_uuid != config.kmbox_net_uuid)
+                {
+                    strncpy(ip, config.kmbox_net_ip.c_str(), sizeof(ip));
+                    strncpy(port, config.kmbox_net_port.c_str(), sizeof(port));
+                    strncpy(uuid, config.kmbox_net_uuid.c_str(), sizeof(uuid));
+                    ip[sizeof(ip) - 1] = '\0';
+                    port[sizeof(port) - 1] = '\0';
+                    uuid[sizeof(uuid) - 1] = '\0';
+                    last_ip = config.kmbox_net_ip;
+                    last_port = config.kmbox_net_port;
+                    last_uuid = config.kmbox_net_uuid;
+                }
+
+                ImGui::InputText("IP", ip, sizeof(ip));
+                ImGui::InputText("Port", port, sizeof(port));
+                ImGui::InputText("UUID", uuid, sizeof(uuid));
+
+                if (ImGui::Button("Save & Reconnect"))
+                {
+                    config.kmbox_net_ip = ip;
+                    config.kmbox_net_port = port;
+                    config.kmbox_net_uuid = uuid;
+                    last_ip = config.kmbox_net_ip;
+                    last_port = config.kmbox_net_port;
+                    last_uuid = config.kmbox_net_uuid;
+                    OverlayConfig_MarkDirty();
+                    input_method_changed.store(true);
+                }
+
+                if (kmboxNetSerial && kmboxNetSerial->isOpen())
+                {
+                    ImGui::TextColored(ImVec4(0, 255, 0, 255), "kmboxNet connected");
+                }
+                else
+                {
+                    ImGui::TextColored(ImVec4(255, 0, 0, 255), "kmboxNet not connected");
+                }
+
+                if (ImGui::Button("Reboot box"))
+                {
+                    if (kmboxNetSerial)
+                    {
+                        kmboxNetSerial->reboot();
+                    }
+                }
+
+                if (ImGui::Button("Change Kmbox image"))
+                {
+                    if (kmboxNetSerial)
+                    {
+                        kmboxNetSerial->lcdColor(0);
+                        kmboxNetSerial->lcdPicture(gImage_128x160);
+                    }
+                }
+
+                OverlayUI::EndSubsection();
+            }
+        }
+        else if (config.input_method == "KMBOX_A")
+        {
+            if (OverlayUI::BeginSubsection("KMBOX_A Settings##input_method_kmbox_a"))
+            {
+                static char pidvid[32] = "";
+                static std::string last_pidvid;
+
+                if (last_pidvid != config.kmbox_a_pidvid)
+                {
+                    strncpy(pidvid, config.kmbox_a_pidvid.c_str(), sizeof(pidvid));
+                    pidvid[sizeof(pidvid) - 1] = '\0';
+                    last_pidvid = config.kmbox_a_pidvid;
+                }
+
+                ImGui::InputText("PIDVID", pidvid, sizeof(pidvid));
+                ImGui::TextDisabled("Format: PPPPVVVV (one field)");
+
+                if (ImGui::Button("Save & Reconnect##kmbox_a"))
+                {
+                    config.kmbox_a_pidvid = pidvid;
+                    last_pidvid = config.kmbox_a_pidvid;
+                    OverlayConfig_MarkDirty();
+                    input_method_changed.store(true);
+                }
+
+                if (kmboxASerial && kmboxASerial->isOpen())
+                {
+                    ImGui::TextColored(ImVec4(0, 255, 0, 255), "kmboxA connected");
+                }
+                else
+                {
+                    ImGui::TextColored(ImVec4(255, 0, 0, 255), "kmboxA not connected");
+                }
+
+                OverlayUI::EndSubsection();
+            }
+        }
+        else if (config.input_method == "MAKCU")
+        {
+            if (OverlayUI::BeginSubsection("MAKCU Settings##input_method_makcu"))
+            {
+                std::vector<std::string> port_list;
+                for (int i = 1; i <= 30; ++i)
+                {
+                    port_list.push_back("COM" + std::to_string(i));
+                }
+
+                std::vector<const char*> port_items;
+                port_items.reserve(port_list.size());
+                for (const auto& port : port_list)
+                {
+                    port_items.push_back(port.c_str());
+                }
+
+                int port_index = 0;
+                for (size_t i = 0; i < port_list.size(); ++i)
+                {
+                    if (port_list[i] == config.makcu_port)
+                    {
+                        port_index = static_cast<int>(i);
+                        break;
+                    }
+                }
+
+                if (ImGui::Combo("Makcu Port", &port_index, port_items.data(), static_cast<int>(port_items.size())))
+                {
+                    config.makcu_port = port_list[port_index];
+                    OverlayConfig_MarkDirty();
+                    input_method_changed.store(true);
+                }
+
+                std::vector<int> baud_list = { 9600, 19200, 38400, 57600, 115200 };
+                std::vector<std::string> baud_str_list;
+                for (int b : baud_list) baud_str_list.push_back(std::to_string(b));
+
+                std::vector<const char*> baud_items;
+                baud_items.reserve(baud_list.size());
+                for (const auto& baud : baud_str_list)
+                {
+                    baud_items.push_back(baud.c_str());
+                }
+
+                int baud_index = 0;
+                for (size_t i = 0; i < baud_list.size(); ++i)
+                {
+                    if (baud_list[i] == config.makcu_baudrate)
+                    {
+                        baud_index = static_cast<int>(i);
+                        break;
+                    }
+                }
+
+                if (ImGui::Combo("Makcu Baudrate", &baud_index, baud_items.data(), static_cast<int>(baud_items.size())))
+                {
+                    config.makcu_baudrate = baud_list[baud_index];
+                    OverlayConfig_MarkDirty();
+                    input_method_changed.store(true);
+                }
+
+                if (makcuSerial && makcuSerial->isOpen())
+                {
+                    ImGui::TextColored(ImVec4(0, 255, 0, 255), "Makcu connected");
+                }
+                else
+                {
+                    ImGui::TextColored(ImVec4(255, 0, 0, 255), "Makcu not connected");
+                }
+
+                OverlayUI::EndSubsection();
+            }
         }
 
-        if (ImGui::Checkbox("Arduino 16-bit Mouse", &config.arduino_16_bit_mouse))
-        {
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
-        }
-        if (ImGui::Checkbox("Arduino Enable Keys", &config.arduino_enable_keys))
-        {
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
-        }
+        OverlayUI::EndSection();
     }
-    else if (config.input_method == "GHUB")
+
+    if (OverlayUI::BeginSection("Warning", "mouse_section_warning"))
     {
-        if (ghub_version == "13.1.4")
-        {
-            std::string ghub_version_label = "The correct version of Ghub is installed: " + ghub_version;
-            ImGui::Text(ghub_version_label.c_str());
-        }
-        else
-        {
-            ImGui::Text("The wrong version of Ghub is installed or the path to Ghub is not set by default.\nDefault system path: C:\\Program Files\\LGHUB");
-            if (ImGui::Button("GHub Docs"))
-            {
-                ShellExecute(0, 0, L"https://github.com/SunOner/sunone_aimbot_docs/blob/main/tips/ghub.md", 0, 0, SW_SHOW);
-            }
-        }
-        ImGui::TextColored(ImVec4(255, 0, 0, 255), "Use at your own risk, the method is detected in some games.");
+        ImGui::TextColored(ImVec4(255, 255, 255, 100), "Do not test shooting and aiming with the overlay is open.");
+        OverlayUI::EndSection();
     }
-    else if (config.input_method == "WIN32")
-    {
-        ImGui::TextColored(ImVec4(255, 255, 255, 255), "This is a standard mouse input method, it may not work in most games. Use GHUB or ARDUINO.");
-        ImGui::TextColored(ImVec4(255, 0, 0, 255), "Use at your own risk, the method is detected in some games.");
-    }
-    else if (config.input_method == "KMBOX_NET")
-    {
-        static char ip[32] = "";
-        static char port[8] = "";
-        static char uuid[16] = "";
-        static std::string last_ip;
-        static std::string last_port;
-        static std::string last_uuid;
-
-        if (last_ip != config.kmbox_net_ip || last_port != config.kmbox_net_port || last_uuid != config.kmbox_net_uuid)
-        {
-            strncpy(ip, config.kmbox_net_ip.c_str(), sizeof(ip));
-            strncpy(port, config.kmbox_net_port.c_str(), sizeof(port));
-            strncpy(uuid, config.kmbox_net_uuid.c_str(), sizeof(uuid));
-            ip[sizeof(ip) - 1] = '\0';
-            port[sizeof(port) - 1] = '\0';
-            uuid[sizeof(uuid) - 1] = '\0';
-            last_ip = config.kmbox_net_ip;
-            last_port = config.kmbox_net_port;
-            last_uuid = config.kmbox_net_uuid;
-        }
-
-        ImGui::InputText("IP", ip, sizeof(ip));
-        ImGui::InputText("Port", port, sizeof(port));
-        ImGui::InputText("UUID", uuid, sizeof(uuid));
-
-        if (ImGui::Button("Save & Reconnect"))
-        {
-            config.kmbox_net_ip = ip;
-            config.kmbox_net_port = port;
-            config.kmbox_net_uuid = uuid;
-            last_ip = config.kmbox_net_ip;
-            last_port = config.kmbox_net_port;
-            last_uuid = config.kmbox_net_uuid;
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
-        }
-
-        if (kmboxNetSerial && kmboxNetSerial->isOpen())
-        {
-            ImGui::TextColored(ImVec4(0, 255, 0, 255), "kmboxNet connected");
-        }
-        else
-        {
-            ImGui::TextColored(ImVec4(255, 0, 0, 255), "kmboxNet not connected");
-        }
-        
-        if (ImGui::Button("Reboot box"))
-        {
-            if (kmboxNetSerial)
-            {
-                kmboxNetSerial->reboot();
-            }
-        }
-
-        if (ImGui::Button("Change Kmbox image"))
-        {
-            if (kmboxNetSerial)
-            {
-                kmboxNetSerial->lcdColor(0);
-                kmboxNetSerial->lcdPicture(gImage_128x160);
-            }
-        }
-    }
-    else if (config.input_method == "KMBOX_A")
-    {
-        static char pidvid[32] = "";
-        static std::string last_pidvid;
-
-        if (last_pidvid != config.kmbox_a_pidvid)
-        {
-            strncpy(pidvid, config.kmbox_a_pidvid.c_str(), sizeof(pidvid));
-            pidvid[sizeof(pidvid) - 1] = '\0';
-            last_pidvid = config.kmbox_a_pidvid;
-        }
-
-        ImGui::InputText("PIDVID", pidvid, sizeof(pidvid));
-        ImGui::TextDisabled("Format: PPPPVVVV (one field)");
-
-        if (ImGui::Button("Save & Reconnect##kmbox_a"))
-        {
-            config.kmbox_a_pidvid = pidvid;
-            last_pidvid = config.kmbox_a_pidvid;
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
-        }
-
-        if (kmboxASerial && kmboxASerial->isOpen())
-        {
-            ImGui::TextColored(ImVec4(0, 255, 0, 255), "kmboxA connected");
-        }
-        else
-        {
-            ImGui::TextColored(ImVec4(255, 0, 0, 255), "kmboxA not connected");
-        }
-    }
-    else if (config.input_method == "MAKCU")
-    {
-        std::vector<std::string> port_list;
-        for (int i = 1; i <= 30; ++i)
-        {
-            port_list.push_back("COM" + std::to_string(i));
-        }
-
-        std::vector<const char*> port_items;
-        port_items.reserve(port_list.size());
-        for (const auto& port : port_list)
-        {
-            port_items.push_back(port.c_str());
-        }
-
-        int port_index = 0;
-        for (size_t i = 0; i < port_list.size(); ++i)
-        {
-            if (port_list[i] == config.makcu_port)
-            {
-                port_index = static_cast<int>(i);
-                break;
-            }
-        }
-
-        if (ImGui::Combo("Makcu Port", &port_index, port_items.data(), static_cast<int>(port_items.size())))
-        {
-            config.makcu_port = port_list[port_index];
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
-        }
-
-        std::vector<int> baud_list = { 9600, 19200, 38400, 57600, 115200 };
-        std::vector<std::string> baud_str_list;
-        for (int b : baud_list) baud_str_list.push_back(std::to_string(b));
-
-        std::vector<const char*> baud_items;
-        baud_items.reserve(baud_list.size());
-        for (const auto& baud : baud_str_list)
-        {
-            baud_items.push_back(baud.c_str());
-        }
-
-        int baud_index = 0;
-        for (size_t i = 0; i < baud_list.size(); ++i)
-        {
-            if (baud_list[i] == config.makcu_baudrate)
-            {
-                baud_index = static_cast<int>(i);
-                break;
-            }
-        }
-
-        if (ImGui::Combo("Makcu Baudrate", &baud_index, baud_items.data(), static_cast<int>(baud_items.size())))
-        {
-            config.makcu_baudrate = baud_list[baud_index];
-            OverlayConfig_MarkDirty();
-            input_method_changed.store(true);
-        }
-
-        if (makcuSerial && makcuSerial->isOpen())
-        {
-            ImGui::TextColored(ImVec4(0, 255, 0, 255), "Makcu connected");
-        }
-        else
-        {
-            ImGui::TextColored(ImVec4(255, 0, 0, 255), "Makcu not connected");
-        }
-    }
-
-    ImGui::Separator();
-    ImGui::TextColored(ImVec4(255, 255, 255, 100), "Do not test shooting and aiming with the overlay is open.");
 
     if (prev_fovX != config.fovX ||
         prev_fovY != config.fovY ||

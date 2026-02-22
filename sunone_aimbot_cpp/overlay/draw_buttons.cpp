@@ -7,13 +7,14 @@
 #include "sunone_aimbot_cpp.h"
 #include "overlay.h"
 #include "overlay/config_dirty.h"
+#include "overlay/ui_sections.h"
 
 void draw_buttons()
 {
-    ImGui::Text("Targeting Buttons");
-
-    for (size_t i = 0; i < config.button_targeting.size(); )
+    if (OverlayUI::BeginSection("Targeting Buttons", "buttons_section_targeting"))
     {
+        for (size_t i = 0; i < config.button_targeting.size(); )
+        {
         std::string& current_key_name = config.button_targeting[i];
 
         int current_index = -1;
@@ -57,21 +58,21 @@ void draw_buttons()
             }
         }
 
-        ++i;
+            ++i;
+        }
+
+        if (ImGui::Button("Add button##targeting"))
+        {
+            config.button_targeting.push_back("None");
+            OverlayConfig_MarkDirty();
+        }
+        OverlayUI::EndSection();
     }
 
-    if (ImGui::Button("Add button##targeting"))
+    if (OverlayUI::BeginSection("Shoot Buttons", "buttons_section_shoot"))
     {
-        config.button_targeting.push_back("None");
-        OverlayConfig_MarkDirty();
-    }
-
-    ImGui::Separator();
-
-    ImGui::Text("Shoot Buttons");
-
-    for (size_t i = 0; i < config.button_shoot.size(); )
-    {
+        for (size_t i = 0; i < config.button_shoot.size(); )
+        {
         std::string& current_key_name = config.button_shoot[i];
 
         int current_index = -1;
@@ -115,21 +116,21 @@ void draw_buttons()
             }
         }
 
-        ++i;
+            ++i;
+        }
+
+        if (ImGui::Button("Add button##shoot"))
+        {
+            config.button_shoot.push_back("None");
+            OverlayConfig_MarkDirty();
+        }
+        OverlayUI::EndSection();
     }
 
-    if (ImGui::Button("Add button##shoot"))
+    if (OverlayUI::BeginSection("Zoom Buttons", "buttons_section_zoom"))
     {
-        config.button_shoot.push_back("None");
-        OverlayConfig_MarkDirty();
-    }
-
-    ImGui::Separator();
-
-    ImGui::Text("Zoom Buttons");
-
-    for (size_t i = 0; i < config.button_zoom.size(); )
-    {
+        for (size_t i = 0; i < config.button_zoom.size(); )
+        {
         std::string& current_key_name = config.button_zoom[i];
 
         int current_index = -1;
@@ -173,21 +174,21 @@ void draw_buttons()
             }
         }
 
-        ++i;
+            ++i;
+        }
+
+        if (ImGui::Button("Add button##zoom"))
+        {
+            config.button_zoom.push_back("None");
+            OverlayConfig_MarkDirty();
+        }
+        OverlayUI::EndSection();
     }
 
-    if (ImGui::Button("Add button##zoom"))
+    if (OverlayUI::BeginSection("Exit Buttons", "buttons_section_exit"))
     {
-        config.button_zoom.push_back("None");
-        OverlayConfig_MarkDirty();
-    }
-
-    ImGui::Separator();
-
-    ImGui::Text("Exit Buttons");
-
-    for (size_t i = 0; i < config.button_exit.size(); )
-    {
+        for (size_t i = 0; i < config.button_exit.size(); )
+        {
         std::string& current_key_name = config.button_exit[i];
 
         int current_index = -1;
@@ -231,21 +232,21 @@ void draw_buttons()
             }
         }
 
-        ++i;
+            ++i;
+        }
+
+        if (ImGui::Button("Add button##exit"))
+        {
+            config.button_exit.push_back("None");
+            OverlayConfig_MarkDirty();
+        }
+        OverlayUI::EndSection();
     }
 
-    if (ImGui::Button("Add button##exit"))
+    if (OverlayUI::BeginSection("Pause Buttons", "buttons_section_pause"))
     {
-        config.button_exit.push_back("None");
-        OverlayConfig_MarkDirty();
-    }
-
-    ImGui::Separator();
-
-    ImGui::Text("Pause Buttons");
-
-    for (size_t i = 0; i < config.button_pause.size(); )
-    {
+        for (size_t i = 0; i < config.button_pause.size(); )
+        {
         std::string& current_key_name = config.button_pause[i];
 
         int current_index = -1;
@@ -288,21 +289,21 @@ void draw_buttons()
                 continue;
             }
         }
-        ++i;
+            ++i;
+        }
+
+        if (ImGui::Button("Add button##pause"))
+        {
+            config.button_pause.push_back("None");
+            OverlayConfig_MarkDirty();
+        }
+        OverlayUI::EndSection();
     }
 
-    if (ImGui::Button("Add button##pause"))
+    if (OverlayUI::BeginSection("Reload Config Buttons", "buttons_section_reload"))
     {
-        config.button_pause.push_back("None");
-        OverlayConfig_MarkDirty();
-    }
-
-    ImGui::Separator();
-
-    ImGui::Text("Reload config Buttons");
-
-    for (size_t i = 0; i < config.button_reload_config.size(); )
-    {
+        for (size_t i = 0; i < config.button_reload_config.size(); )
+        {
         std::string& current_key_name = config.button_reload_config[i];
 
         int current_index = -1;
@@ -346,21 +347,21 @@ void draw_buttons()
             }
         }
 
-        ++i;
+            ++i;
+        }
+
+        if (ImGui::Button("Add button##reload_config"))
+        {
+            config.button_reload_config.push_back("None");
+            OverlayConfig_MarkDirty();
+        }
+        OverlayUI::EndSection();
     }
 
-    if (ImGui::Button("Add button##reload_config"))
+    if (OverlayUI::BeginSection("Overlay Buttons", "buttons_section_overlay"))
     {
-        config.button_reload_config.push_back("None");
-        OverlayConfig_MarkDirty();
-    }
-
-    ImGui::Separator();
-
-    ImGui::Text("Overlay Buttons");
-
-    for (size_t i = 0; i < config.button_open_overlay.size(); )
-    {
+        for (size_t i = 0; i < config.button_open_overlay.size(); )
+        {
         std::string& current_key_name = config.button_open_overlay[i];
 
         int current_index = -1;
@@ -395,19 +396,23 @@ void draw_buttons()
             continue;
         }
 
-        ++i;
+            ++i;
+        }
+
+        if (ImGui::Button("Add button##overlay"))
+        {
+            config.button_open_overlay.push_back("None");
+            OverlayConfig_MarkDirty();
+        }
+        OverlayUI::EndSection();
     }
 
-    if (ImGui::Button("Add button##overlay"))
+    if (OverlayUI::BeginSection("Arrow Key Options", "buttons_section_arrows"))
     {
-        config.button_open_overlay.push_back("None");
-        OverlayConfig_MarkDirty();
-    }
-
-    ImGui::Separator();
-
-    if (ImGui::Checkbox("Enable arrows keys options", &config.enable_arrows_settings))
-    {
-        OverlayConfig_MarkDirty();
+        if (ImGui::Checkbox("Enable arrows keys options", &config.enable_arrows_settings))
+        {
+            OverlayConfig_MarkDirty();
+        }
+        OverlayUI::EndSection();
     }
 }

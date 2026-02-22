@@ -14,6 +14,8 @@
 #include <queue>
 #include <thread>
 #include <condition_variable>
+#include <deque>
+#include <random>
 
 #include "AimbotTarget.h"
 #include "Arduino.h"
@@ -71,6 +73,38 @@ private:
     bool   wind_mouse_enabled = true;
     double wind_G, wind_W, wind_M, wind_D;
     void   windMouseMoveRelative(int dx, int dy);
+    void   resetWindState();
+    void   appendWindDebugStep(int dx, int dy);
+    void   pruneWindDebugTrailLocked(const std::chrono::steady_clock::time_point& now);
+
+    struct WindDebugPoint
+    {
+        double x = 0.0;
+        double y = 0.0;
+        std::chrono::steady_clock::time_point t{};
+    };
+
+    // Persistent wind state to avoid per-frame "reset" feel.
+    double windCarryX = 0.0;
+    double windCarryY = 0.0;
+    double windVelX = 0.0;
+    double windVelY = 0.0;
+    double windNoiseX = 0.0;
+    double windNoiseY = 0.0;
+    double windFracX = 0.0;
+    double windFracY = 0.0;
+    double windPatternX = 0.0;
+    double windPatternY = 0.0;
+    double windPatternPhaseA = 0.0;
+    double windPatternPhaseB = 0.0;
+    double windPatternRateA = 0.0;
+    double windPatternRateB = 0.0;
+    std::mt19937 windRng{ std::random_device{}() };
+
+    std::deque<WindDebugPoint> windDebugTrail;
+    std::mutex                             windDebugTrailMutex;
+    double                                 windDebugCursorX = 0.0;
+    double                                 windDebugCursorY = 0.0;
 
     std::pair<double, double> calc_movement(double target_x, double target_y);
     double calculate_speed_multiplier(double distance);
@@ -107,6 +141,7 @@ public:
     );
 
     void moveMousePivot(double pivotX, double pivotY);
+    void clearQueuedMoves();
     std::pair<double, double> predict_target_position(double target_x, double target_y);
     void moveMouse(const AimbotTarget& target);
     void pressMouse(const AimbotTarget& target);
@@ -120,6 +155,8 @@ public:
     void storeFuturePositions(const std::vector<std::pair<double, double>>& positions);
     void clearFuturePositions();
     std::vector<std::pair<double, double>> getFuturePositions();
+    void clearWindDebugTrail();
+    std::vector<std::pair<double, double>> getWindDebugTrail();
 
     void setArduinoConnection(Arduino* newArduino);
     void setKmboxAConnection(KmboxAConnection* newKmbox_a);

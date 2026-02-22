@@ -40,5 +40,6 @@ extern const int BASE_OVERLAY_HEIGHT;
 extern int overlayWidth;
 extern int overlayHeight;
 void Overlay_SetOpacity(int opacity255);
+void Overlay_ApplyCaptureExclusion();
 
 #endif // OVERLAY_H

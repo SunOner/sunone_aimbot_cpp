@@ -8,6 +8,7 @@
 #include <string>
 #include <filesystem>
 #include <unordered_map>
+#include <algorithm>
 
 #include "config.h"
 #include "modules/SimpleIni.h"
@@ -169,6 +170,7 @@ bool Config::loadConfig(const std::string& filename)
         // Overlay
         overlay_opacity = 225;
         overlay_ui_scale = 1.0f;
+        overlay_exclude_from_capture = true;
 
         // Depth
         depth_inference_enabled = true;
@@ -187,6 +189,7 @@ bool Config::loadConfig(const std::string& filename)
         game_overlay_max_fps = 0;
         game_overlay_draw_boxes = true;
         game_overlay_draw_future = true;
+        game_overlay_draw_wind_tail = true;
         game_overlay_draw_frame = true;
         game_overlay_show_target_correction = true;
         game_overlay_box_a = 255;
@@ -210,6 +213,26 @@ bool Config::loadConfig(const std::string& filename)
         game_overlay_icon_offset_y = 0.0f;
         game_overlay_icon_anchor = "center";
         game_overlay_icon_class = -1;
+
+        // Aim simulation overlay
+        aim_sim_enabled = false;
+        aim_sim_x = 24;
+        aim_sim_y = 24;
+        aim_sim_width = 560;
+        aim_sim_height = 360;
+        aim_sim_fps_min = 90;
+        aim_sim_fps_max = 120;
+        aim_sim_fps_jitter = 0.15f;
+        aim_sim_capture_delay_ms = 6.0f;
+        aim_sim_inference_delay_ms = 12.0f;
+        aim_sim_use_live_inference = true;
+        aim_sim_input_delay_ms = 2.0f;
+        aim_sim_extra_delay_ms = 2.0f;
+        aim_sim_target_max_speed = 560.0f;
+        aim_sim_target_accel = 1850.0f;
+        aim_sim_target_stop_chance = 0.25f;
+        aim_sim_show_observed = true;
+        aim_sim_show_history = true;
 
         // Classes
         class_player = 0;
@@ -438,6 +461,7 @@ bool Config::loadConfig(const std::string& filename)
     // Overlay
     overlay_opacity = get_long("overlay_opacity", 225);
     overlay_ui_scale = (float)get_double("overlay_ui_scale", 1.0);
+    overlay_exclude_from_capture = get_bool("overlay_exclude_from_capture", true);
 
     // Depth
     depth_inference_enabled = get_bool("depth_inference_enabled", true);
@@ -462,6 +486,7 @@ bool Config::loadConfig(const std::string& filename)
     game_overlay_max_fps = get_long("game_overlay_max_fps", 0);
     game_overlay_draw_boxes = get_bool("game_overlay_draw_boxes", true);
     game_overlay_draw_future = get_bool("game_overlay_draw_future", true);
+    game_overlay_draw_wind_tail = get_bool("game_overlay_draw_wind_tail", true);
     game_overlay_draw_frame = get_bool("game_overlay_draw_frame", true);
     game_overlay_show_target_correction = get_bool("game_overlay_show_target_correction", true);
     game_overlay_box_a = get_long("game_overlay_box_a", 255);
@@ -486,6 +511,55 @@ bool Config::loadConfig(const std::string& filename)
     game_overlay_icon_offset_y = (float)get_double("game_overlay_icon_offset_y", 0.0f);
     game_overlay_icon_anchor = get_string("game_overlay_icon_anchor", "center");
     game_overlay_icon_class = get_long("game_overlay_icon_class", -1);
+
+    // Aim simulation overlay
+    aim_sim_enabled = get_bool("aim_sim_enabled", false);
+    aim_sim_x = get_long("aim_sim_x", 24);
+    aim_sim_y = get_long("aim_sim_y", 24);
+    aim_sim_width = get_long("aim_sim_width", 560);
+    aim_sim_height = get_long("aim_sim_height", 360);
+    aim_sim_fps_min = get_long("aim_sim_fps_min", 90);
+    aim_sim_fps_max = get_long("aim_sim_fps_max", 120);
+    aim_sim_fps_jitter = (float)get_double("aim_sim_fps_jitter", 0.15);
+    aim_sim_capture_delay_ms = (float)get_double("aim_sim_capture_delay_ms", 6.0);
+    aim_sim_inference_delay_ms = (float)get_double("aim_sim_inference_delay_ms", 12.0);
+    aim_sim_use_live_inference = get_bool("aim_sim_use_live_inference", true);
+    aim_sim_input_delay_ms = (float)get_double("aim_sim_input_delay_ms", 2.0);
+    aim_sim_extra_delay_ms = (float)get_double("aim_sim_extra_delay_ms", 2.0);
+    aim_sim_target_max_speed = (float)get_double("aim_sim_target_max_speed", 560.0);
+    aim_sim_target_accel = (float)get_double("aim_sim_target_accel", 1850.0);
+    aim_sim_target_stop_chance = (float)get_double("aim_sim_target_stop_chance", 0.25);
+    aim_sim_show_observed = get_bool("aim_sim_show_observed", true);
+    aim_sim_show_history = get_bool("aim_sim_show_history", true);
+
+    if (aim_sim_width < 220) aim_sim_width = 220;
+    if (aim_sim_width > 1920) aim_sim_width = 1920;
+    if (aim_sim_height < 180) aim_sim_height = 180;
+    if (aim_sim_height > 1080) aim_sim_height = 1080;
+
+    if (aim_sim_fps_min < 15) aim_sim_fps_min = 15;
+    if (aim_sim_fps_min > 360) aim_sim_fps_min = 360;
+    if (aim_sim_fps_max < 15) aim_sim_fps_max = 15;
+    if (aim_sim_fps_max > 360) aim_sim_fps_max = 360;
+    if (aim_sim_fps_min > aim_sim_fps_max)
+        std::swap(aim_sim_fps_min, aim_sim_fps_max);
+
+    if (aim_sim_fps_jitter < 0.0f) aim_sim_fps_jitter = 0.0f;
+    if (aim_sim_fps_jitter > 0.8f) aim_sim_fps_jitter = 0.8f;
+    if (aim_sim_capture_delay_ms < 0.0f) aim_sim_capture_delay_ms = 0.0f;
+    if (aim_sim_capture_delay_ms > 80.0f) aim_sim_capture_delay_ms = 80.0f;
+    if (aim_sim_inference_delay_ms < 0.0f) aim_sim_inference_delay_ms = 0.0f;
+    if (aim_sim_inference_delay_ms > 120.0f) aim_sim_inference_delay_ms = 120.0f;
+    if (aim_sim_input_delay_ms < 0.0f) aim_sim_input_delay_ms = 0.0f;
+    if (aim_sim_input_delay_ms > 60.0f) aim_sim_input_delay_ms = 60.0f;
+    if (aim_sim_extra_delay_ms < 0.0f) aim_sim_extra_delay_ms = 0.0f;
+    if (aim_sim_extra_delay_ms > 60.0f) aim_sim_extra_delay_ms = 60.0f;
+    if (aim_sim_target_max_speed < 20.0f) aim_sim_target_max_speed = 20.0f;
+    if (aim_sim_target_max_speed > 2500.0f) aim_sim_target_max_speed = 2500.0f;
+    if (aim_sim_target_accel < 20.0f) aim_sim_target_accel = 20.0f;
+    if (aim_sim_target_accel > 10000.0f) aim_sim_target_accel = 10000.0f;
+    if (aim_sim_target_stop_chance < 0.0f) aim_sim_target_stop_chance = 0.0f;
+    if (aim_sim_target_stop_chance > 0.95f) aim_sim_target_stop_chance = 0.95f;
 
     // Classes
     class_player = get_long("class_player", 0);
@@ -648,7 +722,8 @@ bool Config::saveConfig(const std::string& filename)
     file << "# Overlay\n"
         << "overlay_opacity = " << overlay_opacity << "\n"
         << std::fixed << std::setprecision(2)
-        << "overlay_ui_scale = " << overlay_ui_scale << "\n\n";
+        << "overlay_ui_scale = " << overlay_ui_scale << "\n"
+        << "overlay_exclude_from_capture = " << (overlay_exclude_from_capture ? "true" : "false") << "\n\n";
 
     file << "# Depth\n"
         << "depth_inference_enabled = " << (depth_inference_enabled ? "true" : "false") << "\n"
@@ -667,6 +742,7 @@ bool Config::saveConfig(const std::string& filename)
         << "game_overlay_max_fps = " << game_overlay_max_fps << "\n"
         << "game_overlay_draw_boxes = " << (game_overlay_draw_boxes ? "true" : "false") << "\n"
         << "game_overlay_draw_future = " << (game_overlay_draw_future ? "true" : "false") << "\n"
+        << "game_overlay_draw_wind_tail = " << (game_overlay_draw_wind_tail ? "true" : "false") << "\n"
         << "game_overlay_draw_frame = " << (game_overlay_draw_frame ? "true" : "false") << "\n"
         << "game_overlay_show_target_correction = " << (game_overlay_show_target_correction ? "true" : "false") << "\n"
         << "game_overlay_box_a = " << game_overlay_box_a << "\n"
@@ -693,6 +769,28 @@ bool Config::saveConfig(const std::string& filename)
         << "game_overlay_icon_offset_y = " << game_overlay_icon_offset_y << "\n"
         << "game_overlay_icon_anchor = " << game_overlay_icon_anchor << "\n"
         << "game_overlay_icon_class = " << game_overlay_icon_class << "\n\n";
+
+    file << "# Aim Simulation Overlay\n"
+        << "aim_sim_enabled = " << (aim_sim_enabled ? "true" : "false") << "\n"
+        << "aim_sim_x = " << aim_sim_x << "\n"
+        << "aim_sim_y = " << aim_sim_y << "\n"
+        << "aim_sim_width = " << aim_sim_width << "\n"
+        << "aim_sim_height = " << aim_sim_height << "\n"
+        << "aim_sim_fps_min = " << aim_sim_fps_min << "\n"
+        << "aim_sim_fps_max = " << aim_sim_fps_max << "\n"
+        << std::fixed << std::setprecision(3)
+        << "aim_sim_fps_jitter = " << aim_sim_fps_jitter << "\n"
+        << std::fixed << std::setprecision(2)
+        << "aim_sim_capture_delay_ms = " << aim_sim_capture_delay_ms << "\n"
+        << "aim_sim_inference_delay_ms = " << aim_sim_inference_delay_ms << "\n"
+        << "aim_sim_use_live_inference = " << (aim_sim_use_live_inference ? "true" : "false") << "\n"
+        << "aim_sim_input_delay_ms = " << aim_sim_input_delay_ms << "\n"
+        << "aim_sim_extra_delay_ms = " << aim_sim_extra_delay_ms << "\n"
+        << "aim_sim_target_max_speed = " << aim_sim_target_max_speed << "\n"
+        << "aim_sim_target_accel = " << aim_sim_target_accel << "\n"
+        << "aim_sim_target_stop_chance = " << aim_sim_target_stop_chance << "\n"
+        << "aim_sim_show_observed = " << (aim_sim_show_observed ? "true" : "false") << "\n"
+        << "aim_sim_show_history = " << (aim_sim_show_history ? "true" : "false") << "\n\n";
 
     // Classes
     file << "# Custom Classes\n"

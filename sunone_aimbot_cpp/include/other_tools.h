@@ -4,6 +4,20 @@
 #include <string>
 #include <vector>
 #include <d3d11.h>
+
+namespace OtherTools
+{
+inline int MaxInt(int a, int b) noexcept
+{
+    return (a > b) ? a : b;
+}
+
+inline float MaxFloat(float a, float b) noexcept
+{
+    return (a > b) ? a : b;
+}
+}
+
 std::vector<unsigned char> Base64Decode(const std::string& encoded_string);
 bool fileExists(const std::string& path);
 std::string replace_extension(const std::string& filename, const std::string& new_extension);

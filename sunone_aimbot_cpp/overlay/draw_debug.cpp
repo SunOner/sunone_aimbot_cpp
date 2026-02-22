@@ -1,4 +1,4 @@
-﻿#define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
@@ -12,6 +12,7 @@
 #include "overlay/config_dirty.h"
 #include "include/other_tools.h"
 #include "capture.h"
+#include "overlay/ui_sections.h"
 
 #ifdef USE_CUDA
 #include "depth/depth_mask.h"
@@ -238,75 +239,81 @@ void draw_debug_frame()
 
 void draw_debug()
 {
-    ImGui::Checkbox("Show Debug Window", &config.show_window);
-    if (config.show_window)
+    if (OverlayUI::BeginSection("Debug Window", "debug_section_debug_window"))
     {
-        draw_debug_frame();
-        ImGui::Separator();
+        ImGui::Checkbox("Show Debug Window", &config.show_window);
+        if (config.show_window)
+        {
+            draw_debug_frame();
+        }
+        OverlayUI::EndSection();
     }
 
-    ImGui::Text("Screenshot Buttons");
-
-    for (size_t i = 0; i < config.screenshot_button.size(); )
+    if (OverlayUI::BeginSection("Screenshot Buttons", "debug_section_screenshot_buttons"))
     {
-        std::string& current_key_name = config.screenshot_button[i];
-
-        int current_index = -1;
-        for (size_t k = 0; k < key_names.size(); ++k)
+        for (size_t i = 0; i < config.screenshot_button.size(); )
         {
-            if (key_names[k] == current_key_name)
+            std::string& current_key_name = config.screenshot_button[i];
+
+            int current_index = -1;
+            for (size_t k = 0; k < key_names.size(); ++k)
             {
-                current_index = static_cast<int>(k);
-                break;
+                if (key_names[k] == current_key_name)
+                {
+                    current_index = static_cast<int>(k);
+                    break;
+                }
             }
+
+            if (current_index == -1)
+            {
+                current_index = 0;
+            }
+
+            std::string combo_label = "Screenshot Button " + std::to_string(i);
+
+            if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
+            {
+                current_key_name = key_names[current_index];
+                OverlayConfig_MarkDirty();
+            }
+
+            ImGui::SameLine();
+            std::string remove_button_label = "Remove##button_screenshot" + std::to_string(i);
+            if (ImGui::Button(remove_button_label.c_str()))
+            {
+                if (config.screenshot_button.size() <= 1)
+                {
+                    config.screenshot_button[0] = std::string("None");
+                    OverlayConfig_MarkDirty();
+                    continue;
+                }
+                else
+                {
+                    config.screenshot_button.erase(config.screenshot_button.begin() + i);
+                    OverlayConfig_MarkDirty();
+                    continue;
+                }
+            }
+
+            ++i;
         }
 
-        if (current_index == -1)
+        if (ImGui::Button("Add button##button_screenshot"))
         {
-            current_index = 0;
-        }
-
-        std::string combo_label = "Screenshot Button " + std::to_string(i);
-
-        if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
-        {
-            current_key_name = key_names[current_index];
+            config.screenshot_button.push_back("None");
             OverlayConfig_MarkDirty();
         }
 
-        ImGui::SameLine();
-        std::string remove_button_label = "Remove##button_screenshot" + std::to_string(i);
-        if (ImGui::Button(remove_button_label.c_str()))
+        ImGui::InputInt("Screenshot delay", &config.screenshot_delay, 50, 500);
+        ImGui::Checkbox("Verbose console output", &config.verbose);
+
+        if (ImGui::Button("Print OpenCV build information##button_cv2_build_info"))
         {
-            if (config.screenshot_button.size() <= 1)
-            {
-                config.screenshot_button[0] = std::string("None");
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-            else
-            {
-                config.screenshot_button.erase(config.screenshot_button.begin() + i);
-                OverlayConfig_MarkDirty();
-                continue;
-            }
+            std::cout << cv::getBuildInformation() << std::endl;
         }
 
-        ++i;
-    }
-
-    if (ImGui::Button("Add button##button_screenshot"))
-    {
-        config.screenshot_button.push_back("None");
-        OverlayConfig_MarkDirty();
-    }
-
-    ImGui::InputInt("Screenshot delay", &config.screenshot_delay, 50, 500);
-    ImGui::Checkbox("Verbose console output", &config.verbose);
-    
-    if (ImGui::Button("Print OpenCV build information##button_cv2_build_info"))
-    {
-        std::cout << cv::getBuildInformation() << std::endl;
+        OverlayUI::EndSection();
     }
 
     if (prev_screenshot_delay != config.screenshot_delay ||

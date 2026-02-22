@@ -10,6 +10,7 @@
 #include "overlay.h"
 #include "overlay/config_dirty.h"
 #include "draw_settings.h"
+#include "overlay/ui_sections.h"
 #ifdef USE_CUDA
 #include "trt_monitor.h"
 #endif
@@ -85,74 +86,76 @@ void draw_ai()
     }
 #endif
     std::vector<std::string> availableModels = getAvailableModels();
-    if (availableModels.empty())
+    if (OverlayUI::BeginSection("Model", "ai_section_model"))
     {
-        ImGui::Text("No models available in the 'models' folder.");
-    }
-    else
-    {
-        int currentModelIndex = 0;
-        auto it = std::find(availableModels.begin(), availableModels.end(), config.ai_model);
-
-        if (it != availableModels.end())
+        if (availableModels.empty())
         {
-            currentModelIndex = static_cast<int>(std::distance(availableModels.begin(), it));
+            ImGui::Text("No models available in the 'models' folder.");
         }
-
-        std::vector<const char*> modelsItems;
-        modelsItems.reserve(availableModels.size());
-
-        for (const auto& modelName : availableModels)
+        else
         {
-            modelsItems.push_back(modelName.c_str());
-        }
+            int currentModelIndex = 0;
+            auto it = std::find(availableModels.begin(), availableModels.end(), config.ai_model);
 
-        if (ImGui::Combo("Model", &currentModelIndex, modelsItems.data(), static_cast<int>(modelsItems.size())))
-        {
-            if (config.ai_model != availableModels[currentModelIndex])
+            if (it != availableModels.end())
             {
-                config.ai_model = availableModels[currentModelIndex];
+                currentModelIndex = static_cast<int>(std::distance(availableModels.begin(), it));
+            }
+
+            std::vector<const char*> modelsItems;
+            modelsItems.reserve(availableModels.size());
+
+            for (const auto& modelName : availableModels)
+            {
+                modelsItems.push_back(modelName.c_str());
+            }
+
+            if (ImGui::Combo("Model", &currentModelIndex, modelsItems.data(), static_cast<int>(modelsItems.size())))
+            {
+                if (config.ai_model != availableModels[currentModelIndex])
+                {
+                    config.ai_model = availableModels[currentModelIndex];
+                    OverlayConfig_MarkDirty();
+                    detector_model_changed.store(true);
+                }
+            }
+            ImGui::SameLine();
+            ImGui::Text("Fixed model size: %s", config.fixed_input_size ? "Enabled" : "Disabled");
+        }
+        OverlayUI::EndSection();
+    }
+
+#ifdef USE_CUDA
+    if (OverlayUI::BeginSection("Backend", "ai_section_backend"))
+    {
+        std::vector<std::string> backendOptions = { "TRT", "DML" };
+        std::vector<const char*> backendItems = { "TensorRT (CUDA)", "DirectML (CPU/GPU)" };
+
+        int currentBackendIndex = config.backend == "DML" ? 1 : 0;
+
+        if (ImGui::Combo("Backend", &currentBackendIndex, backendItems.data(), static_cast<int>(backendItems.size())))
+        {
+            std::string newBackend = backendOptions[currentBackendIndex];
+            if (config.backend != newBackend)
+            {
+                config.backend = newBackend;
                 OverlayConfig_MarkDirty();
                 detector_model_changed.store(true);
             }
         }
-        ImGui::SameLine();
-        ImGui::Text("Fixed model size: %s", config.fixed_input_size ? "Enabled" : "Disabled");
+        OverlayUI::EndSection();
     }
-
-    ImGui::Separator();
-
-#ifdef USE_CUDA
-    std::vector<std::string> backendOptions = { "TRT", "DML" };
-    std::vector<const char*> backendItems = { "TensorRT (CUDA)", "DirectML (CPU/GPU)" };
-
-    int currentBackendIndex = config.backend == "DML" ? 1 : 0;
-
-    if (ImGui::Combo("Backend", &currentBackendIndex, backendItems.data(), static_cast<int>(backendItems.size())))
-    {
-        std::string newBackend = backendOptions[currentBackendIndex];
-        if (config.backend != newBackend)
-        {
-            config.backend = newBackend;
-            OverlayConfig_MarkDirty();
-            detector_model_changed.store(true);
-        }
-    }
-
-    ImGui::Separator();
 #endif
 
-    ImGui::Separator();
-    ImGui::SliderFloat("Confidence Threshold", &config.confidence_threshold, 0.01f, 1.00f, "%.2f");
-    ImGui::SliderFloat("NMS Threshold", &config.nms_threshold, 0.00f, 1.00f, "%.2f");
-    ImGui::SliderInt("Max Detections", &config.max_detections, 1, 100);
-    ImGui::Separator();
-    if (ImGui::CollapsingHeader("Depth"))
+    if (OverlayUI::BeginSection("Detection", "ai_section_detection"))
     {
-        ImGui::Indent();
-        draw_depth();
-        ImGui::Unindent();
+        ImGui::SliderFloat("Confidence Threshold", &config.confidence_threshold, 0.01f, 1.00f, "%.2f");
+        ImGui::SliderFloat("NMS Threshold", &config.nms_threshold, 0.00f, 1.00f, "%.2f");
+        ImGui::SliderInt("Max Detections", &config.max_detections, 1, 100);
+        OverlayUI::EndSection();
     }
+
+    draw_depth();
         
     if (prev_confidence_threshold != config.confidence_threshold ||
         prev_nms_threshold != config.nms_threshold ||

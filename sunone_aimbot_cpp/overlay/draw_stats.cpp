@@ -7,6 +7,7 @@
 #include "sunone_aimbot_cpp.h"
 #include "overlay.h"
 #include "capture.h"
+#include "overlay/ui_sections.h"
 
 void draw_stats()
 {
@@ -84,37 +85,43 @@ void draw_stats()
         last_avg_update_time = now;
     }
 
-    ImGui::SeparatorText("Time Breakdown");
+    if (OverlayUI::BeginSection("Time Breakdown", "stats_section_time_breakdown"))
+    {
+        ImGui::PlotLines("Preprocess", preprocess_times, IM_ARRAYSIZE(preprocess_times), index_inf, nullptr, 0.0f, 20.0f, ImVec2(0, 40));
+        ImGui::SameLine(); ImGui::Text("%.2f | Avg: %.2f", current_preprocess, avg_preprocess_cached);
 
-    ImGui::PlotLines("Preprocess", preprocess_times, IM_ARRAYSIZE(preprocess_times), index_inf, nullptr, 0.0f, 20.0f, ImVec2(0, 40));
-    ImGui::SameLine(); ImGui::Text("%.2f | Avg: %.2f", current_preprocess, avg_preprocess_cached);
+        ImGui::PlotLines("Inference", inference_times, IM_ARRAYSIZE(inference_times), index_inf, nullptr, 0.0f, 20.0f, ImVec2(0, 40));
+        ImGui::SameLine();
 
-    ImGui::PlotLines("Inference", inference_times, IM_ARRAYSIZE(inference_times), index_inf, nullptr, 0.0f, 20.0f, ImVec2(0, 40));
-    ImGui::SameLine();
+        ImGui::Text("%.2f | Avg:", current_inference);
+        ImGui::SameLine();
 
-    ImGui::Text("%.2f | Avg:", current_inference);
-    ImGui::SameLine();
+        const bool inf_slow = (avg_inference_cached > 20.0f);
+        if (inf_slow)
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.2f, 0.2f, 1.0f));
 
-    const bool inf_slow = (avg_inference_cached > 20.0f);
-    if (inf_slow)
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.2f, 0.2f, 1.0f));
+        ImGui::Text("%.2f", avg_inference_cached);
 
-    ImGui::Text("%.2f", avg_inference_cached);
+        if (inf_slow)
+            ImGui::PopStyleColor();
 
-    if (inf_slow)
-        ImGui::PopStyleColor();
+        ImGui::PlotLines("Copy", copy_times, IM_ARRAYSIZE(copy_times), index_inf, nullptr, 0.0f, 10.0f, ImVec2(0, 40));
+        ImGui::SameLine(); ImGui::Text("%.2f | Avg: %.2f", current_copy, avg_copy_cached);
 
-    ImGui::PlotLines("Copy", copy_times, IM_ARRAYSIZE(copy_times), index_inf, nullptr, 0.0f, 10.0f, ImVec2(0, 40));
-    ImGui::SameLine(); ImGui::Text("%.2f | Avg: %.2f", current_copy, avg_copy_cached);
+        ImGui::PlotLines("Postprocess", postprocess_times, IM_ARRAYSIZE(postprocess_times), index_inf, nullptr, 0.0f, 10.0f, ImVec2(0, 40));
+        ImGui::SameLine(); ImGui::Text("%.2f | Avg: %.2f", current_post, avg_post_cached);
 
-    ImGui::PlotLines("Postprocess", postprocess_times, IM_ARRAYSIZE(postprocess_times), index_inf, nullptr, 0.0f, 10.0f, ImVec2(0, 40));
-    ImGui::SameLine(); ImGui::Text("%.2f | Avg: %.2f", current_post, avg_post_cached);
+        ImGui::PlotLines("NMS", nms_times, IM_ARRAYSIZE(nms_times), index_inf, nullptr, 0.0f, 5.0f, ImVec2(0, 40));
+        ImGui::SameLine(); ImGui::Text("%.2f | Avg: %.2f", current_nms, avg_nms_cached);
 
-    ImGui::PlotLines("NMS", nms_times, IM_ARRAYSIZE(nms_times), index_inf, nullptr, 0.0f, 5.0f, ImVec2(0, 40));
-    ImGui::SameLine(); ImGui::Text("%.2f | Avg: %.2f", current_nms, avg_nms_cached);
+        OverlayUI::EndSection();
+    }
 
-    ImGui::SeparatorText("Capture FPS");
-    ImGui::PlotLines("##fps_plot", capture_fps_vals, IM_ARRAYSIZE(capture_fps_vals), index_fps, nullptr, 0.0f, 144.0f, ImVec2(0, 60));
-    ImGui::SameLine();
-    ImGui::Text("Now: %.1f | Avg: %.1f", current_fps, avg_fps_cached);
+    if (OverlayUI::BeginSection("Capture FPS", "stats_section_capture_fps"))
+    {
+        ImGui::PlotLines("##fps_plot", capture_fps_vals, IM_ARRAYSIZE(capture_fps_vals), index_fps, nullptr, 0.0f, 144.0f, ImVec2(0, 60));
+        ImGui::SameLine();
+        ImGui::Text("Now: %.1f | Avg: %.1f", current_fps, avg_fps_cached);
+        OverlayUI::EndSection();
+    }
 }

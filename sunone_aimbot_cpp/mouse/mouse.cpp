@@ -10,6 +10,7 @@
 #include <atomic>
 #include <vector>
 #include <iostream>
+#include <random>
 
 #include "mouse.h"
 #include "capture.h"
@@ -62,6 +63,8 @@ MouseThread::MouseThread(
     wind_W = config.wind_W;
     wind_M = config.wind_M;
     wind_D = config.wind_D;
+    resetWindState();
+    clearWindDebugTrail();
 
     moveWorker = std::thread(&MouseThread::moveWorkerLoop, this);
 }
@@ -91,6 +94,8 @@ void MouseThread::updateConfig(
     wind_mouse_enabled = config.wind_mouse_enabled;
     wind_G = config.wind_G; wind_W = config.wind_W;
     wind_M = config.wind_M; wind_D = config.wind_D;
+    resetWindState();
+    clearWindDebugTrail();
 }
 
 MouseThread::~MouseThread()
@@ -128,6 +133,7 @@ void MouseThread::moveWorkerLoop()
                 moveQueue.pop();
                 ul.unlock();
                 sendMovementToDriver(m.dx, m.dy);
+                appendWindDebugStep(m.dx, m.dy);
                 ul.lock();
             }
         }
@@ -144,55 +150,196 @@ void MouseThread::moveWorkerLoop()
 
 void MouseThread::windMouseMoveRelative(int dx, int dy)
 {
-    if (dx == 0 && dy == 0) return;
+    if (dx == 0 && dy == 0)
+        return;
 
-    constexpr double SQRT3 = 1.7320508075688772;
-    constexpr double SQRT5 = 2.23606797749979;
+    windCarryX += static_cast<double>(dx);
+    windCarryY += static_cast<double>(dy);
 
-    double sx = 0, sy = 0;
-    double dxF = static_cast<double>(dx);
-    double dyF = static_cast<double>(dy);
-    double vx = 0, vy = 0, wX = 0, wY = 0;
-    int    cx = 0, cy = 0;
+    const double baseG = std::clamp(wind_G, 0.05, 50.0);
+    const double baseW = std::clamp(wind_W, 0.0, 80.0);
+    const double baseM = std::max(1.0, wind_M);
+    const double baseD = std::max(1.0, wind_D);
 
-    while (std::hypot(dxF - sx, dyF - sy) >= 1.0)
+    std::uniform_real_distribution<double> noiseDist(-1.0, 1.0);
+    std::uniform_real_distribution<double> clipDist(0.55, 1.0);
+    constexpr double twoPi = 6.28318530717958647692;
+
+    const double carryMag = std::hypot(windCarryX, windCarryY);
+    const int maxSubsteps = std::clamp(static_cast<int>(carryMag * 0.24) + 1, 1, 5);
+
+    for (int i = 0; i < maxSubsteps; ++i)
     {
-        double dist = std::hypot(dxF - sx, dyF - sy);
-        double wMag = std::min(wind_W, dist);
+        const double dist = std::hypot(windCarryX, windCarryY);
+        const double velMag = std::hypot(windVelX, windVelY);
 
-        if (dist >= wind_D)
+        if (dist < 0.20 && velMag < 0.12)
+            break;
+
+        const double normDist = std::clamp(dist / baseD, 0.0, 1.0);
+        const double pullGain = baseG * (0.25 + 0.75 * normDist);
+        const double noiseAmp = baseW * (0.15 + 0.85 * normDist);
+
+        double pullX = 0.0;
+        double pullY = 0.0;
+        if (dist > 1e-8)
         {
-            wX = wX / SQRT3 + ((double)rand() / RAND_MAX * 2.0 - 1.0) * wMag / SQRT5;
-            wY = wY / SQRT3 + ((double)rand() / RAND_MAX * 2.0 - 1.0) * wMag / SQRT5;
+            pullX = windCarryX / dist * pullGain;
+            pullY = windCarryY / dist * pullGain;
         }
+
+        windPatternRateA = std::clamp(windPatternRateA + noiseDist(windRng) * 0.004, 0.025, 0.280);
+        windPatternRateB = std::clamp(windPatternRateB + noiseDist(windRng) * 0.004, 0.025, 0.280);
+
+        const double stepTempo = 0.20 + 0.95 * normDist;
+        windPatternPhaseA += windPatternRateA * stepTempo;
+        windPatternPhaseB += windPatternRateB * stepTempo;
+        if (windPatternPhaseA > twoPi) windPatternPhaseA = std::fmod(windPatternPhaseA, twoPi);
+        if (windPatternPhaseB > twoPi) windPatternPhaseB = std::fmod(windPatternPhaseB, twoPi);
+
+        const double oscAX = std::sin(windPatternPhaseA);
+        const double oscBX = std::sin(windPatternPhaseB + 1.61803398875);
+        const double oscAY = std::cos(windPatternPhaseA * 0.79 + 0.35);
+        const double oscBY = std::cos(windPatternPhaseB * 1.17 - 0.48);
+
+        const double patternAmp = baseW * (0.05 + 0.55 * normDist);
+        const double patternTargetX = (oscAX + 0.58 * oscBX) * patternAmp;
+        const double patternTargetY = (oscAY + 0.58 * oscBY) * patternAmp;
+        const double patternBlend = 0.12 + 0.20 * normDist;
+        windPatternX = windPatternX * (1.0 - patternBlend) + patternTargetX * patternBlend;
+        windPatternY = windPatternY * (1.0 - patternBlend) + patternTargetY * patternBlend;
+
+        windNoiseX = windNoiseX * 0.72 + noiseDist(windRng) * noiseAmp * 0.28;
+        windNoiseY = windNoiseY * 0.72 + noiseDist(windRng) * noiseAmp * 0.28;
+
+        const double windForceX = windNoiseX + windPatternX * 0.42;
+        const double windForceY = windNoiseY + windPatternY * 0.42;
+
+        const double drag = 0.82 + (1.0 - normDist) * 0.10;
+        windVelX = windVelX * drag + pullX + windForceX;
+        windVelY = windVelY * drag + pullY + windForceY;
+
+        const double vCap = std::max(0.65, baseM * (0.30 + 0.70 * normDist));
+        const double newVelMag = std::hypot(windVelX, windVelY);
+        if (newVelMag > vCap)
+        {
+            const double clip = vCap * clipDist(windRng);
+            windVelX = (windVelX / newVelMag) * clip;
+            windVelY = (windVelY / newVelMag) * clip;
+        }
+
+        windFracX += windVelX;
+        windFracY += windVelY;
+
+        int stepX = static_cast<int>(std::round(windFracX));
+        int stepY = static_cast<int>(std::round(windFracY));
+        if (stepX == 0 && stepY == 0)
+            continue;
+
+        windFracX -= static_cast<double>(stepX);
+        windFracY -= static_cast<double>(stepY);
+        windCarryX -= static_cast<double>(stepX);
+        windCarryY -= static_cast<double>(stepY);
+        queueMove(stepX, stepY);
+    }
+
+    const double carryCap = 120.0;
+    const double finalCarryMag = std::hypot(windCarryX, windCarryY);
+    if (finalCarryMag > carryCap)
+    {
+        const double s = carryCap / finalCarryMag;
+        windCarryX *= s;
+        windCarryY *= s;
+    }
+}
+
+void MouseThread::resetWindState()
+{
+    constexpr double twoPi = 6.28318530717958647692;
+    std::uniform_real_distribution<double> phaseDist(0.0, twoPi);
+    std::uniform_real_distribution<double> rateDist(0.04, 0.16);
+
+    windCarryX = 0.0;
+    windCarryY = 0.0;
+    windVelX = 0.0;
+    windVelY = 0.0;
+    windNoiseX = 0.0;
+    windNoiseY = 0.0;
+    windFracX = 0.0;
+    windFracY = 0.0;
+    windPatternX = 0.0;
+    windPatternY = 0.0;
+    windPatternPhaseA = phaseDist(windRng);
+    windPatternPhaseB = phaseDist(windRng);
+    windPatternRateA = rateDist(windRng);
+    windPatternRateB = rateDist(windRng);
+}
+
+void MouseThread::appendWindDebugStep(int dx, int dy)
+{
+    if (dx == 0 && dy == 0)
+        return;
+
+    double deltaPxX = static_cast<double>(dx);
+    double deltaPxY = static_cast<double>(dy);
+
+    {
+        std::lock_guard<std::mutex> cfgLock(configMutex);
+        const Config::GameProfile* gpPtr = nullptr;
+
+        auto activeIt = config.game_profiles.find(config.active_game);
+        if (activeIt != config.game_profiles.end())
+            gpPtr = &activeIt->second;
         else
         {
-            wX /= SQRT3;  wY /= SQRT3;
-            wind_M = wind_M < 3.0 ? ((double)rand() / RAND_MAX) * 3.0 + 3.0 : wind_M / SQRT5;
+            auto unifiedIt = config.game_profiles.find("UNIFIED");
+            if (unifiedIt != config.game_profiles.end())
+                gpPtr = &unifiedIt->second;
         }
 
-        vx += wX + wind_G * (dxF - sx) / dist;
-        vy += wY + wind_G * (dyF - sy) / dist;
-
-        double vMag = std::hypot(vx, vy);
-        if (vMag > wind_M)
+        if (gpPtr && gpPtr->sens != 0.0 && gpPtr->yaw != 0.0 && gpPtr->pitch != 0.0)
         {
-            double vClip = wind_M / 2.0 + ((double)rand() / RAND_MAX) * wind_M / 2.0;
-            vx = (vx / vMag) * vClip;
-            vy = (vy / vMag) * vClip;
-        }
+            const double fovNow = std::max(1.0, fov_x);
+            const double fovScale = (gpPtr->fovScaled && gpPtr->baseFOV > 1.0) ? (fovNow / gpPtr->baseFOV) : 1.0;
+            const double degX = static_cast<double>(dx) * gpPtr->sens * gpPtr->yaw * fovScale;
+            const double degY = static_cast<double>(dy) * gpPtr->sens * gpPtr->pitch * fovScale;
 
-        sx += vx;  sy += vy;
-        int rx = static_cast<int>(std::round(sx));
-        int ry = static_cast<int>(std::round(sy));
-        int step_x = rx - cx;
-        int step_y = ry - cy;
-        if (step_x || step_y)
-        {
-            queueMove(step_x, step_y);
-            cx = rx; cy = ry;
+            const double degPerPxX = fov_x / std::max(1.0, screen_width);
+            const double degPerPxY = fov_y / std::max(1.0, screen_height);
+
+            if (std::abs(degPerPxX) > 1e-8 && std::abs(degPerPxY) > 1e-8)
+            {
+                deltaPxX = degX / degPerPxX;
+                deltaPxY = degY / degPerPxY;
+            }
         }
     }
+
+    std::lock_guard<std::mutex> lock(windDebugTrailMutex);
+    const auto now = std::chrono::steady_clock::now();
+    pruneWindDebugTrailLocked(now);
+
+    if (windDebugTrail.empty())
+    {
+        windDebugCursorX = center_x;
+        windDebugCursorY = center_y;
+        windDebugTrail.push_back({ windDebugCursorX, windDebugCursorY, now });
+    }
+
+    windDebugCursorX += deltaPxX;
+    windDebugCursorY += deltaPxY;
+    windDebugTrail.push_back({ windDebugCursorX, windDebugCursorY, now });
+
+    constexpr size_t maxTrailPoints = 220;
+    while (windDebugTrail.size() > maxTrailPoints)
+        windDebugTrail.pop_front();
+}
+
+void MouseThread::pruneWindDebugTrailLocked(const std::chrono::steady_clock::time_point& now)
+{
+    constexpr auto windTrailLifetime = std::chrono::milliseconds(900);
+    while (!windDebugTrail.empty() && (now - windDebugTrail.front().t) > windTrailLifetime)
+        windDebugTrail.pop_front();
 }
 
 std::pair<double, double> MouseThread::predict_target_position(double target_x, double target_y)
@@ -366,7 +513,12 @@ void MouseThread::moveMousePivot(double pivotX, double pivotY)
         prev_velocity_x = prev_velocity_y = 0.0;
 
         auto m0 = calc_movement(pivotX, pivotY);
-        queueMove(static_cast<int>(m0.first), static_cast<int>(m0.second));
+        const int mx0 = static_cast<int>(m0.first);
+        const int my0 = static_cast<int>(m0.second);
+        if (wind_mouse_enabled)
+            windMouseMoveRelative(mx0, my0);
+        else
+            queueMove(mx0, my0);
         return;
     }
 
@@ -399,6 +551,14 @@ void MouseThread::moveMousePivot(double pivotX, double pivotY)
     {
         queueMove(mx, my);
     }
+}
+
+void MouseThread::clearQueuedMoves()
+{
+    std::lock_guard<std::mutex> lock(queueMtx);
+    std::queue<Move> empty;
+    moveQueue.swap(empty);
+    resetWindState();
 }
 
 void MouseThread::pressMouse(const AimbotTarget& target)
@@ -509,6 +669,7 @@ void MouseThread::releaseMouse()
 
 void MouseThread::resetPrediction()
 {
+    clearQueuedMoves();
     prev_time = std::chrono::steady_clock::time_point();
     prev_x = 0;
     prev_y = 0;
@@ -576,6 +737,27 @@ std::vector<std::pair<double, double>> MouseThread::getFuturePositions()
 {
     std::lock_guard<std::mutex> lock(futurePositionsMutex);
     return futurePositions;
+}
+
+void MouseThread::clearWindDebugTrail()
+{
+    std::lock_guard<std::mutex> lock(windDebugTrailMutex);
+    windDebugTrail.clear();
+    windDebugCursorX = center_x;
+    windDebugCursorY = center_y;
+}
+
+std::vector<std::pair<double, double>> MouseThread::getWindDebugTrail()
+{
+    std::lock_guard<std::mutex> lock(windDebugTrailMutex);
+    const auto now = std::chrono::steady_clock::now();
+    pruneWindDebugTrailLocked(now);
+
+    std::vector<std::pair<double, double>> out;
+    out.reserve(windDebugTrail.size());
+    for (const auto& p : windDebugTrail)
+        out.emplace_back(p.x, p.y);
+    return out;
 }
 
 void MouseThread::setArduinoConnection(Arduino* newArduino)

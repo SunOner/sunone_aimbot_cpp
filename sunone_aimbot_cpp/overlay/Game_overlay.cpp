@@ -123,6 +123,8 @@ struct Game_overlay::Impl
     std::thread thread;
     std::atomic<bool> running{ false };
     std::atomic<bool> visible{ true };
+    std::atomic<bool> excludeFromCapture{ true };
+    bool appliedExcludeFromCapture = true;
     std::atomic<unsigned> maxFps{ 0 };
 
     std::mutex pendingMutex;
@@ -158,6 +160,7 @@ struct Game_overlay::Impl
     HRESULT CreateTextFormat(const std::wstring& font, float size, IDWriteTextFormat** out);
     HRESULT CreateTargets();
     void    ReleaseTargets();
+    void    ApplyDisplayAffinity();
 };
 
 Game_overlay::Game_overlay() : impl_(new Impl) {}
@@ -168,6 +171,8 @@ void Game_overlay::Stop() { impl_->Stop(); }
 bool Game_overlay::IsRunning() const { return impl_->running.load(); }
 void Game_overlay::SetVisible(bool v) { impl_->visible.store(v); }
 bool Game_overlay::GetVisible() const { return impl_->visible.load(); }
+void Game_overlay::SetExcludeFromCapture(bool exclude) { impl_->excludeFromCapture.store(exclude); }
+bool Game_overlay::GetExcludeFromCapture() const { return impl_->excludeFromCapture.load(); }
 void Game_overlay::UseVirtualScreen() { impl_->UseVirtualScreen(); }
 void Game_overlay::SetWindowBounds(int x, int y, int w, int h) { impl_->SetBounds(x, y, w, h); }
 void Game_overlay::SetMaxFPS(unsigned f) { impl_->maxFps.store(f); }
@@ -444,7 +449,7 @@ bool Game_overlay::Impl::CreateWindowAndDevices()
     }
 
     ShowWindow(hwnd, SW_SHOWNA);
-    SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
+    ApplyDisplayAffinity();
     SetWindowPos(hwnd, HWND_TOPMOST, winX, winY, winW, winH,
         SWP_NOACTIVATE | SWP_SHOWWINDOW);
 
@@ -646,10 +651,26 @@ HRESULT Game_overlay::Impl::CreateTextFormat(
     return S_OK;
 }
 
+void Game_overlay::Impl::ApplyDisplayAffinity()
+{
+    if (!hwnd)
+        return;
+
+    const bool wantedExclude = excludeFromCapture.load();
+    appliedExcludeFromCapture = wantedExclude;
+    const DWORD affinity = wantedExclude ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE;
+    if (SetWindowDisplayAffinity(hwnd, affinity))
+        return;
+
+    if (wantedExclude)
+        SetWindowDisplayAffinity(hwnd, WDA_MONITOR);
+}
+
 void Game_overlay::Impl::RenderLoop()
 {
     running = true;
     auto last = std::chrono::high_resolution_clock::now();
+    appliedExcludeFromCapture = !excludeFromCapture.load();
 
     MSG msg{};
     while (running.load())
@@ -674,6 +695,9 @@ void Game_overlay::Impl::RenderLoop()
             if (now - last < minDelta) { Sleep(1); continue; }
             last = now;
         }
+
+        if (appliedExcludeFromCapture != excludeFromCapture.load())
+            ApplyDisplayAffinity();
         RenderOne();
     }
 }

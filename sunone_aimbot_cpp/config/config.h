@@ -117,6 +117,7 @@ public:
     // Overlay
     int overlay_opacity;
     float overlay_ui_scale;
+    bool overlay_exclude_from_capture;
 
     // Depth
     bool depth_inference_enabled;
@@ -135,6 +136,7 @@ public:
     int game_overlay_max_fps;
     bool game_overlay_draw_boxes;
     bool game_overlay_draw_future;
+    bool game_overlay_draw_wind_tail;
     bool game_overlay_draw_frame;
     bool game_overlay_show_target_correction;
     int game_overlay_box_a;
@@ -158,6 +160,26 @@ public:
     float game_overlay_icon_offset_y;
     std::string game_overlay_icon_anchor; // "center", "top", "bottom", "head"
     int game_overlay_icon_class; // -1 = all
+
+    // Aim Simulation Overlay
+    bool aim_sim_enabled;
+    int aim_sim_x;
+    int aim_sim_y;
+    int aim_sim_width;
+    int aim_sim_height;
+    int aim_sim_fps_min;
+    int aim_sim_fps_max;
+    float aim_sim_fps_jitter;
+    float aim_sim_capture_delay_ms;
+    float aim_sim_inference_delay_ms;
+    bool aim_sim_use_live_inference;
+    float aim_sim_input_delay_ms;
+    float aim_sim_extra_delay_ms;
+    float aim_sim_target_max_speed;
+    float aim_sim_target_accel;
+    float aim_sim_target_stop_chance;
+    bool aim_sim_show_observed;
+    bool aim_sim_show_history;
 
     void clampGameOverlayColor()
     {

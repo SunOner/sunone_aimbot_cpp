@@ -23,6 +23,8 @@ public:
 
     void SetVisible(bool visible);
     bool GetVisible() const;
+    void SetExcludeFromCapture(bool exclude);
+    bool GetExcludeFromCapture() const;
 
     void BeginFrame();
     void EndFrame();

@@ -1,5 +1,8 @@
-﻿#define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #define _WINSOCKAPI_
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <winsock2.h>
 #include <Windows.h>
 
@@ -24,6 +27,7 @@
 #include "overlay.h"
 #include "overlay/draw_settings.h"
 #include "overlay/config_dirty.h"
+#include "include/other_tools.h"
 #include "config.h"
 #include "keycodes.h"
 #include "keyboard_listener.h"
@@ -62,6 +66,7 @@ IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARA
 
 const int BASE_OVERLAY_WIDTH = 720;
 const int BASE_OVERLAY_HEIGHT = 500;
+static const int MIN_EDITOR_OPACITY = 220;
 
 int overlayWidth = 0;
 int overlayHeight = 0;
@@ -70,6 +75,9 @@ static const int DRAG_BAR_HEIGHT_PX = 30;
 static const int MIN_OVERLAY_W = 420;
 static const int MIN_OVERLAY_H = 300;
 static const int RESIZE_BORDER_PX = 8;
+static const int WORKAREA_MARGIN_PX = 20;
+
+static bool g_autoResizeEnabled = true;
 
 std::vector<std::string> availableModels;
 std::vector<std::string> key_names;
@@ -78,7 +86,9 @@ std::vector<const char*> key_names_cstrs;
 ID3D11ShaderResourceView* body_texture = nullptr;
 
 static UINT GetDpiForWindowSafe(HWND hwnd);
-static int GetScaledSystemMetric(int metric, UINT dpi);
+static RECT GetOverlayWorkArea(HWND hwnd);
+static void ClampOverlayToWorkArea(HWND hwnd, int& x, int& y, int& w, int& h);
+static void EnsureOverlayInsideWorkArea(HWND hwnd);
 
 void load_body_texture();
 void release_body_texture();
@@ -89,35 +99,61 @@ static inline int ClampInt(int v, int lo, int hi)
     return (v < lo) ? lo : (v > hi) ? hi : v;
 }
 
-static void TryAutoResizeOverlay(float extraContentHeight)
+static void TryAutoResizeOverlay(float extraContentWidth)
 {
-    if (!g_hwnd)
+    if (!g_hwnd || !g_autoResizeEnabled)
         return;
 
-    if (extraContentHeight <= 8.0f)
+    if (extraContentWidth <= 8.0f)
         return;
 
-    const UINT dpi = GetDpiForWindowSafe(g_hwnd);
-    const int maxH = GetScaledSystemMetric(SM_CYSCREEN, dpi) - 20;
-    const int extraPx = (int)(extraContentHeight + 0.5f);
-    int targetH = overlayHeight + extraPx;
-    targetH = ClampInt(targetH, MIN_OVERLAY_H, maxH);
+    const int extraPx = static_cast<int>(extraContentWidth + 0.5f);
+    if (extraPx <= 0)
+        return;
 
-    if (targetH != overlayHeight)
-        SetWindowPos(g_hwnd, NULL, 0, 0, overlayWidth, targetH, SWP_NOMOVE | SWP_NOZORDER);
+    RECT wndRect{};
+    ::GetWindowRect(g_hwnd, &wndRect);
+
+    int targetX = wndRect.left;
+    int targetY = wndRect.top;
+    int targetW = overlayWidth + extraPx;
+    int targetH = overlayHeight; // Height is user-controlled; content area already scrolls vertically.
+
+    ClampOverlayToWorkArea(g_hwnd, targetX, targetY, targetW, targetH);
+
+    if (targetW != overlayWidth || targetX != wndRect.left || targetY != wndRect.top)
+        SetWindowPos(g_hwnd, NULL, targetX, targetY, targetW, targetH, SWP_NOZORDER);
 }
 
 void Overlay_SetOpacity(int opacity255)
 {
     if (!g_hwnd) return;
 
-    opacity255 = ClampInt(opacity255, 20, 255);
+    opacity255 = ClampInt(opacity255, MIN_EDITOR_OPACITY, 255);
 
     LONG exStyle = GetWindowLong(g_hwnd, GWL_EXSTYLE);
     if ((exStyle & WS_EX_LAYERED) == 0)
         SetWindowLong(g_hwnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
 
     SetLayeredWindowAttributes(g_hwnd, 0, (BYTE)opacity255, LWA_ALPHA);
+}
+
+static void Overlay_SetDisplayAffinity(HWND hwnd, bool excludeFromCapture)
+{
+    if (!hwnd)
+        return;
+
+    const DWORD wanted = excludeFromCapture ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE;
+    if (SetWindowDisplayAffinity(hwnd, wanted))
+        return;
+
+    if (excludeFromCapture)
+        SetWindowDisplayAffinity(hwnd, WDA_MONITOR);
+}
+
+void Overlay_ApplyCaptureExclusion()
+{
+    Overlay_SetDisplayAffinity(g_hwnd, config.overlay_exclude_from_capture);
 }
 
 static inline ImVec4 RGBA(int r, int g, int b, int a = 255)
@@ -238,10 +274,79 @@ static UINT GetDpiForWindowSafe(HWND hwnd)
     return dpi;
 }
 
-static int GetScaledSystemMetric(int metric, UINT dpi)
+static RECT GetOverlayWorkArea(HWND hwnd)
 {
-    const int v = ::GetSystemMetrics(metric);
-    return ::MulDiv(v, (int)dpi, 96);
+    RECT work{};
+    HMONITOR monitor = nullptr;
+
+    if (hwnd)
+    {
+        monitor = ::MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    }
+    else
+    {
+        POINT pt{};
+        ::GetCursorPos(&pt);
+        monitor = ::MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+    }
+
+    MONITORINFO mi{};
+    mi.cbSize = sizeof(mi);
+    if (monitor && ::GetMonitorInfo(monitor, &mi))
+        return mi.rcWork;
+
+    work.left = 0;
+    work.top = 0;
+    work.right = ::GetSystemMetrics(SM_CXSCREEN);
+    work.bottom = ::GetSystemMetrics(SM_CYSCREEN);
+    return work;
+}
+
+static void ClampOverlayToWorkArea(HWND hwnd, int& x, int& y, int& w, int& h)
+{
+    const RECT work = GetOverlayWorkArea(hwnd);
+    const UINT dpi = hwnd ? GetDpiForWindowSafe(hwnd) : 96;
+
+    const int minW = ::MulDiv(MIN_OVERLAY_W, (int)dpi, 96);
+    const int minH = ::MulDiv(MIN_OVERLAY_H, (int)dpi, 96);
+
+    const int workW = OtherTools::MaxInt(1, static_cast<int>(work.right - work.left - WORKAREA_MARGIN_PX));
+    const int workH = OtherTools::MaxInt(1, static_cast<int>(work.bottom - work.top - WORKAREA_MARGIN_PX));
+
+    const int maxW = OtherTools::MaxInt(minW, workW);
+    const int maxH = OtherTools::MaxInt(minH, workH);
+
+    w = ClampInt(w, minW, maxW);
+    h = ClampInt(h, minH, maxH);
+
+    const int maxX = OtherTools::MaxInt(static_cast<int>(work.left), static_cast<int>(work.right - w));
+    const int maxY = OtherTools::MaxInt(static_cast<int>(work.top), static_cast<int>(work.bottom - h));
+    x = ClampInt(x, static_cast<int>(work.left), maxX);
+    y = ClampInt(y, static_cast<int>(work.top), maxY);
+}
+
+static void EnsureOverlayInsideWorkArea(HWND hwnd)
+{
+    if (!hwnd)
+        return;
+
+    RECT wndRect{};
+    ::GetWindowRect(hwnd, &wndRect);
+
+    const int oldW = overlayWidth;
+    const int oldH = overlayHeight;
+
+    int x = wndRect.left;
+    int y = wndRect.top;
+    int w = overlayWidth;
+    int h = overlayHeight;
+    ClampOverlayToWorkArea(hwnd, x, y, w, h);
+
+    overlayWidth = w;
+    overlayHeight = h;
+
+    if (x != wndRect.left || y != wndRect.top || w != oldW || h != oldH)
+        ::SetWindowPos(hwnd, NULL, x, y, w, h, SWP_NOZORDER);
 }
 
 bool InitializeBlendState()
@@ -449,8 +554,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             const UINT dpi = GetDpiForWindowSafe(hWnd);
             const int minW = ::MulDiv(MIN_OVERLAY_W, (int)dpi, 96);
             const int minH = ::MulDiv(MIN_OVERLAY_H, (int)dpi, 96);
-            const int maxW = GetScaledSystemMetric(SM_CXSCREEN, dpi) - 20;
-            const int maxH = GetScaledSystemMetric(SM_CYSCREEN, dpi) - 20;
+            const RECT work = GetOverlayWorkArea(hWnd);
+            const int maxW = OtherTools::MaxInt(minW, static_cast<int>((work.right - work.left) - WORKAREA_MARGIN_PX));
+            const int maxH = OtherTools::MaxInt(minH, static_cast<int>((work.bottom - work.top) - WORKAREA_MARGIN_PX));
             mmi->ptMinTrackSize.x = minW;
             mmi->ptMinTrackSize.y = minH;
             if (maxW > 0) mmi->ptMaxTrackSize.x = maxW;
@@ -464,6 +570,19 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     switch (msg)
     {
+    case WM_EXITSIZEMOVE:
+        g_autoResizeEnabled = false;
+        EnsureOverlayInsideWorkArea(hWnd);
+        return 0;
+
+    case WM_DISPLAYCHANGE:
+        EnsureOverlayInsideWorkArea(hWnd);
+        return 0;
+
+    case WM_DPICHANGED:
+        EnsureOverlayInsideWorkArea(hWnd);
+        return 0;
+
     case WM_SIZE:
         if (g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED)
         {
@@ -513,6 +632,16 @@ bool CreateOverlayWindow()
     overlayWidth = static_cast<int>(BASE_OVERLAY_WIDTH * config.overlay_ui_scale);
     overlayHeight = static_cast<int>(BASE_OVERLAY_HEIGHT * config.overlay_ui_scale);
 
+    {
+        int x = 0;
+        int y = 0;
+        int w = overlayWidth;
+        int h = overlayHeight;
+        ClampOverlayToWorkArea(nullptr, x, y, w, h);
+        overlayWidth = w;
+        overlayHeight = h;
+    }
+
     WNDCLASSEX wc = {
         sizeof(WNDCLASSEX),
         CS_CLASSDC,
@@ -548,6 +677,8 @@ bool CreateOverlayWindow()
     if (g_hwnd == NULL)
         return false;
 
+    EnsureOverlayInsideWorkArea(g_hwnd);
+
     BOOL dwm = FALSE;
     if (SUCCEEDED(DwmIsCompositionEnabled(&dwm)) && dwm)
     {
@@ -555,7 +686,7 @@ bool CreateOverlayWindow()
         DwmExtendFrameIntoClientArea(g_hwnd, &m);
     }
 
-    if (config.overlay_opacity <= 20)  config.overlay_opacity = 20;
+    if (config.overlay_opacity < MIN_EDITOR_OPACITY)  config.overlay_opacity = MIN_EDITOR_OPACITY;
     if (config.overlay_opacity >= 256) config.overlay_opacity = 255;
 
     Overlay_SetOpacity(config.overlay_opacity);
@@ -566,6 +697,8 @@ bool CreateOverlayWindow()
         ::UnregisterClass(wc.lpszClassName, wc.hInstance);
         return false;
     }
+
+    Overlay_ApplyCaptureExclusion();
 
     return true;
 }
@@ -594,6 +727,8 @@ void OverlayThread()
 
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
+    bool lastExcludeFromCapture = config.overlay_exclude_from_capture;
+    Overlay_SetDisplayAffinity(g_hwnd, lastExcludeFromCapture);
 
     while (!shouldExit)
     {
@@ -609,12 +744,20 @@ void OverlayThread()
         }
         if (shouldExit) break;
 
+        if (lastExcludeFromCapture != config.overlay_exclude_from_capture)
+        {
+            lastExcludeFromCapture = config.overlay_exclude_from_capture;
+            Overlay_SetDisplayAffinity(g_hwnd, lastExcludeFromCapture);
+        }
+
         if (isAnyKeyPressed(config.button_open_overlay) & 0x1)
         {
             show_overlay = !show_overlay;
 
             if (show_overlay)
             {
+                g_autoResizeEnabled = true;
+                EnsureOverlayInsideWorkArea(g_hwnd);
                 ShowWindow(g_hwnd, SW_SHOW);
                 SetForegroundWindow(g_hwnd);
             }
@@ -693,11 +836,14 @@ void OverlayThread()
 
             float maxLabelWidth = 0.0f;
             for (int i = 0; i < tabCount; ++i)
-                maxLabelWidth = std::max(maxLabelWidth, ImGui::CalcTextSize(tabs[i].label).x);
+                maxLabelWidth = OtherTools::MaxFloat(maxLabelWidth, ImGui::CalcTextSize(tabs[i].label).x);
 
             float navWidth = maxLabelWidth + style.FramePadding.x * 2.0f + style.ItemSpacing.x * 2.0f;
-            navWidth = std::max(navWidth, 140.0f);
+            navWidth = OtherTools::MaxFloat(navWidth, 140.0f);
 
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(10, 14, 20, 220));
+            ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(86, 104, 132, 220));
             ImGui::BeginChild("##options_nav", ImVec2(navWidth, 0.0f), true,
                 ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_AlwaysVerticalScrollbar);
             for (int i = 0; i < tabCount; ++i)
@@ -706,23 +852,30 @@ void OverlayThread()
                     activeTab = i;
             }
             ImGui::EndChild();
+            ImGui::PopStyleColor(2);
+            ImGui::PopStyleVar();
 
             ImGui::SameLine(0.0f, style.ItemSpacing.x);
 
-            float contentExtra = 0.0f;
+            float contentExtraW = 0.0f;
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(12, 16, 24, 230));
+            ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(94, 114, 146, 230));
             ImGui::BeginChild("##options_content", ImVec2(0.0f, 0.0f), true,
                 ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_AlwaysVerticalScrollbar);
-            const float contentStartY = ImGui::GetCursorPosY();
-            const float childHeight = ImGui::GetContentRegionAvail().y;
+            const float regionMinX = ImGui::GetWindowContentRegionMin().x;
+            const float regionMaxX = ImGui::GetWindowContentRegionMax().x;
+            const float childWidth = regionMaxX - regionMinX;
 
             tabs[activeTab].draw();
 
-            const float contentEndY = ImGui::GetCursorPosY();
-            const float contentHeight = contentEndY - contentStartY;
-            contentExtra = contentHeight - childHeight + style.WindowPadding.y;
+            const float overflowX = ImGui::GetScrollMaxX();
+            contentExtraW = overflowX;
             ImGui::EndChild();
+            ImGui::PopStyleColor(2);
+            ImGui::PopStyleVar();
 
-            TryAutoResizeOverlay(contentExtra);
+            TryAutoResizeOverlay(contentExtraW);
 
             OverlayConfig_TrySave();
         }
@@ -762,3 +915,4 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
     overlay.join();
     return 0;
 }
+

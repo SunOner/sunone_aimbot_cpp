@@ -7,35 +7,53 @@
 #include "sunone_aimbot_cpp.h"
 #include "overlay.h"
 #include "overlay/config_dirty.h"
+#include "overlay/ui_sections.h"
 
 void draw_overlay()
 {
-    int prev_opacity = config.overlay_opacity;
-    if (ImGui::SliderInt("Overlay Opacity", &config.overlay_opacity, 40, 255))
+    constexpr int kMinReadableOpacity = 220;
+
+    if (OverlayUI::BeginSection("Visual", "overlay_section_visual"))
     {
-        if (config.overlay_opacity < 20) config.overlay_opacity = 20;
-        if (config.overlay_opacity > 255) config.overlay_opacity = 255;
+        int prev_opacity = config.overlay_opacity;
+        if (ImGui::SliderInt("Overlay Opacity", &config.overlay_opacity, kMinReadableOpacity, 255))
+        {
+            if (config.overlay_opacity < kMinReadableOpacity) config.overlay_opacity = kMinReadableOpacity;
+            if (config.overlay_opacity > 255) config.overlay_opacity = 255;
 
-        Overlay_SetOpacity(config.overlay_opacity);
+            Overlay_SetOpacity(config.overlay_opacity);
 
-        if (config.overlay_opacity != prev_opacity)
+            if (config.overlay_opacity != prev_opacity)
+                OverlayConfig_MarkDirty();
+        }
+
+        static float ui_scale = config.overlay_ui_scale;
+
+        if (ImGui::SliderFloat("UI Scale", &ui_scale, 0.5f, 3.0f, "%.2f"))
+        {
+            ImGui::GetIO().FontGlobalScale = ui_scale;
+
+            config.overlay_ui_scale = ui_scale;
             OverlayConfig_MarkDirty();
+
+            extern const int BASE_OVERLAY_WIDTH;
+            extern const int BASE_OVERLAY_HEIGHT;
+            overlayWidth = static_cast<int>(BASE_OVERLAY_WIDTH * ui_scale);
+            overlayHeight = static_cast<int>(BASE_OVERLAY_HEIGHT * ui_scale);
+
+            SetWindowPos(g_hwnd, NULL, 0, 0, overlayWidth, overlayHeight, SWP_NOMOVE | SWP_NOZORDER);
+        }
+
+        OverlayUI::EndSection();
     }
 
-    static float ui_scale = config.overlay_ui_scale;
-
-    if (ImGui::SliderFloat("UI Scale", &ui_scale, 0.5f, 3.0f, "%.2f"))
+    if (OverlayUI::BeginSection("Capture Privacy", "overlay_section_capture_privacy"))
     {
-        ImGui::GetIO().FontGlobalScale = ui_scale;
-
-        config.overlay_ui_scale = ui_scale;
-        OverlayConfig_MarkDirty();
-
-        extern const int BASE_OVERLAY_WIDTH;
-        extern const int BASE_OVERLAY_HEIGHT;
-        overlayWidth = static_cast<int>(BASE_OVERLAY_WIDTH * ui_scale);
-        overlayHeight = static_cast<int>(BASE_OVERLAY_HEIGHT * ui_scale);
-
-        SetWindowPos(g_hwnd, NULL, 0, 0, overlayWidth, overlayHeight, SWP_NOMOVE | SWP_NOZORDER);
+        if (ImGui::Checkbox("Hide Overlays From Recording", &config.overlay_exclude_from_capture))
+        {
+            Overlay_ApplyCaptureExclusion();
+            OverlayConfig_MarkDirty();
+        }
+        OverlayUI::EndSection();
     }
 }
