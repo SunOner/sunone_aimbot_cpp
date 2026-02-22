@@ -90,7 +90,7 @@ inline bool BeginSection(const char* label, const char* id = nullptr, bool defau
     ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(255, 255, 255, 56));
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(232, 237, 245, 255));
 
-    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_OpenOnArrow;
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Framed;
     if (defaultOpen)
         flags |= ImGuiTreeNodeFlags_DefaultOpen;
 
@@ -129,7 +129,7 @@ inline bool BeginSubsection(const char* label, bool defaultOpen = true) noexcept
     ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(255, 255, 255, 46));
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(216, 223, 234, 252));
 
-    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_OpenOnArrow;
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Framed;
     if (defaultOpen)
         flags |= ImGuiTreeNodeFlags_DefaultOpen;
 
