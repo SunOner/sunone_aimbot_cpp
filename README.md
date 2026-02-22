@@ -21,10 +21,11 @@
 **You do NOT need to compile anything if you just want to use the aimbot!**
 Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML (all GPUs).
 
----
-
 * **Download**
 	* Pre-built binaries can be downloaded from the [Discord server](https://discord.gg/37WVp6sNEh) in the **pre-releases** channel.
+
+---
+
 
 ### DirectML (DML) Build — Universal (All GPUs)
 
@@ -49,7 +50,7 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 * **Not supported:** GTX 10xx/Pascal and older (TensorRT limitation)
 * **Includes both CUDA+TensorRT and DML support (switchable in settings)**
 
-**Both versions are ready-to-use: just download, unpack, run `ai.exe` and follow instructions in the overlay.**
+**Both versions are ready-to-use: just download, unpack, run `ai.exe`.**
 
 ---
 
@@ -76,7 +77,7 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 
 # Build From Source (Advanced Users)
 
-Detailed build instructions have been moved to:
+Detailed build instructions:
 
 * [docs/build.md](docs/build.md)
 
