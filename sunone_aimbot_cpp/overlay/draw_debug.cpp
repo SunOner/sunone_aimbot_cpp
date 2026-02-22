@@ -4,6 +4,7 @@
 #include <Windows.h>
 
 #include <d3d11.h>
+#include <string>
 #include <vector>
 
 #include "imgui/imgui.h"
@@ -40,6 +41,88 @@ static ID3D11ShaderResourceView* g_maskSRV = nullptr;
 static int maskTexW = 0, maskTexH = 0;
 
 static float debug_scale = 0.5f;
+
+static int findDebugKeyIndexByName(const std::string& keyName)
+{
+    for (size_t k = 0; k < key_names.size(); ++k)
+    {
+        if (key_names[k] == keyName)
+            return static_cast<int>(k);
+    }
+    return 0;
+}
+
+static bool drawScreenshotButtonRows()
+{
+    if (key_names_cstrs.empty())
+    {
+        ImGui::TextDisabled("No key list available.");
+        return false;
+    }
+
+    bool changed = false;
+    if (config.screenshot_button.empty())
+    {
+        config.screenshot_button.push_back("None");
+        changed = true;
+    }
+
+    for (size_t i = 0; i < config.screenshot_button.size();)
+    {
+        std::string& currentKeyName = config.screenshot_button[i];
+        int currentIndex = findDebugKeyIndexByName(currentKeyName);
+
+        ImGui::PushID(static_cast<int>(i));
+
+        const float rowAvail = ImGui::GetContentRegionAvail().x;
+        const float actionBtnW = ImGui::GetFrameHeight();
+        float comboWidth = rowAvail - (actionBtnW * 2.0f + ImGui::GetStyle().ItemSpacing.x * 2.0f);
+        const float comboMin = rowAvail * 0.56f;
+        if (comboWidth < comboMin)
+            comboWidth = comboMin;
+        if (comboWidth < 1.0f)
+            comboWidth = 1.0f;
+        ImGui::SetNextItemWidth(comboWidth);
+
+        if (ImGui::Combo("##screenshot_binding_combo", &currentIndex, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
+        {
+            currentKeyName = key_names[currentIndex];
+            changed = true;
+        }
+
+        ImGui::SameLine(0.0f, 4.0f);
+        if (ImGui::Button("+", ImVec2(actionBtnW, 0.0f)))
+        {
+            config.screenshot_button.insert(config.screenshot_button.begin() + static_cast<std::vector<std::string>::difference_type>(i + 1), "None");
+            changed = true;
+        }
+
+        ImGui::SameLine(0.0f, 3.0f);
+        bool removedCurrent = false;
+        if (ImGui::Button("-", ImVec2(actionBtnW, 0.0f)))
+        {
+            if (config.screenshot_button.size() <= 1)
+            {
+                config.screenshot_button[0] = "None";
+            }
+            else
+            {
+                config.screenshot_button.erase(config.screenshot_button.begin() + static_cast<std::vector<std::string>::difference_type>(i));
+                removedCurrent = true;
+            }
+            changed = true;
+        }
+
+        ImGui::PopID();
+
+        if (removedCurrent)
+            continue;
+
+        ++i;
+    }
+
+    return changed;
+}
 
 static void uploadDebugFrame(const cv::Mat& bgr)
 {
@@ -251,59 +334,8 @@ void draw_debug()
 
     if (OverlayUI::BeginSection("Screenshot Buttons", "debug_section_screenshot_buttons"))
     {
-        for (size_t i = 0; i < config.screenshot_button.size(); )
-        {
-            std::string& current_key_name = config.screenshot_button[i];
-
-            int current_index = -1;
-            for (size_t k = 0; k < key_names.size(); ++k)
-            {
-                if (key_names[k] == current_key_name)
-                {
-                    current_index = static_cast<int>(k);
-                    break;
-                }
-            }
-
-            if (current_index == -1)
-            {
-                current_index = 0;
-            }
-
-            std::string combo_label = "Screenshot Button " + std::to_string(i);
-
-            if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
-            {
-                current_key_name = key_names[current_index];
-                OverlayConfig_MarkDirty();
-            }
-
-            ImGui::SameLine();
-            std::string remove_button_label = "Remove##button_screenshot" + std::to_string(i);
-            if (ImGui::Button(remove_button_label.c_str()))
-            {
-                if (config.screenshot_button.size() <= 1)
-                {
-                    config.screenshot_button[0] = std::string("None");
-                    OverlayConfig_MarkDirty();
-                    continue;
-                }
-                else
-                {
-                    config.screenshot_button.erase(config.screenshot_button.begin() + i);
-                    OverlayConfig_MarkDirty();
-                    continue;
-                }
-            }
-
-            ++i;
-        }
-
-        if (ImGui::Button("Add button##button_screenshot"))
-        {
-            config.screenshot_button.push_back("None");
+        if (drawScreenshotButtonRows())
             OverlayConfig_MarkDirty();
-        }
 
         ImGui::InputInt("Screenshot delay", &config.screenshot_delay, 50, 500);
         ImGui::Checkbox("Verbose console output", &config.verbose);

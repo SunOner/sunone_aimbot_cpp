@@ -2,6 +2,7 @@
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
+#include <algorithm>
 
 #include "imgui/imgui.h"
 #include "sunone_aimbot_cpp.h"
@@ -9,14 +10,26 @@
 #include "overlay/config_dirty.h"
 #include "overlay/ui_sections.h"
 
+namespace
+{
+float OverlayCompactControlWidth()
+{
+    return OverlayUI::AdaptiveItemWidth(0.66f);
+}
+}
+
 void draw_overlay()
 {
     constexpr int kMinReadableOpacity = 220;
 
     if (OverlayUI::BeginSection("Visual", "overlay_section_visual"))
     {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted("Overlay Opacity");
+        ImGui::SameLine(0.0f, 8.0f);
+        ImGui::SetNextItemWidth(OverlayCompactControlWidth());
         int prev_opacity = config.overlay_opacity;
-        if (ImGui::SliderInt("Overlay Opacity", &config.overlay_opacity, kMinReadableOpacity, 255))
+        if (ImGui::SliderInt("##overlay_opacity_slider", &config.overlay_opacity, kMinReadableOpacity, 255))
         {
             if (config.overlay_opacity < kMinReadableOpacity) config.overlay_opacity = kMinReadableOpacity;
             if (config.overlay_opacity > 255) config.overlay_opacity = 255;
@@ -27,21 +40,18 @@ void draw_overlay()
                 OverlayConfig_MarkDirty();
         }
 
-        static float ui_scale = config.overlay_ui_scale;
+        float ui_scale = std::clamp(config.overlay_ui_scale, 0.85f, 1.35f);
+        if (ui_scale != config.overlay_ui_scale)
+            config.overlay_ui_scale = ui_scale;
 
-        if (ImGui::SliderFloat("UI Scale", &ui_scale, 0.5f, 3.0f, "%.2f"))
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted("UI Fine Scale");
+        ImGui::SameLine(0.0f, 8.0f);
+        ImGui::SetNextItemWidth(OverlayCompactControlWidth());
+        if (ImGui::SliderFloat("##overlay_ui_scale_slider", &ui_scale, 0.85f, 1.35f, "%.2f"))
         {
-            ImGui::GetIO().FontGlobalScale = ui_scale;
-
             config.overlay_ui_scale = ui_scale;
             OverlayConfig_MarkDirty();
-
-            extern const int BASE_OVERLAY_WIDTH;
-            extern const int BASE_OVERLAY_HEIGHT;
-            overlayWidth = static_cast<int>(BASE_OVERLAY_WIDTH * ui_scale);
-            overlayHeight = static_cast<int>(BASE_OVERLAY_HEIGHT * ui_scale);
-
-            SetWindowPos(g_hwnd, NULL, 0, 0, overlayWidth, overlayHeight, SWP_NOMOVE | SWP_NOZORDER);
         }
 
         OverlayUI::EndSection();

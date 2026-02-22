@@ -17,8 +17,10 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <chrono>
+#include <cmath>
 
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
@@ -78,6 +80,9 @@ static const int RESIZE_BORDER_PX = 8;
 static const int WORKAREA_MARGIN_PX = 20;
 
 static bool g_autoResizeEnabled = true;
+static ImGuiStyle g_baseStyle{};
+static bool g_baseStyleReady = false;
+static float g_runtimeUiScale = -1.0f;
 
 std::vector<std::string> availableModels;
 std::vector<std::string> key_names;
@@ -99,15 +104,49 @@ static inline int ClampInt(int v, int lo, int hi)
     return (v < lo) ? lo : (v > hi) ? hi : v;
 }
 
+static float ComputeRuntimeUiScale(float windowW, float windowH)
+{
+    const float safeW = (windowW > 1.0f) ? windowW : static_cast<float>(BASE_OVERLAY_WIDTH);
+    const float safeH = (windowH > 1.0f) ? windowH : static_cast<float>(BASE_OVERLAY_HEIGHT);
+    const float refW = static_cast<float>(BASE_OVERLAY_WIDTH);
+    const float refH = static_cast<float>(BASE_OVERLAY_HEIGHT);
+
+    const float wFactor = safeW / refW;
+    const float hFactor = safeH / refH;
+    float autoFactor = std::sqrt(wFactor * hFactor);
+    autoFactor = std::clamp(autoFactor, 0.85f, 1.90f);
+
+    const float userFactor = std::clamp(config.overlay_ui_scale, 0.85f, 1.35f);
+    return std::clamp(autoFactor * userFactor, 0.80f, 2.20f);
+}
+
+static void ApplyRuntimeUiScale(float windowW, float windowH)
+{
+    if (!g_baseStyleReady)
+        return;
+
+    ImGuiIO& io = ImGui::GetIO();
+    const float targetScale = ComputeRuntimeUiScale(windowW, windowH);
+    if (std::fabs(targetScale - g_runtimeUiScale) > 0.01f)
+    {
+        ImGuiStyle& style = ImGui::GetStyle();
+        style = g_baseStyle;
+        style.ScaleAllSizes(targetScale);
+        g_runtimeUiScale = targetScale;
+    }
+    io.FontGlobalScale = targetScale;
+}
+
 static void TryAutoResizeOverlay(float extraContentWidth)
 {
     if (!g_hwnd || !g_autoResizeEnabled)
         return;
 
-    if (extraContentWidth <= 8.0f)
+    // Keep auto-grow only for severe horizontal overflow.
+    if (extraContentWidth <= 120.0f)
         return;
 
-    const int extraPx = static_cast<int>(extraContentWidth + 0.5f);
+    const int extraPx = ClampInt(static_cast<int>(extraContentWidth + 0.5f), 0, 260);
     if (extraPx <= 0)
         return;
 
@@ -164,91 +203,95 @@ static inline ImVec4 RGBA(int r, int g, int b, int a = 255)
 static void ApplyTheme_RoseDark()
 {
     ImGuiStyle& style = ImGui::GetStyle();
+    style.Alpha = 1.0f;
 
-    style.WindowRounding = 10.0f;
-    style.ChildRounding = 10.0f;
-    style.PopupRounding = 10.0f;
-    style.FrameRounding = 8.0f;
-    style.TabRounding = 8.0f;
-    style.ScrollbarRounding = 10.0f;
-    style.GrabRounding = 10.0f;
+    style.WindowRounding = 0.0f;
+    style.ChildRounding = 0.0f;
+    style.PopupRounding = 0.0f;
+    style.FrameRounding = 0.0f;
+    style.TabRounding = 0.0f;
+    style.ScrollbarRounding = 0.0f;
+    style.GrabRounding = 0.0f;
 
     style.WindowBorderSize = 1.0f;
+    style.ChildBorderSize = 1.0f;
     style.FrameBorderSize = 1.0f;
     style.PopupBorderSize = 1.0f;
     style.TabBorderSize = 1.0f;
 
-    style.WindowPadding = ImVec2(14, 12);
-    style.FramePadding = ImVec2(10, 8);
-    style.ItemSpacing = ImVec2(10, 8);
-    style.ItemInnerSpacing = ImVec2(8, 6);
-    style.ScrollbarSize = 14.0f;
+    style.WindowPadding = ImVec2(9.0f, 8.0f);
+    style.FramePadding = ImVec2(6.0f, 3.0f);
+    style.ItemSpacing = ImVec2(7.0f, 5.0f);
+    style.ItemInnerSpacing = ImVec2(6.0f, 4.0f);
+    style.CellPadding = ImVec2(6.0f, 5.0f);
+    style.ScrollbarSize = 10.0f;
+    style.GrabMinSize = 10.0f;
+    style.IndentSpacing = 12.0f;
 
     ImVec4* c = style.Colors;
 
-    const ImVec4 bg0 = RGBA(12, 12, 13, 245);
-    const ImVec4 bg1 = RGBA(18, 18, 20, 245);
-    const ImVec4 bg2 = RGBA(24, 24, 28, 245);
-    const ImVec4 stroke = RGBA(46, 46, 52, 255);
-    const ImVec4 strokeHi = RGBA(64, 64, 74, 255);
+    const ImVec4 bg0 = RGBA(4, 4, 4, 250);
+    const ImVec4 bg1 = RGBA(10, 10, 10, 250);
+    const ImVec4 bg2 = RGBA(16, 16, 16, 245);
+    const ImVec4 stroke = RGBA(255, 255, 255, 56);
+    const ImVec4 strokeHi = RGBA(255, 255, 255, 92);
 
-    const ImVec4 text = RGBA(230, 230, 235, 255);
-    const ImVec4 textDim = RGBA(160, 160, 170, 255);
-
-    const ImVec4 acc = RGBA(168, 125, 135, 255);
-    const ImVec4 accHover = RGBA(190, 145, 155, 255);
+    const ImVec4 text = RGBA(232, 237, 245, 255);
+    const ImVec4 textDim = RGBA(143, 160, 182, 255);
+    const ImVec4 bright = RGBA(245, 245, 245, 255);
 
     c[ImGuiCol_Text] = text;
     c[ImGuiCol_TextDisabled] = textDim;
 
-    c[ImGuiCol_WindowBg] = bg0;
+    c[ImGuiCol_WindowBg] = RGBA(0, 0, 0, 0);
     c[ImGuiCol_ChildBg] = RGBA(0, 0, 0, 0);
-    c[ImGuiCol_PopupBg] = RGBA(16, 16, 18, 250);
+    c[ImGuiCol_PopupBg] = bg1;
 
     c[ImGuiCol_Border] = stroke;
     c[ImGuiCol_BorderShadow] = RGBA(0, 0, 0, 0);
 
     c[ImGuiCol_FrameBg] = bg2;
-    c[ImGuiCol_FrameBgHovered] = RGBA(30, 30, 36, 255);
-    c[ImGuiCol_FrameBgActive] = RGBA(34, 34, 42, 255);
+    c[ImGuiCol_FrameBgHovered] = RGBA(24, 24, 24, 250);
+    c[ImGuiCol_FrameBgActive] = RGBA(31, 31, 31, 252);
 
     c[ImGuiCol_TitleBg] = bg1;
     c[ImGuiCol_TitleBgActive] = bg1;
     c[ImGuiCol_TitleBgCollapsed] = bg1;
+    c[ImGuiCol_MenuBarBg] = bg0;
 
-    c[ImGuiCol_ScrollbarBg] = RGBA(0, 0, 0, 80);
-    c[ImGuiCol_ScrollbarGrab] = RGBA(70, 70, 80, 180);
-    c[ImGuiCol_ScrollbarGrabHovered] = RGBA(90, 90, 105, 200);
-    c[ImGuiCol_ScrollbarGrabActive] = RGBA(110, 110, 130, 220);
+    c[ImGuiCol_ScrollbarBg] = RGBA(0, 0, 0, 95);
+    c[ImGuiCol_ScrollbarGrab] = RGBA(96, 96, 96, 170);
+    c[ImGuiCol_ScrollbarGrabHovered] = RGBA(122, 122, 122, 210);
+    c[ImGuiCol_ScrollbarGrabActive] = RGBA(145, 145, 145, 232);
 
-    c[ImGuiCol_CheckMark] = acc;
-    c[ImGuiCol_SliderGrab] = acc;
-    c[ImGuiCol_SliderGrabActive] = accHover;
+    c[ImGuiCol_CheckMark] = bright;
+    c[ImGuiCol_SliderGrab] = RGBA(236, 236, 236, 236);
+    c[ImGuiCol_SliderGrabActive] = bright;
 
-    c[ImGuiCol_Button] = RGBA(32, 32, 38, 255);
-    c[ImGuiCol_ButtonHovered] = RGBA(42, 42, 50, 255);
-    c[ImGuiCol_ButtonActive] = RGBA(48, 48, 58, 255);
+    c[ImGuiCol_Button] = RGBA(14, 14, 14, 246);
+    c[ImGuiCol_ButtonHovered] = RGBA(20, 20, 20, 250);
+    c[ImGuiCol_ButtonActive] = RGBA(28, 28, 28, 252);
 
-    c[ImGuiCol_Header] = RGBA(34, 34, 40, 255);
-    c[ImGuiCol_HeaderHovered] = RGBA(44, 44, 54, 255);
-    c[ImGuiCol_HeaderActive] = RGBA(52, 52, 64, 255);
+    c[ImGuiCol_Header] = RGBA(18, 18, 18, 244);
+    c[ImGuiCol_HeaderHovered] = RGBA(24, 24, 24, 250);
+    c[ImGuiCol_HeaderActive] = RGBA(32, 32, 32, 252);
 
     c[ImGuiCol_Separator] = stroke;
     c[ImGuiCol_SeparatorHovered] = strokeHi;
-    c[ImGuiCol_SeparatorActive] = acc;
+    c[ImGuiCol_SeparatorActive] = RGBA(168, 168, 168, 228);
 
-    c[ImGuiCol_Tab] = RGBA(20, 20, 24, 255);
-    c[ImGuiCol_TabHovered] = RGBA(40, 40, 48, 255);
-    c[ImGuiCol_TabActive] = RGBA(28, 28, 34, 255);
-    c[ImGuiCol_TabUnfocused] = RGBA(18, 18, 22, 255);
-    c[ImGuiCol_TabUnfocusedActive] = RGBA(24, 24, 30, 255);
+    c[ImGuiCol_Tab] = RGBA(14, 14, 14, 248);
+    c[ImGuiCol_TabHovered] = RGBA(22, 22, 22, 250);
+    c[ImGuiCol_TabActive] = RGBA(30, 30, 30, 252);
+    c[ImGuiCol_TabUnfocused] = RGBA(12, 12, 12, 240);
+    c[ImGuiCol_TabUnfocusedActive] = RGBA(22, 22, 22, 248);
 
     c[ImGuiCol_ResizeGrip] = RGBA(0, 0, 0, 0);
     c[ImGuiCol_ResizeGripHovered] = RGBA(0, 0, 0, 0);
     c[ImGuiCol_ResizeGripActive] = RGBA(0, 0, 0, 0);
 
-    c[ImGuiCol_PlotLines] = acc;
-    c[ImGuiCol_PlotHistogram] = acc;
+    c[ImGuiCol_PlotLines] = RGBA(216, 216, 216, 255);
+    c[ImGuiCol_PlotHistogram] = RGBA(216, 216, 216, 255);
 
     c[ImGuiCol_TableHeaderBg] = bg1;
     c[ImGuiCol_TableBorderStrong] = stroke;
@@ -256,9 +299,73 @@ static void ApplyTheme_RoseDark()
     c[ImGuiCol_TableRowBg] = RGBA(0, 0, 0, 0);
     c[ImGuiCol_TableRowBgAlt] = RGBA(255, 255, 255, 6);
 
-    c[ImGuiCol_NavHighlight] = RGBA(255, 255, 255, 40);
-    c[ImGuiCol_NavWindowingHighlight] = RGBA(255, 255, 255, 40);
-    c[ImGuiCol_NavWindowingDimBg] = RGBA(0, 0, 0, 90);
+    c[ImGuiCol_NavHighlight] = RGBA(255, 255, 255, 110);
+    c[ImGuiCol_NavWindowingHighlight] = RGBA(255, 255, 255, 90);
+    c[ImGuiCol_NavWindowingDimBg] = RGBA(0, 0, 0, 110);
+
+    c[ImGuiCol_TextSelectedBg] = RGBA(255, 255, 255, 56);
+    c[ImGuiCol_DragDropTarget] = RGBA(255, 255, 255, 188);
+}
+
+struct OverlayTabItem
+{
+    const char* label;
+    const char* group;
+    const char* description;
+    void (*draw)();
+};
+
+static const OverlayTabItem kOverlayTabs[] = {
+    { "Capture",       "Core",    "Frame source and input feed settings.",              draw_capture_settings },
+    { "Target",        "Core",    "Target selection and aim point offsets.",             draw_target },
+    { "Mouse",         "Core",    "Mouse behavior, input backend and motion profile.",   draw_mouse },
+    { "AI",            "Core",    "Model and detector thresholds.",                      draw_ai },
+    { "Buttons",       "Control", "Hotkeys for features and runtime actions.",           draw_buttons },
+    { "Overlay",       "Control", "Editor appearance and privacy options.",              draw_overlay },
+    { "Game Overlay",  "Control", "In-game render visuals and simulation options.",      draw_game_overlay_settings },
+    { "Stats",         "Monitor", "Performance and timing graphs.",                      draw_stats },
+    { "Debug",         "Monitor", "Debug frame, screenshots and diagnostics.",           draw_debug },
+};
+
+static void DrawMainPanelBackground(const ImVec2& pos, const ImVec2& size)
+{
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    const ImVec2 max(pos.x + size.x, pos.y + size.y);
+    draw->AddRectFilled(pos, max, IM_COL32(4, 4, 4, 248), 0.0f);
+    draw->AddRect(pos, max, IM_COL32(255, 255, 255, 56), 0.0f, 0, 1.0f);
+}
+
+static bool DrawSidebarTabButton(const char* label, bool selected)
+{
+    const ImVec2 pos = ImGui::GetCursorScreenPos();
+    const ImGuiStyle& style = ImGui::GetStyle();
+    ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetFrameHeight() + style.ItemSpacing.y * 0.15f);
+    if (size.x < 1.0f)
+        size.x = 1.0f;
+
+    const std::string id = std::string("##nav_") + label;
+    const bool pressed = ImGui::InvisibleButton(id.c_str(), size);
+    const bool hovered = ImGui::IsItemHovered();
+
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    const ImVec2 max(pos.x + size.x, pos.y + size.y);
+
+    ImU32 rowBg = IM_COL32(0, 0, 0, 0);
+    if (selected)
+        rowBg = IM_COL32(60, 60, 60, 190);
+    else if (hovered)
+        rowBg = IM_COL32(28, 28, 28, 210);
+
+    if ((rowBg >> IM_COL32_A_SHIFT) != 0)
+        draw->AddRectFilled(pos, max, rowBg, 0.0f);
+    if (selected)
+        draw->AddRect(pos, max, IM_COL32(255, 255, 255, 76), 0.0f, 0, 1.0f);
+
+    const float textY = pos.y + (size.y - ImGui::GetTextLineHeight()) * 0.5f;
+    const ImU32 textCol = selected ? IM_COL32(245, 245, 245, 255) : (hovered ? IM_COL32(226, 226, 226, 255) : IM_COL32(192, 200, 214, 240));
+    draw->AddText(ImVec2(pos.x + style.FramePadding.x + 2.0f, textY), textCol, label);
+
+    return pressed;
 }
 
 static UINT GetDpiForWindowSafe(HWND hwnd)
@@ -615,7 +722,15 @@ void SetupImGui()
     ImGui::CreateContext();
 
     ImGuiIO& io = ImGui::GetIO();
-    io.FontGlobalScale = config.overlay_ui_scale;
+    io.FontGlobalScale = 1.0f;
+    ImFontConfig fontConfig{};
+    fontConfig.OversampleH = 3;
+    fontConfig.OversampleV = 2;
+    fontConfig.PixelSnapH = true;
+    if (!io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", 14.0f, &fontConfig))
+    {
+        io.Fonts->AddFontDefault();
+    }
 
     io.IniFilename = nullptr;
     io.LogFilename = nullptr;
@@ -624,13 +739,16 @@ void SetupImGui()
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
     ApplyTheme_RoseDark();
+    g_baseStyle = ImGui::GetStyle();
+    g_baseStyleReady = true;
+    g_runtimeUiScale = -1.0f;
     load_body_texture();
 }
 
 bool CreateOverlayWindow()
 {
-    overlayWidth = static_cast<int>(BASE_OVERLAY_WIDTH * config.overlay_ui_scale);
-    overlayHeight = static_cast<int>(BASE_OVERLAY_HEIGHT * config.overlay_ui_scale);
+    overlayWidth = BASE_OVERLAY_WIDTH;
+    overlayHeight = BASE_OVERLAY_HEIGHT;
 
     {
         int x = 0;
@@ -781,93 +899,80 @@ void OverlayThread()
 
         const float w = (float)overlayWidth;
         const float h = (float)overlayHeight;
-        const float drag_h = (float)DRAG_BAR_HEIGHT_PX;
-        const float content_h = (h > drag_h) ? (h - drag_h) : 1.0f;
+        ApplyRuntimeUiScale(w, h);
+        const float sidebarWidth = std::clamp(w * 0.23f, w * 0.18f, w * 0.30f);
 
         ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(w, drag_h), ImGuiCond_Always);
-        ImGui::Begin("##dragbar", nullptr,
+        ImGui::SetNextWindowSize(ImVec2(w, h), ImGuiCond_Always);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(0, 0, 0, 0));
+        ImGui::Begin("##editor_root", nullptr,
             ImGuiWindowFlags_NoDecoration |
             ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoSavedSettings |
-            ImGuiWindowFlags_NoNav |
+            ImGuiWindowFlags_NoBringToFrontOnFocus |
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::PopStyleColor();
 
-        ImGui::TextUnformatted("Config Editor");
-        ImGui::End();
-
-        ImGui::SetNextWindowPos(ImVec2(0.0f, drag_h), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(w, content_h), ImGuiCond_Always);
-
-        ImGuiWindowFlags mainFlags =
-            ImGuiWindowFlags_NoMove |
-            ImGuiWindowFlags_NoResize;
-
-        ImGui::Begin("All Options", &show_overlay, mainFlags);
+        DrawMainPanelBackground(ImGui::GetWindowPos(), ImGui::GetWindowSize());
 
         {
             std::lock_guard<std::mutex> lock(configMutex);
 
-            struct TabItem
-            {
-                const char* label;
-                void (*draw)();
-            };
-
-            static const TabItem tabs[] = {
-                { "Capture",       draw_capture_settings },
-                { "Target",        draw_target },
-                { "Mouse",         draw_mouse },
-                { "AI",            draw_ai },
-                { "Buttons",       draw_buttons },
-                { "Overlay",       draw_overlay },
-                { "Game Overlay",  draw_game_overlay_settings },
-                { "Stats",         draw_stats },
-                { "Debug",         draw_debug },
-            };
-
             static int activeTab = 0;
-            const int tabCount = (int)(sizeof(tabs) / sizeof(tabs[0]));
+            const int tabCount = (int)(sizeof(kOverlayTabs) / sizeof(kOverlayTabs[0]));
             if (activeTab < 0 || activeTab >= tabCount)
                 activeTab = 0;
 
-            ImGuiStyle& style = ImGui::GetStyle();
-
-            float maxLabelWidth = 0.0f;
-            for (int i = 0; i < tabCount; ++i)
-                maxLabelWidth = OtherTools::MaxFloat(maxLabelWidth, ImGui::CalcTextSize(tabs[i].label).x);
-
-            float navWidth = maxLabelWidth + style.FramePadding.x * 2.0f + style.ItemSpacing.x * 2.0f;
-            navWidth = OtherTools::MaxFloat(navWidth, 140.0f);
-
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(10, 14, 20, 220));
-            ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(86, 104, 132, 220));
-            ImGui::BeginChild("##options_nav", ImVec2(navWidth, 0.0f), true,
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(11, 11, 11, 245));
+            ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(255, 255, 255, 56));
+            ImGui::BeginChild("##options_nav", ImVec2(sidebarWidth, 0.0f), true,
                 ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_AlwaysVerticalScrollbar);
+
+            ImGui::TextUnformatted("SunOne Overlay");
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(143, 160, 182, 255));
+            ImGui::TextUnformatted("HOME to open/close");
+            ImGui::PopStyleColor();
+            ImGui::Dummy(ImVec2(0.0f, 2.0f));
+
+            const char* lastGroup = nullptr;
             for (int i = 0; i < tabCount; ++i)
             {
-                if (ImGui::Selectable(tabs[i].label, activeTab == i))
+                const char* group = kOverlayTabs[i].group;
+                if (!lastGroup || std::strcmp(lastGroup, group) != 0)
+                {
+                    if (lastGroup)
+                        ImGui::Dummy(ImVec2(0.0f, 2.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(165, 180, 199, 228));
+                    ImGui::TextUnformatted(group);
+                    ImGui::PopStyleColor();
+                }
+                if (DrawSidebarTabButton(kOverlayTabs[i].label, activeTab == i))
                     activeTab = i;
+                lastGroup = group;
             }
             ImGui::EndChild();
             ImGui::PopStyleColor(2);
             ImGui::PopStyleVar();
 
-            ImGui::SameLine(0.0f, style.ItemSpacing.x);
+            ImGui::SameLine(0.0f, 6.0f);
 
             float contentExtraW = 0.0f;
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
-            ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(12, 16, 24, 230));
-            ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(94, 114, 146, 230));
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(12, 12, 12, 245));
+            ImGui::PushStyleColor(ImGuiCol_Border, IM_COL32(255, 255, 255, 56));
             ImGui::BeginChild("##options_content", ImVec2(0.0f, 0.0f), true,
                 ImGuiWindowFlags_AlwaysUseWindowPadding | ImGuiWindowFlags_AlwaysVerticalScrollbar);
-            const float regionMinX = ImGui::GetWindowContentRegionMin().x;
-            const float regionMaxX = ImGui::GetWindowContentRegionMax().x;
-            const float childWidth = regionMaxX - regionMinX;
 
-            tabs[activeTab].draw();
+            ImGui::TextUnformatted(kOverlayTabs[activeTab].label);
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(143, 160, 182, 255));
+            ImGui::TextWrapped("%s", kOverlayTabs[activeTab].description);
+            ImGui::PopStyleColor();
+            ImGui::Separator();
+
+            kOverlayTabs[activeTab].draw();
 
             const float overflowX = ImGui::GetScrollMaxX();
             contentExtraW = overflowX;

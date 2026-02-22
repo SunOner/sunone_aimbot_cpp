@@ -3,409 +3,120 @@
 #include <winsock2.h>
 #include <Windows.h>
 
+#include <string>
+#include <vector>
+
 #include "imgui/imgui.h"
 #include "sunone_aimbot_cpp.h"
 #include "overlay.h"
 #include "overlay/config_dirty.h"
 #include "overlay/ui_sections.h"
 
+namespace
+{
+int findKeyIndexByName(const std::string& keyName)
+{
+    for (size_t k = 0; k < key_names.size(); ++k)
+    {
+        if (key_names[k] == keyName)
+            return static_cast<int>(k);
+    }
+    return 0;
+}
+
+bool drawButtonBindingRows(const char* comboPrefix, std::vector<std::string>& bindings, bool keepAtLeastOne)
+{
+    if (key_names_cstrs.empty())
+    {
+        ImGui::TextDisabled("No key list available.");
+        return false;
+    }
+
+    bool changed = false;
+    if (bindings.empty() && keepAtLeastOne)
+    {
+        bindings.push_back("None");
+        changed = true;
+    }
+
+    for (size_t i = 0; i < bindings.size();)
+    {
+        std::string& currentKeyName = bindings[i];
+        int currentIndex = findKeyIndexByName(currentKeyName);
+
+        ImGui::PushID(static_cast<int>(i));
+
+        const float rowAvail = ImGui::GetContentRegionAvail().x;
+        const float actionBtnW = ImGui::GetFrameHeight();
+        float comboWidth = rowAvail - (actionBtnW * 2.0f + ImGui::GetStyle().ItemSpacing.x * 2.0f);
+        const float comboMin = rowAvail * 0.56f;
+        if (comboWidth < comboMin)
+            comboWidth = comboMin;
+        if (comboWidth < 1.0f)
+            comboWidth = 1.0f;
+        ImGui::SetNextItemWidth(comboWidth);
+
+        if (ImGui::Combo("##binding_combo", &currentIndex, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
+        {
+            currentKeyName = key_names[currentIndex];
+            changed = true;
+        }
+
+        ImGui::SameLine(0.0f, 4.0f);
+        if (ImGui::Button("+", ImVec2(actionBtnW, 0.0f)))
+        {
+            bindings.insert(bindings.begin() + static_cast<std::vector<std::string>::difference_type>(i + 1), "None");
+            changed = true;
+        }
+
+        ImGui::SameLine(0.0f, 3.0f);
+        bool removedCurrent = false;
+        if (ImGui::Button("-", ImVec2(actionBtnW, 0.0f)))
+        {
+            if (bindings.size() <= 1 && keepAtLeastOne)
+            {
+                bindings[0] = "None";
+            }
+            else
+            {
+                bindings.erase(bindings.begin() + static_cast<std::vector<std::string>::difference_type>(i));
+                removedCurrent = true;
+            }
+            changed = true;
+        }
+
+        ImGui::PopID();
+
+        if (removedCurrent)
+            continue;
+
+        ++i;
+    }
+
+    return changed;
+}
+
+void drawBindingSection(const char* title, const char* sectionId, const char* comboPrefix, std::vector<std::string>& bindings, bool keepAtLeastOne = true)
+{
+    if (!OverlayUI::BeginSection(title, sectionId))
+        return;
+
+    if (drawButtonBindingRows(comboPrefix, bindings, keepAtLeastOne))
+        OverlayConfig_MarkDirty();
+
+    OverlayUI::EndSection();
+}
+}
+
 void draw_buttons()
 {
-    if (OverlayUI::BeginSection("Targeting Buttons", "buttons_section_targeting"))
-    {
-        for (size_t i = 0; i < config.button_targeting.size(); )
-        {
-        std::string& current_key_name = config.button_targeting[i];
-
-        int current_index = -1;
-        for (size_t k = 0; k < key_names.size(); ++k)
-        {
-            if (key_names[k] == current_key_name)
-            {
-                current_index = static_cast<int>(k);
-                break;
-            }
-        }
-
-        if (current_index == -1)
-        {
-            current_index = 0;
-        }
-
-        std::string combo_label = "Targeting Button " + std::to_string(i);
-
-        if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
-        {
-            current_key_name = key_names[current_index];
-            OverlayConfig_MarkDirty();
-        }
-
-        ImGui::SameLine();
-        std::string remove_button_label = "Remove##button_targeting" + std::to_string(i);
-        if (ImGui::Button(remove_button_label.c_str()))
-        {
-            if (config.button_targeting.size() <= 1)
-            {
-                config.button_targeting[0] = std::string("None");
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-            else
-            {
-                config.button_targeting.erase(config.button_targeting.begin() + i);
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-        }
-
-            ++i;
-        }
-
-        if (ImGui::Button("Add button##targeting"))
-        {
-            config.button_targeting.push_back("None");
-            OverlayConfig_MarkDirty();
-        }
-        OverlayUI::EndSection();
-    }
-
-    if (OverlayUI::BeginSection("Shoot Buttons", "buttons_section_shoot"))
-    {
-        for (size_t i = 0; i < config.button_shoot.size(); )
-        {
-        std::string& current_key_name = config.button_shoot[i];
-
-        int current_index = -1;
-        for (size_t k = 0; k < key_names.size(); ++k)
-        {
-            if (key_names[k] == current_key_name)
-            {
-                current_index = static_cast<int>(k);
-                break;
-            }
-        }
-
-        if (current_index == -1)
-        {
-            current_index = 0;
-        }
-
-        std::string combo_label = "Shoot Button " + std::to_string(i);
-
-        if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
-        {
-            current_key_name = key_names[current_index];
-            OverlayConfig_MarkDirty();
-        }
-
-        ImGui::SameLine();
-        std::string remove_button_label = "Remove##button_shoot" + std::to_string(i);
-        if (ImGui::Button(remove_button_label.c_str()))
-        {
-            if (config.button_shoot.size() <= 1)
-            {
-                config.button_shoot[0] = std::string("None");
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-            else
-            {
-                config.button_shoot.erase(config.button_shoot.begin() + i);
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-        }
-
-            ++i;
-        }
-
-        if (ImGui::Button("Add button##shoot"))
-        {
-            config.button_shoot.push_back("None");
-            OverlayConfig_MarkDirty();
-        }
-        OverlayUI::EndSection();
-    }
-
-    if (OverlayUI::BeginSection("Zoom Buttons", "buttons_section_zoom"))
-    {
-        for (size_t i = 0; i < config.button_zoom.size(); )
-        {
-        std::string& current_key_name = config.button_zoom[i];
-
-        int current_index = -1;
-        for (size_t k = 0; k < key_names.size(); ++k)
-        {
-            if (key_names[k] == current_key_name)
-            {
-                current_index = static_cast<int>(k);
-                break;
-            }
-        }
-
-        if (current_index == -1)
-        {
-            current_index = 0;
-        }
-
-        std::string combo_label = "Zoom Button " + std::to_string(i);
-
-        if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
-        {
-            current_key_name = key_names[current_index];
-            OverlayConfig_MarkDirty();
-        }
-
-        ImGui::SameLine();
-        std::string remove_button_label = "Remove##button_zoom" + std::to_string(i);
-        if (ImGui::Button(remove_button_label.c_str()))
-        {
-            if (config.button_zoom.size() <= 1)
-            {
-                config.button_zoom[0] = std::string("None");
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-            else
-            {
-                config.button_zoom.erase(config.button_zoom.begin() + i);
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-        }
-
-            ++i;
-        }
-
-        if (ImGui::Button("Add button##zoom"))
-        {
-            config.button_zoom.push_back("None");
-            OverlayConfig_MarkDirty();
-        }
-        OverlayUI::EndSection();
-    }
-
-    if (OverlayUI::BeginSection("Exit Buttons", "buttons_section_exit"))
-    {
-        for (size_t i = 0; i < config.button_exit.size(); )
-        {
-        std::string& current_key_name = config.button_exit[i];
-
-        int current_index = -1;
-        for (size_t k = 0; k < key_names.size(); ++k)
-        {
-            if (key_names[k] == current_key_name)
-            {
-                current_index = static_cast<int>(k);
-                break;
-            }
-        }
-
-        if (current_index == -1)
-        {
-            current_index = 0;
-        }
-
-        std::string combo_label = "Exit Button " + std::to_string(i);
-
-        if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
-        {
-            current_key_name = key_names[current_index];
-            OverlayConfig_MarkDirty();
-        }
-
-        ImGui::SameLine();
-        std::string remove_button_label = "Remove##button_exit" + std::to_string(i);
-        if (ImGui::Button(remove_button_label.c_str()))
-        {
-            if (config.button_exit.size() <= 1)
-            {
-                config.button_exit[0] = std::string("None");
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-            else
-            {
-                config.button_exit.erase(config.button_exit.begin() + i);
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-        }
-
-            ++i;
-        }
-
-        if (ImGui::Button("Add button##exit"))
-        {
-            config.button_exit.push_back("None");
-            OverlayConfig_MarkDirty();
-        }
-        OverlayUI::EndSection();
-    }
-
-    if (OverlayUI::BeginSection("Pause Buttons", "buttons_section_pause"))
-    {
-        for (size_t i = 0; i < config.button_pause.size(); )
-        {
-        std::string& current_key_name = config.button_pause[i];
-
-        int current_index = -1;
-        for (size_t k = 0; k < key_names.size(); ++k)
-        {
-            if (key_names[k] == current_key_name)
-            {
-                current_index = static_cast<int>(k);
-                break;
-            }
-        }
-
-        if (current_index == -1)
-        {
-            current_index = 0;
-        }
-
-        std::string combo_label = "Pause Button " + std::to_string(i);
-
-        if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
-        {
-            current_key_name = key_names[current_index];
-            OverlayConfig_MarkDirty();
-        }
-
-        ImGui::SameLine();
-        std::string remove_button_label = "Remove##button_pause" + std::to_string(i);
-        if (ImGui::Button(remove_button_label.c_str()))
-        {
-            if (config.button_pause.size() <= 1)
-            {
-                config.button_pause[0] = std::string("None");
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-            else
-            {
-                config.button_pause.erase(config.button_pause.begin() + i);
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-        }
-            ++i;
-        }
-
-        if (ImGui::Button("Add button##pause"))
-        {
-            config.button_pause.push_back("None");
-            OverlayConfig_MarkDirty();
-        }
-        OverlayUI::EndSection();
-    }
-
-    if (OverlayUI::BeginSection("Reload Config Buttons", "buttons_section_reload"))
-    {
-        for (size_t i = 0; i < config.button_reload_config.size(); )
-        {
-        std::string& current_key_name = config.button_reload_config[i];
-
-        int current_index = -1;
-        for (size_t k = 0; k < key_names.size(); ++k)
-        {
-            if (key_names[k] == current_key_name)
-            {
-                current_index = static_cast<int>(k);
-                break;
-            }
-        }
-
-        if (current_index == -1)
-        {
-            current_index = 0;
-        }
-
-        std::string combo_label = "Reload config Button " + std::to_string(i);
-
-        if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
-        {
-            current_key_name = key_names[current_index];
-            OverlayConfig_MarkDirty();
-        }
-
-        ImGui::SameLine();
-        std::string remove_button_label = "Remove##button_reload_config" + std::to_string(i);
-        if (ImGui::Button(remove_button_label.c_str()))
-        {
-            if (config.button_reload_config.size() <= 1)
-            {
-                config.button_reload_config[0] = std::string("None");
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-            else
-            {
-                config.button_reload_config.erase(config.button_reload_config.begin() + i);
-                OverlayConfig_MarkDirty();
-                continue;
-            }
-        }
-
-            ++i;
-        }
-
-        if (ImGui::Button("Add button##reload_config"))
-        {
-            config.button_reload_config.push_back("None");
-            OverlayConfig_MarkDirty();
-        }
-        OverlayUI::EndSection();
-    }
-
-    if (OverlayUI::BeginSection("Overlay Buttons", "buttons_section_overlay"))
-    {
-        for (size_t i = 0; i < config.button_open_overlay.size(); )
-        {
-        std::string& current_key_name = config.button_open_overlay[i];
-
-        int current_index = -1;
-        for (size_t k = 0; k < key_names.size(); ++k)
-        {
-            if (key_names[k] == current_key_name)
-            {
-                current_index = static_cast<int>(k);
-                break;
-            }
-        }
-
-        if (current_index == -1)
-        {
-            current_index = 0;
-        }
-
-        std::string combo_label = "Overlay Button " + std::to_string(i);
-
-        if (ImGui::Combo(combo_label.c_str(), &current_index, key_names_cstrs.data(), static_cast<int>(key_names_cstrs.size())))
-        {
-            current_key_name = key_names[current_index];
-            OverlayConfig_MarkDirty();
-        }
-
-        ImGui::SameLine();
-        std::string remove_button_label = "Remove##button_open_overlay" + std::to_string(i);
-        if (ImGui::Button(remove_button_label.c_str()))
-        {
-            config.button_open_overlay.erase(config.button_open_overlay.begin() + i);
-            OverlayConfig_MarkDirty();
-            continue;
-        }
-
-            ++i;
-        }
-
-        if (ImGui::Button("Add button##overlay"))
-        {
-            config.button_open_overlay.push_back("None");
-            OverlayConfig_MarkDirty();
-        }
-        OverlayUI::EndSection();
-    }
+    drawBindingSection("Targeting Buttons", "buttons_section_targeting", "Targeting Button", config.button_targeting);
+    drawBindingSection("Shoot Buttons", "buttons_section_shoot", "Shoot Button", config.button_shoot);
+    drawBindingSection("Zoom Buttons", "buttons_section_zoom", "Zoom Button", config.button_zoom);
+    drawBindingSection("Exit Buttons", "buttons_section_exit", "Exit Button", config.button_exit);
+    drawBindingSection("Pause Buttons", "buttons_section_pause", "Pause Button", config.button_pause);
+    drawBindingSection("Reload Config Buttons", "buttons_section_reload", "Reload config Button", config.button_reload_config);
+    drawBindingSection("Overlay Buttons", "buttons_section_overlay", "Overlay Button", config.button_open_overlay);
 
     if (OverlayUI::BeginSection("Arrow Key Options", "buttons_section_arrows"))
     {

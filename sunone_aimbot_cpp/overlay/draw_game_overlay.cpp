@@ -132,98 +132,93 @@ void draw_game_overlay_settings()
         if (ImGui::Checkbox("Enable Icon Overlay", &config.game_overlay_icon_enabled))
             OverlayConfig_MarkDirty();
 
-        if (OverlayUI::BeginSubsection("Icon Overlay Settings##game_overlay_icon_settings"))
+        if (!config.game_overlay_icon_enabled)
         {
-            if (!config.game_overlay_icon_enabled)
-            {
-                ImGui::BeginDisabled();
-            }
+            ImGui::BeginDisabled();
+        }
 
-            static bool pathInit = false;
-            static char iconPathBuf[512];
+        static bool pathInit = false;
+        static char iconPathBuf[512];
 
-            if (!pathInit)
-            {
-                pathInit = true;
-                memset(iconPathBuf, 0, sizeof(iconPathBuf));
-                std::string p = config.game_overlay_icon_path;
-                if (p.size() >= sizeof(iconPathBuf)) p = p.substr(0, sizeof(iconPathBuf) - 1);
-                memcpy(iconPathBuf, p.c_str(), p.size());
-            }
+        if (!pathInit)
+        {
+            pathInit = true;
+            memset(iconPathBuf, 0, sizeof(iconPathBuf));
+            std::string p = config.game_overlay_icon_path;
+            if (p.size() >= sizeof(iconPathBuf)) p = p.substr(0, sizeof(iconPathBuf) - 1);
+            memcpy(iconPathBuf, p.c_str(), p.size());
+        }
 
-            if (ImGui::InputText("Icon Path", iconPathBuf, IM_ARRAYSIZE(iconPathBuf)))
+        if (ImGui::InputText("Icon Path", iconPathBuf, IM_ARRAYSIZE(iconPathBuf)))
+        {
+            config.game_overlay_icon_path = iconPathBuf;
+            OverlayConfig_MarkDirty();
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Browse##icon_path"))
+        {
+            char filePath[MAX_PATH] = {};
+            OPENFILENAMEA ofn = {};
+            ofn.lStructSize = sizeof(ofn);
+            ofn.hwndOwner = nullptr;
+            ofn.lpstrFile = filePath;
+            ofn.nMaxFile = sizeof(filePath);
+            ofn.lpstrFilter = "Image Files\0*.png;*.jpg;*.jpeg;*.bmp;*.ico\0All Files\0*.*\0";
+            ofn.nFilterIndex = 1;
+            ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+
+            if (GetOpenFileNameA(&ofn))
             {
+                strncpy_s(iconPathBuf, filePath, sizeof(iconPathBuf) - 1);
                 config.game_overlay_icon_path = iconPathBuf;
                 OverlayConfig_MarkDirty();
             }
+        }
 
-            ImGui::SameLine();
-            if (ImGui::Button("Browse##icon_path"))
+        ImGui::SliderInt("Icon Width", &config.game_overlay_icon_width, 4, 512);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            OverlayConfig_MarkDirty();
+
+        ImGui::SliderInt("Icon Height", &config.game_overlay_icon_height, 4, 512);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            OverlayConfig_MarkDirty();
+
+        ImGui::SliderFloat("Icon Offset X", &config.game_overlay_icon_offset_x, -500.0f, 500.0f, "%.1f");
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            OverlayConfig_MarkDirty();
+
+        ImGui::SliderFloat("Icon Offset Y", &config.game_overlay_icon_offset_y, -500.0f, 500.0f, "%.1f");
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            OverlayConfig_MarkDirty();
+
+        if (ImGui::InputInt("Icon Class (-1 = all)", &config.game_overlay_icon_class))
+        {
+            if (config.game_overlay_icon_class < -1) config.game_overlay_icon_class = -1;
+            OverlayConfig_MarkDirty();
+        }
+
+        const char* anchors[] = { "center", "top", "bottom", "head" };
+        int currentAnchor = 0;
+        for (int i = 0; i < (int)(sizeof(anchors) / sizeof(anchors[0])); ++i)
+        {
+            if (config.game_overlay_icon_anchor == anchors[i])
             {
-                char filePath[MAX_PATH] = {};
-                OPENFILENAMEA ofn = {};
-                ofn.lStructSize = sizeof(ofn);
-                ofn.hwndOwner = nullptr;
-                ofn.lpstrFile = filePath;
-                ofn.nMaxFile = sizeof(filePath);
-                ofn.lpstrFilter = "Image Files\0*.png;*.jpg;*.jpeg;*.bmp;*.ico\0All Files\0*.*\0";
-                ofn.nFilterIndex = 1;
-                ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
-
-                if (GetOpenFileNameA(&ofn))
-                {
-                    strncpy_s(iconPathBuf, filePath, sizeof(iconPathBuf) - 1);
-                    config.game_overlay_icon_path = iconPathBuf;
-                    OverlayConfig_MarkDirty();
-                }
+                currentAnchor = i;
+                break;
             }
+        }
 
-            ImGui::SliderInt("Icon Width", &config.game_overlay_icon_width, 4, 512);
-            if (ImGui::IsItemDeactivatedAfterEdit())
-                OverlayConfig_MarkDirty();
+        if (ImGui::Combo("Icon Anchor", &currentAnchor, anchors, IM_ARRAYSIZE(anchors)))
+        {
+            config.game_overlay_icon_anchor = anchors[currentAnchor];
+            OverlayConfig_MarkDirty();
+        }
 
-            ImGui::SliderInt("Icon Height", &config.game_overlay_icon_height, 4, 512);
-            if (ImGui::IsItemDeactivatedAfterEdit())
-                OverlayConfig_MarkDirty();
-
-            ImGui::SliderFloat("Icon Offset X", &config.game_overlay_icon_offset_x, -500.0f, 500.0f, "%.1f");
-            if (ImGui::IsItemDeactivatedAfterEdit())
-                OverlayConfig_MarkDirty();
-
-            ImGui::SliderFloat("Icon Offset Y", &config.game_overlay_icon_offset_y, -500.0f, 500.0f, "%.1f");
-            if (ImGui::IsItemDeactivatedAfterEdit())
-                OverlayConfig_MarkDirty();
-
-            if (ImGui::InputInt("Icon Class (-1 = all)", &config.game_overlay_icon_class))
-            {
-                if (config.game_overlay_icon_class < -1) config.game_overlay_icon_class = -1;
-                OverlayConfig_MarkDirty();
-            }
-
-            const char* anchors[] = { "center", "top", "bottom", "head" };
-            int currentAnchor = 0;
-            for (int i = 0; i < (int)(sizeof(anchors) / sizeof(anchors[0])); ++i)
-            {
-                if (config.game_overlay_icon_anchor == anchors[i])
-                {
-                    currentAnchor = i;
-                    break;
-                }
-            }
-
-            if (ImGui::Combo("Icon Anchor", &currentAnchor, anchors, IM_ARRAYSIZE(anchors)))
-            {
-                config.game_overlay_icon_anchor = anchors[currentAnchor];
-                OverlayConfig_MarkDirty();
-            }
-
-            if (!config.game_overlay_icon_enabled)
-            {
-                ImGui::EndDisabled();
-                ImGui::TextDisabled("Enable Icon Overlay to edit this section.");
-            }
-
-            OverlayUI::EndSubsection();
+        if (!config.game_overlay_icon_enabled)
+        {
+            ImGui::EndDisabled();
+            ImGui::TextDisabled("Enable Icon Overlay to edit settings.");
         }
 
         OverlayUI::EndSection();
@@ -234,173 +229,168 @@ void draw_game_overlay_settings()
         if (ImGui::Checkbox("Enable Aim Simulation Window", &config.aim_sim_enabled))
             OverlayConfig_MarkDirty();
 
-        if (OverlayUI::BeginSubsection("Aim Simulation Settings##game_overlay_aim_sim_settings"))
+        if (!config.aim_sim_enabled)
         {
-            if (!config.aim_sim_enabled)
+            ImGui::BeginDisabled();
+        }
+
+        ImGui::SliderInt("Sim X", &config.aim_sim_x, -3000, 3000);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            OverlayConfig_MarkDirty();
+
+        ImGui::SliderInt("Sim Y", &config.aim_sim_y, -3000, 3000);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            OverlayConfig_MarkDirty();
+
+        ImGui::SliderInt("Sim Width", &config.aim_sim_width, 220, 1600);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            OverlayConfig_MarkDirty();
+
+        ImGui::SliderInt("Sim Height", &config.aim_sim_height, 180, 1000);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            OverlayConfig_MarkDirty();
+
+        if (ImGui::SliderInt("Sim FPS Min", &config.aim_sim_fps_min, 15, 360))
+        {
+            if (config.aim_sim_fps_min > config.aim_sim_fps_max)
+                config.aim_sim_fps_max = config.aim_sim_fps_min;
+            OverlayConfig_MarkDirty();
+        }
+
+        if (ImGui::SliderInt("Sim FPS Max", &config.aim_sim_fps_max, 15, 360))
+        {
+            if (config.aim_sim_fps_max < config.aim_sim_fps_min)
+                config.aim_sim_fps_min = config.aim_sim_fps_max;
+            OverlayConfig_MarkDirty();
+        }
+
+        if (ImGui::SliderFloat("FPS Jitter", &config.aim_sim_fps_jitter, 0.0f, 0.8f, "%.3f"))
+            OverlayConfig_MarkDirty();
+
+        if (ImGui::SliderFloat("Capture Delay (ms)", &config.aim_sim_capture_delay_ms, 0.0f, 80.0f, "%.1f"))
+            OverlayConfig_MarkDirty();
+
+        static bool delayedSnapshotPending = false;
+        static double delayedSnapshotApplyAt = 0.0;
+        const auto apply_snapshot_metrics = []()
+        {
+            float current_preprocess = 0.0f;
+            float current_inference = 0.0f;
+            float current_copy = 0.0f;
+            float current_post = 0.0f;
+            float current_nms = 0.0f;
+            bool hasTimingMetrics = false;
+
+            if (config.backend == "DML" && dml_detector)
             {
-                ImGui::BeginDisabled();
+                current_preprocess = static_cast<float>(dml_detector->lastPreprocessTimeDML.count());
+                current_inference = static_cast<float>(dml_detector->lastInferenceTimeDML.count());
+                current_copy = static_cast<float>(dml_detector->lastCopyTimeDML.count());
+                current_post = static_cast<float>(dml_detector->lastPostprocessTimeDML.count());
+                current_nms = static_cast<float>(dml_detector->lastNmsTimeDML.count());
+                hasTimingMetrics = true;
             }
-
-            ImGui::SliderInt("Sim X", &config.aim_sim_x, -3000, 3000);
-            if (ImGui::IsItemDeactivatedAfterEdit())
-                OverlayConfig_MarkDirty();
-
-            ImGui::SliderInt("Sim Y", &config.aim_sim_y, -3000, 3000);
-            if (ImGui::IsItemDeactivatedAfterEdit())
-                OverlayConfig_MarkDirty();
-
-            ImGui::SliderInt("Sim Width", &config.aim_sim_width, 220, 1600);
-            if (ImGui::IsItemDeactivatedAfterEdit())
-                OverlayConfig_MarkDirty();
-
-            ImGui::SliderInt("Sim Height", &config.aim_sim_height, 180, 1000);
-            if (ImGui::IsItemDeactivatedAfterEdit())
-                OverlayConfig_MarkDirty();
-
-            if (ImGui::SliderInt("Sim FPS Min", &config.aim_sim_fps_min, 15, 360))
-            {
-                if (config.aim_sim_fps_min > config.aim_sim_fps_max)
-                    config.aim_sim_fps_max = config.aim_sim_fps_min;
-                OverlayConfig_MarkDirty();
-            }
-
-            if (ImGui::SliderInt("Sim FPS Max", &config.aim_sim_fps_max, 15, 360))
-            {
-                if (config.aim_sim_fps_max < config.aim_sim_fps_min)
-                    config.aim_sim_fps_min = config.aim_sim_fps_max;
-                OverlayConfig_MarkDirty();
-            }
-
-            if (ImGui::SliderFloat("FPS Jitter", &config.aim_sim_fps_jitter, 0.0f, 0.8f, "%.3f"))
-                OverlayConfig_MarkDirty();
-
-            if (ImGui::SliderFloat("Capture Delay (ms)", &config.aim_sim_capture_delay_ms, 0.0f, 80.0f, "%.1f"))
-                OverlayConfig_MarkDirty();
-
-            static bool delayedSnapshotPending = false;
-            static double delayedSnapshotApplyAt = 0.0;
-            const auto apply_snapshot_metrics = []()
-            {
-                float current_preprocess = 0.0f;
-                float current_inference = 0.0f;
-                float current_copy = 0.0f;
-                float current_post = 0.0f;
-                float current_nms = 0.0f;
-                bool hasTimingMetrics = false;
-
-                if (config.backend == "DML" && dml_detector)
-                {
-                    current_preprocess = static_cast<float>(dml_detector->lastPreprocessTimeDML.count());
-                    current_inference = static_cast<float>(dml_detector->lastInferenceTimeDML.count());
-                    current_copy = static_cast<float>(dml_detector->lastCopyTimeDML.count());
-                    current_post = static_cast<float>(dml_detector->lastPostprocessTimeDML.count());
-                    current_nms = static_cast<float>(dml_detector->lastNmsTimeDML.count());
-                    hasTimingMetrics = true;
-                }
 #ifdef USE_CUDA
-                else
-                {
-                    current_preprocess = static_cast<float>(trt_detector.lastPreprocessTime.count());
-                    current_inference = static_cast<float>(trt_detector.lastInferenceTime.count());
-                    current_copy = static_cast<float>(trt_detector.lastCopyTime.count());
-                    current_post = static_cast<float>(trt_detector.lastPostprocessTime.count());
-                    current_nms = static_cast<float>(trt_detector.lastNmsTime.count());
-                    hasTimingMetrics = true;
-                }
+            else
+            {
+                current_preprocess = static_cast<float>(trt_detector.lastPreprocessTime.count());
+                current_inference = static_cast<float>(trt_detector.lastInferenceTime.count());
+                current_copy = static_cast<float>(trt_detector.lastCopyTime.count());
+                current_post = static_cast<float>(trt_detector.lastPostprocessTime.count());
+                current_nms = static_cast<float>(trt_detector.lastNmsTime.count());
+                hasTimingMetrics = true;
+            }
 #endif
 
-                const auto clampf = [](float v, float lo, float hi) -> float
-                {
-                    if (v < lo) return lo;
-                    if (v > hi) return hi;
-                    return v;
-                };
-
-                const float fpsNow = static_cast<float>(captureFps.load());
-                if (fpsNow > 1.0f)
-                {
-                    const float captureDelayMs = 1000.0f / fpsNow;
-                    config.aim_sim_capture_delay_ms = clampf(captureDelayMs, 0.0f, 80.0f);
-                }
-
-                if (hasTimingMetrics && current_inference > 0.0f)
-                    config.aim_sim_inference_delay_ms = clampf(current_inference, 0.0f, 120.0f);
-
-                if (hasTimingMetrics)
-                {
-                    const float extraDelayMs = current_preprocess + current_copy + current_post + current_nms;
-                    config.aim_sim_extra_delay_ms = clampf(extraDelayMs, 0.0f, 60.0f);
-                }
-
-                OverlayConfig_MarkDirty();
+            const auto clampf = [](float v, float lo, float hi) -> float
+            {
+                if (v < lo) return lo;
+                if (v > hi) return hi;
+                return v;
             };
 
-            if (delayedSnapshotPending && ImGui::GetTime() >= delayedSnapshotApplyAt)
+            const float fpsNow = static_cast<float>(captureFps.load());
+            if (fpsNow > 1.0f)
             {
-                apply_snapshot_metrics();
-                delayedSnapshotPending = false;
+                const float captureDelayMs = 1000.0f / fpsNow;
+                config.aim_sim_capture_delay_ms = clampf(captureDelayMs, 0.0f, 80.0f);
             }
 
-            if (ImGui::Checkbox("Use Live Inference Delay", &config.aim_sim_use_live_inference))
-                OverlayConfig_MarkDirty();
+            if (hasTimingMetrics && current_inference > 0.0f)
+                config.aim_sim_inference_delay_ms = clampf(current_inference, 0.0f, 120.0f);
+
+            if (hasTimingMetrics)
+            {
+                const float extraDelayMs = current_preprocess + current_copy + current_post + current_nms;
+                config.aim_sim_extra_delay_ms = clampf(extraDelayMs, 0.0f, 60.0f);
+            }
+
+            OverlayConfig_MarkDirty();
+        };
+
+        if (delayedSnapshotPending && ImGui::GetTime() >= delayedSnapshotApplyAt)
+        {
+            apply_snapshot_metrics();
+            delayedSnapshotPending = false;
+        }
+
+        if (ImGui::Checkbox("Use Live Inference Delay", &config.aim_sim_use_live_inference))
+            OverlayConfig_MarkDirty();
+        ImGui::SameLine();
+        if (ImGui::Button("Snapshot Metrics"))
+            apply_snapshot_metrics();
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Capture Delay <- 1000/FPS\n"
+                "Inference Delay <- current backend inference\n"
+                "Extra Delay <- preprocess + copy + postprocess + NMS"
+            );
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Snapshot in 4s"))
+        {
+            delayedSnapshotPending = true;
+            delayedSnapshotApplyAt = ImGui::GetTime() + 4.0;
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Start 4-second timer, then snapshot metrics automatically.");
+
+        if (delayedSnapshotPending)
+        {
+            const double remaining = std::max(0.0, delayedSnapshotApplyAt - ImGui::GetTime());
             ImGui::SameLine();
-            if (ImGui::Button("Snapshot Metrics"))
-                apply_snapshot_metrics();
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::SetTooltip(
-                    "Capture Delay <- 1000/FPS\n"
-                    "Inference Delay <- current backend inference\n"
-                    "Extra Delay <- preprocess + copy + postprocess + NMS"
-                );
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Snapshot in 4s"))
-            {
-                delayedSnapshotPending = true;
-                delayedSnapshotApplyAt = ImGui::GetTime() + 4.0;
-            }
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Start 4-second timer, then snapshot metrics automatically.");
+            ImGui::TextDisabled("Auto in %.1fs", static_cast<float>(remaining));
+        }
 
-            if (delayedSnapshotPending)
-            {
-                const double remaining = std::max(0.0, delayedSnapshotApplyAt - ImGui::GetTime());
-                ImGui::SameLine();
-                ImGui::TextDisabled("Auto in %.1fs", static_cast<float>(remaining));
-            }
+        if (ImGui::SliderFloat("Inference Delay (ms)", &config.aim_sim_inference_delay_ms, 0.0f, 120.0f, "%.1f"))
+            OverlayConfig_MarkDirty();
 
-            if (ImGui::SliderFloat("Inference Delay (ms)", &config.aim_sim_inference_delay_ms, 0.0f, 120.0f, "%.1f"))
-                OverlayConfig_MarkDirty();
+        if (ImGui::SliderFloat("Input Delay (ms)", &config.aim_sim_input_delay_ms, 0.0f, 60.0f, "%.1f"))
+            OverlayConfig_MarkDirty();
 
-            if (ImGui::SliderFloat("Input Delay (ms)", &config.aim_sim_input_delay_ms, 0.0f, 60.0f, "%.1f"))
-                OverlayConfig_MarkDirty();
+        if (ImGui::SliderFloat("Extra Delay (ms)", &config.aim_sim_extra_delay_ms, 0.0f, 60.0f, "%.1f"))
+            OverlayConfig_MarkDirty();
 
-            if (ImGui::SliderFloat("Extra Delay (ms)", &config.aim_sim_extra_delay_ms, 0.0f, 60.0f, "%.1f"))
-                OverlayConfig_MarkDirty();
+        if (ImGui::SliderFloat("Target Max Speed", &config.aim_sim_target_max_speed, 20.0f, 2500.0f, "%.0f"))
+            OverlayConfig_MarkDirty();
 
-            if (ImGui::SliderFloat("Target Max Speed", &config.aim_sim_target_max_speed, 20.0f, 2500.0f, "%.0f"))
-                OverlayConfig_MarkDirty();
+        if (ImGui::SliderFloat("Target Accel", &config.aim_sim_target_accel, 20.0f, 10000.0f, "%.0f"))
+            OverlayConfig_MarkDirty();
 
-            if (ImGui::SliderFloat("Target Accel", &config.aim_sim_target_accel, 20.0f, 10000.0f, "%.0f"))
-                OverlayConfig_MarkDirty();
+        if (ImGui::SliderFloat("Target Stop Chance", &config.aim_sim_target_stop_chance, 0.0f, 0.95f, "%.2f"))
+            OverlayConfig_MarkDirty();
 
-            if (ImGui::SliderFloat("Target Stop Chance", &config.aim_sim_target_stop_chance, 0.0f, 0.95f, "%.2f"))
-                OverlayConfig_MarkDirty();
+        if (ImGui::Checkbox("Show Delayed Observation", &config.aim_sim_show_observed))
+            OverlayConfig_MarkDirty();
 
-            if (ImGui::Checkbox("Show Delayed Observation", &config.aim_sim_show_observed))
-                OverlayConfig_MarkDirty();
+        if (ImGui::Checkbox("Show Trajectory History", &config.aim_sim_show_history))
+            OverlayConfig_MarkDirty();
 
-            if (ImGui::Checkbox("Show Trajectory History", &config.aim_sim_show_history))
-                OverlayConfig_MarkDirty();
-
-            if (!config.aim_sim_enabled)
-            {
-                ImGui::EndDisabled();
-                ImGui::TextDisabled("Enable Aim Simulation Window to edit this section.");
-            }
-
-            OverlayUI::EndSubsection();
+        if (!config.aim_sim_enabled)
+        {
+            ImGui::EndDisabled();
+            ImGui::TextDisabled("Enable Aim Simulation Window to edit settings.");
         }
 
         OverlayUI::EndSection();
