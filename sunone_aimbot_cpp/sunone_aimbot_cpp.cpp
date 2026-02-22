@@ -2094,15 +2094,15 @@ int main()
 
         if (config.capture_method == "virtual_camera")
         {
-            auto cams = VirtualCameraCapture::GetAvailableVirtualCameras();
+            auto cams = VirtualCameraCapture::GetAvailableVirtualCameras(true);
             if (!cams.empty())
             {
-                if (config.virtual_camera_name == "None" ||
+                if (config.virtual_camera_name != "None" &&
                     std::find(cams.begin(), cams.end(), config.virtual_camera_name) == cams.end())
                 {
-                    config.virtual_camera_name = cams[0];
+                    config.virtual_camera_name = "None";
                     config.saveConfig("config.ini");
-                    std::cout << "[MAIN] Set virtual_camera_name = " << config.virtual_camera_name << std::endl;
+                    std::cout << "[MAIN] virtual_camera_name reset to None (auto-select)." << std::endl;
                 }
                 std::cout << "[MAIN] Virtual cameras loaded: " << cams.size() << std::endl;
             }

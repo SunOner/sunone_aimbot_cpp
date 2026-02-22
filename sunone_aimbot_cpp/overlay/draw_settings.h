@@ -2,6 +2,7 @@
 #define DRAW_SETTINGS_H
 
 void draw_capture_settings();
+void draw_capture_preview();
 void draw_target();
 void draw_mouse();
 void draw_ai();

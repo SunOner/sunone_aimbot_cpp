@@ -156,6 +156,8 @@ void draw_capture_settings()
         OverlayUI::EndSection();
     }
 
+    draw_capture_preview();
+
     if (config.capture_method == "winrt")
     {
         if (OverlayUI::BeginSection("WinRT", "capture_section_winrt"))

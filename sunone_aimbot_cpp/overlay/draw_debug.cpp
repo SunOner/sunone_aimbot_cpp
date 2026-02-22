@@ -320,18 +320,26 @@ void draw_debug_frame()
     }
 }
 
-void draw_debug()
+void draw_capture_preview()
 {
-    if (OverlayUI::BeginSection("Debug Window", "debug_section_debug_window"))
+    if (OverlayUI::BeginSection("Capture Preview", "capture_section_preview"))
     {
-        ImGui::Checkbox("Show Debug Window", &config.show_window);
+        if (ImGui::Checkbox("Show Preview Window", &config.show_window))
+        {
+            OverlayConfig_MarkDirty();
+        }
+
         if (config.show_window)
         {
             draw_debug_frame();
         }
+
         OverlayUI::EndSection();
     }
+}
 
+void draw_debug()
+{
     if (OverlayUI::BeginSection("Screenshot Buttons", "debug_section_screenshot_buttons"))
     {
         if (drawScreenshotButtonRows())

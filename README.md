@@ -310,28 +310,6 @@ sunone_aimbot_cpp/
 
 ---
 
-## UDP Capture (Network)
-
-This mode receives an MJPEG byte stream over UDP and decodes JPEG frames on the receiver PC.
-
-**Receiver (this app)**
-1. Open the overlay and set `capture_method = udp_capture`.
-2. Set `udp_ip` to the sender PC IP (filter) and `udp_port` to the listening port (default `1234`).
-
-**Sender (other PC)**
-Send MJPEG over UDP to the receiver. Example using FFmpeg on Windows:
-
-```bash
-ffmpeg -f gdigrab -framerate 60 -i desktop -vf scale=320:320 -vcodec mjpeg -f mjpeg udp://RECEIVER_IP:1234
-```
-
-Notes:
-* Use the receiver IP in the command above.
-* It is best to match the stream size to your detection resolution (160/320/640).
-* Make sure the UDP port is allowed by your firewall on the receiver PC.
-
----
-
 ## 📋 Configuration
 
 * See all configuration options and documentation here:

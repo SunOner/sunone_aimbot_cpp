@@ -72,6 +72,7 @@ struct CaptureThreadConfig
     std::string backend;
     std::vector<std::string> screenshot_button;
     int screenshot_delay = 0;
+    bool show_window = false;
     bool verbose = false;
 #ifdef USE_CUDA
     bool depth_inference_enabled = false;
@@ -105,6 +106,7 @@ CaptureThreadConfig SnapshotCaptureConfig()
     snapshot.backend = config.backend;
     snapshot.screenshot_button = config.screenshot_button;
     snapshot.screenshot_delay = config.screenshot_delay;
+    snapshot.show_window = config.show_window;
     snapshot.verbose = config.verbose;
 #ifdef USE_CUDA
     snapshot.depth_inference_enabled = config.depth_inference_enabled;
@@ -299,53 +301,104 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
         WinrtApartmentGuard winrtApartment;
         auto createCapturer = [&](const CaptureThreadConfig& cfg, int width, int height) -> std::unique_ptr<IScreenCapture>
         {
-            const std::string method = NormalizeCaptureMethod(cfg.capture_method);
-            if (method != cfg.capture_method)
-                std::cout << "[Capture] Unknown capture_method '" << cfg.capture_method << "'. Falling back to duplication_api." << std::endl;
-
-            winrtApartment.Ensure(method == "winrt");
-
-            if (method == "duplication_api")
+            try
             {
-                if (cfg.verbose)
-                    std::cout << "[Capture] Using Duplication API" << std::endl;
-                return std::make_unique<DuplicationAPIScreenCapture>(width, height, cfg.monitor_idx);
-            }
+                const std::string method = NormalizeCaptureMethod(cfg.capture_method);
+                if (method != cfg.capture_method)
+                    std::cout << "[Capture] Unknown capture_method '" << cfg.capture_method << "'. Falling back to duplication_api." << std::endl;
 
-            if (method == "winrt")
+                if (method == "duplication_api")
+                {
+                    if (cfg.verbose)
+                        std::cout << "[Capture] Using Duplication API" << std::endl;
+                    return std::make_unique<DuplicationAPIScreenCapture>(width, height, cfg.monitor_idx);
+                }
+
+                if (method == "winrt")
+                {
+                    if (cfg.verbose)
+                        std::cout << "[Capture] Using WinRT" << std::endl;
+
+                    WinRTScreenCapture::Options options;
+                    options.target = cfg.capture_target;
+                    options.windowTitle = cfg.capture_window_title;
+                    options.monitorIndex = cfg.monitor_idx;
+                    options.captureBorders = cfg.capture_borders;
+                    options.captureCursor = cfg.capture_cursor;
+
+                    return std::make_unique<WinRTScreenCapture>(width, height, options);
+                }
+
+                if (method == "virtual_camera")
+                {
+                    if (cfg.verbose)
+                        std::cout << "[Capture] Using Virtual Camera" << std::endl;
+                    return std::make_unique<VirtualCameraCapture>(
+                        cfg.virtual_camera_width,
+                        cfg.virtual_camera_heigth,
+                        cfg.virtual_camera_name,
+                        cfg.capture_fps,
+                        cfg.verbose
+                    );
+                }
+
+                if (cfg.verbose)
+                    std::cout << "[Capture] Using UDP capture" << std::endl;
+                return std::make_unique<UDPCapture>(width, height, cfg.udp_ip, cfg.udp_port);
+            }
+            catch (const std::exception& e)
             {
-                if (cfg.verbose)
-                    std::cout << "[Capture] Using WinRT" << std::endl;
-
-                WinRTScreenCapture::Options options;
-                options.target = cfg.capture_target;
-                options.windowTitle = cfg.capture_window_title;
-                options.monitorIndex = cfg.monitor_idx;
-                options.captureBorders = cfg.capture_borders;
-                options.captureCursor = cfg.capture_cursor;
-
-                return std::make_unique<WinRTScreenCapture>(width, height, options);
+                std::cerr << "[Capture] Failed to initialize '" << cfg.capture_method
+                    << "' capture: " << e.what() << std::endl;
+                return nullptr;
             }
-
-            if (method == "virtual_camera")
-            {
-                if (cfg.verbose)
-                    std::cout << "[Capture] Using Virtual Camera" << std::endl;
-                return std::make_unique<VirtualCameraCapture>(
-                    cfg.virtual_camera_width,
-                    cfg.virtual_camera_heigth,
-                    cfg.virtual_camera_name,
-                    cfg.capture_fps,
-                    cfg.verbose
-                );
-            }
-
-            if (cfg.verbose)
-                std::cout << "[Capture] Using UDP capture" << std::endl;
-            return std::make_unique<UDPCapture>(width, height, cfg.udp_ip, cfg.udp_port);
         };
 
+        std::string desiredCaptureMethod = NormalizeCaptureMethod(currentCfg.capture_method);
+        winrtApartment.Ensure(desiredCaptureMethod == "winrt");
+
         std::unique_ptr<IScreenCapture> capturer = createCapturer(currentCfg, captureWidth, captureHeight);
+        std::string activeCapturerMethod = capturer ? desiredCaptureMethod : std::string();
+        auto lastCapturerCreateAttempt = std::chrono::steady_clock::now();
+
+        auto clearCaptureFrames = [&]()
+        {
+            std::lock_guard<std::mutex> lock(frameMutex);
+            latestFrame.release();
+            frameQueue.clear();
+        };
+
+        auto clearDetections = [&]()
+        {
+            std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
+            detectionBuffer.boxes.clear();
+            detectionBuffer.classes.clear();
+            detectionBuffer.version++;
+            detectionBuffer.cv.notify_all();
+        };
+
+        auto markCaptureUnavailable = [&]()
+        {
+            clearCaptureFrames();
+            clearDetections();
+            frameCV.notify_one();
+        };
+
+        bool captureUnavailable = false;
+        auto setCaptureUnavailable = [&]()
+        {
+            if (captureUnavailable)
+                return;
+            captureUnavailable = true;
+            markCaptureUnavailable();
+        };
+        auto setCaptureAvailable = [&]()
+        {
+            captureUnavailable = false;
+        };
+
+        // Do not keep stale preview/detections from previous capture state.
+        setCaptureUnavailable();
 
         TimerResolutionGuard timerResolution;
         std::optional<std::chrono::steady_clock::duration> frameDuration;
@@ -384,10 +437,14 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
         ScreenshotWriter screenshotWriter;
         auto lastSaveTime = std::chrono::steady_clock::now();
+        auto lastSuccessfulFrameTime = std::chrono::steady_clock::now();
+        constexpr auto staleFrameTimeout = std::chrono::milliseconds(500);
 
         while (!shouldExit)
         {
-            currentCfg = SnapshotCaptureConfig();
+            try
+            {
+                currentCfg = SnapshotCaptureConfig();
 
             if (capture_fps_changed.exchange(false))
             {
@@ -403,19 +460,73 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
             if (needsReinit)
             {
+                setCaptureUnavailable();
+
                 if (currentCfg.detection_resolution > 0)
                 {
                     captureWidth = currentCfg.detection_resolution;
                     captureHeight = currentCfg.detection_resolution;
                 }
 
+                const std::string nextMethod = NormalizeCaptureMethod(currentCfg.capture_method);
+                desiredCaptureMethod = nextMethod;
+                const bool nextNeedsWinrt = (nextMethod == "winrt");
+
+                // Always teardown current backend first to avoid overlap between old/new capture objects.
+                // WinRT must be destroyed before apartment teardown.
+                if (capturer)
+                {
+                    const bool activeWasWinrt = (activeCapturerMethod == "winrt");
+                    capturer.reset();
+                    activeCapturerMethod.clear();
+                    if (activeWasWinrt && !nextNeedsWinrt)
+                        winrtApartment.Ensure(false);
+                }
+
+                winrtApartment.Ensure(nextNeedsWinrt);
+
+                if (nextMethod == "virtual_camera")
+                    VirtualCameraCapture::GetAvailableVirtualCameras(true);
+
                 capturer = createCapturer(currentCfg, captureWidth, captureHeight);
+                if (capturer)
+                    activeCapturerMethod = nextMethod;
+                else
+                    activeCapturerMethod.clear();
+
+                lastCapturerCreateAttempt = std::chrono::steady_clock::now();
                 if (currentCfg.verbose)
                     std::cout << "[Capture] Reinitialized capture backend." << std::endl;
             }
 
             if (!capturer)
             {
+                const auto now = std::chrono::steady_clock::now();
+                if (now - lastCapturerCreateAttempt >= std::chrono::seconds(1))
+                {
+                    desiredCaptureMethod = NormalizeCaptureMethod(currentCfg.capture_method);
+                    winrtApartment.Ensure(desiredCaptureMethod == "winrt");
+
+                    if (desiredCaptureMethod == "virtual_camera")
+                        VirtualCameraCapture::GetAvailableVirtualCameras(true);
+
+                    capturer = createCapturer(currentCfg, captureWidth, captureHeight);
+                    lastCapturerCreateAttempt = now;
+
+                    if (capturer)
+                    {
+                        activeCapturerMethod = desiredCaptureMethod;
+                        lastSuccessfulFrameTime = now;
+                        if (currentCfg.verbose)
+                            std::cout << "[Capture] Capture backend recovered." << std::endl;
+                    }
+                    else
+                    {
+                        activeCapturerMethod.clear();
+                    }
+                }
+
+                setCaptureUnavailable();
                 if (!frameDuration.has_value())
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 applyFrameLimiter();
@@ -432,6 +543,9 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 screenshotEnabled &&
                 isAnyKeyPressed(currentCfg.screenshot_button) &&
                 screenshotElapsedMs >= currentCfg.screenshot_delay;
+#ifdef USE_CUDA
+            const bool needCpuCopyFromGpu = screenshotRequested || currentCfg.show_window;
+#endif
 
             cv::Mat screenshotCpu;
             cv::Mat detectionFrame;
@@ -472,7 +586,7 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                         trt_detector.processFrameGpu(screenshotGpu);
                         frameSubmittedToDetector = true;
 
-                        if (screenshotRequested)
+                        if (needCpuCopyFromGpu)
                             screenshotGpu.download(screenshotCpu);
                     }
                 }
@@ -485,6 +599,10 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
                 if (screenshotCpu.empty())
                 {
+                    const auto now = std::chrono::steady_clock::now();
+                    if (now - lastSuccessfulFrameTime >= staleFrameTimeout)
+                        setCaptureUnavailable();
+
                     if (!frameDuration.has_value())
                         std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     applyFrameLimiter();
@@ -571,6 +689,12 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 #endif
             }
 
+            if (frameSubmittedToDetector || !screenshotCpu.empty())
+            {
+                lastSuccessfulFrameTime = std::chrono::steady_clock::now();
+                setCaptureAvailable();
+            }
+
             if (!screenshotCpu.empty())
             {
                 std::lock_guard<std::mutex> lock(frameMutex);
@@ -605,7 +729,26 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 captureFpsStartTime = currentTime;
             }
 
-            applyFrameLimiter();
+                applyFrameLimiter();
+            }
+            catch (const std::exception& e)
+            {
+                std::cerr << "[Capture] Loop exception: " << e.what() << std::endl;
+                capturer.reset();
+                activeCapturerMethod.clear();
+                winrtApartment.Ensure(false);
+                setCaptureUnavailable();
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+            catch (...)
+            {
+                std::cerr << "[Capture] Loop exception: unknown." << std::endl;
+                capturer.reset();
+                activeCapturerMethod.clear();
+                winrtApartment.Ensure(false);
+                setCaptureUnavailable();
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
         }
     }
     catch (const std::exception& e)

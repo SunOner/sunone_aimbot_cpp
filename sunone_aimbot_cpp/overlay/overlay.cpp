@@ -324,7 +324,7 @@ static const OverlayTabItem kOverlayTabs[] = {
     { "Overlay",       "Control", "Editor appearance and privacy options.",              draw_overlay },
     { "Game Overlay",  "Control", "In-game render visuals and simulation options.",      draw_game_overlay_settings },
     { "Stats",         "Monitor", "Performance and timing graphs.",                      draw_stats },
-    { "Debug",         "Monitor", "Debug frame, screenshots and diagnostics.",           draw_debug },
+    { "Debug",         "Monitor", "Screenshot bindings and diagnostics.",                draw_debug },
 };
 
 static void DrawMainPanelBackground(const ImVec2& pos, const ImVec2& size)
