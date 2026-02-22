@@ -98,6 +98,7 @@ public:
     bool use_pinned_memory;
     int gpuMemoryReserveMB;
     bool enableGpuExclusiveMode;
+    bool capture_use_cuda;
 #endif
 
     // System

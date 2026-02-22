@@ -28,6 +28,7 @@ public:
     ~TrtDetector();
     void initialize(const std::string& modelFile);
     void processFrame(const cv::Mat& frame);
+    void processFrameGpu(const cv::cuda::GpuMat& frame);
     void inferenceThread();
 
     float img_scale;
@@ -65,11 +66,21 @@ private:
     std::condition_variable inferenceCV;
     std::atomic<bool> shouldExit;
     cv::Mat currentFrame;
+    cv::cuda::GpuMat currentFrameGpu;
     bool frameReady;
+
+    enum class PendingFrameType
+    {
+        None = 0,
+        Cpu = 1,
+        Gpu = 2
+    };
+    PendingFrameType pendingFrameType = PendingFrameType::None;
 
     void loadEngine(const std::string& engineFile);
 
     void preProcess(const cv::Mat& frame);
+    void preProcess(const cv::cuda::GpuMat& frame);
 
     cv::cuda::GpuMat gpuFrameBuffer;
     cv::cuda::GpuMat gpuResizedBuffer;

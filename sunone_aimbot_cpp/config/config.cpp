@@ -151,6 +151,7 @@ bool Config::loadConfig(const std::string& filename)
         use_pinned_memory = false;
         gpuMemoryReserveMB = 2048;
         enableGpuExclusiveMode = true;
+        capture_use_cuda = true;
 #endif
 
         // System
@@ -442,6 +443,7 @@ bool Config::loadConfig(const std::string& filename)
     use_pinned_memory = get_bool("use_pinned_memory", true);
     gpuMemoryReserveMB = get_long("gpuMemoryReserveMB", 2048);
     enableGpuExclusiveMode = get_bool("enableGpuExclusiveMode", true);
+    capture_use_cuda = get_bool("capture_use_cuda", true);
 #endif
 
     // System
@@ -699,7 +701,8 @@ bool Config::saveConfig(const std::string& filename)
         << "use_cuda_graph = " << (use_cuda_graph ? "true" : "false") << "\n"
         << "use_pinned_memory = " << (use_pinned_memory ? "true" : "false") << "\n"
         << "gpuMemoryReserveMB = " << gpuMemoryReserveMB << "\n"
-        << "enableGpuExclusiveMode = " << (enableGpuExclusiveMode ? "true" : "false") << "\n\n";
+        << "enableGpuExclusiveMode = " << (enableGpuExclusiveMode ? "true" : "false") << "\n"
+        << "capture_use_cuda = " << (capture_use_cuda ? "true" : "false") << "\n\n";
 #endif
 
 	// System

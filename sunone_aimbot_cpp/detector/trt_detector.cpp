@@ -533,6 +533,28 @@ void TrtDetector::processFrame(const cv::Mat& frame)
 
     std::unique_lock<std::mutex> lock(inferenceMutex);
     currentFrame = frame;
+    currentFrameGpu.release();
+    pendingFrameType = PendingFrameType::Cpu;
+    frameReady = true;
+    inferenceCV.notify_one();
+}
+
+void TrtDetector::processFrameGpu(const cv::cuda::GpuMat& frame)
+{
+    if (config.backend == "DML") return;
+
+    if (detectionPaused)
+    {
+        std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
+        detectionBuffer.boxes.clear();
+        detectionBuffer.classes.clear();
+        return;
+    }
+
+    std::unique_lock<std::mutex> lock(inferenceMutex);
+    currentFrame.release();
+    currentFrameGpu = frame;
+    pendingFrameType = PendingFrameType::Gpu;
     frameReady = true;
     inferenceCV.notify_one();
 }
@@ -557,6 +579,11 @@ void TrtDetector::inferenceThread()
                 for (auto& binding : outputBindings)
                     if (binding.second) cudaFree(binding.second);
                 outputBindings.clear();
+
+                currentFrame.release();
+                currentFrameGpu.release();
+                frameReady = false;
+                pendingFrameType = PendingFrameType::None;
             }
             initialize("models/" + config.ai_model);
             detection_resolution_changed.store(true);
@@ -577,6 +604,8 @@ void TrtDetector::inferenceThread()
         }
 
         cv::Mat frame;
+        cv::cuda::GpuMat frameGpu;
+        PendingFrameType frameType = PendingFrameType::None;
         bool hasNewFrame = false;
 
         {
@@ -588,7 +617,19 @@ void TrtDetector::inferenceThread()
 
             if (frameReady)
             {
-                frame = std::move(currentFrame);
+                frameType = pendingFrameType;
+                if (frameType == PendingFrameType::Gpu)
+                {
+                    frameGpu = currentFrameGpu;
+                    currentFrameGpu.release();
+                    currentFrame.release();
+                }
+                else
+                {
+                    frame = std::move(currentFrame);
+                    currentFrameGpu.release();
+                }
+                pendingFrameType = PendingFrameType::None;
                 frameReady = false;
                 hasNewFrame = true;
             }
@@ -609,12 +650,20 @@ void TrtDetector::inferenceThread()
             error_logged = false;
         }
 
-        if (hasNewFrame && !frame.empty())
+        if (hasNewFrame)
         {
+            const bool hasCpuFrame = (frameType == PendingFrameType::Cpu && !frame.empty());
+            const bool hasGpuFrame = (frameType == PendingFrameType::Gpu && !frameGpu.empty());
+            if (!hasCpuFrame && !hasGpuFrame)
+                continue;
+
             try
             {
                 cudaEventRecord(preprocessStartEvent, stream);
-                preProcess(frame);
+                if (hasGpuFrame)
+                    preProcess(frameGpu);
+                else
+                    preProcess(frame);
                 cudaEventRecord(inferenceStartEvent, stream);
                 bool usedGraph = useCudaGraph && cudaGraphCaptured;
                 if (usedGraph)
@@ -707,10 +756,21 @@ void TrtDetector::inferenceThread()
 
 void TrtDetector::preProcess(const cv::Mat& frame)
 {
-    if (frame.empty()) return;
+    if (frame.empty())
+        return;
+
+    gpuFrameBuffer.upload(frame, cvStream);
+    preProcess(gpuFrameBuffer);
+}
+
+void TrtDetector::preProcess(const cv::cuda::GpuMat& frame)
+{
+    if (frame.empty())
+        return;
 
     void* inputBuffer = inputBindings[inputName];
-    if (!inputBuffer) return;
+    if (!inputBuffer)
+        return;
 
     nvinfer1::Dims dims = context->getTensorShape(inputName.c_str());
     int c = 0;
@@ -723,16 +783,30 @@ void TrtDetector::preProcess(const cv::Mat& frame)
         return;
     }
 
-    if (c != 3) return;
+    if (c != 3)
+        return;
 
-    gpuFrameBuffer.upload(frame, cvStream);
-
+    cv::cuda::GpuMat bgrFrame;
     if (frame.channels() == 4)
-        cv::cuda::cvtColor(gpuFrameBuffer, gpuFrameBuffer, cv::COLOR_BGRA2BGR, 0, cvStream);
+    {
+        cv::cuda::cvtColor(frame, gpuFrameBuffer, cv::COLOR_BGRA2BGR, 0, cvStream);
+        bgrFrame = gpuFrameBuffer;
+    }
     else if (frame.channels() == 1)
-        cv::cuda::cvtColor(gpuFrameBuffer, gpuFrameBuffer, cv::COLOR_GRAY2BGR, 0, cvStream);
+    {
+        cv::cuda::cvtColor(frame, gpuFrameBuffer, cv::COLOR_GRAY2BGR, 0, cvStream);
+        bgrFrame = gpuFrameBuffer;
+    }
+    else if (frame.channels() == 3)
+    {
+        bgrFrame = frame;
+    }
+    else
+    {
+        return;
+    }
 
-    cv::cuda::resize(gpuFrameBuffer, gpuResizedBuffer, cv::Size(w, h), 0, 0, cv::INTER_LINEAR, cvStream);
+    cv::cuda::resize(bgrFrame, gpuResizedBuffer, cv::Size(w, h), 0, 0, cv::INTER_LINEAR, cvStream);
 
     gpuResizedBuffer.convertTo(gpuFloatBuffer, CV_32FC3, 1.0 / 255.0, 0.0, cvStream);
 

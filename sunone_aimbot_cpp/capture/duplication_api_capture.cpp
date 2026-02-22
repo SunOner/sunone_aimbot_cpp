@@ -6,6 +6,11 @@
 #include <algorithm>
 #include <iostream>
 
+#ifdef USE_CUDA
+#include <cuda_d3d11_interop.h>
+#include <cuda_runtime_api.h>
+#endif
+
 #include "duplication_api_capture.h"
 #include "sunone_aimbot_cpp.h"
 
@@ -280,10 +285,16 @@ DuplicationAPIScreenCapture::DuplicationAPIScreenCapture(int desiredWidth, int d
     regionHeight = std::clamp(regionHeight, 1, std::max(1, screenHeight));
 
     createStagingTextureCPU();
+#ifdef USE_CUDA
+    createCudaInteropTexture();
+#endif
 }
 
 DuplicationAPIScreenCapture::~DuplicationAPIScreenCapture()
 {
+#ifdef USE_CUDA
+    releaseCudaInteropTexture();
+#endif
     if (m_ddaManager)
     {
         m_ddaManager->Release();
@@ -379,6 +390,178 @@ cv::Mat DuplicationAPIScreenCapture::GetNextFrameCpu()
     d3dContext->Unmap(stagingTextureCPU, 0);
     return cpuFrame;
 }
+
+#ifdef USE_CUDA
+bool DuplicationAPIScreenCapture::GetNextFrameGpu(cv::cuda::GpuMat& gpuFrameBgra)
+{
+    if (!m_ddaManager || !m_ddaManager->m_duplication || !interopTextureGPU || !cudaInteropResource || !cudaInteropReady)
+        return false;
+
+    FrameContext frameCtx;
+    HRESULT hr = m_ddaManager->AcquireFrame(frameCtx, 5);
+    if (hr == DXGI_ERROR_WAIT_TIMEOUT)
+    {
+        return false;
+    }
+    else if (hr == DXGI_ERROR_ACCESS_LOST ||
+        hr == DXGI_ERROR_DEVICE_RESET ||
+        hr == DXGI_ERROR_DEVICE_REMOVED ||
+        hr == DXGI_ERROR_INVALID_CALL)
+    {
+        capture_method_changed.store(true);
+        return false;
+    }
+    else if (FAILED(hr))
+    {
+        std::cerr << "[DuplicationAPIScreenCapture] AcquireNextFrame (GPU) failed hr=0x"
+            << std::hex << hr << std::endl;
+        if (frameCtx.hasAcquiredFrame)
+            m_ddaManager->ReleaseFrame();
+        return false;
+    }
+
+    if (!frameCtx.texture)
+    {
+        if (frameCtx.hasAcquiredFrame)
+            m_ddaManager->ReleaseFrame();
+        return false;
+    }
+
+    const int copyWidth = std::min(regionWidth, std::max(1, screenWidth));
+    const int copyHeight = std::min(regionHeight, std::max(1, screenHeight));
+    const int left = std::max(0, (screenWidth - copyWidth) / 2);
+    const int top = std::max(0, (screenHeight - copyHeight) / 2);
+
+    D3D11_BOX sourceRegion;
+    sourceRegion.left = left;
+    sourceRegion.top = top;
+    sourceRegion.front = 0;
+    sourceRegion.right = sourceRegion.left + copyWidth;
+    sourceRegion.bottom = sourceRegion.top + copyHeight;
+    sourceRegion.back = 1;
+
+    d3dContext->CopySubresourceRegion(
+        interopTextureGPU,
+        0,
+        0, 0, 0,
+        frameCtx.texture,
+        0,
+        &sourceRegion
+    );
+
+    m_ddaManager->ReleaseFrame();
+    frameCtx.texture->Release();
+
+    cudaError_t cuErr = cudaGraphicsMapResources(1, &cudaInteropResource, 0);
+    if (cuErr != cudaSuccess)
+    {
+        std::cerr << "[DDA] cudaGraphicsMapResources failed: " << cudaGetErrorString(cuErr) << std::endl;
+        cudaInteropReady = false;
+        return false;
+    }
+
+    cudaArray_t mappedArray = nullptr;
+    cuErr = cudaGraphicsSubResourceGetMappedArray(&mappedArray, cudaInteropResource, 0, 0);
+    if (cuErr != cudaSuccess)
+    {
+        std::cerr << "[DDA] cudaGraphicsSubResourceGetMappedArray failed: " << cudaGetErrorString(cuErr) << std::endl;
+        cudaGraphicsUnmapResources(1, &cudaInteropResource, 0);
+        cudaInteropReady = false;
+        return false;
+    }
+
+    gpuFrameBgra.create(regionHeight, regionWidth, CV_8UC4);
+
+    cuErr = cudaMemcpy2DFromArray(
+        gpuFrameBgra.ptr<unsigned char>(),
+        gpuFrameBgra.step,
+        mappedArray,
+        0, 0,
+        static_cast<size_t>(regionWidth) * 4,
+        static_cast<size_t>(regionHeight),
+        cudaMemcpyDeviceToDevice
+    );
+
+    cudaError_t unmapErr = cudaGraphicsUnmapResources(1, &cudaInteropResource, 0);
+    if (unmapErr != cudaSuccess)
+    {
+        std::cerr << "[DDA] cudaGraphicsUnmapResources failed: " << cudaGetErrorString(unmapErr) << std::endl;
+        cudaInteropReady = false;
+    }
+
+    if (cuErr != cudaSuccess)
+    {
+        std::cerr << "[DDA] cudaMemcpy2DFromArray failed: " << cudaGetErrorString(cuErr) << std::endl;
+        cudaInteropReady = false;
+        return false;
+    }
+
+    return true;
+}
+
+bool DuplicationAPIScreenCapture::createCudaInteropTexture()
+{
+    if (!d3dDevice)
+        return false;
+
+    releaseCudaInteropTexture();
+
+    D3D11_TEXTURE2D_DESC desc{};
+    desc.Width = regionWidth;
+    desc.Height = regionHeight;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags = 0;
+    desc.MiscFlags = 0;
+
+    HRESULT hr = d3dDevice->CreateTexture2D(&desc, nullptr, &interopTextureGPU);
+    if (FAILED(hr))
+    {
+        std::cerr << "[DDA] CreateTexture2D(interop) failed hr=" << std::hex << hr << std::endl;
+        return false;
+    }
+
+    cudaError_t cuErr = cudaGraphicsD3D11RegisterResource(
+        &cudaInteropResource,
+        interopTextureGPU,
+        cudaGraphicsRegisterFlagsNone
+    );
+
+    if (cuErr != cudaSuccess)
+    {
+        std::cerr << "[DDA] cudaGraphicsD3D11RegisterResource failed: "
+            << cudaGetErrorString(cuErr) << std::endl;
+        SafeRelease(&interopTextureGPU);
+        cudaInteropResource = nullptr;
+        cudaInteropReady = false;
+        return false;
+    }
+
+    cudaInteropReady = true;
+    return true;
+}
+
+void DuplicationAPIScreenCapture::releaseCudaInteropTexture()
+{
+    if (cudaInteropResource)
+    {
+        cudaError_t cuErr = cudaGraphicsUnregisterResource(cudaInteropResource);
+        if (cuErr != cudaSuccess)
+        {
+            std::cerr << "[DDA] cudaGraphicsUnregisterResource failed: "
+                << cudaGetErrorString(cuErr) << std::endl;
+        }
+        cudaInteropResource = nullptr;
+    }
+
+    SafeRelease(&interopTextureGPU);
+    cudaInteropReady = false;
+}
+#endif
 
 bool DuplicationAPIScreenCapture::createStagingTextureCPU()
 {

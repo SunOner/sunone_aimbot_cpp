@@ -80,6 +80,7 @@ struct CaptureThreadConfig
     int depth_mask_fps = 0;
     int depth_mask_near_percent = 0;
     bool depth_mask_invert = false;
+    bool capture_use_cuda = true;
 #endif
 };
 
@@ -112,6 +113,7 @@ CaptureThreadConfig SnapshotCaptureConfig()
     snapshot.depth_mask_fps = config.depth_mask_fps;
     snapshot.depth_mask_near_percent = config.depth_mask_near_percent;
     snapshot.depth_mask_invert = config.depth_mask_invert;
+    snapshot.capture_use_cuda = config.capture_use_cuda;
 #endif
     return snapshot;
 }
@@ -420,48 +422,21 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 continue;
             }
 
+            const bool screenshotEnabled =
+                !currentCfg.screenshot_button.empty() && currentCfg.screenshot_button[0] != "None";
+            const auto screenshotNow = std::chrono::steady_clock::now();
+            const auto screenshotElapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                screenshotNow - lastSaveTime
+            ).count();
+            const bool screenshotRequested =
+                screenshotEnabled &&
+                isAnyKeyPressed(currentCfg.screenshot_button) &&
+                screenshotElapsedMs >= currentCfg.screenshot_delay;
+
             cv::Mat screenshotCpu;
-            screenshotCpu = capturer->GetNextFrameCpu();
+            cv::Mat detectionFrame;
+            bool frameSubmittedToDetector = false;
 
-            if (screenshotCpu.empty())
-            {
-                if (!frameDuration.has_value())
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                applyFrameLimiter();
-                continue;
-            }
-
-            if (NormalizeCaptureMethod(currentCfg.capture_method) == "virtual_camera")
-            {
-                const int targetW = std::max(1, captureWidth);
-                const int targetH = std::max(1, captureHeight);
-                const int roiW = std::min(targetW, screenshotCpu.cols);
-                const int roiH = std::min(targetH, screenshotCpu.rows);
-
-                if (roiW <= 0 || roiH <= 0)
-                {
-                    applyFrameLimiter();
-                    continue;
-                }
-
-                const int x = std::max(0, (screenshotCpu.cols - roiW) / 2);
-                const int y = std::max(0, (screenshotCpu.rows - roiH) / 2);
-                cv::Mat centered = screenshotCpu(cv::Rect(x, y, roiW, roiH));
-
-                if (roiW != targetW || roiH != targetH)
-                {
-                    cv::resize(centered, screenshotCpu, cv::Size(targetW, targetH), 0, 0, cv::INTER_LINEAR);
-                }
-                else
-                {
-                    screenshotCpu = centered;
-                }
-            }
-
-            if (currentCfg.circle_mask)
-                screenshotCpu = apply_circle_mask(screenshotCpu);
-
-            cv::Mat detectionFrame = screenshotCpu;
 #ifdef USE_CUDA
             static bool lastDepthInferenceEnabled = true;
             if (!currentCfg.depth_inference_enabled)
@@ -478,42 +453,125 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 lastDepthInferenceEnabled = true;
             }
 
-            if (currentCfg.depth_inference_enabled && currentCfg.depth_mask_enabled)
+            const bool depthMaskEnabled = currentCfg.depth_inference_enabled && currentCfg.depth_mask_enabled;
+            const bool preferGpuCapturePath =
+                currentCfg.backend == "TRT" &&
+                NormalizeCaptureMethod(currentCfg.capture_method) == "duplication_api" &&
+                currentCfg.capture_use_cuda &&
+                !currentCfg.circle_mask &&
+                !depthMaskEnabled;
+
+            if (preferGpuCapturePath)
             {
-                if (currentCfg.verbose)
+                auto* duplicationCapture = dynamic_cast<DuplicationAPIScreenCapture*>(capturer.get());
+                if (duplicationCapture)
                 {
-                    static auto lastMaskLog = std::chrono::steady_clock::time_point::min();
-                    auto now = std::chrono::steady_clock::now();
-                    if (now - lastMaskLog > std::chrono::seconds(2))
+                    cv::cuda::GpuMat screenshotGpu;
+                    if (duplicationCapture->GetNextFrameGpu(screenshotGpu))
                     {
-                        std::cout << "[DepthMask] update frame " << screenshotCpu.cols << "x" << screenshotCpu.rows
-                                  << " model=" << currentCfg.depth_model_path
-                                  << " fps=" << currentCfg.depth_mask_fps
-                                  << " near=" << currentCfg.depth_mask_near_percent
-                                  << " invert=" << (currentCfg.depth_mask_invert ? "true" : "false")
-                                  << std::endl;
-                        lastMaskLog = now;
+                        trt_detector.processFrameGpu(screenshotGpu);
+                        frameSubmittedToDetector = true;
+
+                        if (screenshotRequested)
+                            screenshotGpu.download(screenshotCpu);
                     }
-                }
-
-                depth_anything::DepthMaskOptions maskOptions;
-                maskOptions.enabled = currentCfg.depth_mask_enabled;
-                maskOptions.fps = currentCfg.depth_mask_fps;
-                maskOptions.near_percent = currentCfg.depth_mask_near_percent;
-                maskOptions.invert = currentCfg.depth_mask_invert;
-
-                auto& depthMask = depth_anything::GetDepthMaskGenerator();
-                depthMask.update(screenshotCpu, maskOptions, currentCfg.depth_model_path, gLogger);
-
-                cv::Mat mask = depthMask.getMask();
-                if (!mask.empty() && mask.size() == screenshotCpu.size())
-                {
-                    detectionFrame = screenshotCpu.clone();
-                    detectionFrame.setTo(cv::Scalar(0, 0, 0), mask);
                 }
             }
 #endif
 
+            if (!frameSubmittedToDetector)
+            {
+                screenshotCpu = capturer->GetNextFrameCpu();
+
+                if (screenshotCpu.empty())
+                {
+                    if (!frameDuration.has_value())
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    applyFrameLimiter();
+                    continue;
+                }
+
+                if (NormalizeCaptureMethod(currentCfg.capture_method) == "virtual_camera")
+                {
+                    const int targetW = std::max(1, captureWidth);
+                    const int targetH = std::max(1, captureHeight);
+                    const int roiW = std::min(targetW, screenshotCpu.cols);
+                    const int roiH = std::min(targetH, screenshotCpu.rows);
+
+                    if (roiW <= 0 || roiH <= 0)
+                    {
+                        applyFrameLimiter();
+                        continue;
+                    }
+
+                    const int x = std::max(0, (screenshotCpu.cols - roiW) / 2);
+                    const int y = std::max(0, (screenshotCpu.rows - roiH) / 2);
+                    cv::Mat centered = screenshotCpu(cv::Rect(x, y, roiW, roiH));
+
+                    if (roiW != targetW || roiH != targetH)
+                    {
+                        cv::resize(centered, screenshotCpu, cv::Size(targetW, targetH), 0, 0, cv::INTER_LINEAR);
+                    }
+                    else
+                    {
+                        screenshotCpu = centered;
+                    }
+                }
+
+                if (currentCfg.circle_mask)
+                    screenshotCpu = apply_circle_mask(screenshotCpu);
+
+                detectionFrame = screenshotCpu;
+#ifdef USE_CUDA
+                if (currentCfg.depth_inference_enabled && currentCfg.depth_mask_enabled)
+                {
+                    if (currentCfg.verbose)
+                    {
+                        static auto lastMaskLog = std::chrono::steady_clock::time_point::min();
+                        auto now = std::chrono::steady_clock::now();
+                        if (now - lastMaskLog > std::chrono::seconds(2))
+                        {
+                            std::cout << "[DepthMask] update frame " << screenshotCpu.cols << "x" << screenshotCpu.rows
+                                      << " model=" << currentCfg.depth_model_path
+                                      << " fps=" << currentCfg.depth_mask_fps
+                                      << " near=" << currentCfg.depth_mask_near_percent
+                                      << " invert=" << (currentCfg.depth_mask_invert ? "true" : "false")
+                                      << std::endl;
+                            lastMaskLog = now;
+                        }
+                    }
+
+                    depth_anything::DepthMaskOptions maskOptions;
+                    maskOptions.enabled = currentCfg.depth_mask_enabled;
+                    maskOptions.fps = currentCfg.depth_mask_fps;
+                    maskOptions.near_percent = currentCfg.depth_mask_near_percent;
+                    maskOptions.invert = currentCfg.depth_mask_invert;
+
+                    auto& depthMask = depth_anything::GetDepthMaskGenerator();
+                    depthMask.update(screenshotCpu, maskOptions, currentCfg.depth_model_path, gLogger);
+
+                    cv::Mat mask = depthMask.getMask();
+                    if (!mask.empty() && mask.size() == screenshotCpu.size())
+                    {
+                        detectionFrame = screenshotCpu.clone();
+                        detectionFrame.setTo(cv::Scalar(0, 0, 0), mask);
+                    }
+                }
+#endif
+
+                if (currentCfg.backend == "DML" && dml_detector)
+                {
+                    dml_detector->processFrame(detectionFrame);
+                }
+#ifdef USE_CUDA
+                else if (currentCfg.backend == "TRT")
+                {
+                    trt_detector.processFrame(detectionFrame);
+                }
+#endif
+            }
+
+            if (!screenshotCpu.empty())
             {
                 std::lock_guard<std::mutex> lock(frameMutex);
                 latestFrame = screenshotCpu;
@@ -523,35 +581,17 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             }
             frameCV.notify_one();
 
-            if (currentCfg.backend == "DML" && dml_detector)
+            if (screenshotRequested)
             {
-                dml_detector->processFrame(detectionFrame);
-            }
-#ifdef USE_CUDA
-            else if (currentCfg.backend == "TRT")
-            {
-                trt_detector.processFrame(detectionFrame);
-            }
-#endif
-            if (!currentCfg.screenshot_button.empty() && currentCfg.screenshot_button[0] != "None")
-            {
-                bool buttonPressed = isAnyKeyPressed(currentCfg.screenshot_button);
-                auto now = std::chrono::steady_clock::now();
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastSaveTime).count();
-                if (buttonPressed && elapsed >= currentCfg.screenshot_delay)
+                cv::Mat saveMat = screenshotCpu.clone();
+                if (!saveMat.empty())
                 {
-                    cv::Mat saveMat = screenshotCpu.clone();
-
-                    if (!saveMat.empty())
-                    {
-                        auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            std::chrono::system_clock::now().time_since_epoch()
-                        ).count();
-                        std::string filename = std::to_string(epoch_time) + ".jpg";
-                        screenshotWriter.Enqueue(filename, std::move(saveMat));
-                    }
-
-                    lastSaveTime = now;
+                    auto epoch_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::system_clock::now().time_since_epoch()
+                    ).count();
+                    std::string filename = std::to_string(epoch_time) + ".jpg";
+                    screenshotWriter.Enqueue(filename, std::move(saveMat));
+                    lastSaveTime = screenshotNow;
                 }
             }
 
