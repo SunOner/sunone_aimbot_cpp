@@ -19,7 +19,7 @@
 class UDPCapture : public IScreenCapture
 {
 public:
-    UDPCapture(int width, int height, const std::string& ip = "127.0.0.1", int port = 1234);
+    UDPCapture(int width, int height, const std::string& ip = "0.0.0.0", int port = 1234);
     ~UDPCapture();
 
     cv::Mat GetNextFrameCpu() override;

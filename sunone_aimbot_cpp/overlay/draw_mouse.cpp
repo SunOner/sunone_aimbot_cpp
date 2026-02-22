@@ -453,7 +453,7 @@ void draw_mouse()
                 ImGui::Text("The wrong version of Ghub is installed or the path to Ghub is not set by default.\nDefault system path: C:\\Program Files\\LGHUB");
                 if (ImGui::Button("GHub Docs"))
                 {
-                    ShellExecute(0, 0, L"https://github.com/SunOner/sunone_aimbot_docs/blob/main/tips/ghub.md", 0, 0, SW_SHOW);
+                    ShellExecute(0, 0, L"https://github.com/SunOner/sunone_aimbot_cpp/blob/main/docs/guides.md#g-hub-input-method", 0, 0, SW_SHOW);
                 }
             }
 

@@ -56,7 +56,7 @@ bool Config::loadConfig(const std::string& filename)
         capture_method = "duplication_api";
         capture_target = "monitor";
         capture_window_title = "";
-        udp_ip = "127.0.0.1";
+        udp_ip = "0.0.0.0";
         udp_port = 1234;
         detection_resolution = 320;
         capture_fps = 60;
@@ -345,7 +345,7 @@ bool Config::loadConfig(const std::string& filename)
     capture_method = get_string("capture_method", "duplication_api");
     capture_target = get_string("capture_target", "monitor");
     capture_window_title = get_string("capture_window_title", "");
-    udp_ip = get_string("udp_ip", "127.0.0.1");
+    udp_ip = get_string("udp_ip", "0.0.0.0");
     udp_port = get_long("udp_port", 1234);
     if (udp_port < 1 || udp_port > 65535)
         udp_port = 1234;
@@ -592,7 +592,7 @@ bool Config::saveConfig(const std::string& filename)
     }
 
     file << "# An explanation of the options can be found at:\n";
-    file << "# https://github.com/SunOner/sunone_aimbot_docs/blob/main/config/config_cpp.md\n\n";
+    file << "# https://github.com/SunOner/sunone_aimbot_cpp/blob/main/docs/config.md\n\n";
 
     // Capture
     file << "# Capture\n"
