@@ -1979,7 +1979,7 @@ static void gameOverlayRenderLoop()
 int main()
 {
     SetConsoleOutputCP(CP_UTF8);
-    Stealth::InitStealth(); //SetRandomConsoleTitle();
+    Stealth::InitStealth();
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_FATAL);
 
     {

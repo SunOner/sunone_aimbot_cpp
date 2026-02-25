@@ -164,7 +164,10 @@ namespace Stealth
         if (ec)
         {
             if (!MoveFileW(currentPath.c_str(), newPath.c_str()))
+            {
+                std::cerr << "[Stealth] Rename failed, error code: " << GetLastError() << std::endl;
                 return false;
+            }
         }
 
         std::cout << "[Init] Process: " << newName << ".exe" << std::endl;
