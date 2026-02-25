@@ -109,6 +109,11 @@ bool GhubMouse::initNew()
         std::cerr << "[Ghub/New] Failed to get IbSendInit/IbSendDestroy from IbInputSimulator.dll" << std::endl;
         FreeLibrary(hIbSim);
         hIbSim = NULL;
+        pIbSendInit = nullptr;
+        pIbSendDestroy = nullptr;
+        pIbSendInput = nullptr;
+        pIbSendMouseMove = nullptr;
+        pIbSendMouseClick = nullptr;
         return false;
     }
 
@@ -117,6 +122,11 @@ bool GhubMouse::initNew()
         std::cerr << "[Ghub/New] Failed to get IbSendInput or IbSendMouseMove" << std::endl;
         FreeLibrary(hIbSim);
         hIbSim = NULL;
+        pIbSendInit = nullptr;
+        pIbSendDestroy = nullptr;
+        pIbSendInput = nullptr;
+        pIbSendMouseMove = nullptr;
+        pIbSendMouseClick = nullptr;
         return false;
     }
 
@@ -146,6 +156,11 @@ bool GhubMouse::initNew()
                       << errName << " (code=" << result << ")" << std::endl;
             FreeLibrary(hIbSim);
             hIbSim = NULL;
+            pIbSendInit = nullptr;
+            pIbSendDestroy = nullptr;
+            pIbSendInput = nullptr;
+            pIbSendMouseMove = nullptr;
+            pIbSendMouseClick = nullptr;
             return false;
         }
         std::cout << "[Ghub/New] Initialized successfully using IbInputSimulator (Logitech Legacy driver)" << std::endl;
