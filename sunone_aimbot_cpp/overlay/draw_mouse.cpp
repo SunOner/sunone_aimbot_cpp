@@ -443,21 +443,66 @@ void draw_mouse()
         }
         else if (config.input_method == "GHUB")
         {
-            if (ghub_version == "13.1.4")
+            if (OverlayUI::BeginSubsection("GHUB Settings##input_method_ghub"))
             {
-                std::string ghub_version_label = "The correct version of Ghub is installed: " + ghub_version;
-                ImGui::Text(ghub_version_label.c_str());
-            }
-            else
-            {
-                ImGui::Text("The wrong version of Ghub is installed or the path to Ghub is not set by default.\nDefault system path: C:\\Program Files\\LGHUB");
-                if (ImGui::Button("GHub Docs"))
-                {
-                    ShellExecute(0, 0, L"https://github.com/SunOner/sunone_aimbot_cpp/blob/main/docs/guides.md#g-hub-input-method", 0, 0, SW_SHOW);
-                }
-            }
+                // GHub Method selector
+                std::vector<std::string> ghub_methods = { "AUTO", "LEGACY", "NEW" };
+                std::vector<const char*> ghub_method_items;
+                for (const auto& m : ghub_methods)
+                    ghub_method_items.push_back(m.c_str());
 
-            ImGui::TextColored(ImVec4(255, 0, 0, 255), "Use at your own risk, the method is detected in some games.");
+                int ghub_method_index = 0;
+                for (size_t i = 0; i < ghub_methods.size(); ++i)
+                {
+                    if (ghub_methods[i] == config.ghub_method)
+                    {
+                        ghub_method_index = static_cast<int>(i);
+                        break;
+                    }
+                }
+
+                if (ImGui::Combo("GHub Driver Method", &ghub_method_index,
+                    ghub_method_items.data(), static_cast<int>(ghub_method_items.size())))
+                {
+                    config.ghub_method = ghub_methods[ghub_method_index];
+                    OverlayConfig_MarkDirty();
+                    input_method_changed.store(true);
+                }
+
+                ImGui::TextWrapped("AUTO: Try IbInputSimulator first, fallback to ghub_mouse.dll");
+                ImGui::TextWrapped("LEGACY: Only use ghub_mouse.dll (old G Hub / LGS)");
+                ImGui::TextWrapped("NEW: Only use IbInputSimulator.dll (new G Hub)");
+
+                if (gHub && gHub->isInitialized())
+                {
+                    std::string status = "Active: " + gHub->getActiveMethod();
+                    ImGui::TextColored(ImVec4(0, 255, 0, 255), "%s", status.c_str());
+                }
+                else
+                {
+                    ImGui::TextColored(ImVec4(255, 0, 0, 255), "GHub not connected");
+                }
+
+                if (config.ghub_method == "LEGACY" || config.ghub_method == "AUTO")
+                {
+                    if (ghub_version == "13.1.4")
+                    {
+                        std::string ghub_version_label = "G Hub version: " + ghub_version + " (OK)";
+                        ImGui::Text("%s", ghub_version_label.c_str());
+                    }
+                    else
+                    {
+                        ImGui::TextWrapped("G Hub version mismatch or not found at default path.");
+                        if (ImGui::Button("GHub Docs"))
+                        {
+                            ShellExecute(0, 0, L"https://github.com/SunOner/sunone_aimbot_cpp/blob/main/docs/guides.md#g-hub-input-method", 0, 0, SW_SHOW);
+                        }
+                    }
+                }
+
+                ImGui::TextColored(ImVec4(255, 0, 0, 255), "Use at your own risk, the method is detected in some games.");
+                OverlayUI::EndSubsection();
+            }
         }
         else if (config.input_method == "WIN32")
         {

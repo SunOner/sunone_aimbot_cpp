@@ -2,6 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="scr\other_tools.cpp" />
+    <ClCompile Include="scr\stealth.cpp" />
     <ClCompile Include="capture\capture.cpp" />
     <ClCompile Include="overlay\overlay.cpp" />
     <ClCompile Include="mouse\ghub.cpp" />
@@ -64,6 +65,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\other_tools.h" />
+    <ClInclude Include="include\stealth.h" />
     <ClInclude Include="include\memory_images.h" />
     <ClInclude Include="capture\capture.h" />
     <ClInclude Include="overlay\overlay.h" />

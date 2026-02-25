@@ -713,7 +713,7 @@ bool checkwin1903()
 void welcome_message()
 {
     std::cout <<
-    "\n\nAimbot is started!\n" <<
+        "\n\nApplication started.\n" <<
     config.joinStrings(config.button_targeting) << " -> Targeting\n" <<
     config.joinStrings(config.button_exit) << " -> Exit\n" <<
     config.joinStrings(config.button_pause) << " -> Pause Aiming\n" <<

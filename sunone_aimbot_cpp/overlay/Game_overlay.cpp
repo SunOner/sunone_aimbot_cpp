@@ -18,6 +18,7 @@
 #include <string>
 #include <cstdint>
 #include <chrono>
+#include "stealth.h"
 #include <iostream>
 
 #pragma comment(lib, "dwmapi.lib")
@@ -96,6 +97,7 @@ struct Game_overlay::Impl
 {
     HINSTANCE hinst = nullptr;
     HWND hwnd = nullptr;
+    std::wstring className;
     int winX = 0, winY = 0, winW = 0, winH = 0;
     bool useVirtual = true;
 
@@ -431,7 +433,8 @@ bool Game_overlay::Impl::CreateWindowAndDevices()
     wc.lpfnWndProc = Game_overlay::Impl::WndProc;
     wc.hInstance = hinst;
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    wc.lpszClassName = L"GameOverlayDCompWnd";
+    className = Stealth::GenerateWindowClass();
+    wc.lpszClassName = className.c_str();
     wc.hbrBackground = nullptr;
     if (!RegisterClassExW(&wc))
         return false;
@@ -550,7 +553,8 @@ void Game_overlay::Impl::DestroyWindowAndDevices()
     d3d.Reset();
 
     if (hwnd) { DestroyWindow(hwnd); hwnd = nullptr; }
-    UnregisterClassW(L"GameOverlayDCompWnd", hinst);
+    if (!className.empty())
+        UnregisterClassW(className.c_str(), hinst);
 }
 
 HRESULT Game_overlay::Impl::CreateTargets()

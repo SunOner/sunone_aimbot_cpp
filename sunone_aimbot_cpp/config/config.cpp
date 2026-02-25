@@ -92,6 +92,7 @@ bool Config::loadConfig(const std::string& filename)
         easynorecoil = false;
         easynorecoilstrength = 0.0f;
         input_method = "WIN32";
+        ghub_method = "AUTO";
 
         // Wind mouse
         wind_mouse_enabled = false;
@@ -386,6 +387,7 @@ bool Config::loadConfig(const std::string& filename)
     easynorecoil = get_bool("easynorecoil", false);
     easynorecoilstrength = (float)get_double("easynorecoilstrength", 0.0);
     input_method = get_string("input_method", "WIN32");
+    ghub_method = get_string("ghub_method", "AUTO");
 
     // Wind mouse
     wind_mouse_enabled = get_bool("wind_mouse_enabled", false);
@@ -642,7 +644,9 @@ bool Config::saveConfig(const std::string& filename)
         << "easynorecoilstrength = " << easynorecoilstrength << "\n"
 
         << "# WIN32, GHUB, ARDUINO, KMBOX_NET, KMBOX_A, MAKCU\n"
-        << "input_method = " << input_method << "\n\n";
+        << "input_method = " << input_method << "\n"
+        << "# AUTO, LEGACY, NEW - GHub driver method\n"
+        << "ghub_method = " << ghub_method << "\n\n";
 
     // Wind mouse
     file << "# Wind mouse\n"

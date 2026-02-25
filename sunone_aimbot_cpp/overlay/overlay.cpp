@@ -31,6 +31,7 @@
 #include "overlay/config_dirty.h"
 #include "include/other_tools.h"
 #include "config.h"
+#include "stealth.h"
 #include "keycodes.h"
 #include "keyboard_listener.h"
 
@@ -55,6 +56,10 @@ HWND g_hwnd = NULL;
 extern Config config;
 extern std::mutex configMutex;
 extern std::atomic<bool> shouldExit;
+
+// Stealth: random class name, persists for lifetime of overlay
+static std::wstring g_overlayClassName;
+static std::wstring g_overlayWindowTitle;
 
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
@@ -760,6 +765,12 @@ bool CreateOverlayWindow()
         overlayHeight = h;
     }
 
+    // Stealth: generate random class/title once
+    if (g_overlayClassName.empty())
+        g_overlayClassName = Stealth::GenerateWindowClass();
+    if (g_overlayWindowTitle.empty())
+        g_overlayWindowTitle = Stealth::GenerateWindowTitle();
+
     WNDCLASSEX wc = {
         sizeof(WNDCLASSEX),
         CS_CLASSDC,
@@ -771,7 +782,7 @@ bool CreateOverlayWindow()
         NULL,
         NULL,
         NULL,
-        _T("Chrome"),
+        g_overlayClassName.c_str(),
         NULL
     };
     ::RegisterClassEx(&wc);
@@ -787,7 +798,7 @@ bool CreateOverlayWindow()
 
     g_hwnd = ::CreateWindowEx(
         exStyle,
-        wc.lpszClassName, _T("Chrome"),
+        wc.lpszClassName, g_overlayWindowTitle.c_str(),
         style,
         0, 0, wndW, wndH,
         NULL, NULL, wc.hInstance, NULL);
@@ -1008,7 +1019,8 @@ void OverlayThread()
 
     CleanupDeviceD3D();
     ::DestroyWindow(g_hwnd);
-    ::UnregisterClass(_T("Chrome"), GetModuleHandle(NULL));
+    if (!g_overlayClassName.empty())
+        ::UnregisterClassW(g_overlayClassName.c_str(), GetModuleHandle(NULL));
 }
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,

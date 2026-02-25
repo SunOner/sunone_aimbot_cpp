@@ -49,6 +49,7 @@ public:
     bool easynorecoil;
     float easynorecoilstrength;
     std::string input_method; // "WIN32", "GHUB", "ARDUINO", "KMBOX_NET", "KMBOX_A", "MAKCU"
+    std::string ghub_method;  // "AUTO", "LEGACY", "NEW" - GHub driver method
 
     // Wind mouse
     bool wind_mouse_enabled;

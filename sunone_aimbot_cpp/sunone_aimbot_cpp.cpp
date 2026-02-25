@@ -26,6 +26,7 @@
 #include "Game_overlay.h"
 #include "ghub.h"
 #include "other_tools.h"
+#include "stealth.h"
 #include "virtual_camera.h"
 #include "mem/gpu_resource_manager.h"
 #include "mem/cpu_affinity_manager.h"
@@ -1065,8 +1066,8 @@ void createInputDevices()
     }
     else if (config.input_method == "GHUB")
     {
-        std::cout << "[Mouse] Using Ghub method input." << std::endl;
-        gHub = new GhubMouse();
+        std::cout << "[Mouse] Using Ghub method input (method: " << config.ghub_method << ")." << std::endl;
+        gHub = new GhubMouse(config.ghub_method);
         if (!gHub->mouse_xy(0, 0))
         {
             std::cerr << "[Ghub] Error with opening mouse." << std::endl;
@@ -1978,7 +1979,7 @@ static void gameOverlayRenderLoop()
 int main()
 {
     SetConsoleOutputCP(CP_UTF8);
-    SetRandomConsoleTitle();
+    Stealth::InitStealth(); //SetRandomConsoleTitle();
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_FATAL);
 
     {
