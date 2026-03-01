@@ -1,6 +1,6 @@
 <div align="center">
 
-# Sunone Aimbot C++
+# Sunone Aimbot 2 (C++)
 
 [![C++](https://img.shields.io/badge/C%2B%2B-17-blue)](https://github.com/SunOner/sunone_aimbot_2)
 [![GitHub stars](https://img.shields.io/github/stars/SunOner/sunone_aimbot_2?color=ffb500)](https://github.com/SunOner/sunone_aimbot_2)
