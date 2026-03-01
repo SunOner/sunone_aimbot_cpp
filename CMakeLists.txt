@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(sunone_aimbot_cpp LANGUAGES C CXX)
+project(sunone_aimbot_2 LANGUAGES C CXX)
 
 if(NOT WIN32)
-    message(FATAL_ERROR "sunone_aimbot_cpp currently supports Windows builds only.")
+    message(FATAL_ERROR "sunone_aimbot_2 currently supports Windows builds only.")
 endif()
 
 if(NOT CMAKE_GENERATOR STREQUAL "Visual Studio 18 2026")
@@ -22,10 +22,10 @@ option(AIMBOT_USE_CUDA "Enable CUDA + TensorRT backend (USE_CUDA)" OFF)
 option(AIMBOT_COPY_RUNTIME_DLLS "Copy required runtime DLLs next to ai.exe after build" ON)
 
 set(AIMBOT_OPENCV_DML_PREBUILT_ROOT
-    "${CMAKE_SOURCE_DIR}/sunone_aimbot_cpp/modules/opencv/prebuilt/opencv/build"
+    "${CMAKE_SOURCE_DIR}/sunone_aimbot_2/modules/opencv/prebuilt/opencv/build"
     CACHE PATH "Path to prebuilt OpenCV build directory used by DML defaults")
 
-set(_opencv_cuda_install_root "${CMAKE_SOURCE_DIR}/sunone_aimbot_cpp/modules/opencv/build/install")
+set(_opencv_cuda_install_root "${CMAKE_SOURCE_DIR}/sunone_aimbot_2/modules/opencv/build/install")
 if(NOT AIMBOT_USE_CUDA)
     set(_opencv_include_default "${AIMBOT_OPENCV_DML_PREBUILT_ROOT}/include")
     set(_opencv_vc_glob "${AIMBOT_OPENCV_DML_PREBUILT_ROOT}/x64/vc*")
@@ -50,8 +50,8 @@ set(AIMBOT_PACKAGES_DIR "${CMAKE_SOURCE_DIR}/packages" CACHE PATH "Directory wit
 set(AIMBOT_OPENCV_INCLUDE_DIR "${_opencv_include_default}" CACHE PATH "Path to OpenCV include directory")
 set(AIMBOT_OPENCV_LIBRARY "${_opencv_vc_dir}/lib/opencv_world4130.lib" CACHE FILEPATH "Path to opencv_world4130.lib")
 set(AIMBOT_OPENCV_DLL "${_opencv_vc_dir}/bin/opencv_world4130.dll" CACHE FILEPATH "Path to opencv_world4130.dll")
-set(AIMBOT_TENSORRT_ROOT "${CMAKE_SOURCE_DIR}/sunone_aimbot_cpp/modules/TensorRT-10.14.1.48" CACHE PATH "Path to TensorRT root directory")
-set(AIMBOT_GHUB_MOUSE_DLL "${CMAKE_SOURCE_DIR}/sunone_aimbot_cpp/ghub_mouse.dll" CACHE FILEPATH "Path to ghub_mouse.dll")
+set(AIMBOT_TENSORRT_ROOT "${CMAKE_SOURCE_DIR}/sunone_aimbot_2/modules/TensorRT-10.14.1.48" CACHE PATH "Path to TensorRT root directory")
+set(AIMBOT_GHUB_MOUSE_DLL "${CMAKE_SOURCE_DIR}/sunone_aimbot_2/ghub_mouse.dll" CACHE FILEPATH "Path to ghub_mouse.dll")
 set(AIMBOT_CUDNN_ROOT "$ENV{ProgramW6432}/NVIDIA/CUDNN/v9.17" CACHE PATH "Path to cuDNN root directory (optional)")
 set(AIMBOT_CPPWINRT_INCLUDE_DIR "" CACHE PATH "Path to Windows SDK cppwinrt include directory")
 
@@ -126,7 +126,7 @@ if(AIMBOT_DIRECTML_DIR STREQUAL "")
     message(WARNING "Microsoft.AI.DirectML package directory was not found. DirectML.dll auto-copy may be skipped.")
 endif()
 
-set(SRC_DIR "${CMAKE_SOURCE_DIR}/sunone_aimbot_cpp")
+set(SRC_DIR "${CMAKE_SOURCE_DIR}/sunone_aimbot_2")
 
 set(AIMBOT_SOURCES
     "${SRC_DIR}/capture/capture.cpp"
@@ -177,7 +177,7 @@ set(AIMBOT_SOURCES
     "${SRC_DIR}/overlay/Game_overlay.cpp"
     "${SRC_DIR}/overlay/overlay.cpp"
     "${SRC_DIR}/scr/other_tools.cpp"
-    "${SRC_DIR}/sunone_aimbot_cpp.cpp"
+    "${SRC_DIR}/sunone_aimbot_2.cpp"
 )
 
 if(AIMBOT_USE_CUDA)

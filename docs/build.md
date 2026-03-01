@@ -33,8 +33,8 @@ Before building the project, **download and place all third-party dependencies**
 **Required folders inside your repository:**
 
 ```
-sunone_aimbot_cpp/
-└── sunone_aimbot_cpp/
+sunone_aimbot_2/
+└── sunone_aimbot_2/
     └── modules/
 ```
 
@@ -42,11 +42,11 @@ sunone_aimbot_cpp/
 
 | Library   | Path                                                              |
 | --------- | ----------------------------------------------------------------- |
-| SimpleIni | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/SimpleIni.h`         |
-| serial    | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/serial/`             |
-| TensorRT  | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/TensorRT-10.14.1.48/` |
-| GLFW      | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/glfw-3.4.bin.WIN64/` |
-| OpenCV    | `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/`             |
+| SimpleIni | `sunone_aimbot_2/sunone_aimbot_2/modules/SimpleIni.h`         |
+| serial    | `sunone_aimbot_2/sunone_aimbot_2/modules/serial/`             |
+| TensorRT  | `sunone_aimbot_2/sunone_aimbot_2/modules/TensorRT-10.14.1.48/` |
+| GLFW      | `sunone_aimbot_2/sunone_aimbot_2/modules/glfw-3.4.bin.WIN64/` |
+| OpenCV    | `sunone_aimbot_2/sunone_aimbot_2/modules/opencv/`             |
 
 * **SimpleIni:**
   Download [`SimpleIni.h`](https://github.com/brofield/simpleini/blob/master/SimpleIni.h)
@@ -71,8 +71,8 @@ sunone_aimbot_cpp/
 **Example structure after setup:**
 
 ```
-sunone_aimbot_cpp/
-└── sunone_aimbot_cpp/
+sunone_aimbot_2/
+└── sunone_aimbot_2/
 	└── modules/
 		├── SimpleIni.h
         ├── serial/
@@ -135,12 +135,12 @@ Useful options:
 2. **Prepare Directories**
 
 	* Create:
-		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/`
-		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build`
+		`sunone_aimbot_2/sunone_aimbot_2/modules/opencv/`
+		`sunone_aimbot_2/sunone_aimbot_2/modules/opencv/build`
 	* Extract `opencv-4.13.0` into
-		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv-4.13.0`
+		`sunone_aimbot_2/sunone_aimbot_2/modules/opencv/opencv-4.13.0`
 	* Extract `opencv_contrib-4.13.0` into
-		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv_contrib-4.13.0`
+		`sunone_aimbot_2/sunone_aimbot_2/modules/opencv/opencv_contrib-4.13.0`
 	* install cuDNN
 		Default install path `C:/Program Files/NVIDIA/CUDNN/v9.17`
 
@@ -148,9 +148,9 @@ Useful options:
 
 	* Open CMake GUI
 	* Source code:
-		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv-4.13.0`
+		`sunone_aimbot_2/sunone_aimbot_2/modules/opencv/opencv-4.13.0`
 	* Build directory:
-		`sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build`
+		`sunone_aimbot_2/sunone_aimbot_2/modules/opencv/build`
 	* Click **Configure**
 		(Choose "Visual Studio 18 2026", x64)
 
@@ -164,15 +164,15 @@ Useful options:
 		* `CUDA_FAST_MATH` = ON
 		* `WITH_CUDNN` = ON
 		* `CUDNN_LIBRARY` =
-			`.../sunone_aimbot_cpp/sunone_aimbot_cpp/modules/cudnn/lib/x64/cudnn.lib`
+			`.../sunone_aimbot_2/sunone_aimbot_2/modules/cudnn/lib/x64/cudnn.lib`
 		* `CUDNN_INCLUDE_DIR` =
-			`.../sunone_aimbot_cpp/sunone_aimbot_cpp/modules/cudnn/include`
+			`.../sunone_aimbot_2/sunone_aimbot_2/modules/cudnn/include`
 		* `CUDA_ARCH_BIN` =
 			See [CUDA Wikipedia](https://en.wikipedia.org/wiki/CUDA) for your GPU.
 			Example for RTX 3080-Ti: `8.6`
 		* `OPENCV_DNN_CUDA` = ON
 		* `OPENCV_EXTRA_MODULES_PATH` =
-			`.../sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/opencv_contrib-4.13.0/modules`
+			`.../sunone_aimbot_2/sunone_aimbot_2/modules/opencv/opencv_contrib-4.13.0/modules`
 		* `BUILD_opencv_world` = ON
 	* Uncheck:
 
@@ -185,7 +185,7 @@ Useful options:
 
 5. **Build in Visual Studio**
 
-   * Open `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/OpenCV.sln`
+   * Open `sunone_aimbot_2/sunone_aimbot_2/modules/opencv/build/OpenCV.sln`
      or click "Open Project" in CMake
    * Set build config: **x64 | Release**
    * Build `ALL_BUILD` target (can take up to 2 hours)
@@ -194,11 +194,11 @@ Useful options:
 6. **Copy Resulting DLLs**
 
    * DLLs:
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc*/bin/`
+     `sunone_aimbot_2/sunone_aimbot_2/modules/opencv/build/install/x64/vc*/bin/`
    * LIBs:
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc*/lib/`
+     `sunone_aimbot_2/sunone_aimbot_2/modules/opencv/build/install/x64/vc*/lib/`
    * Includes:
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/include/opencv2`
+     `sunone_aimbot_2/sunone_aimbot_2/modules/opencv/build/install/include/opencv2`
    * Copy needed DLLs (`opencv_world4130.dll`, etc.) next to your project’s executable.
 
 ## 4. Notes on OpenCV for CUDA/DML
@@ -232,7 +232,7 @@ Use separate build directories for each backend:
 
   For DML build, OpenCV must be built **without CUDA** and **without GStreamer**.
   The setup script downloads prebuilt OpenCV and places it in
-  `sunone_aimbot_cpp/modules/opencv/prebuilt/opencv/build` (auto-detected by CMake).
+  `sunone_aimbot_2/modules/opencv/prebuilt/opencv/build` (auto-detected by CMake).
 
 * **CUDA (TensorRT):**
 

@@ -2,13 +2,13 @@
 
 # Sunone Aimbot C++
 
-[![C++](https://img.shields.io/badge/C%2B%2B-17-blue)](https://github.com/SunOner/sunone_aimbot_cpp)
-[![GitHub stars](https://img.shields.io/github/stars/SunOner/sunone_aimbot_cpp?color=ffb500)](https://github.com/SunOner/sunone_aimbot_cpp)
+[![C++](https://img.shields.io/badge/C%2B%2B-17-blue)](https://github.com/SunOner/sunone_aimbot_2)
+[![GitHub stars](https://img.shields.io/github/stars/SunOner/sunone_aimbot_2?color=ffb500)](https://github.com/SunOner/sunone_aimbot_2)
 [![CUDA 13.1](https://img.shields.io/badge/CUDA-13.1-76B900?logo=nvidia&logoColor=white)](https://developer.nvidia.com/cuda-downloads)
 [![Discord server](https://badgen.net/discord/online-members/37WVp6sNEh)](https://discord.gg/37WVp6sNEh)
 
   <p>
-    <a href="https://github.com/SunOner/sunone_aimbot_cpp/releases" target="_blank">
+    <a href="https://github.com/SunOner/sunone_aimbot_2/releases" target="_blank">
       <img width="75%" src="https://github.com/SunOner/sunone_aimbot/blob/main/media/one.gif">
     </a>
   </p>
@@ -94,8 +94,8 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 * Setup, FAQ, troubleshooting:
   [docs/guides.md](docs/guides.md)
 * Source of truth in code:
-  [sunone_aimbot_cpp/config/config.cpp](sunone_aimbot_cpp/config/config.cpp),
-  [sunone_aimbot_cpp/config/config.h](sunone_aimbot_cpp/config/config.h)
+  [sunone_aimbot_2/config/config.cpp](sunone_aimbot_2/config/config.cpp),
+  [sunone_aimbot_2/config/config.h](sunone_aimbot_2/config/config.h)
 
 ---
 
@@ -135,4 +135,4 @@ This project is actively developed thanks to the people who support it on [Boost
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=SunOner/sunone_aimbot_cpp&type=date&legend=top-left)](https://www.star-history.com/#SunOner/sunone_aimbot_cpp&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=SunOner/sunone_aimbot_2&type=date&legend=top-left)](https://www.star-history.com/#SunOner/sunone_aimbot_2&type=date&legend=top-left)

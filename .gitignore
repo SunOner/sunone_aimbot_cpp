@@ -41,18 +41,19 @@ cmake-build-*/
 
 # modules
 .vs
-sunone_aimbot_cpp/x64
+sunone_aimbot_2/x64
 x64
 packages
-/sunone_aimbot_cpp/modules/opencv
-/sunone_aimbot_cpp/screenshots/
-/sunone_aimbot_cpp/cudnn64_9.dll
-/sunone_aimbot_cpp/opencv_world4100.dll
-/sunone_aimbot_cpp/modules/glfw-3.4
-/sunone_aimbot_cpp/modules/glfw-3.4.bin.WIN64
-/sunone_aimbot_cpp/imgui.ini
-/sunone_aimbot_cpp/models
-/sunone_aimbot_cpp/modules/SimpleIni.h
-/sunone_aimbot_cpp/modules/serial
-/sunone_aimbot_cpp/config.ini
-/sunone_aimbot_cpp/modules/TensorRT-10.14.1.48
+/sunone_aimbot_2/modules/opencv
+/sunone_aimbot_2/screenshots/
+/sunone_aimbot_2/cudnn64_9.dll
+/sunone_aimbot_2/opencv_world4100.dll
+/sunone_aimbot_2/modules/glfw-3.4
+/sunone_aimbot_2/modules/glfw-3.4.bin.WIN64
+/sunone_aimbot_2/imgui.ini
+/sunone_aimbot_2/models
+/sunone_aimbot_2/modules/SimpleIni.h
+/sunone_aimbot_2/modules/serial
+/sunone_aimbot_2/config.ini
+/sunone_aimbot_2/modules/TensorRT-10.14.1.48
+setup_opencv_dml_run.log

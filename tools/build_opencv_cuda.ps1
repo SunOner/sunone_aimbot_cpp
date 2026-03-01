@@ -221,7 +221,7 @@ try {
     }
 
     if ([string]::IsNullOrWhiteSpace($OpenCvModulesDir)) {
-        $OpenCvModulesDir = Join-Path $RepoRoot "sunone_aimbot_cpp\modules\opencv"
+        $OpenCvModulesDir = Join-Path $RepoRoot "sunone_aimbot_2\modules\opencv"
     }
     $OpenCvModulesDir = Resolve-NormalizedPath $OpenCvModulesDir
 

@@ -162,7 +162,7 @@ Place depth models in `models/depth`, then use Depth section buttons:
 
 ## Project Structure (brief)
 
-Main folders under `sunone_aimbot_cpp/`:
+Main folders under `sunone_aimbot_2/`:
 
 - `capture/` - capture backends
 - `config/` - config load/save/schema

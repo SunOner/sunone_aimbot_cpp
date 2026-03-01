@@ -2,8 +2,8 @@
 
 This document describes `config.ini` for the C++ project in this repository.
 
-- Source of truth in code: `sunone_aimbot_cpp/config/config.cpp`
-- Config schema: `sunone_aimbot_cpp/config/config.h`
+- Source of truth in code: `sunone_aimbot_2/config/config.cpp`
+- Config schema: `sunone_aimbot_2/config/config.h`
 
 ## 1. How Config Loading Works
 
@@ -23,7 +23,7 @@ This document describes `config.ini` for the C++ project in this repository.
   - `button_exit = F2`
   - `screenshot_button = LeftAlt,F10`
 
-Key names come from `sunone_aimbot_cpp/keyboard/keycodes.cpp` (examples: `LeftMouseButton`, `RightMouseButton`, `F1..F12`, `A..Z`, `Home`, `LeftAlt`, `RightControl`, `None`).
+Key names come from `sunone_aimbot_2/keyboard/keycodes.cpp` (examples: `LeftMouseButton`, `RightMouseButton`, `F1..F12`, `A..Z`, `Home`, `LeftAlt`, `RightControl`, `None`).
 
 ## 3. Quick Examples
 
