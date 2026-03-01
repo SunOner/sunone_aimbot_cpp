@@ -16,7 +16,9 @@ If you want to compile the project yourself or modify code, follow these instruc
   * [TensorRT-10.14.1.48](https://developer.nvidia.com/tensorrt/download/10x)
 * **\[For DML version]**
 
-  * You can use [pre-built OpenCV DLLs](https://github.com/opencv/opencv/releases/tag/4.13.0) (just copy `opencv_world4130.dll` to your exe folder)
+  * Use prebuilt OpenCV package (include/lib/dll), no OpenCV build required.
+  * One-time setup script:
+    `powershell -ExecutionPolicy Bypass -File tools/setup_opencv_dml.ps1`
 * Other dependencies:
 
   * [simpleIni](https://github.com/brofield/simpleini/blob/master/SimpleIni.h)
@@ -24,14 +26,7 @@ If you want to compile the project yourself or modify code, follow these instruc
   * [GLFW](https://www.glfw.org/download.html)
   * [ImGui](https://github.com/ocornut/imgui)
 
-## 2. Choose Build Target in Visual Studio
-
-* **DML (DirectML):**
-  Select `Release | x64 | DML` (works on any modern GPU)
-* **CUDA (TensorRT):**
-  Select `Release | x64 | CUDA` (requires supported NVIDIA GPU, see above)
-
-## 3. Placement of Third-Party Modules and Libraries
+## 2. Placement of Third-Party Modules and Libraries
 
 Before building the project, **download and place all third-party dependencies** in the following directories inside your project structure:
 
@@ -59,15 +54,7 @@ sunone_aimbot_cpp/
 
 * **serial:**
   Download the [`serial`](https://github.com/wjwwood/serial) library (whole folder).
-  To build, open
-
-  ```
-  sunone_aimbot_cpp/sunone_aimbot_cpp/modules/serial/visual_studio/visual_studio.sln
-  ```
-
-  * Set **C/C++ > Code Generation > Runtime Library** to **Multi-threaded (/MT)**
-  * Build in **Release x64**
-  * Use the built DLL/LIB with your project.
+  For CMake build, this library is compiled from sources automatically (no separate `serial.sln` build step).
 
 * **TensorRT:**
   Download [TensorRT-10.14.1.48](https://developer.nvidia.com/tensorrt/download/10x)
@@ -78,8 +65,8 @@ sunone_aimbot_cpp/
   Place the folder as shown above.
 
 * **OpenCV:**
-  Use your custom build or official DLLs (see CUDA/DML notes below).
-  Place DLLs either next to your exe or in `modules/opencv/`.
+  For DML, run `tools/setup_opencv_dml.ps1` (downloads prebuilt OpenCV package).
+  For CUDA, use your custom OpenCV build with CUDA support.
 
 **Example structure after setup:**
 
@@ -94,12 +81,48 @@ sunone_aimbot_cpp/
         └── opencv/
 ```
 
-## 4. How to Build OpenCV 4.13.0 with CUDA Support (For CUDA Version Only)
+## 3. How to Build OpenCV 4.13.0 with CUDA Support (For CUDA Version Only)
 
 > This section is **only required** if you want to use the CUDA (TensorRT) version and need OpenCV with CUDA support.
 > For DML build, skip this step — you can use the pre-built OpenCV DLL.
 
-**Step-by-step instructions:**
+**Fast path (recommended):**
+
+Use helper script from repository root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/build_opencv_cuda.ps1 -AutoDetectCudaArch
+```
+
+The script requires CMake generator `Visual Studio 18 2026`.
+
+Useful options:
+
+* Set architecture explicitly:
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File tools/build_opencv_cuda.ps1 -CudaArchBin 8.6
+  ```
+
+* Build OpenCV for popular consumer NVIDIA architectures (GTX 16 / RTX 20 / 30 / 40 / 50):
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File tools/build_opencv_cuda.ps1 -CudaArchBin all
+  ```
+
+* Reuse already downloaded sources:
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File tools/build_opencv_cuda.ps1 -SkipDownload
+  ```
+
+* Configure only (without build):
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File tools/build_opencv_cuda.ps1 -ConfigureOnly
+  ```
+
+**Manual path:**
 
 1. **Download Sources**
 
@@ -171,14 +194,14 @@ sunone_aimbot_cpp/
 6. **Copy Resulting DLLs**
 
    * DLLs:
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc17/bin/`
+     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc*/bin/`
    * LIBs:
-     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc17/lib/`
+     `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/x64/vc*/lib/`
    * Includes:
      `sunone_aimbot_cpp/sunone_aimbot_cpp/modules/opencv/build/install/include/opencv2`
    * Copy needed DLLs (`opencv_world4130.dll`, etc.) next to your project’s executable.
 
-## 5. Notes on OpenCV for CUDA/DML
+## 4. Notes on OpenCV for CUDA/DML
 
 * **For CUDA build (TensorRT backend):**
 
@@ -186,19 +209,58 @@ sunone_aimbot_cpp/
   * Place all built DLLs (e.g., `opencv_world4130.dll`) next to your executable or in the `modules` folder.
 * **For DML build (DirectML backend):**
 
-  * You can use the official pre-built OpenCV DLLs if you **only** plan to use DirectML.
+  * Use prebuilt OpenCV package (include/lib/dll) if you **only** plan to use DirectML.
+  * OpenCV runtime for DML must not import CUDA (`cudnn/cublas/npp`) or GStreamer (`gst*`) DLLs.
   * If you want to use both CUDA and DML modes in the same executable, you should always use your custom OpenCV build with CUDA enabled (it will work for both modes).
 * **Note:**
   If you run the CUDA backend with non-CUDA OpenCV DLLs, the program will not work and may crash due to missing symbols.
 
-## 6. Build and Run
+## 5. Configure and Build Project
 
-1. Open the solution in Visual Studio 2026.
-2. Choose your configuration (`Release | x64 | DML` or `Release | x64 | CUDA`).
-3. Build the solution.
-4. Run `ai.exe` from the output folder.
+After sections 2-4 are complete, configure one backend with CMake.
 
-## 7. Exporting AI Models
+Use separate build directories for each backend:
+
+* **DML (DirectML):**
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File tools/setup_opencv_dml.ps1
+  Remove-Item build/dml -Recurse -Force -ErrorAction SilentlyContinue
+  cmake -S . -B build/dml -G "Visual Studio 18 2026" -A x64 -DAIMBOT_USE_CUDA=OFF
+  cmake --build build/dml --config Release
+  ```
+
+  For DML build, OpenCV must be built **without CUDA** and **without GStreamer**.
+  The setup script downloads prebuilt OpenCV and places it in
+  `sunone_aimbot_cpp/modules/opencv/prebuilt/opencv/build` (auto-detected by CMake).
+
+* **CUDA (TensorRT):**
+
+  ```powershell
+  cmake -S . -B build/cuda -G "Visual Studio 18 2026" -A x64 `
+    -DAIMBOT_USE_CUDA=ON `
+    -DCMAKE_CUDA_FLAGS="--allow-unsupported-compiler" `
+    -DCUDA_NVCC_FLAGS="--allow-unsupported-compiler"
+  cmake --build build/cuda --config Release
+  ```
+
+Only `Visual Studio 18 2026` is supported for this project.
+
+If your dependencies are stored in non-default paths, pass CMake cache variables, for example:
+
+```powershell
+cmake -S . -B build/dml -G "Visual Studio 18 2026" -A x64 `
+  -DAIMBOT_OPENCV_INCLUDE_DIR="C:/opencv/include" `
+  -DAIMBOT_OPENCV_LIBRARY="C:/opencv/lib/opencv_world4130.lib" `
+  -DAIMBOT_ONNXRUNTIME_DIR="C:/packages/Microsoft.ML.OnnxRuntime.DirectML.1.22.0" `
+  -DAIMBOT_CPPWINRT_INCLUDE_DIR="C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/cppwinrt"
+```
+
+You can open the generated solution from the build folder (`build/dml` or `build/cuda`) if you prefer building from Visual Studio UI.
+
+Run `ai.exe` from `<build-dir>/Release/`.
+
+## 6. Exporting AI Models
 
 * Convert PyTorch `.pt` models to ONNX:
 
@@ -206,9 +268,9 @@ sunone_aimbot_cpp/
   pip install ultralytics -U
   
   # TensorRT
-  yolo export model=sunxds_0.5.6.pt format=onnx dynamic=true simplify=true
+  yolo export model=sunxds_0.8.0.pt format=onnx dynamic=true simplify=true
   
   # DML
-  yolo export model=sunxds_0.5.6.pt format=onnx simplify=true
+  yolo export model=sunxds_0.8.0.pt format=onnx simplify=true
   ```
 * To convert `.onnx` to `.engine` for TensorRT, use the overlay export tab (open overlay with HOME).

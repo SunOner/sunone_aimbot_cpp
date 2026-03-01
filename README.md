@@ -77,8 +77,6 @@ Precompiled `.exe` builds are provided for both CUDA (NVIDIA only) and DirectML 
 
 # Build From Source (Advanced Users)
 
-Detailed build instructions:
-
 * [docs/build.md](docs/build.md)
 
 ---

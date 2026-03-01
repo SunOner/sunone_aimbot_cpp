@@ -1,0 +1,4 @@
+[opencv-dml] Prebuilt OpenCV is already prepared: C:\Users\sun\source\repos\sunone_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\prebuilt\opencv\build
+AIMBOT_OPENCV_INCLUDE_DIR=C:\Users\sun\source\repos\sunone_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\prebuilt\opencv\build\include
+AIMBOT_OPENCV_LIBRARY=C:\Users\sun\source\repos\sunone_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\prebuilt\opencv\build\x64\vc16\lib\opencv_world4130.lib
+AIMBOT_OPENCV_DLL=C:\Users\sun\source\repos\sunone_aimbot_cpp\sunone_aimbot_cpp\modules\opencv\prebuilt\opencv\build\x64\vc16\bin\opencv_world4130.dll

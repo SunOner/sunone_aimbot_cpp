@@ -30,6 +30,15 @@
 *.out
 *.app
 
+# CMake
+[Cc]MakeCache.txt
+[Cc]MakeFiles/
+cmake_install.cmake
+compile_commands.json
+CMakePresets.json.user
+/build/
+cmake-build-*/
+
 # modules
 .vs
 sunone_aimbot_cpp/x64
