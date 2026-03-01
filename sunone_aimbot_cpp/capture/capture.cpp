@@ -22,6 +22,7 @@
 #include "capture.h"
 #ifdef USE_CUDA
 #include "trt_detector.h"
+#include "depth/depth_anything_trt.h"
 #include "depth/depth_mask.h"
 #include "tensorrt/nvinf.h"
 #endif
@@ -50,6 +51,29 @@ std::atomic<int> captureFps(0);
 std::chrono::time_point<std::chrono::high_resolution_clock> captureFpsStartTime;
 
 std::deque<cv::Mat> frameQueue;
+
+#ifdef USE_CUDA
+namespace
+{
+std::mutex g_detectionSuppressionMaskMutex;
+cv::Mat g_detectionSuppressionMask;
+}
+
+static void UpdateDetectionSuppressionMask(const cv::Mat& mask)
+{
+    std::lock_guard<std::mutex> lock(g_detectionSuppressionMaskMutex);
+    if (!mask.empty() && mask.type() == CV_8UC1)
+        g_detectionSuppressionMask = mask.clone();
+    else
+        g_detectionSuppressionMask.release();
+}
+
+cv::Mat getCurrentDetectionSuppressionMask()
+{
+    std::lock_guard<std::mutex> lock(g_detectionSuppressionMaskMutex);
+    return g_detectionSuppressionMask.clone();
+}
+#endif
 
 namespace
 {
@@ -80,6 +104,7 @@ struct CaptureThreadConfig
     std::string depth_model_path;
     int depth_mask_fps = 0;
     int depth_mask_near_percent = 0;
+    int depth_mask_expand = 0;
     bool depth_mask_invert = false;
     bool capture_use_cuda = true;
 #endif
@@ -114,6 +139,7 @@ CaptureThreadConfig SnapshotCaptureConfig()
     snapshot.depth_model_path = config.depth_model_path;
     snapshot.depth_mask_fps = config.depth_mask_fps;
     snapshot.depth_mask_near_percent = config.depth_mask_near_percent;
+    snapshot.depth_mask_expand = config.depth_mask_expand;
     snapshot.depth_mask_invert = config.depth_mask_invert;
     snapshot.capture_use_cuda = config.capture_use_cuda;
 #endif
@@ -297,6 +323,11 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
             captureWidth = currentCfg.detection_resolution;
             captureHeight = currentCfg.detection_resolution;
         }
+
+#ifdef USE_CUDA
+        depth_anything::DepthAnythingTrt depthMaskFallbackModel;
+        std::string depthMaskFallbackModelPath;
+#endif
 
         WinrtApartmentGuard winrtApartment;
         auto createCapturer = [&](const CaptureThreadConfig& cfg, int width, int height) -> std::unique_ptr<IScreenCapture>
@@ -559,7 +590,10 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                 {
                     auto& depthMask = depth_anything::GetDepthMaskGenerator();
                     depthMask.reset();
+                    depthMaskFallbackModel.reset();
+                    depthMaskFallbackModelPath.clear();
                 }
+                UpdateDetectionSuppressionMask(cv::Mat());
                 lastDepthInferenceEnabled = false;
             }
             else
@@ -653,27 +687,116 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
                                       << " model=" << currentCfg.depth_model_path
                                       << " fps=" << currentCfg.depth_mask_fps
                                       << " near=" << currentCfg.depth_mask_near_percent
+                                      << " expand=" << currentCfg.depth_mask_expand
                                       << " invert=" << (currentCfg.depth_mask_invert ? "true" : "false")
                                       << std::endl;
                             lastMaskLog = now;
                         }
                     }
 
+                    cv::Mat mask;
                     depth_anything::DepthMaskOptions maskOptions;
                     maskOptions.enabled = currentCfg.depth_mask_enabled;
                     maskOptions.fps = currentCfg.depth_mask_fps;
                     maskOptions.near_percent = currentCfg.depth_mask_near_percent;
+                    maskOptions.expand = currentCfg.depth_mask_expand;
                     maskOptions.invert = currentCfg.depth_mask_invert;
 
                     auto& depthMask = depth_anything::GetDepthMaskGenerator();
                     depthMask.update(screenshotCpu, maskOptions, currentCfg.depth_model_path, gLogger);
+                    mask = depthMask.getMask();
 
-                    cv::Mat mask = depthMask.getMask();
+                    if (!mask.empty() && mask.size() != screenshotCpu.size())
+                        mask.release();
+
+                    if (mask.empty())
+                    {
+                        if (currentCfg.depth_model_path.empty())
+                        {
+                            if (depthMaskFallbackModel.ready())
+                                depthMaskFallbackModel.reset();
+                            depthMaskFallbackModelPath.clear();
+                        }
+                        else if (depthMaskFallbackModelPath != currentCfg.depth_model_path || !depthMaskFallbackModel.ready())
+                        {
+                            if (depthMaskFallbackModel.initialize(currentCfg.depth_model_path, gLogger))
+                            {
+                                depthMaskFallbackModelPath = currentCfg.depth_model_path;
+                            }
+                        }
+
+                        if (depthMaskFallbackModel.ready())
+                        {
+                            cv::Mat depthLocal = depthMaskFallbackModel.predictDepth(screenshotCpu);
+                            if (!depthLocal.empty())
+                            {
+                                const int nearPercent = std::clamp(currentCfg.depth_mask_near_percent, 1, 100);
+                                const bool invertMask = currentCfg.depth_mask_invert;
+                                const int total = depthLocal.rows * depthLocal.cols;
+                                if (total > 0)
+                                {
+                                    int hist[256] = {};
+                                    for (int y = 0; y < depthLocal.rows; ++y)
+                                    {
+                                        const uint8_t* row = depthLocal.ptr<uint8_t>(y);
+                                        for (int x = 0; x < depthLocal.cols; ++x)
+                                            hist[row[x]]++;
+                                    }
+
+                                    const int target = std::max(1, (total * nearPercent) / 100);
+                                    int threshold = 0;
+                                    if (!invertMask)
+                                    {
+                                        int count = 0;
+                                        for (int i = 0; i < 256; ++i)
+                                        {
+                                            count += hist[i];
+                                            if (count >= target)
+                                            {
+                                                threshold = i;
+                                                break;
+                                            }
+                                        }
+                                        cv::compare(depthLocal, threshold, mask, cv::CMP_LE);
+                                    }
+                                    else
+                                    {
+                                        int count = 0;
+                                        for (int i = 255; i >= 0; --i)
+                                        {
+                                            count += hist[i];
+                                            if (count >= target)
+                                            {
+                                                threshold = i;
+                                                break;
+                                            }
+                                        }
+                                        cv::compare(depthLocal, threshold, mask, cv::CMP_GE);
+                                    }
+
+                                    const int expand = std::clamp(currentCfg.depth_mask_expand, 0, 128);
+                                    if (expand > 0)
+                                    {
+                                        const int kernelSize = 2 * expand + 1;
+                                        cv::Mat kernel = cv::getStructuringElement(
+                                            cv::MORPH_ELLIPSE, cv::Size(kernelSize, kernelSize));
+                                        cv::dilate(mask, mask, kernel);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    UpdateDetectionSuppressionMask(mask);
                     if (!mask.empty() && mask.size() == screenshotCpu.size())
                     {
                         detectionFrame = screenshotCpu.clone();
                         detectionFrame.setTo(cv::Scalar(0, 0, 0), mask);
                     }
+                }
+                else
+                {
+                    UpdateDetectionSuppressionMask(cv::Mat());
                 }
 #endif
 

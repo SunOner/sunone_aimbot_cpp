@@ -187,7 +187,16 @@ static void Overlay_SetDisplayAffinity(HWND hwnd, bool excludeFromCapture)
         return;
 
     if (excludeFromCapture)
-        SetWindowDisplayAffinity(hwnd, WDA_MONITOR);
+    {
+        const DWORD err = GetLastError();
+        std::cerr << "[OverlayUI] SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE) failed, err=" << err
+                  << ". Trying WDA_MONITOR fallback." << std::endl;
+        if (!SetWindowDisplayAffinity(hwnd, WDA_MONITOR))
+        {
+            std::cerr << "[OverlayUI] SetWindowDisplayAffinity(WDA_MONITOR) failed, err="
+                      << GetLastError() << std::endl;
+        }
+    }
 }
 
 void Overlay_ApplyCaptureExclusion()

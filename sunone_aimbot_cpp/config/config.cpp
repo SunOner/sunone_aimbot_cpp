@@ -181,6 +181,8 @@ bool Config::loadConfig(const std::string& filename)
         depth_mask_enabled = false;
         depth_mask_fps = 5;
         depth_mask_near_percent = 20;
+        depth_mask_expand = 0;
+        depth_mask_hold_frames = 0;
         depth_mask_alpha = 90;
         depth_mask_invert = false;
         depth_debug_overlay_enabled = false;
@@ -478,6 +480,12 @@ bool Config::loadConfig(const std::string& filename)
     depth_mask_near_percent = get_long("depth_mask_near_percent", 20);
     if (depth_mask_near_percent < 1) depth_mask_near_percent = 1;
     if (depth_mask_near_percent > 100) depth_mask_near_percent = 100;
+    depth_mask_expand = get_long("depth_mask_expand", 0);
+    if (depth_mask_expand < 0) depth_mask_expand = 0;
+    if (depth_mask_expand > 128) depth_mask_expand = 128;
+    depth_mask_hold_frames = get_long("depth_mask_hold_frames", 0);
+    if (depth_mask_hold_frames < 0) depth_mask_hold_frames = 0;
+    if (depth_mask_hold_frames > 120) depth_mask_hold_frames = 120;
     depth_mask_alpha = get_long("depth_mask_alpha", 90);
     if (depth_mask_alpha < 0) depth_mask_alpha = 0;
     if (depth_mask_alpha > 255) depth_mask_alpha = 255;
@@ -736,6 +744,8 @@ bool Config::saveConfig(const std::string& filename)
         << "depth_mask_enabled = " << (depth_mask_enabled ? "true" : "false") << "\n"
         << "depth_mask_fps = " << depth_mask_fps << "\n"
         << "depth_mask_near_percent = " << depth_mask_near_percent << "\n"
+        << "depth_mask_expand = " << depth_mask_expand << "\n"
+        << "depth_mask_hold_frames = " << depth_mask_hold_frames << "\n"
         << "depth_mask_alpha = " << depth_mask_alpha << "\n"
         << "depth_mask_invert = " << (depth_mask_invert ? "true" : "false") << "\n"
         << "depth_debug_overlay_enabled = " << (depth_debug_overlay_enabled ? "true" : "false") << "\n\n";

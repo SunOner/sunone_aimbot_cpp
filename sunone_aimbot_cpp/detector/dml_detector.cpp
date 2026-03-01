@@ -9,6 +9,7 @@
 #include <atomic>
 #include <chrono>
 #include <limits>
+#include <algorithm>
 #include <dxgi.h>
 
 #include "dml_detector.h"
@@ -16,6 +17,9 @@
 #include "postProcess.h"
 #include "capture.h"
 #include "other_tools.h"
+#ifdef USE_CUDA
+#include "depth/depth_mask.h"
+#endif
 
 extern std::atomic<bool> detector_model_changed;
 extern std::atomic<bool> detection_resolution_changed;
@@ -39,6 +43,86 @@ bool tryInt64ToInt(int64_t value, int* out)
     *out = static_cast<int>(value);
     return true;
 }
+
+#ifdef USE_CUDA
+bool intersectsDepthMask(const cv::Rect& box, const cv::Mat& mask)
+{
+    if (box.width <= 0 || box.height <= 0 || mask.empty() || mask.type() != CV_8UC1)
+        return false;
+
+    const cv::Rect imageBounds(0, 0, mask.cols, mask.rows);
+    const cv::Rect clipped = box & imageBounds;
+    if (clipped.width <= 0 || clipped.height <= 0)
+        return false;
+
+    const int cx = clipped.x + clipped.width / 2;
+    const int cy = clipped.y + clipped.height / 2;
+    if (mask.at<uint8_t>(cy, cx) != 0)
+        return true;
+
+    const cv::Mat roi = mask(clipped);
+    return cv::countNonZero(roi) > 0;
+}
+
+void filterDetectionsByDepthMask(std::vector<Detection>& detections)
+{
+    static cv::Mat holdTtl;
+
+    if (detections.empty())
+        return;
+
+    if (!config.depth_inference_enabled || !config.depth_mask_enabled)
+    {
+        holdTtl.release();
+        return;
+    }
+
+    const int holdFrames = std::clamp(config.depth_mask_hold_frames, 0, 120);
+    cv::Mat currentMask = getCurrentDetectionSuppressionMask();
+    cv::Mat suppressionMask;
+
+    if (holdFrames <= 0)
+    {
+        holdTtl.release();
+        suppressionMask = currentMask;
+    }
+    else
+    {
+        if (!currentMask.empty() && currentMask.type() == CV_8UC1)
+        {
+            if (holdTtl.empty() || holdTtl.size() != currentMask.size())
+                holdTtl = cv::Mat::zeros(currentMask.size(), CV_16UC1);
+            cv::subtract(holdTtl, cv::Scalar(1), holdTtl);
+            holdTtl.setTo(cv::Scalar(static_cast<uint16_t>(holdFrames)), currentMask);
+        }
+        else if (!holdTtl.empty())
+        {
+            cv::subtract(holdTtl, cv::Scalar(1), holdTtl);
+        }
+
+        if (!holdTtl.empty() && cv::countNonZero(holdTtl) > 0)
+        {
+            cv::compare(holdTtl, cv::Scalar(0), suppressionMask, cv::CMP_GT);
+        }
+        else
+        {
+            suppressionMask.release();
+        }
+    }
+
+    if (suppressionMask.empty() || suppressionMask.type() != CV_8UC1)
+        return;
+
+    detections.erase(
+        std::remove_if(detections.begin(), detections.end(),
+            [&suppressionMask](const Detection& det) { return intersectsDepthMask(det.box, suppressionMask); }),
+        detections.end());
+}
+#else
+void filterDetectionsByDepthMask(std::vector<Detection>&)
+{
+}
+#endif
 }
 
 std::string GetDMLDeviceName(int deviceId)
@@ -356,11 +440,13 @@ void DirectMLDetector::dmlInferenceThread()
                     continue;
                 }
                 const std::vector<Detection>& detections = detectionsBatch.back();
+                std::vector<Detection> filteredDetections = detections;
+                filterDetectionsByDepthMask(filteredDetections);
 
                 std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
                 detectionBuffer.boxes.clear();
                 detectionBuffer.classes.clear();
-                for (const auto& d : detections) {
+                for (const auto& d : filteredDetections) {
                     detectionBuffer.boxes.push_back(d.box);
                     detectionBuffer.classes.push_back(d.classId);
                 }

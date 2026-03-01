@@ -180,6 +180,31 @@ namespace depth_anything
         else
             cv::compare(depth_norm, threshold, mask, cv::CMP_GE);
 
+        const int expand = std::clamp(options.expand, 0, 128);
+        if (expand > 0)
+        {
+            const int kernelSize = 2 * expand + 1;
+            cv::Mat kernel = cv::getStructuringElement(
+                cv::MORPH_ELLIPSE, cv::Size(kernelSize, kernelSize));
+            cv::dilate(mask, mask, kernel);
+        }
+
+        const int nonZero = cv::countNonZero(mask);
+        const bool hasPreviousMask = !mask_binary.empty();
+        if (total > 0)
+        {
+            if (hasPreviousMask && near_percent < 100 && nonZero >= total)
+            {
+                last_error = "Depth mask became full-frame; keeping previous mask.";
+                return;
+            }
+            if (hasPreviousMask && near_percent > 1 && nonZero <= 0)
+            {
+                last_error = "Depth mask became empty; keeping previous mask.";
+                return;
+            }
+        }
+
         mask_binary = std::move(mask);
     }
 

@@ -24,6 +24,8 @@
 #include "other_tools.h"
 #include "postProcess.h"
 #include "cuda_preprocess.h"
+#include "depth/depth_mask.h"
+#include "capture.h"
 
 extern std::atomic<bool> detectionPaused;
 int model_quant;
@@ -48,6 +50,80 @@ bool tryGetPositiveDimInt(int64_t value, int* out)
     if (value <= 0)
         return false;
     return tryGetDimInt(value, out);
+}
+
+bool intersectsDepthMask(const cv::Rect& box, const cv::Mat& mask)
+{
+    if (box.width <= 0 || box.height <= 0 || mask.empty() || mask.type() != CV_8UC1)
+        return false;
+
+    const cv::Rect imageBounds(0, 0, mask.cols, mask.rows);
+    const cv::Rect clipped = box & imageBounds;
+    if (clipped.width <= 0 || clipped.height <= 0)
+        return false;
+
+    const int cx = clipped.x + clipped.width / 2;
+    const int cy = clipped.y + clipped.height / 2;
+    if (mask.at<uint8_t>(cy, cx) != 0)
+        return true;
+
+    const cv::Mat roi = mask(clipped);
+    return cv::countNonZero(roi) > 0;
+}
+
+void filterDetectionsByDepthMask(std::vector<Detection>& detections)
+{
+    static cv::Mat holdTtl;
+
+    if (detections.empty())
+        return;
+
+    if (!config.depth_inference_enabled || !config.depth_mask_enabled)
+    {
+        holdTtl.release();
+        return;
+    }
+
+    const int holdFrames = std::clamp(config.depth_mask_hold_frames, 0, 120);
+    cv::Mat currentMask = getCurrentDetectionSuppressionMask();
+    cv::Mat suppressionMask;
+
+    if (holdFrames <= 0)
+    {
+        holdTtl.release();
+        suppressionMask = currentMask;
+    }
+    else
+    {
+        if (!currentMask.empty() && currentMask.type() == CV_8UC1)
+        {
+            if (holdTtl.empty() || holdTtl.size() != currentMask.size())
+                holdTtl = cv::Mat::zeros(currentMask.size(), CV_16UC1);
+            cv::subtract(holdTtl, cv::Scalar(1), holdTtl);
+            holdTtl.setTo(cv::Scalar(static_cast<uint16_t>(holdFrames)), currentMask);
+        }
+        else if (!holdTtl.empty())
+        {
+            cv::subtract(holdTtl, cv::Scalar(1), holdTtl);
+        }
+
+        if (!holdTtl.empty() && cv::countNonZero(holdTtl) > 0)
+        {
+            cv::compare(holdTtl, cv::Scalar(0), suppressionMask, cv::CMP_GT);
+        }
+        else
+        {
+            suppressionMask.release();
+        }
+    }
+
+    if (suppressionMask.empty() || suppressionMask.type() != CV_8UC1)
+        return;
+
+    detections.erase(
+        std::remove_if(detections.begin(), detections.end(),
+            [&suppressionMask](const Detection& det) { return intersectsDepthMask(det.box, suppressionMask); }),
+        detections.end());
 }
 } // namespace
 
@@ -840,6 +916,7 @@ void TrtDetector::postProcess(const float* output, const std::string& outputName
         config.nms_threshold,
         nmsTime
     );
+    filterDetectionsByDepthMask(detections);
 
     {
         std::lock_guard<std::mutex> lock(detectionBuffer.mutex);

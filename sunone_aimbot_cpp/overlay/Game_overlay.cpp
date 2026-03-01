@@ -663,7 +663,16 @@ void Game_overlay::Impl::ApplyDisplayAffinity()
         return;
 
     if (wantedExclude)
-        SetWindowDisplayAffinity(hwnd, WDA_MONITOR);
+    {
+        const DWORD err = GetLastError();
+        std::cerr << "[GameOverlay] SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE) failed, err=" << err
+                  << ". Trying WDA_MONITOR fallback." << std::endl;
+        if (!SetWindowDisplayAffinity(hwnd, WDA_MONITOR))
+        {
+            std::cerr << "[GameOverlay] SetWindowDisplayAffinity(WDA_MONITOR) failed, err="
+                      << GetLastError() << std::endl;
+        }
+    }
 }
 
 void Game_overlay::Impl::RenderLoop()

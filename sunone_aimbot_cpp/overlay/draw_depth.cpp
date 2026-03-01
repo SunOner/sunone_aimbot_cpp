@@ -30,7 +30,6 @@
 #endif
 
 #ifdef USE_CUDA
-static depth_anything::DepthAnythingTrt g_depthModel;
 static const char* kDepthColormapNames[] = {
     "Autumn",
     "Bone",
@@ -87,8 +86,7 @@ void draw_depth()
     }
     return;
 #else
-    static std::string depthStatus = "Depth model not loaded.";
-    static int lastColormap = -1;
+    static std::string depthStatus = "Depth runtime is managed automatically.";
     static std::atomic<bool> depthExportRunning{ false };
     static std::thread depthExportThread;
     static std::mutex depthExportMutex;
@@ -116,11 +114,8 @@ void draw_depth()
         if (ImGui::Checkbox("Enable Depth Inference", &config.depth_inference_enabled))
         {
             OverlayConfig_MarkDirty();
-            if (!config.depth_inference_enabled && g_depthModel.ready())
-            {
-                g_depthModel.reset();
+            if (!config.depth_inference_enabled)
                 depthStatus = "Depth inference disabled.";
-            }
         }
 
         if (!hasModels)
@@ -172,16 +167,11 @@ void draw_depth()
             {
                 config.depth_model_path = selectedModel;
                 OverlayConfig_MarkDirty();
-            }
-
-            if (g_depthModel.initialize(config.depth_model_path, gLogger))
-            {
-                depthStatus = "Depth model loaded.";
-                g_depthModel.setColormap(config.depth_colormap);
+                depthStatus = "Depth model path applied. Runtime loader will update automatically.";
             }
             else
             {
-                depthStatus = g_depthModel.lastError();
+                depthStatus = "Depth model path already selected.";
             }
         }
         if (!hasModels || selectedIsOnnx || exportBusy)
@@ -278,9 +268,23 @@ void draw_depth()
             OverlayConfig_MarkDirty();
         }
 
+        if (ImGui::SliderInt("Depth Mask Expand (px)", &config.depth_mask_expand, 0, 128))
+        {
+            OverlayConfig_MarkDirty();
+        }
+
+        if (ImGui::SliderInt("Depth Mask Hold Frames", &config.depth_mask_hold_frames, 0, 120))
+        {
+            OverlayConfig_MarkDirty();
+        }
+
         if (ImGui::SliderInt("Depth Mask Alpha", &config.depth_mask_alpha, 0, 255))
         {
             OverlayConfig_MarkDirty();
+        }
+        if (config.depth_mask_enabled && config.depth_mask_alpha == 0)
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "Depth mask is invisible: alpha is 0.");
         }
 
         if (ImGui::Checkbox("Depth Mask Invert", &config.depth_mask_invert))
@@ -298,7 +302,6 @@ void draw_depth()
         {
             config.depth_colormap = colormapIndex;
             OverlayConfig_MarkDirty();
-            g_depthModel.setColormap(config.depth_colormap);
         }
 
         OverlayUI::EndSection();
@@ -307,13 +310,36 @@ void draw_depth()
     if (OverlayUI::BeginSection("Depth Status", "depth_section_status"))
     {
         ImGui::Text("Status: %s", depthStatus.c_str());
-        if (config.depth_colormap != lastColormap)
+
+        if (config.depth_inference_enabled && config.depth_mask_enabled)
         {
-            g_depthModel.setColormap(config.depth_colormap);
-            lastColormap = config.depth_colormap;
+            auto& depthMask = depth_anything::GetDepthMaskGenerator();
+            const auto state = depthMask.debugState();
+            const auto lastErr = depthMask.lastError();
+            const auto frameSize = depthMask.lastFrameSize();
+
+            ImGui::Separator();
+            ImGui::Text("Mask runtime: %s", state.model_ready ? "ready" : "not ready");
+            ImGui::Text("Mask model path: %s",
+                state.last_model_path.empty() ? "(none)" : state.last_model_path.c_str());
+            if (frameSize.first > 0 && frameSize.second > 0)
+                ImGui::Text("Last mask frame: %dx%d", frameSize.first, frameSize.second);
+
+            if (!lastErr.empty())
+                ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "Mask error: %s", lastErr.c_str());
         }
-        if (g_depthModel.ready())
-            ImGui::TextUnformatted("Depth preview is shown in game overlay.");
+        else if (config.depth_inference_enabled)
+        {
+            ImGui::Separator();
+            ImGui::TextUnformatted("Depth mask is disabled.");
+        }
+        else
+        {
+            ImGui::Separator();
+            ImGui::TextUnformatted("Depth inference is disabled.");
+        }
+
+        ImGui::TextUnformatted("Depth preview appears in game overlay when debug overlay is enabled.");
         OverlayUI::EndSection();
     }
 #endif

@@ -128,6 +128,8 @@ public:
     bool depth_mask_enabled;
     int depth_mask_fps;
     int depth_mask_near_percent;
+    int depth_mask_expand;
+    int depth_mask_hold_frames;
     int depth_mask_alpha;
     bool depth_mask_invert;
     bool depth_debug_overlay_enabled;

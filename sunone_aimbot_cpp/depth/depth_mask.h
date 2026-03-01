@@ -20,6 +20,7 @@ namespace depth_anything
         bool enabled = false;
         int fps = 5;
         int near_percent = 20;
+        int expand = 0;
         bool invert = false;
     };
 
