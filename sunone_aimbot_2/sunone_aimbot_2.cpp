@@ -1581,7 +1581,6 @@ static void gameOverlayRenderLoop()
             float maskOpacity = std::clamp(static_cast<float>(config.depth_mask_alpha) / 255.0f, 0.0f, 1.0f);
             bool maskHasBounds = false;
             cv::Rect maskBounds{};
-            cv::Point2f maskCenter(0.0f, 0.0f);
 
             if (config.depth_debug_overlay_enabled)
             {
@@ -1763,29 +1762,7 @@ static void gameOverlayRenderLoop()
                 if (!mask.empty())
                 {
                     cv::Mat maskBGRA(mask.size(), CV_8UC4, cv::Scalar(0, 0, 0, 0));
-                    constexpr int kStripeStep = 7;
-                    for (int y = 0; y < mask.rows; ++y)
-                    {
-                        const uint8_t* src = mask.ptr<uint8_t>(y);
-                        cv::Vec4b* dst = maskBGRA.ptr<cv::Vec4b>(y);
-                        for (int x = 0; x < mask.cols; ++x)
-                        {
-                            if (!src[x])
-                                continue;
-
-                            const bool stripe = (((x + y) / kStripeStep) & 1) == 0;
-                            if (stripe)
-                                dst[x] = cv::Vec4b(20, 90, 255, 255);   // orange stripe
-                            else
-                                dst[x] = cv::Vec4b(10, 40, 190, 255);   // darker fill
-                        }
-                    }
-
-                    // Add a bright contour to make mask edges clear on any background.
-                    cv::Mat contourMask;
-                    cv::morphologyEx(mask, contourMask, cv::MORPH_GRADIENT,
-                        cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3)));
-                    maskBGRA.setTo(cv::Scalar(120, 255, 120, 255), contourMask);
+                    maskBGRA.setTo(cv::Scalar(20, 90, 255, 255), mask);
 
                     cv::Mat nonZeroPoints;
                     cv::findNonZero(mask, nonZeroPoints);
@@ -1794,12 +1771,6 @@ static void gameOverlayRenderLoop()
                         maskBounds = cv::boundingRect(nonZeroPoints);
                         maskHasBounds = true;
 
-                        const cv::Moments moments = cv::moments(mask, true);
-                        if (moments.m00 > 0.0)
-                        {
-                            maskCenter.x = static_cast<float>(moments.m10 / moments.m00);
-                            maskCenter.y = static_cast<float>(moments.m01 / moments.m00);
-                        }
                     }
 
                     int newId = gameOverlayPtr->UpdateImageFromBGRA(
@@ -1847,9 +1818,6 @@ static void gameOverlayRenderLoop()
                         const float bh = static_cast<float>(maskBounds.height) * scaleY;
 
                         gameOverlayPtr->AddRect({ bx, by, bw, bh }, ARGB(230, 255, 240, 120), 1.8f);
-                        gameOverlayPtr->FillCircle(
-                            { maskX + maskCenter.x * scaleX, maskY + maskCenter.y * scaleY, 3.0f },
-                            ARGB(235, 120, 255, 255));
                     }
                 }
             }
