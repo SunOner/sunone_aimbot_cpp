@@ -53,6 +53,9 @@
     <ClCompile Include="depth\depth_mask.cpp" />
     <ClCompile Include="depth\depth_utils.cpp" />
     <ClCompile Include="overlay\draw_depth.cpp" />
+    <ClCompile Include="runtime\thread_loops_shared.cpp" />
+    <ClCompile Include="runtime\mouse_thread_loop.cpp" />
+    <ClCompile Include="runtime\game_overlay_loop.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="scr">
@@ -92,6 +95,7 @@
     <ClInclude Include="capture\duplication_api_capture.h" />
     <ClInclude Include="capture\virtual_camera.h" />
     <ClInclude Include="sunone_aimbot_2.h" />
+    <ClInclude Include="runtime\thread_loops.h" />
     <ClInclude Include="detector\dml_detector.h" />
     <ClInclude Include="tensorrt\trt_monitor.h" />
     <ClInclude Include="capture\capture_utils.h" />

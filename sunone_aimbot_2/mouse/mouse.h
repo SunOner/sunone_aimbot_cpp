@@ -23,6 +23,7 @@
 #include "KmboxNetConnection.h"
 #include "Makcu.h"
 #include "ghub.h"
+#include "aim_kalman.h"
 
 class MouseThread
 {
@@ -66,6 +67,9 @@ private:
 
     std::vector<std::pair<double, double>> futurePositions;
     std::mutex                    futurePositionsMutex;
+    aim::AimKalman2D              targetKalman;
+    aim::AimKalmanTelemetry       lastKalmanTelemetry;
+    double                        lastPredictionLookaheadSec = 0.0;
 
     void moveWorkerLoop();
     void queueMove(int dx, int dy);
@@ -108,6 +112,8 @@ private:
 
     std::pair<double, double> calc_movement(double target_x, double target_y);
     double calculate_speed_multiplier(double distance);
+    double currentDetectionDelaySec() const;
+    double currentPredictionLookaheadSec(double detectionDelaySec) const;
 
 public:
     std::mutex input_method_mutex;

@@ -83,6 +83,16 @@ bool Config::loadConfig(const std::string& filename)
         predictionInterval = 0.01f;
         prediction_futurePositions = 20;
         draw_futurePositions = true;
+        kalman_enabled = true;
+        kalman_process_noise_position = 40.0f;
+        kalman_process_noise_velocity = 1800.0f;
+        kalman_measurement_noise = 35.0f;
+        kalman_velocity_damping = 0.08f;
+        kalman_max_velocity = 20000.0f;
+        kalman_warmup_frames = 2;
+        kalman_compensate_detection_delay = true;
+        kalman_additional_prediction_ms = 0.0f;
+        kalman_reset_timeout_sec = 0.5f;
 
         snapRadius = 1.5f;
         nearRadius = 25.0f;
@@ -236,6 +246,7 @@ bool Config::loadConfig(const std::string& filename)
         aim_sim_target_stop_chance = 0.25f;
         aim_sim_show_observed = true;
         aim_sim_show_history = true;
+        aim_sim_show_kalman_debug = true;
 
         // Classes
         class_player = 0;
@@ -379,6 +390,16 @@ bool Config::loadConfig(const std::string& filename)
     predictionInterval = (float)get_double("predictionInterval", 0.01);
     prediction_futurePositions = get_long("prediction_futurePositions", 20);
     draw_futurePositions = get_bool("draw_futurePositions", true);
+    kalman_enabled = get_bool("kalman_enabled", true);
+    kalman_process_noise_position = (float)get_double("kalman_process_noise_position", 40.0);
+    kalman_process_noise_velocity = (float)get_double("kalman_process_noise_velocity", 1800.0);
+    kalman_measurement_noise = (float)get_double("kalman_measurement_noise", 35.0);
+    kalman_velocity_damping = (float)get_double("kalman_velocity_damping", 0.08);
+    kalman_max_velocity = (float)get_double("kalman_max_velocity", 20000.0);
+    kalman_warmup_frames = get_long("kalman_warmup_frames", 2);
+    kalman_compensate_detection_delay = get_bool("kalman_compensate_detection_delay", true);
+    kalman_additional_prediction_ms = (float)get_double("kalman_additional_prediction_ms", 0.0);
+    kalman_reset_timeout_sec = (float)get_double("kalman_reset_timeout_sec", 0.5);
     
     snapRadius = (float)get_double("snapRadius", 1.5);
     nearRadius = (float)get_double("nearRadius", 25.0);
@@ -541,6 +562,24 @@ bool Config::loadConfig(const std::string& filename)
     aim_sim_target_stop_chance = (float)get_double("aim_sim_target_stop_chance", 0.25);
     aim_sim_show_observed = get_bool("aim_sim_show_observed", true);
     aim_sim_show_history = get_bool("aim_sim_show_history", true);
+    aim_sim_show_kalman_debug = get_bool("aim_sim_show_kalman_debug", true);
+
+    if (kalman_process_noise_position < 0.0001f) kalman_process_noise_position = 0.0001f;
+    if (kalman_process_noise_position > 5000.0f) kalman_process_noise_position = 5000.0f;
+    if (kalman_process_noise_velocity < 0.0001f) kalman_process_noise_velocity = 0.0001f;
+    if (kalman_process_noise_velocity > 50000.0f) kalman_process_noise_velocity = 50000.0f;
+    if (kalman_measurement_noise < 0.0001f) kalman_measurement_noise = 0.0001f;
+    if (kalman_measurement_noise > 5000.0f) kalman_measurement_noise = 5000.0f;
+    if (kalman_velocity_damping < 0.0f) kalman_velocity_damping = 0.0f;
+    if (kalman_velocity_damping > 3.0f) kalman_velocity_damping = 3.0f;
+    if (kalman_max_velocity < 100.0f) kalman_max_velocity = 100.0f;
+    if (kalman_max_velocity > 60000.0f) kalman_max_velocity = 60000.0f;
+    if (kalman_warmup_frames < 0) kalman_warmup_frames = 0;
+    if (kalman_warmup_frames > 20) kalman_warmup_frames = 20;
+    if (kalman_additional_prediction_ms < -80.0f) kalman_additional_prediction_ms = -80.0f;
+    if (kalman_additional_prediction_ms > 120.0f) kalman_additional_prediction_ms = 120.0f;
+    if (kalman_reset_timeout_sec < 0.05f) kalman_reset_timeout_sec = 0.05f;
+    if (kalman_reset_timeout_sec > 3.0f) kalman_reset_timeout_sec = 3.0f;
 
     if (aim_sim_width < 220) aim_sim_width = 220;
     if (aim_sim_width > 1920) aim_sim_width = 1920;
@@ -638,6 +677,18 @@ bool Config::saveConfig(const std::string& filename)
         << "predictionInterval = " << predictionInterval << "\n"
         << "prediction_futurePositions = " << prediction_futurePositions << "\n"
         << "draw_futurePositions = " << (draw_futurePositions ? "true" : "false") << "\n"
+        << "kalman_enabled = " << (kalman_enabled ? "true" : "false") << "\n"
+        << "kalman_process_noise_position = " << kalman_process_noise_position << "\n"
+        << "kalman_process_noise_velocity = " << kalman_process_noise_velocity << "\n"
+        << "kalman_measurement_noise = " << kalman_measurement_noise << "\n"
+        << "kalman_velocity_damping = " << kalman_velocity_damping << "\n"
+        << "kalman_max_velocity = " << kalman_max_velocity << "\n"
+        << std::setprecision(0)
+        << "kalman_warmup_frames = " << kalman_warmup_frames << "\n"
+        << "kalman_compensate_detection_delay = " << (kalman_compensate_detection_delay ? "true" : "false") << "\n"
+        << std::fixed << std::setprecision(2)
+        << "kalman_additional_prediction_ms = " << kalman_additional_prediction_ms << "\n"
+        << "kalman_reset_timeout_sec = " << kalman_reset_timeout_sec << "\n"
 
         << "snapRadius = " << snapRadius << "\n"
         << "nearRadius = " << nearRadius << "\n"
@@ -803,7 +854,8 @@ bool Config::saveConfig(const std::string& filename)
         << "aim_sim_target_accel = " << aim_sim_target_accel << "\n"
         << "aim_sim_target_stop_chance = " << aim_sim_target_stop_chance << "\n"
         << "aim_sim_show_observed = " << (aim_sim_show_observed ? "true" : "false") << "\n"
-        << "aim_sim_show_history = " << (aim_sim_show_history ? "true" : "false") << "\n\n";
+        << "aim_sim_show_history = " << (aim_sim_show_history ? "true" : "false") << "\n"
+        << "aim_sim_show_kalman_debug = " << (aim_sim_show_kalman_debug ? "true" : "false") << "\n\n";
 
     // Classes
     file << "# Custom Classes\n"

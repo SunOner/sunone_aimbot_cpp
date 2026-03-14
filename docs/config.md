@@ -124,6 +124,16 @@ Defaults below are first-run defaults from `config.cpp`.
 | `predictionInterval` | float | `0.01` | UI range `0.00..0.5`; `0.00` disables prediction |
 | `prediction_futurePositions` | int | `20` | UI range `1..40` |
 | `draw_futurePositions` | bool | `true` | Draw predicted path |
+| `kalman_enabled` | bool | `true` | Enable Kalman filter for aim prediction |
+| `kalman_process_noise_position` | float | `40.0` | Clamped `0.0001..5000.0` |
+| `kalman_process_noise_velocity` | float | `1800.0` | Clamped `0.0001..50000.0` |
+| `kalman_measurement_noise` | float | `35.0` | Clamped `0.0001..5000.0` |
+| `kalman_velocity_damping` | float | `0.08` | Clamped `0.0..3.0` |
+| `kalman_max_velocity` | float | `20000.0` | Clamped `100.0..60000.0` |
+| `kalman_warmup_frames` | int | `2` | Clamped `0..20` |
+| `kalman_compensate_detection_delay` | bool | `true` | Add live inference delay to prediction horizon |
+| `kalman_additional_prediction_ms` | float | `0.0` | Clamped `-80.0..120.0` |
+| `kalman_reset_timeout_sec` | float | `0.5` | Auto reset timeout, clamped `0.05..3.0` |
 | `snapRadius` | float | `1.5` | UI range `0.1..5.0` |
 | `nearRadius` | float | `25.0` | UI range `1.0..40.0` |
 | `speedCurveExponent` | float | `3.0` | UI range `0.1..10.0` |
@@ -303,6 +313,7 @@ Depth features require CUDA build.
 | `aim_sim_target_stop_chance` | float | `0.25` | Clamped `0.0..0.95` |
 | `aim_sim_show_observed` | bool | `true` | Show delayed target marker |
 | `aim_sim_show_history` | bool | `true` | Show trajectory history |
+| `aim_sim_show_kalman_debug` | bool | `true` | Draw Kalman estimate/innovation/velocity debug |
 
 ### 4.18 Classes
 
@@ -368,4 +379,3 @@ If you update from older config versions:
 
 - New/missing keys are auto-filled by fallback values.
 - Invalid ranges are clamped (for keys with validation in `loadConfig`).
-

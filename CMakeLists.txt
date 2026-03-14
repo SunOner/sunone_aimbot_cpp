@@ -176,6 +176,9 @@ set(AIMBOT_SOURCES
     "${SRC_DIR}/overlay/draw_target.cpp"
     "${SRC_DIR}/overlay/Game_overlay.cpp"
     "${SRC_DIR}/overlay/overlay.cpp"
+    "${SRC_DIR}/runtime/thread_loops_shared.cpp"
+    "${SRC_DIR}/runtime/mouse_thread_loop.cpp"
+    "${SRC_DIR}/runtime/game_overlay_loop.cpp"
     "${SRC_DIR}/scr/other_tools.cpp"
     "${SRC_DIR}/sunone_aimbot_2.cpp"
 )

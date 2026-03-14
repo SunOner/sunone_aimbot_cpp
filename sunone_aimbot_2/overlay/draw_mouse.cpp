@@ -21,6 +21,16 @@ int prev_fovY = config.fovY;
 float prev_minSpeedMultiplier = config.minSpeedMultiplier;
 float prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
 float prev_predictionInterval = config.predictionInterval;
+bool  prev_kalman_enabled = config.kalman_enabled;
+float prev_kalman_process_noise_position = config.kalman_process_noise_position;
+float prev_kalman_process_noise_velocity = config.kalman_process_noise_velocity;
+float prev_kalman_measurement_noise = config.kalman_measurement_noise;
+float prev_kalman_velocity_damping = config.kalman_velocity_damping;
+float prev_kalman_max_velocity = config.kalman_max_velocity;
+int   prev_kalman_warmup_frames = config.kalman_warmup_frames;
+bool  prev_kalman_compensate_detection_delay = config.kalman_compensate_detection_delay;
+float prev_kalman_additional_prediction_ms = config.kalman_additional_prediction_ms;
+float prev_kalman_reset_timeout_sec = config.kalman_reset_timeout_sec;
 float prev_snapRadius = config.snapRadius;
 float prev_nearRadius = config.nearRadius;
 float prev_speedCurveExponent = config.speedCurveExponent;
@@ -82,6 +92,67 @@ void draw_mouse()
         {
             ImGui::EndDisabled();
             ImGui::TextDisabled("Enable Prediction Interval (> 0) to edit this section.");
+        }
+
+        ImGui::Separator();
+        if (ImGui::Checkbox("Enable Kalman Filter", &config.kalman_enabled))
+        {
+            OverlayConfig_MarkDirty();
+            input_method_changed.store(true);
+        }
+
+        if (ImGui::SliderFloat("Kalman Process Noise Pos", &config.kalman_process_noise_position, 0.001f, 5000.0f, "%.3f"))
+        {
+            OverlayConfig_MarkDirty();
+            input_method_changed.store(true);
+        }
+
+        if (ImGui::SliderFloat("Kalman Process Noise Vel", &config.kalman_process_noise_velocity, 0.001f, 50000.0f, "%.3f"))
+        {
+            OverlayConfig_MarkDirty();
+            input_method_changed.store(true);
+        }
+
+        if (ImGui::SliderFloat("Kalman Measurement Noise", &config.kalman_measurement_noise, 0.001f, 5000.0f, "%.3f"))
+        {
+            OverlayConfig_MarkDirty();
+            input_method_changed.store(true);
+        }
+
+        if (ImGui::SliderFloat("Kalman Velocity Damping", &config.kalman_velocity_damping, 0.0f, 3.0f, "%.3f"))
+        {
+            OverlayConfig_MarkDirty();
+            input_method_changed.store(true);
+        }
+
+        if (ImGui::SliderFloat("Kalman Max Velocity", &config.kalman_max_velocity, 100.0f, 60000.0f, "%.0f"))
+        {
+            OverlayConfig_MarkDirty();
+            input_method_changed.store(true);
+        }
+
+        if (ImGui::SliderInt("Kalman Warmup Frames", &config.kalman_warmup_frames, 0, 20))
+        {
+            OverlayConfig_MarkDirty();
+            input_method_changed.store(true);
+        }
+
+        if (ImGui::Checkbox("Kalman Compensate Inference Delay", &config.kalman_compensate_detection_delay))
+        {
+            OverlayConfig_MarkDirty();
+            input_method_changed.store(true);
+        }
+
+        if (ImGui::SliderFloat("Kalman Additional Predict (ms)", &config.kalman_additional_prediction_ms, -80.0f, 120.0f, "%.1f"))
+        {
+            OverlayConfig_MarkDirty();
+            input_method_changed.store(true);
+        }
+
+        if (ImGui::SliderFloat("Kalman Reset Timeout (s)", &config.kalman_reset_timeout_sec, 0.05f, 3.0f, "%.2f"))
+        {
+            OverlayConfig_MarkDirty();
+            input_method_changed.store(true);
         }
 
         OverlayUI::EndSection();
@@ -644,6 +715,16 @@ void draw_mouse()
         prev_minSpeedMultiplier != config.minSpeedMultiplier ||
         prev_maxSpeedMultiplier != config.maxSpeedMultiplier ||
         prev_predictionInterval != config.predictionInterval ||
+        prev_kalman_enabled != config.kalman_enabled ||
+        prev_kalman_process_noise_position != config.kalman_process_noise_position ||
+        prev_kalman_process_noise_velocity != config.kalman_process_noise_velocity ||
+        prev_kalman_measurement_noise != config.kalman_measurement_noise ||
+        prev_kalman_velocity_damping != config.kalman_velocity_damping ||
+        prev_kalman_max_velocity != config.kalman_max_velocity ||
+        prev_kalman_warmup_frames != config.kalman_warmup_frames ||
+        prev_kalman_compensate_detection_delay != config.kalman_compensate_detection_delay ||
+        prev_kalman_additional_prediction_ms != config.kalman_additional_prediction_ms ||
+        prev_kalman_reset_timeout_sec != config.kalman_reset_timeout_sec ||
         prev_snapRadius != config.snapRadius ||
         prev_nearRadius != config.nearRadius ||
         prev_speedCurveExponent != config.speedCurveExponent ||
@@ -654,6 +735,16 @@ void draw_mouse()
         prev_minSpeedMultiplier = config.minSpeedMultiplier;
         prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
         prev_predictionInterval = config.predictionInterval;
+        prev_kalman_enabled = config.kalman_enabled;
+        prev_kalman_process_noise_position = config.kalman_process_noise_position;
+        prev_kalman_process_noise_velocity = config.kalman_process_noise_velocity;
+        prev_kalman_measurement_noise = config.kalman_measurement_noise;
+        prev_kalman_velocity_damping = config.kalman_velocity_damping;
+        prev_kalman_max_velocity = config.kalman_max_velocity;
+        prev_kalman_warmup_frames = config.kalman_warmup_frames;
+        prev_kalman_compensate_detection_delay = config.kalman_compensate_detection_delay;
+        prev_kalman_additional_prediction_ms = config.kalman_additional_prediction_ms;
+        prev_kalman_reset_timeout_sec = config.kalman_reset_timeout_sec;
         prev_snapRadius = config.snapRadius;
         prev_nearRadius = config.nearRadius;
         prev_speedCurveExponent = config.speedCurveExponent;

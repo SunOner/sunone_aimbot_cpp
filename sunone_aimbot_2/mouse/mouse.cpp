@@ -18,6 +18,22 @@
 #include "sunone_aimbot_2.h"
 #include "ghub.h"
 
+namespace
+{
+aim::AimKalmanSettings buildKalmanSettingsFromConfig()
+{
+    aim::AimKalmanSettings settings;
+    settings.enabled = config.kalman_enabled;
+    settings.process_noise_position = static_cast<double>(config.kalman_process_noise_position);
+    settings.process_noise_velocity = static_cast<double>(config.kalman_process_noise_velocity);
+    settings.measurement_noise = static_cast<double>(config.kalman_measurement_noise);
+    settings.velocity_damping = static_cast<double>(config.kalman_velocity_damping);
+    settings.max_velocity = static_cast<double>(config.kalman_max_velocity);
+    settings.warmup_frames = config.kalman_warmup_frames;
+    return settings;
+}
+}
+
 MouseThread::MouseThread(
     int resolution,
     int fovX,
@@ -65,6 +81,10 @@ MouseThread::MouseThread(
     wind_D = config.wind_D;
     resetWindState();
     clearWindDebugTrail();
+    targetKalman.setSettings(buildKalmanSettingsFromConfig());
+    targetKalman.reset();
+    lastKalmanTelemetry = {};
+    lastPredictionLookaheadSec = 0.0;
 
     moveWorker = std::thread(&MouseThread::moveWorkerLoop, this);
 }
@@ -96,6 +116,10 @@ void MouseThread::updateConfig(
     wind_M = config.wind_M; wind_D = config.wind_D;
     resetWindState();
     clearWindDebugTrail();
+    targetKalman.setSettings(buildKalmanSettingsFromConfig());
+    targetKalman.reset();
+    lastKalmanTelemetry = {};
+    lastPredictionLookaheadSec = 0.0;
 }
 
 MouseThread::~MouseThread()
@@ -342,9 +366,38 @@ void MouseThread::pruneWindDebugTrailLocked(const std::chrono::steady_clock::tim
         windDebugTrail.pop_front();
 }
 
+double MouseThread::currentDetectionDelaySec() const
+{
+    double detectionDelaySec = 0.05;
+    if (config.backend == "DML")
+    {
+        if (dml_detector)
+            detectionDelaySec = dml_detector->lastInferenceTimeDML.count() * 0.001;
+    }
+#ifdef USE_CUDA
+    else
+    {
+        detectionDelaySec = trt_detector.lastInferenceTime.count() * 0.001;
+    }
+#endif
+    if (!std::isfinite(detectionDelaySec))
+        detectionDelaySec = 0.05;
+    return std::clamp(detectionDelaySec, 0.0, 0.2);
+}
+
+double MouseThread::currentPredictionLookaheadSec(double detectionDelaySec) const
+{
+    double lookahead = std::max(0.0, prediction_interval);
+    if (config.kalman_compensate_detection_delay)
+        lookahead += std::max(0.0, detectionDelaySec);
+    lookahead += static_cast<double>(config.kalman_additional_prediction_ms) * 0.001;
+    return std::clamp(lookahead, 0.0, 1.5);
+}
+
 std::pair<double, double> MouseThread::predict_target_position(double target_x, double target_y)
 {
     auto current_time = std::chrono::steady_clock::now();
+    targetKalman.setSettings(buildKalmanSettingsFromConfig());
 
     if (prev_time.time_since_epoch().count() == 0 || !target_detected.load())
     {
@@ -353,40 +406,31 @@ std::pair<double, double> MouseThread::predict_target_position(double target_x, 
         prev_y = target_y;
         prev_velocity_x = 0.0;
         prev_velocity_y = 0.0;
+        targetKalman.reset();
+        lastKalmanTelemetry = targetKalman.update(target_x, target_y, 1.0 / 120.0, 0.0);
+        lastPredictionLookaheadSec = 0.0;
         return { target_x, target_y };
     }
 
     double dt = std::chrono::duration<double>(current_time - prev_time).count();
     if (dt < 1e-8) dt = 1e-8;
 
-    double vx = (target_x - prev_x) / dt;
-    double vy = (target_y - prev_y) / dt;
-
-    vx = std::clamp(vx, -20000.0, 20000.0);
-    vy = std::clamp(vy, -20000.0, 20000.0);
-
     prev_time = current_time;
     prev_x = target_x;
     prev_y = target_y;
-    prev_velocity_x = vx;
-    prev_velocity_y = vy;
 
-    double predictedX = target_x + vx * prediction_interval;
-    double predictedY = target_y + vy * prediction_interval;
+    const double detectionDelaySec = currentDetectionDelaySec();
+    const double lookaheadSec = currentPredictionLookaheadSec(detectionDelaySec);
+    lastPredictionLookaheadSec = lookaheadSec;
 
-    double detectionDelay = 0.05;
-    if (config.backend == "DML")
-    {
-        detectionDelay = dml_detector->lastInferenceTimeDML.count();
-    }
-#ifdef USE_CUDA
-    else
-    {
-        detectionDelay = trt_detector.lastInferenceTime.count();
-    }
-#endif
-    predictedX += vx * detectionDelay;
-    predictedY += vy * detectionDelay;
+    lastKalmanTelemetry = targetKalman.update(target_x, target_y, dt, lookaheadSec);
+    prev_velocity_x = lastKalmanTelemetry.velocity_x;
+    prev_velocity_y = lastKalmanTelemetry.velocity_y;
+
+    double predictedX = lastKalmanTelemetry.predicted_x;
+    double predictedY = lastKalmanTelemetry.predicted_y;
+    if (!std::isfinite(predictedX)) predictedX = target_x;
+    if (!std::isfinite(predictedY)) predictedY = target_y;
 
     return { predictedX, predictedY };
 }
@@ -503,38 +547,8 @@ void MouseThread::moveMouse(const AimbotTarget& target)
 void MouseThread::moveMousePivot(double pivotX, double pivotY)
 {
     std::lock_guard lg(input_method_mutex);
-
-    auto current_time = std::chrono::steady_clock::now();
-
-    if (prev_time.time_since_epoch().count() == 0 || !target_detected.load())
-    {
-        prev_time = current_time;
-        prev_x = pivotX; prev_y = pivotY;
-        prev_velocity_x = prev_velocity_y = 0.0;
-
-        auto m0 = calc_movement(pivotX, pivotY);
-        const int mx0 = static_cast<int>(m0.first);
-        const int my0 = static_cast<int>(m0.second);
-        if (wind_mouse_enabled)
-            windMouseMoveRelative(mx0, my0);
-        else
-            queueMove(mx0, my0);
-        return;
-    }
-
-    double dt = std::chrono::duration<double>(current_time - prev_time).count();
-    prev_time = current_time;
-    dt = std::max(dt, 1e-8);
-
-    double vx = std::clamp((pivotX - prev_x) / dt, -20000.0, 20000.0);
-    double vy = std::clamp((pivotY - prev_y) / dt, -20000.0, 20000.0);
-    prev_x = pivotX; prev_y = pivotY;
-    prev_velocity_x = vx;  prev_velocity_y = vy;
-
-    double predX = pivotX + vx * prediction_interval + vx * 0.002;
-    double predY = pivotY + vy * prediction_interval + vy * 0.002;
-
-    auto mv = calc_movement(predX, predY);
+    auto predicted = predict_target_position(pivotX, pivotY);
+    auto mv = calc_movement(predicted.first, predicted.second);
     int mx = static_cast<int>(mv.first);
     int my = static_cast<int>(mv.second);
 
@@ -675,6 +689,9 @@ void MouseThread::resetPrediction()
     prev_y = 0;
     prev_velocity_x = 0;
     prev_velocity_y = 0;
+    targetKalman.reset();
+    lastKalmanTelemetry = {};
+    lastPredictionLookaheadSec = 0.0;
     target_detected.store(false);
 }
 
@@ -682,8 +699,9 @@ void MouseThread::checkAndResetPredictions()
 {
     auto current_time = std::chrono::steady_clock::now();
     double elapsed = std::chrono::duration<double>(current_time - last_target_time).count();
+    const double timeoutSec = std::clamp(static_cast<double>(config.kalman_reset_timeout_sec), 0.05, 3.0);
 
-    if (elapsed > 0.5 && target_detected.load())
+    if (elapsed > timeoutSec && target_detected.load())
     {
         resetPrediction();
     }
@@ -692,10 +710,31 @@ void MouseThread::checkAndResetPredictions()
 std::vector<std::pair<double, double>> MouseThread::predictFuturePositions(double pivotX, double pivotY, int frames)
 {
     std::vector<std::pair<double, double>> result;
+    if (frames <= 0)
+        return result;
+
     result.reserve(frames);
 
     const double fixedFps = 30.0;
-    double frame_time = 1.0 / fixedFps;
+    const double frame_time = 1.0 / fixedFps;
+
+    targetKalman.setSettings(buildKalmanSettingsFromConfig());
+    if (targetKalman.initialized())
+    {
+        const double detectionDelaySec = currentDetectionDelaySec();
+        const double baseLookaheadSec = currentPredictionLookaheadSec(detectionDelaySec);
+        for (int i = 1; i <= frames; ++i)
+        {
+            const double t = baseLookaheadSec + frame_time * i;
+            auto predicted = targetKalman.predict(t);
+            if (!std::isfinite(predicted.first) || !std::isfinite(predicted.second))
+                continue;
+            result.push_back(predicted);
+        }
+
+        if (!result.empty())
+            return result;
+    }
 
     auto current_time = std::chrono::steady_clock::now();
     double dt = std::chrono::duration<double>(current_time - prev_time).count();
@@ -711,10 +750,8 @@ std::vector<std::pair<double, double>> MouseThread::predictFuturePositions(doubl
     for (int i = 1; i <= frames; i++)
     {
         double t = frame_time * i;
-
         double px = pivotX + vx * t;
         double py = pivotY + vy * t;
-
         result.push_back({ px, py });
     }
 

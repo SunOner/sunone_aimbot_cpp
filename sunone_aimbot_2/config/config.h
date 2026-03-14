@@ -40,6 +40,16 @@ public:
     float predictionInterval;
     int prediction_futurePositions;
     bool draw_futurePositions;
+    bool kalman_enabled;
+    float kalman_process_noise_position;
+    float kalman_process_noise_velocity;
+    float kalman_measurement_noise;
+    float kalman_velocity_damping;
+    float kalman_max_velocity;
+    int kalman_warmup_frames;
+    bool kalman_compensate_detection_delay;
+    float kalman_additional_prediction_ms;
+    float kalman_reset_timeout_sec;
 
     float snapRadius;
     float nearRadius;
@@ -183,6 +193,7 @@ public:
     float aim_sim_target_stop_chance;
     bool aim_sim_show_observed;
     bool aim_sim_show_history;
+    bool aim_sim_show_kalman_debug;
 
     void clampGameOverlayColor()
     {

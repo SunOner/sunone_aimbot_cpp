@@ -387,6 +387,9 @@ void draw_game_overlay_settings()
         if (ImGui::Checkbox("Show Trajectory History", &config.aim_sim_show_history))
             OverlayConfig_MarkDirty();
 
+        if (ImGui::Checkbox("Show Kalman Debug", &config.aim_sim_show_kalman_debug))
+            OverlayConfig_MarkDirty();
+
         if (!config.aim_sim_enabled)
         {
             ImGui::EndDisabled();

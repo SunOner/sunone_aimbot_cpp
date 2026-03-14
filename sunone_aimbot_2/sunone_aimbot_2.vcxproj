@@ -71,6 +71,9 @@
     <ClCompile Include="overlay\draw_target.cpp" />
     <ClCompile Include="overlay\Game_overlay.cpp" />
     <ClCompile Include="overlay\overlay.cpp" />
+    <ClCompile Include="runtime\thread_loops_shared.cpp" />
+    <ClCompile Include="runtime\mouse_thread_loop.cpp" />
+    <ClCompile Include="runtime\game_overlay_loop.cpp" />
     <ClCompile Include="scr\other_tools.cpp" />
     <ClCompile Include="sunone_aimbot_2.cpp" />
     <ClCompile Include="tensorrt\nvinf.cpp">
@@ -130,6 +133,7 @@
     <ClInclude Include="overlay\Game_overlay.h" />
     <ClInclude Include="overlay\overlay.h" />
     <ClInclude Include="sunone_aimbot_2.h" />
+    <ClInclude Include="runtime\thread_loops.h" />
     <ClInclude Include="tensorrt\nvinf.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DML|x64'">true</ExcludedFromBuild>
     </ClInclude>
