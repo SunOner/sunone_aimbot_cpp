@@ -26,6 +26,7 @@
 #include "cuda_preprocess.h"
 #include "depth/depth_mask.h"
 #include "capture.h"
+#include "scr/data_collector.h"
 
 extern std::atomic<bool> detectionPaused;
 int model_quant;
@@ -595,7 +596,7 @@ void TrtDetector::loadEngine(const std::string& modelFile)
     engine.reset(loadEngineFromFile(engineFilePath, runtime.get()));
 }
 
-void TrtDetector::processFrame(const cv::Mat& frame)
+void TrtDetector::processFrame(const cv::Mat& detection_frame, const cv::Mat& source_frame)
 {
     if (config.backend == "DML") return;
 
@@ -608,7 +609,8 @@ void TrtDetector::processFrame(const cv::Mat& frame)
     }
 
     std::unique_lock<std::mutex> lock(inferenceMutex);
-    currentFrame = frame;
+    currentFrame = detection_frame;
+    currentSourceFrame = source_frame.empty() ? detection_frame : source_frame;
     currentFrameGpu.release();
     pendingFrameType = PendingFrameType::Cpu;
     frameReady = true;
@@ -629,6 +631,7 @@ void TrtDetector::processFrameGpu(const cv::cuda::GpuMat& frame)
 
     std::unique_lock<std::mutex> lock(inferenceMutex);
     currentFrame.release();
+    currentSourceFrame.release();
     currentFrameGpu = frame;
     pendingFrameType = PendingFrameType::Gpu;
     frameReady = true;
@@ -657,6 +660,7 @@ void TrtDetector::inferenceThread()
                 outputBindings.clear();
 
                 currentFrame.release();
+                currentSourceFrame.release();
                 currentFrameGpu.release();
                 frameReady = false;
                 pendingFrameType = PendingFrameType::None;
@@ -680,6 +684,7 @@ void TrtDetector::inferenceThread()
         }
 
         cv::Mat frame;
+        cv::Mat sourceFrame;
         cv::cuda::GpuMat frameGpu;
         PendingFrameType frameType = PendingFrameType::None;
         bool hasNewFrame = false;
@@ -699,10 +704,12 @@ void TrtDetector::inferenceThread()
                     frameGpu = currentFrameGpu;
                     currentFrameGpu.release();
                     currentFrame.release();
+                    currentSourceFrame.release();
                 }
                 else
                 {
                     frame = std::move(currentFrame);
+                    sourceFrame = std::move(currentSourceFrame);
                     currentFrameGpu.release();
                 }
                 pendingFrameType = PendingFrameType::None;
@@ -777,6 +784,7 @@ void TrtDetector::inferenceThread()
                 // Post-processing (CPU)
                 auto t_post_start = std::chrono::steady_clock::now();
 
+                std::vector<Detection> latestDetections;
                 for (const auto& name : outputNames)
                 {
                     const auto itPinned = pinnedOutputBuffers.find(name);
@@ -798,13 +806,60 @@ void TrtDetector::inferenceThread()
                         for (size_t i = 0; i < numElements; ++i)
                             outputDataFloat[i] = __half2float(halfPtr[i]);
 
-                        postProcess(outputDataFloat.data(), name, &lastNmsTime);
+                        latestDetections = postProcess(outputDataFloat.data(), name, &lastNmsTime);
                     }
                     else if (dtype == nvinfer1::DataType::kFLOAT)
                     {
                         const float* floatPtr = reinterpret_cast<const float*>(itPinned->second);
-                        postProcess(floatPtr, name, &lastNmsTime);
+                        latestDetections = postProcess(floatPtr, name, &lastNmsTime);
                     }
+                }
+
+                std::vector<cv::Rect> boxes;
+                std::vector<int> classes;
+                std::vector<float> confidences;
+                boxes.reserve(latestDetections.size());
+                classes.reserve(latestDetections.size());
+                confidences.reserve(latestDetections.size());
+                for (const auto& det : latestDetections)
+                {
+                    boxes.push_back(det.box);
+                    classes.push_back(det.classId);
+                    confidences.push_back(det.confidence);
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
+                    detectionBuffer.boxes = boxes;
+                    detectionBuffer.classes = classes;
+                    detectionBuffer.version++;
+                    detectionBuffer.cv.notify_all();
+                }
+
+                if (hasGpuFrame)
+                {
+                    cvm::MaybeCollectDataSample(
+                        "",
+                        config.ai_model.c_str(),
+                        frameGpu,
+                        boxes,
+                        classes,
+                        confidences,
+                        aiming.load(),
+                        config);
+                }
+                else
+                {
+                    const cv::Mat& frameForCollection = sourceFrame.empty() ? frame : sourceFrame;
+                    cvm::MaybeCollectDataSample(
+                        "",
+                        config.ai_model.c_str(),
+                        frameForCollection,
+                        boxes,
+                        classes,
+                        confidences,
+                        aiming.load(),
+                        config);
                 }
 
                 auto t_post_end = std::chrono::steady_clock::now();
@@ -886,7 +941,13 @@ void TrtDetector::preProcess(const cv::cuda::GpuMat& frame)
 
     gpuResizedBuffer.convertTo(gpuFloatBuffer, CV_32FC3, 1.0 / 255.0, 0.0, cvStream);
 
-    launch_hwc_to_chw_norm(gpuFloatBuffer, reinterpret_cast<float*>(inputBuffer), w, h, stream);
+    launch_hwc_to_chw_norm(
+        gpuFloatBuffer.ptr<float>(),
+        gpuFloatBuffer.step,
+        reinterpret_cast<float*>(inputBuffer),
+        w,
+        h,
+        stream);
 
     if (config.verbose)
     {
@@ -898,13 +959,14 @@ void TrtDetector::preProcess(const cv::cuda::GpuMat& frame)
     }
 }
 
-void TrtDetector::postProcess(const float* output, const std::string& outputName, std::chrono::duration<double, std::milli>* nmsTime)
+std::vector<Detection> TrtDetector::postProcess(const float* output, const std::string& outputName, std::chrono::duration<double, std::milli>* nmsTime)
 {
-    if (numClasses <= 0) return;
+    if (numClasses <= 0)
+        return {};
 
     const auto shapeIt = outputShapes.find(outputName);
     if (shapeIt == outputShapes.end())
-        return;
+        return {};
 
     std::vector<Detection> detections;
     
@@ -917,20 +979,6 @@ void TrtDetector::postProcess(const float* output, const std::string& outputName
         nmsTime
     );
     filterDetectionsByDepthMask(detections);
-
-    {
-        std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
-        detectionBuffer.boxes.clear();
-        detectionBuffer.classes.clear();
-
-        for (const auto& det : detections)
-        {
-            detectionBuffer.boxes.push_back(det.box);
-            detectionBuffer.classes.push_back(det.classId);
-        }
-
-        detectionBuffer.version++;
-        detectionBuffer.cv.notify_all();
-    }
+    return detections;
 }
 #endif

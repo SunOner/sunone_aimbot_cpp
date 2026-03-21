@@ -248,6 +248,18 @@ bool Config::loadConfig(const std::string& filename)
         aim_sim_show_history = true;
         aim_sim_show_kalman_debug = true;
 
+        // Data collection
+        collect_data_while_playing = false;
+        collect_only_when_aimbot_running = false;
+        collect_only_when_targets_present = true;
+        collect_save_every_n_frames = 15;
+        collect_jpeg_quality = 95;
+        collect_output_dir.clear();
+        auto_label_data = true;
+        auto_label_min_conf = 0.30f;
+        auto_label_max_boxes = 20;
+        auto_label_record_classes.clear();
+
         // Classes
         class_player = 0;
         class_head = 1;
@@ -564,6 +576,17 @@ bool Config::loadConfig(const std::string& filename)
     aim_sim_show_history = get_bool("aim_sim_show_history", true);
     aim_sim_show_kalman_debug = get_bool("aim_sim_show_kalman_debug", true);
 
+    collect_data_while_playing = get_bool("collect_data_while_playing", false);
+    collect_only_when_aimbot_running = get_bool("collect_only_when_aimbot_running", false);
+    collect_only_when_targets_present = get_bool("collect_only_when_targets_present", true);
+    collect_save_every_n_frames = get_long("collect_save_every_n_frames", 15);
+    collect_output_dir = get_string("collect_output_dir", "");
+    collect_jpeg_quality = get_long("collect_jpeg_quality", 95);
+    auto_label_data = get_bool("auto_label_data", true);
+    auto_label_min_conf = (float)get_double("auto_label_min_conf", 0.30);
+    auto_label_max_boxes = get_long("auto_label_max_boxes", 20);
+    auto_label_record_classes = get_string("auto_label_record_classes", "");
+
     if (kalman_process_noise_position < 0.0001f) kalman_process_noise_position = 0.0001f;
     if (kalman_process_noise_position > 5000.0f) kalman_process_noise_position = 5000.0f;
     if (kalman_process_noise_velocity < 0.0001f) kalman_process_noise_velocity = 0.0001f;
@@ -609,6 +632,15 @@ bool Config::loadConfig(const std::string& filename)
     if (aim_sim_target_accel > 10000.0f) aim_sim_target_accel = 10000.0f;
     if (aim_sim_target_stop_chance < 0.0f) aim_sim_target_stop_chance = 0.0f;
     if (aim_sim_target_stop_chance > 0.95f) aim_sim_target_stop_chance = 0.95f;
+
+    if (collect_save_every_n_frames < 1) collect_save_every_n_frames = 1;
+    if (collect_save_every_n_frames > 600) collect_save_every_n_frames = 600;
+    if (collect_jpeg_quality < 50) collect_jpeg_quality = 50;
+    if (collect_jpeg_quality > 100) collect_jpeg_quality = 100;
+    if (auto_label_min_conf < 0.01f) auto_label_min_conf = 0.01f;
+    if (auto_label_min_conf > 0.99f) auto_label_min_conf = 0.99f;
+    if (auto_label_max_boxes < 1) auto_label_max_boxes = 1;
+    if (auto_label_max_boxes > 200) auto_label_max_boxes = 200;
 
     // Classes
     class_player = get_long("class_player", 0);
@@ -856,6 +888,20 @@ bool Config::saveConfig(const std::string& filename)
         << "aim_sim_show_observed = " << (aim_sim_show_observed ? "true" : "false") << "\n"
         << "aim_sim_show_history = " << (aim_sim_show_history ? "true" : "false") << "\n"
         << "aim_sim_show_kalman_debug = " << (aim_sim_show_kalman_debug ? "true" : "false") << "\n\n";
+
+    file << "# Data Collection\n"
+        << "collect_data_while_playing = " << (collect_data_while_playing ? "true" : "false") << "\n"
+        << "collect_only_when_aimbot_running = " << (collect_only_when_aimbot_running ? "true" : "false") << "\n"
+        << "collect_only_when_targets_present = " << (collect_only_when_targets_present ? "true" : "false") << "\n"
+        << "collect_save_every_n_frames = " << collect_save_every_n_frames << "\n"
+        << "collect_jpeg_quality = " << collect_jpeg_quality << "\n"
+        << "collect_output_dir = " << collect_output_dir << "\n"
+        << "auto_label_data = " << (auto_label_data ? "true" : "false") << "\n"
+        << std::fixed << std::setprecision(2)
+        << "auto_label_min_conf = " << auto_label_min_conf << "\n"
+        << std::setprecision(0)
+        << "auto_label_max_boxes = " << auto_label_max_boxes << "\n"
+        << "auto_label_record_classes = " << auto_label_record_classes << "\n\n";
 
     // Classes
     file << "# Custom Classes\n"

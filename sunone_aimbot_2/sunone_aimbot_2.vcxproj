@@ -74,6 +74,7 @@
     <ClCompile Include="runtime\thread_loops_shared.cpp" />
     <ClCompile Include="runtime\mouse_thread_loop.cpp" />
     <ClCompile Include="runtime\game_overlay_loop.cpp" />
+    <ClCompile Include="scr\data_collector.cpp" />
     <ClCompile Include="scr\other_tools.cpp" />
     <ClCompile Include="sunone_aimbot_2.cpp" />
     <ClCompile Include="tensorrt\nvinf.cpp">
@@ -132,6 +133,7 @@
     <ClInclude Include="overlay\draw_settings.h" />
     <ClInclude Include="overlay\Game_overlay.h" />
     <ClInclude Include="overlay\overlay.h" />
+    <ClInclude Include="scr\data_collector.h" />
     <ClInclude Include="sunone_aimbot_2.h" />
     <ClInclude Include="runtime\thread_loops.h" />
     <ClInclude Include="tensorrt\nvinf.h">
@@ -161,14 +163,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='CUDA|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DML|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -234,6 +236,7 @@
       <GenerateCatalogFiles>false</GenerateCatalogFiles>
     </Manifest>
     <CudaCompile>
+      <Include>$(MSBuildProjectDirectory)\modules\opencv\build\install\include;%(Include)</Include>
       <AdditionalOptions>-allow-unsupported-compiler %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>

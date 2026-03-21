@@ -27,7 +27,7 @@ public:
     TrtDetector();
     ~TrtDetector();
     void initialize(const std::string& modelFile);
-    void processFrame(const cv::Mat& frame);
+    void processFrame(const cv::Mat& detection_frame, const cv::Mat& source_frame = cv::Mat());
     void processFrameGpu(const cv::cuda::GpuMat& frame);
     void inferenceThread();
 
@@ -66,6 +66,7 @@ private:
     std::condition_variable inferenceCV;
     std::atomic<bool> shouldExit;
     cv::Mat currentFrame;
+    cv::Mat currentSourceFrame;
     cv::cuda::GpuMat currentFrameGpu;
     bool frameReady;
 
@@ -89,7 +90,7 @@ private:
 
     cv::cuda::Stream cvStream;
 
-    void postProcess(
+    std::vector<Detection> postProcess(
         const float* output,
         const std::string& outputName,
         std::chrono::duration<double, std::milli>* nmsTime

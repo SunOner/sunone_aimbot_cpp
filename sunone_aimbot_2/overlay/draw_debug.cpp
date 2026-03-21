@@ -3,11 +3,14 @@
 #include <winsock2.h>
 #include <Windows.h>
 
+#include <algorithm>
+#include <cstdio>
 #include <d3d11.h>
 #include <string>
 #include <vector>
 
 #include "imgui/imgui.h"
+#include "scr/data_collector.h"
 #include "sunone_aimbot_2.h"
 #include "overlay.h"
 #include "overlay/config_dirty.h"
@@ -41,6 +44,31 @@ static ID3D11ShaderResourceView* g_maskSRV = nullptr;
 static int maskTexW = 0, maskTexH = 0;
 
 static float debug_scale = 0.5f;
+static char g_collectOutputDirBuffer[512] = {};
+static std::string g_collectOutputDirMirror;
+static char g_collectClassFilterBuffer[256] = {};
+static std::string g_collectClassFilterMirror;
+
+static void syncDebugTextBuffer(char* buffer, size_t buffer_size, std::string& mirror, const std::string& value)
+{
+    if (mirror == value)
+        return;
+
+    std::snprintf(buffer, buffer_size, "%s", value.c_str());
+    buffer[buffer_size - 1] = '\0';
+    mirror = value;
+}
+
+static bool applyDebugTextBuffer(std::string& target, std::string& mirror, const char* buffer)
+{
+    const std::string value = buffer ? std::string(buffer) : std::string();
+    if (target == value && mirror == value)
+        return false;
+
+    target = value;
+    mirror = value;
+    return true;
+}
 
 static int findDebugKeyIndexByName(const std::string& keyName)
 {
@@ -210,6 +238,88 @@ static void uploadMaskFrame(const cv::Mat& rgba)
     }
 }
 
+static bool drawDataCollectionSection()
+{
+    syncDebugTextBuffer(g_collectOutputDirBuffer, sizeof(g_collectOutputDirBuffer), g_collectOutputDirMirror, config.collect_output_dir);
+    syncDebugTextBuffer(g_collectClassFilterBuffer, sizeof(g_collectClassFilterBuffer), g_collectClassFilterMirror, config.auto_label_record_classes);
+
+    bool changed = false;
+    if (!OverlayUI::BeginSection("Data Collection", "debug_section_data_collection"))
+        return false;
+
+    changed |= ImGui::Checkbox("Collect data while playing", &config.collect_data_while_playing);
+    changed |= ImGui::Checkbox("Only when aimbot is active", &config.collect_only_when_aimbot_running);
+    changed |= ImGui::Checkbox("Only when targets exist", &config.collect_only_when_targets_present);
+
+    int saveEveryNFrames = config.collect_save_every_n_frames;
+    if (ImGui::SliderInt("Save every N frames", &saveEveryNFrames, 1, 120))
+    {
+        config.collect_save_every_n_frames = saveEveryNFrames;
+        changed = true;
+    }
+
+    int jpegQuality = config.collect_jpeg_quality;
+    if (ImGui::SliderInt("JPEG quality", &jpegQuality, 50, 100))
+    {
+        config.collect_jpeg_quality = jpegQuality;
+        changed = true;
+    }
+
+    if (ImGui::InputText("Output folder", g_collectOutputDirBuffer, sizeof(g_collectOutputDirBuffer)))
+        changed |= applyDebugTextBuffer(config.collect_output_dir, g_collectOutputDirMirror, g_collectOutputDirBuffer);
+
+    if (OverlayUI::BeginSubsection("Auto Label"))
+    {
+        changed |= ImGui::Checkbox("Write YOLO txt labels", &config.auto_label_data);
+
+        ImGui::BeginDisabled(!config.auto_label_data);
+
+        float minConf = config.auto_label_min_conf;
+        if (ImGui::SliderFloat("Min confidence", &minConf, 0.01f, 0.99f, "%.2f"))
+        {
+            config.auto_label_min_conf = minConf;
+            changed = true;
+        }
+
+        int maxBoxes = config.auto_label_max_boxes;
+        if (ImGui::SliderInt("Max boxes per file", &maxBoxes, 1, 100))
+        {
+            config.auto_label_max_boxes = maxBoxes;
+            changed = true;
+        }
+
+        if (ImGui::InputText("Class filter", g_collectClassFilterBuffer, sizeof(g_collectClassFilterBuffer)))
+            changed |= applyDebugTextBuffer(config.auto_label_record_classes, g_collectClassFilterMirror, g_collectClassFilterBuffer);
+
+        ImGui::TextDisabled("Leave class filter empty to record all classes. Use comma-separated ids like 0,1.");
+        ImGui::EndDisabled();
+
+        OverlayUI::EndSubsection();
+    }
+
+    const cvm::DataCollectionUiState ui = cvm::GetDataCollectionUiState("", config.ai_model.c_str(), config);
+    ImGui::Separator();
+    ImGui::Text("Observed frames: %llu", static_cast<unsigned long long>(ui.observed_frame_count));
+    ImGui::Text("Save attempts: %llu", static_cast<unsigned long long>(ui.attempted_sample_count));
+    ImGui::Text("Images saved: %llu", static_cast<unsigned long long>(ui.saved_image_count));
+    ImGui::Text("Label files: %llu", static_cast<unsigned long long>(ui.saved_label_count));
+    ImGui::TextWrapped("Resolved folder: %s", ui.resolved_output_dir.c_str());
+    if (!ui.status.empty())
+        ImGui::TextWrapped("Status: %s", ui.status.c_str());
+    else
+        ImGui::TextDisabled("Status: idle");
+
+    if (ImGui::Button("Copy resolved path"))
+        ImGui::SetClipboardText(ui.resolved_output_dir.c_str());
+
+    ImGui::SameLine();
+    if (ImGui::Button("Reset collect counters"))
+        cvm::ResetDataCollectionRuntime();
+
+    OverlayUI::EndSection();
+    return changed;
+}
+
 void draw_debug_frame()
 {
     cv::Mat frameCopy;
@@ -340,13 +450,20 @@ void draw_capture_preview()
 
 void draw_debug()
 {
+    bool changed = false;
+
     if (OverlayUI::BeginSection("Screenshot Buttons", "debug_section_screenshot_buttons"))
     {
         if (drawScreenshotButtonRows())
-            OverlayConfig_MarkDirty();
+            changed = true;
 
-        ImGui::InputInt("Screenshot delay", &config.screenshot_delay, 50, 500);
-        ImGui::Checkbox("Verbose console output", &config.verbose);
+        if (ImGui::InputInt("Screenshot delay", &config.screenshot_delay, 50, 500))
+            changed = true;
+        if (ImGui::Checkbox("Verbose console output", &config.verbose))
+            changed = true;
+
+        if (config.screenshot_delay < 0)
+            config.screenshot_delay = 0;
 
         if (ImGui::Button("Print OpenCV build information##button_cv2_build_info"))
         {
@@ -356,11 +473,18 @@ void draw_debug()
         OverlayUI::EndSection();
     }
 
+    changed |= drawDataCollectionSection();
+
     if (prev_screenshot_delay != config.screenshot_delay ||
         prev_verbose != config.verbose)
     {
         prev_screenshot_delay = config.screenshot_delay;
         prev_verbose = config.verbose;
+        changed = true;
+    }
+
+    if (changed)
+    {
         OverlayConfig_MarkDirty();
     }
 }
