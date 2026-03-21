@@ -383,7 +383,7 @@ std::filesystem::path ResolveCollectOutputDir(const std::string& root_dir, const
     if (cleaned.empty())
     {
         const std::string base_dir = root_dir.empty() ? GetExecutableDir() : root_dir;
-        return fs::path(base_dir) / "cvm_yolo_ai" / "Collected_data";
+        return fs::path(base_dir) / "data_collector" / "Collected_data";
     }
 
     fs::path out(cleaned);
