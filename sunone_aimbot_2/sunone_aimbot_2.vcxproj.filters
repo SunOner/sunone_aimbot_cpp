@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="scr\data_collector.cpp" />
     <ClCompile Include="scr\other_tools.cpp" />
     <ClCompile Include="capture\capture.cpp" />
     <ClCompile Include="overlay\overlay.cpp" />
@@ -47,6 +48,9 @@
     <ClCompile Include="mem\cpu_affinity_manager.cpp" />
     <ClCompile Include="capture\udp_capture.cpp" />
     <ClCompile Include="modules\makcu\src\makcu.cpp" />
+    <ClCompile Include="modules\serial\src\serial.cc" />
+    <ClCompile Include="modules\serial\src\impl\win.cc" />
+    <ClCompile Include="modules\serial\src\impl\list_ports\list_ports_win.cc" />
     <ClCompile Include="modules\makcu\src\serialport.cpp" />
     <ClCompile Include="mouse\Makcu.cpp" />
     <ClCompile Include="depth\depth_anything_trt.cpp" />
@@ -66,6 +70,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="scr\data_collector.h" />
     <ClInclude Include="include\other_tools.h" />
     <ClInclude Include="include\memory_images.h" />
     <ClInclude Include="capture\capture.h" />

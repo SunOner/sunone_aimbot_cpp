@@ -54,6 +54,10 @@ packages
 /sunone_aimbot_2/models
 /sunone_aimbot_2/modules/SimpleIni.h
 /sunone_aimbot_2/modules/serial
+/sunone_aimbot_2/modules/licenseguard
+/sunone_aimbot_2/modules/makcu-cpp-1.3.4
+/sunone_aimbot_2/modules/obs-teleport-main
+/sunone_aimbot_2/modules/cudnn
 /sunone_aimbot_2/config.ini
 /sunone_aimbot_2/modules/TensorRT-10.14.1.48
 setup_opencv_dml_run.log

@@ -1,7 +1,5 @@
 #ifdef USE_CUDA
 #include <cuda_runtime.h>
-#include <opencv2/core/cuda.hpp>
-#include <opencv2/core/cuda_types.hpp>
 
 static __global__ void hwc_to_chw_norm_kernel(
     const float* __restrict__ srcHwc, int srcStepFloats,
@@ -23,7 +21,8 @@ static __global__ void hwc_to_chw_norm_kernel(
 }
 
 void launch_hwc_to_chw_norm(
-    const cv::cuda::GpuMat& hwcFloat3,
+    const float* srcHwc,
+    size_t srcStepBytes,
     float* dstChw,
     int width,
     int height,
@@ -32,11 +31,10 @@ void launch_hwc_to_chw_norm(
     const dim3 block(16, 16);
     const dim3 grid((width + block.x - 1) / block.x, (height + block.y - 1) / block.y);
 
-    const int stepFloats = static_cast<int>(hwcFloat3.step) / sizeof(float);
-    const float* srcPtr = reinterpret_cast<const float*>(hwcFloat3.ptr<float>());
+    const int stepFloats = static_cast<int>(srcStepBytes / sizeof(float));
 
     hwc_to_chw_norm_kernel << <grid, block, 0, stream >> > (
-        srcPtr, stepFloats, dstChw, width, height
+        srcHwc, stepFloats, dstChw, width, height
         );
 }
 #endif

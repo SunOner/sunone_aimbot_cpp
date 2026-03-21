@@ -14,6 +14,7 @@
 
 #include "dml_detector.h"
 #include "sunone_aimbot_2.h"
+#include "scr/data_collector.h"
 #include "postProcess.h"
 #include "capture.h"
 #include "other_tools.h"
@@ -372,7 +373,7 @@ int DirectMLDetector::getNumberOfClasses()
     }
 }
 
-void DirectMLDetector::processFrame(const cv::Mat& frame)
+void DirectMLDetector::processFrame(const cv::Mat& detection_frame, const cv::Mat& source_frame)
 {
     if (detectionPaused)
     {
@@ -384,7 +385,8 @@ void DirectMLDetector::processFrame(const cv::Mat& frame)
         return;
     }
     std::unique_lock<std::mutex> lock(inferenceMutex);
-    currentFrame = frame;
+    currentFrame = detection_frame;
+    currentSourceFrame = source_frame.empty() ? detection_frame : source_frame;
     frameReady = true;
     inferenceCV.notify_one();
 }
@@ -415,6 +417,7 @@ void DirectMLDetector::dmlInferenceThread()
             }
 
             cv::Mat frame;
+            cv::Mat sourceFrame;
             bool hasNewFrame = false;
             {
                 std::unique_lock<std::mutex> lock(inferenceMutex);
@@ -426,6 +429,7 @@ void DirectMLDetector::dmlInferenceThread()
                 if (frameReady)
                 {
                     frame = std::move(currentFrame);
+                    sourceFrame = std::move(currentSourceFrame);
                     frameReady = false;
                     hasNewFrame = true;
                 }
@@ -443,15 +447,37 @@ void DirectMLDetector::dmlInferenceThread()
                 std::vector<Detection> filteredDetections = detections;
                 filterDetectionsByDepthMask(filteredDetections);
 
-                std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
-                detectionBuffer.boxes.clear();
-                detectionBuffer.classes.clear();
-                for (const auto& d : filteredDetections) {
-                    detectionBuffer.boxes.push_back(d.box);
-                    detectionBuffer.classes.push_back(d.classId);
+                std::vector<cv::Rect> boxes;
+                std::vector<int> classes;
+                std::vector<float> confidences;
+                boxes.reserve(filteredDetections.size());
+                classes.reserve(filteredDetections.size());
+                confidences.reserve(filteredDetections.size());
+                for (const auto& d : filteredDetections)
+                {
+                    boxes.push_back(d.box);
+                    classes.push_back(d.classId);
+                    confidences.push_back(d.confidence);
                 }
-                detectionBuffer.version++;
-                detectionBuffer.cv.notify_all();
+
+                {
+                    std::lock_guard<std::mutex> lock(detectionBuffer.mutex);
+                    detectionBuffer.boxes = boxes;
+                    detectionBuffer.classes = classes;
+                    detectionBuffer.version++;
+                    detectionBuffer.cv.notify_all();
+                }
+
+                const cv::Mat& frameForCollection = sourceFrame.empty() ? frame : sourceFrame;
+                cvm::MaybeCollectDataSample(
+                    "",
+                    config.ai_model.c_str(),
+                    frameForCollection,
+                    boxes,
+                    classes,
+                    confidences,
+                    aiming.load(),
+                    config);
             }
         }
     }

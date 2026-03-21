@@ -195,6 +195,18 @@ public:
     bool aim_sim_show_history;
     bool aim_sim_show_kalman_debug;
 
+    // Data collection
+    bool collect_data_while_playing;
+    bool collect_only_when_aimbot_running;
+    bool collect_only_when_targets_present;
+    int collect_save_every_n_frames;
+    int collect_jpeg_quality;
+    std::string collect_output_dir;
+    bool auto_label_data;
+    float auto_label_min_conf;
+    int auto_label_max_boxes;
+    std::string auto_label_record_classes;
+
     void clampGameOverlayColor()
     {
         auto clamp255 = [](int& v) { if (v < 0) v = 0; if (v > 255) v = 255; };

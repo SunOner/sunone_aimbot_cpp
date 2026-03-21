@@ -802,12 +802,12 @@ void captureThread(int CAPTURE_WIDTH, int CAPTURE_HEIGHT)
 
                 if (currentCfg.backend == "DML" && dml_detector)
                 {
-                    dml_detector->processFrame(detectionFrame);
+                    dml_detector->processFrame(detectionFrame, screenshotCpu);
                 }
 #ifdef USE_CUDA
                 else if (currentCfg.backend == "TRT")
                 {
-                    trt_detector.processFrame(detectionFrame);
+                    trt_detector.processFrame(detectionFrame, screenshotCpu);
                 }
 #endif
             }

@@ -17,7 +17,7 @@ public:
     std::vector<std::vector<Detection>> detectBatch(const std::vector<cv::Mat>& frames);
 
     void dmlInferenceThread();
-    void processFrame(const cv::Mat& frame);
+    void processFrame(const cv::Mat& detection_frame, const cv::Mat& source_frame = cv::Mat());
 
     int getNumberOfClasses();
 
@@ -42,6 +42,7 @@ private:
 
     std::mutex inferenceMutex;
     cv::Mat currentFrame;
+    cv::Mat currentSourceFrame;
     bool frameReady = false;
 
     void initializeModel(const std::string& model_path);
