@@ -9,8 +9,7 @@
 class Config
 {
 public:
-    // Capture
-    std::string capture_method; // "duplication_api", "winrt", "virtual_camera", "udp_capture"
+    std::string capture_method; 
     std::string capture_target;
     std::string capture_window_title;
     std::string udp_ip;
@@ -25,13 +24,11 @@ public:
     int virtual_camera_width;
     int virtual_camera_heigth;
 
-    // Target
     bool disable_headshot;
     float body_y_offset;
     float head_y_offset;
     bool auto_aim;
 
-    // Mouse
     int fovX;
     int fovY;
     float minSpeedMultiplier;
@@ -58,38 +55,31 @@ public:
 
     bool easynorecoil;
     float easynorecoilstrength;
-    std::string input_method; // "WIN32", "GHUB", "ARDUINO", "KMBOX_NET", "KMBOX_A", "MAKCU"
+    std::string input_method; 
 
-    // Wind mouse
     bool wind_mouse_enabled;
     float wind_G;
     float wind_W;
     float wind_M;
     float wind_D;
 
-    // Arduino
     int arduino_baudrate;
     std::string arduino_port;
     bool arduino_16_bit_mouse;
     bool arduino_enable_keys;
 
-    // kmbox_net
     std::string kmbox_net_ip;
     std::string kmbox_net_port;
     std::string kmbox_net_uuid;
 
-    // kmbox_a
-    std::string kmbox_a_pidvid; // PIDVID in one field, format: PPPPVVVV
+    std::string kmbox_a_pidvid; 
 
-    // makcu
     int makcu_baudrate;
     std::string makcu_port;
 
-    // Mouse shooting
     bool auto_shoot;
     float bScope_multiplier;
 
-    // AI
     std::string backend;
     int dml_device_id;
     std::string ai_model;
@@ -102,7 +92,6 @@ public:
 #endif
     bool fixed_input_size;
 
-    // CUDA
 #ifdef USE_CUDA
     bool use_cuda_graph;
     bool use_pinned_memory;
@@ -111,11 +100,9 @@ public:
     bool capture_use_cuda;
 #endif
 
-    // System
     int cpuCoreReserveCount;
     int systemMemoryReserveMB;
 
-    // Buttons
     std::vector<std::string> button_targeting;
     std::vector<std::string> button_shoot;
     std::vector<std::string> button_zoom;
@@ -125,12 +112,10 @@ public:
     std::vector<std::string> button_open_overlay;
     bool enable_arrows_settings;
 
-    // Overlay
     int overlay_opacity;
     float overlay_ui_scale;
     bool overlay_exclude_from_capture;
 
-    // Depth
     bool depth_inference_enabled;
     std::string depth_model_path;
     int depth_fps;
@@ -144,7 +129,6 @@ public:
     bool depth_mask_invert;
     bool depth_debug_overlay_enabled;
 
-    // Game Overlay
     bool game_overlay_enabled;
     int game_overlay_max_fps;
     bool game_overlay_draw_boxes;
@@ -171,10 +155,19 @@ public:
     int game_overlay_icon_height;
     float game_overlay_icon_offset_x;
     float game_overlay_icon_offset_y;
-    std::string game_overlay_icon_anchor; // "center", "top", "bottom", "head"
-    int game_overlay_icon_class; // -1 = all
+    std::string game_overlay_icon_anchor; 
+    int game_overlay_icon_class; 
 
-    // Aim Simulation Overlay
+    bool show_crosshair;
+    float crosshair_x;
+    float crosshair_y;
+    float crosshair_scale;
+    bool crosshair_smart_color;
+    float crosshair_hue;
+    float crosshair_saturation;
+    float crosshair_alpha;
+    std::string current_crosshair;
+
     bool aim_sim_enabled;
     int aim_sim_x;
     int aim_sim_y;
@@ -208,13 +201,12 @@ public:
         clamp255(game_overlay_frame_b);
     }
 
-    // Classes
     int class_player;
     int class_head;
 
-    // Debug
     bool show_window;
     bool show_fps;
+    bool show_console;
     std::vector<std::string> screenshot_button;
     int screenshot_delay;
     bool verbose;
