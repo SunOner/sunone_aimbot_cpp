@@ -273,7 +273,7 @@ void draw_mouse()
                 config.active_game = name;
                 OverlayConfig_MarkDirty();
                 input_method_changed.store(true);
-                new_profile_name[0] = '\0'; // clear
+                new_profile_name[0] = '\0';
             }
         }
 
@@ -298,28 +298,37 @@ void draw_mouse()
         OverlayUI::EndSection();
     }
 
-    if (OverlayUI::BeginSection("Easy No Recoil", "mouse_section_easy_no_recoil"))
+    if (OverlayUI::BeginSection("Recoil Control", "mouse_section_recoil"))
     {
-        ImGui::Checkbox("Easy No Recoil", &config.easynorecoil);
-        if (!config.easynorecoil)
-        {
-            ImGui::BeginDisabled();
-        }
+        if (ImGui::Checkbox("Easy No Recoil", &config.easynorecoil)) OverlayConfig_MarkDirty();
+        if (!config.easynorecoil) ImGui::BeginDisabled();
 
-        ImGui::SliderFloat("No Recoil Strength", &config.easynorecoilstrength, 0.1f, 500.0f, "%.1f");
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Left/Right Arrow keys: Adjust recoil strength by 10");
+        ImGui::Dummy(ImVec2(0.0f, 5.0f));
+        ImGui::Text("Vertical Compensation:");
+        if (ImGui::SliderFloat("Pull Down Strength", &config.recoil_pull_down_strength, 0.0f, 20.0f, "%.2f")) OverlayConfig_MarkDirty();
 
-        if (config.easynorecoilstrength >= 100.0f)
-        {
-            ImGui::TextColored(ImVec4(255, 255, 0, 255), "WARNING: High recoil strength may be detected.");
-        }
+        ImGui::Separator();
+        ImGui::PushID("recoil_left");
+        ImGui::Text("Left Compensation:");
+        if (ImGui::SliderFloat("Delay (ms)", &config.recoil_pull_left_delay, 0.0f, 1000.0f, "%.0f")) OverlayConfig_MarkDirty();
+        if (ImGui::SliderFloat("Pull Left Strength", &config.recoil_pull_left_strength, 0.0f, 20.0f, "%.2f")) OverlayConfig_MarkDirty();
+        ImGui::PopID();
 
-        if (!config.easynorecoil)
-        {
-            ImGui::EndDisabled();
-            ImGui::TextDisabled("Enable Easy No Recoil to edit settings.");
-        }
+        ImGui::Separator();
+        ImGui::PushID("recoil_right");
+        ImGui::Text("Right Compensation:");
+        if (ImGui::SliderFloat("Delay (ms)", &config.recoil_pull_right_delay, 0.0f, 1000.0f, "%.0f")) OverlayConfig_MarkDirty();
+        if (ImGui::SliderFloat("Pull Right Strength", &config.recoil_pull_right_strength, 0.0f, 20.0f, "%.2f")) OverlayConfig_MarkDirty();
+        ImGui::PopID();
 
+        ImGui::Separator();
+        ImGui::PushID("recoil_sway");
+        ImGui::Text("Humanization (Sway):");
+        if (ImGui::SliderFloat("Sway Speed", &config.recoil_sway_speed, 0.0f, 20.0f, "%.1f")) OverlayConfig_MarkDirty();
+        if (ImGui::SliderFloat("Sway Amount", &config.recoil_sway, 0.0f, 20.0f, "%.1f")) OverlayConfig_MarkDirty();
+        ImGui::PopID();
+
+        if (!config.easynorecoil) ImGui::EndDisabled();
         OverlayUI::EndSection();
     }
 
