@@ -55,6 +55,15 @@ public:
 
     bool easynorecoil;
     float easynorecoilstrength;
+    
+    float recoil_pull_down_strength;
+    float recoil_pull_left_strength;
+    float recoil_pull_left_delay;
+    float recoil_pull_right_strength;
+    float recoil_pull_right_delay;
+    float recoil_sway_speed;
+    float recoil_sway;
+
     std::string input_method; 
 
     bool wind_mouse_enabled;
