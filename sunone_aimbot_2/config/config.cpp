@@ -98,6 +98,15 @@ bool Config::loadConfig(const std::string& filename)
 
         easynorecoil = false;
         easynorecoilstrength = 0.0f;
+        
+        recoil_pull_down_strength = 0.0f;
+        recoil_pull_left_strength = 0.0f;
+        recoil_pull_left_delay = 200.0f;
+        recoil_pull_right_strength = 0.0f;
+        recoil_pull_right_delay = 200.0f;
+        recoil_sway_speed = 12.0f;
+        recoil_sway = 2.0f;
+
         input_method = "WIN32";
 
         wind_mouse_enabled = false;
@@ -396,6 +405,15 @@ bool Config::loadConfig(const std::string& filename)
 
     easynorecoil = get_bool("easynorecoil", false);
     easynorecoilstrength = (float)get_double("easynorecoilstrength", 0.0);
+    
+    recoil_pull_down_strength = (float)get_double("recoil_pull_down_strength", 0.0);
+    recoil_pull_left_strength = (float)get_double("recoil_pull_left_strength", 0.0);
+    recoil_pull_left_delay = (float)get_double("recoil_pull_left_delay", 200.0);
+    recoil_pull_right_strength = (float)get_double("recoil_pull_right_strength", 0.0);
+    recoil_pull_right_delay = (float)get_double("recoil_pull_right_delay", 200.0);
+    recoil_sway_speed = (float)get_double("recoil_sway_speed", 12.0);
+    recoil_sway = (float)get_double("recoil_sway", 2.0);
+
     input_method = get_string("input_method", "WIN32");
 
     wind_mouse_enabled = get_bool("wind_mouse_enabled", false);
@@ -679,6 +697,13 @@ bool Config::saveConfig(const std::string& filename)
         << "easynorecoil = " << (easynorecoil ? "true" : "false") << "\n"
         << std::fixed << std::setprecision(1)
         << "easynorecoilstrength = " << easynorecoilstrength << "\n"
+        << std::fixed << std::setprecision(1) << "recoil_pull_down_strength = " << recoil_pull_down_strength << "\n"
+        << "recoil_pull_left_strength = " << recoil_pull_left_strength << "\n"
+        << "recoil_pull_left_delay = " << recoil_pull_left_delay << "\n"
+        << "recoil_pull_right_strength = " << recoil_pull_right_strength << "\n"
+        << "recoil_pull_right_delay = " << recoil_pull_right_delay << "\n"
+        << std::fixed << std::setprecision(2) << "recoil_sway_speed = " << recoil_sway_speed << "\n"
+        << "recoil_sway = " << recoil_sway << "\n"
         << "# WIN32, GHUB, ARDUINO, KMBOX_NET, KMBOX_A, MAKCU\n"
         << "input_method = " << input_method << "\n\n";
 
