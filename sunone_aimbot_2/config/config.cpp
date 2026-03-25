@@ -70,10 +70,20 @@ bool Config::loadConfig(const std::string& filename)
         disable_headshot = false;
         body_y_offset = 0.15f;
         head_y_offset = 0.05f;
+        body_x_offset = 0.50f;
         auto_aim = false;
+        ignore_third_person = false;
+        shooting_range_targets = false;
 
         fovX = 106;
         fovY = 74;
+        enable_dynamic_fov = true;
+        fovX_hipfire = 50;
+        fovY_hipfire = 50;
+        fovX_ads = 30;
+        fovY_ads = 30;
+        hipfire_smooth = 1.0f;
+        
         minSpeedMultiplier = 0.1f;
         maxSpeedMultiplier = 0.1f;
 
@@ -377,10 +387,20 @@ bool Config::loadConfig(const std::string& filename)
     disable_headshot = get_bool("disable_headshot", false);
     body_y_offset = (float)get_double("body_y_offset", 0.15);
     head_y_offset = (float)get_double("head_y_offset", 0.05);
+    body_x_offset = (float)get_double("body_x_offset", 0.50);
     auto_aim = get_bool("auto_aim", false);
+    ignore_third_person = get_bool("ignore_third_person", false);
+    shooting_range_targets = get_bool("shooting_range_targets", false);
 
     fovX = get_long("fovX", 106);
     fovY = get_long("fovY", 74);
+    enable_dynamic_fov = get_bool("enable_dynamic_fov", true);
+    fovX_hipfire = get_long("fovX_hipfire", 50);
+    fovY_hipfire = get_long("fovY_hipfire", 50);
+    fovX_ads = get_long("fovX_ads", 30);
+    fovY_ads = get_long("fovY_ads", 30);
+    hipfire_smooth = (float)get_double("hipfire_smooth", 1.0);
+    
     minSpeedMultiplier = (float)get_double("minSpeedMultiplier", 0.1);
     maxSpeedMultiplier = (float)get_double("maxSpeedMultiplier", 0.1);
 
@@ -666,11 +686,20 @@ bool Config::saveConfig(const std::string& filename)
         << std::fixed << std::setprecision(2)
         << "body_y_offset = " << body_y_offset << "\n"
         << "head_y_offset = " << head_y_offset << "\n"
-        << "auto_aim = " << (auto_aim ? "true" : "false") << "\n\n";
+        << "body_x_offset = " << body_x_offset << "\n"
+        << "auto_aim = " << (auto_aim ? "true" : "false") << "\n"
+        << "ignore_third_person = " << (ignore_third_person ? "true" : "false") << "\n"
+        << "shooting_range_targets = " << (shooting_range_targets ? "true" : "false") << "\n\n";
 
     file << "# Mouse move\n"
         << "fovX = " << fovX << "\n"
         << "fovY = " << fovY << "\n"
+        << "enable_dynamic_fov = " << (enable_dynamic_fov ? "true" : "false") << "\n"
+        << "fovX_hipfire = " << fovX_hipfire << "\n"
+        << "fovY_hipfire = " << fovY_hipfire << "\n"
+        << "fovX_ads = " << fovX_ads << "\n"
+        << "fovY_ads = " << fovY_ads << "\n"
+        << std::fixed << std::setprecision(2) << "hipfire_smooth = " << hipfire_smooth << "\n"
         << "minSpeedMultiplier = " << minSpeedMultiplier << "\n"
         << "maxSpeedMultiplier = " << maxSpeedMultiplier << "\n"
         << std::fixed << std::setprecision(2)
