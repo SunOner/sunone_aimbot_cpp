@@ -27,10 +27,20 @@ public:
     bool disable_headshot;
     float body_y_offset;
     float head_y_offset;
+    float body_x_offset;
     bool auto_aim;
+    bool ignore_third_person;
+    bool shooting_range_targets;
 
     int fovX;
     int fovY;
+    bool enable_dynamic_fov;
+    int fovX_hipfire;
+    int fovY_hipfire;
+    int fovX_ads;
+    int fovY_ads;
+    float hipfire_smooth;
+    
     float minSpeedMultiplier;
     float maxSpeedMultiplier;
 
