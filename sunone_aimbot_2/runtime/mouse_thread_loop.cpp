@@ -149,6 +149,9 @@ void mouseThreadFunction(MouseThread& mouseThread)
     std::optional<AimbotTarget> activeTarget;
     auto lastTrackerUpdate = std::chrono::steady_clock::time_point::min();
 
+    bool last_zoom_state = false;
+    float last_hipfire_smooth = -1.0f; 
+
     while (!shouldExit)
     {
         bool hasNewDetection = false;
@@ -179,28 +182,60 @@ void mouseThreadFunction(MouseThread& mouseThread)
             input_method_changed.store(false);
         }
 
-        if (detection_resolution_changed.load())
+        bool current_zoom = zooming.load();
+        bool zoom_changed = (current_zoom != last_zoom_state);
+
+        if (detection_resolution_changed.load() || zoom_changed || std::abs(config.hipfire_smooth - last_hipfire_smooth) > 0.001f)
         {
             {
                 std::lock_guard<std::mutex> cfgLock(configMutex);
+                
+                int active_fov_x = config.fovX_hipfire;
+                int active_fov_y = config.fovY_hipfire;
+                float active_min_speed = config.minSpeedMultiplier;
+                float active_max_speed = config.maxSpeedMultiplier;
+                
+                if (config.enable_dynamic_fov) 
+                {
+                    if (current_zoom) {
+                        active_fov_x = config.fovX_ads;
+                        active_fov_y = config.fovY_ads;
+                    } else {
+                        active_min_speed *= config.hipfire_smooth;
+                        active_max_speed *= config.hipfire_smooth;
+                    }
+                }
+                else 
+                {
+                    active_fov_x = config.fovX_ads;
+                    active_fov_y = config.fovY_ads;
+                }
+
+                config.fovX = active_fov_x;
+                config.fovY = active_fov_y;
+
                 mouseThread.updateConfig(
                     config.detection_resolution,
-                    config.fovX,
-                    config.fovY,
-                    config.minSpeedMultiplier,
-                    config.maxSpeedMultiplier,
+                    active_fov_x,
+                    active_fov_y,
+                    active_min_speed,
+                    active_max_speed,
                     config.predictionInterval,
                     config.auto_shoot,
                     config.bScope_multiplier
                 );
             }
+            
             targetTracker.reset();
             {
                 std::lock_guard<std::mutex> lk(g_trackerDebugMutex);
                 g_trackerDebugTracks.clear();
                 g_trackerLockedId = -1;
             }
+            
             detection_resolution_changed.store(false);
+            last_zoom_state = current_zoom; 
+            last_hipfire_smooth = config.hipfire_smooth;
         }
 
         if (hasNewDetection)
