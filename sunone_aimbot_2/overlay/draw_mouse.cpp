@@ -2,6 +2,7 @@
 #define _WINSOCKAPI_
 #include <winsock2.h>
 #include <Windows.h>
+#include <atomic>
 
 #include <shellapi.h>
 
@@ -14,10 +15,23 @@
 #include "include/other_tools.h"
 #include "kmbox_net/picture.h"
 
+extern std::atomic<bool> zooming;
+
+static float animated_fov_x = 0.0f;
+static float animated_fov_y = 0.0f;
+
+float Lerp(float a, float b, float t) {
+    return a + (b - a) * t;
+}
+
 std::string ghub_version = get_ghub_version();
 
-int prev_fovX = config.fovX;
-int prev_fovY = config.fovY;
+bool  prev_enable_dynamic_fov = config.enable_dynamic_fov;
+int   prev_fovX_hipfire = config.fovX_hipfire;
+int   prev_fovY_hipfire = config.fovY_hipfire;
+int   prev_fovX_ads = config.fovX_ads;
+int   prev_fovY_ads = config.fovY_ads;
+float prev_hipfire_smooth = config.hipfire_smooth;
 float prev_minSpeedMultiplier = config.minSpeedMultiplier;
 float prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
 float prev_predictionInterval = config.predictionInterval;
@@ -47,10 +61,57 @@ float prev_bScope_multiplier = config.bScope_multiplier;
 
 void draw_mouse()
 {
-    if (OverlayUI::BeginSection("FOV", "mouse_section_fov"))
+    if (OverlayUI::BeginSection("FOV & ZOOM", "mouse_section_fov"))
     {
-        ImGui::SliderInt("FOV X", &config.fovX, 10, 120);
-        ImGui::SliderInt("FOV Y", &config.fovY, 10, 120);
+        if (ImGui::Checkbox("Enable Dynamic FOV (Zoom Scaling)", &config.enable_dynamic_fov)) {
+            OverlayConfig_MarkDirty();
+        }
+
+        if (config.enable_dynamic_fov)
+        {
+            float targetX = zooming.load() ? (float)config.fovX_ads : (float)config.fovX_hipfire;
+            
+            float dt = ImGui::GetIO().DeltaTime;
+            animated_fov_x = Lerp(animated_fov_x, targetX, dt * 10.0f);
+            
+            if (animated_fov_x == 0.0f) animated_fov_x = targetX;
+
+            ImGui::TextColored(ImVec4(1, 0, 0, 1), "Live Effective FOV:"); 
+            ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(1.0f, 0.0f, 0.0f, 1.0f)); 
+            ImGui::ProgressBar((animated_fov_x - 10.0f) / 490.0f, ImVec2(-1, 0), "Current Width");
+            ImGui::PopStyleColor();
+        }
+        else
+        {
+            ImGui::TextDisabled("Dynamic FOV Disabled. Using ADS settings as default.");
+        }
+
+        ImGui::Dummy(ImVec2(0, 5));
+
+        ImGui::Columns(2, "fov_cols", false);
+        
+        if (!config.enable_dynamic_fov) {
+            ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
+        }
+
+        ImGui::Text("Hipfire (Dynamic Only)");
+        if (ImGui::SliderInt("Width X##Hip", &config.fovX_hipfire, 10, 500)) OverlayConfig_MarkDirty();
+        if (ImGui::SliderInt("Height Y##Hip", &config.fovY_hipfire, 10, 500)) OverlayConfig_MarkDirty();
+        if (ImGui::SliderFloat("Hipfire Smooth##Hip", &config.hipfire_smooth, 0.1f, 2.0f, "%.2f")) OverlayConfig_MarkDirty();
+        
+        if (!config.enable_dynamic_fov) {
+            ImGui::PopStyleVar();
+            ImGui::PopItemFlag();
+        }
+
+        ImGui::NextColumn();
+
+        ImGui::Text("ADS / Default");
+        if (ImGui::SliderInt("Width X##Ads", &config.fovX_ads, 10, 500)) OverlayConfig_MarkDirty();
+        if (ImGui::SliderInt("Height Y##Ads", &config.fovY_ads, 10, 500)) OverlayConfig_MarkDirty();
+
+        ImGui::Columns(1);
         OverlayUI::EndSection();
     }
 
@@ -191,12 +252,24 @@ void draw_mouse()
         {
             config.active_game = profile_names[selected_index];
             OverlayConfig_MarkDirty();
+            
+            int current_fovX = config.enable_dynamic_fov ? (zooming.load() ? config.fovX_ads : config.fovX_hipfire) : config.fovX_ads;
+            int current_fovY = config.enable_dynamic_fov ? (zooming.load() ? config.fovY_ads : config.fovY_hipfire) : config.fovY_ads;
+            
+            float pass_minSpeed = config.minSpeedMultiplier;
+            float pass_maxSpeed = config.maxSpeedMultiplier;
+            if (config.enable_dynamic_fov && !zooming.load())
+            {
+                pass_minSpeed *= config.hipfire_smooth;
+                pass_maxSpeed *= config.hipfire_smooth;
+            }
+
             globalMouseThread->updateConfig(
                 config.detection_resolution,
-                config.fovX,
-                config.fovY,
-                config.minSpeedMultiplier,
-                config.maxSpeedMultiplier,
+                current_fovX,
+                current_fovY,
+                pass_minSpeed,
+                pass_maxSpeed,
                 config.predictionInterval,
                 config.auto_shoot,
                 config.bScope_multiplier
@@ -298,37 +371,28 @@ void draw_mouse()
         OverlayUI::EndSection();
     }
 
-    if (OverlayUI::BeginSection("Recoil Control", "mouse_section_recoil"))
+    if (OverlayUI::BeginSection("Easy No Recoil", "mouse_section_easy_no_recoil"))
     {
-        if (ImGui::Checkbox("Easy No Recoil", &config.easynorecoil)) OverlayConfig_MarkDirty();
-        if (!config.easynorecoil) ImGui::BeginDisabled();
+        ImGui::Checkbox("Easy No Recoil", &config.easynorecoil);
+        if (!config.easynorecoil)
+        {
+            ImGui::BeginDisabled();
+        }
 
-        ImGui::Dummy(ImVec2(0.0f, 5.0f));
-        ImGui::Text("Vertical Compensation:");
-        if (ImGui::SliderFloat("Pull Down Strength", &config.recoil_pull_down_strength, 0.0f, 20.0f, "%.2f")) OverlayConfig_MarkDirty();
+        ImGui::SliderFloat("No Recoil Strength", &config.easynorecoilstrength, 0.1f, 500.0f, "%.1f");
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Left/Right Arrow keys: Adjust recoil strength by 10");
 
-        ImGui::Separator();
-        ImGui::PushID("recoil_left");
-        ImGui::Text("Left Compensation:");
-        if (ImGui::SliderFloat("Delay (ms)", &config.recoil_pull_left_delay, 0.0f, 1000.0f, "%.0f")) OverlayConfig_MarkDirty();
-        if (ImGui::SliderFloat("Pull Left Strength", &config.recoil_pull_left_strength, 0.0f, 20.0f, "%.2f")) OverlayConfig_MarkDirty();
-        ImGui::PopID();
+        if (config.easynorecoilstrength >= 100.0f)
+        {
+            ImGui::TextColored(ImVec4(255, 255, 0, 255), "WARNING: High recoil strength may be detected.");
+        }
 
-        ImGui::Separator();
-        ImGui::PushID("recoil_right");
-        ImGui::Text("Right Compensation:");
-        if (ImGui::SliderFloat("Delay (ms)", &config.recoil_pull_right_delay, 0.0f, 1000.0f, "%.0f")) OverlayConfig_MarkDirty();
-        if (ImGui::SliderFloat("Pull Right Strength", &config.recoil_pull_right_strength, 0.0f, 20.0f, "%.2f")) OverlayConfig_MarkDirty();
-        ImGui::PopID();
+        if (!config.easynorecoil)
+        {
+            ImGui::EndDisabled();
+            ImGui::TextDisabled("Enable Easy No Recoil to edit settings.");
+        }
 
-        ImGui::Separator();
-        ImGui::PushID("recoil_sway");
-        ImGui::Text("Humanization (Sway):");
-        if (ImGui::SliderFloat("Sway Speed", &config.recoil_sway_speed, 0.0f, 20.0f, "%.1f")) OverlayConfig_MarkDirty();
-        if (ImGui::SliderFloat("Sway Amount", &config.recoil_sway, 0.0f, 20.0f, "%.1f")) OverlayConfig_MarkDirty();
-        ImGui::PopID();
-
-        if (!config.easynorecoil) ImGui::EndDisabled();
         OverlayUI::EndSection();
     }
 
@@ -719,8 +783,12 @@ void draw_mouse()
         OverlayUI::EndSection();
     }
 
-    if (prev_fovX != config.fovX ||
-        prev_fovY != config.fovY ||
+    if (prev_enable_dynamic_fov != config.enable_dynamic_fov ||
+        prev_fovX_hipfire != config.fovX_hipfire ||
+        prev_fovY_hipfire != config.fovY_hipfire ||
+        prev_fovX_ads != config.fovX_ads ||
+        prev_fovY_ads != config.fovY_ads ||
+        prev_hipfire_smooth != config.hipfire_smooth ||
         prev_minSpeedMultiplier != config.minSpeedMultiplier ||
         prev_maxSpeedMultiplier != config.maxSpeedMultiplier ||
         prev_predictionInterval != config.predictionInterval ||
@@ -739,8 +807,12 @@ void draw_mouse()
         prev_speedCurveExponent != config.speedCurveExponent ||
         prev_snapBoostFactor != config.snapBoostFactor)
     {
-        prev_fovX = config.fovX;
-        prev_fovY = config.fovY;
+        prev_enable_dynamic_fov = config.enable_dynamic_fov;
+        prev_fovX_hipfire = config.fovX_hipfire;
+        prev_fovY_hipfire = config.fovY_hipfire;
+        prev_fovX_ads = config.fovX_ads;
+        prev_fovY_ads = config.fovY_ads;
+        prev_hipfire_smooth = config.hipfire_smooth;
         prev_minSpeedMultiplier = config.minSpeedMultiplier;
         prev_maxSpeedMultiplier = config.maxSpeedMultiplier;
         prev_predictionInterval = config.predictionInterval;
@@ -759,12 +831,23 @@ void draw_mouse()
         prev_speedCurveExponent = config.speedCurveExponent;
         prev_snapBoostFactor = config.snapBoostFactor;
 
+        int pass_fovX = config.enable_dynamic_fov ? (zooming.load() ? config.fovX_ads : config.fovX_hipfire) : config.fovX_ads;
+        int pass_fovY = config.enable_dynamic_fov ? (zooming.load() ? config.fovY_ads : config.fovY_hipfire) : config.fovY_ads;
+        
+        float pass_minSpeed = config.minSpeedMultiplier;
+        float pass_maxSpeed = config.maxSpeedMultiplier;
+        if (config.enable_dynamic_fov && !zooming.load())
+        {
+            pass_minSpeed *= config.hipfire_smooth;
+            pass_maxSpeed *= config.hipfire_smooth;
+        }
+
         globalMouseThread->updateConfig(
             config.detection_resolution,
-            config.fovX,
-            config.fovY,
-            config.minSpeedMultiplier,
-            config.maxSpeedMultiplier,
+            pass_fovX,
+            pass_fovY,
+            pass_minSpeed,
+            pass_maxSpeed,
             config.predictionInterval,
             config.auto_shoot,
             config.bScope_multiplier);
@@ -784,12 +867,23 @@ void draw_mouse()
         prev_wind_M = config.wind_M;
         prev_wind_D = config.wind_D;
 
+        int pass_fovX = config.enable_dynamic_fov ? (zooming.load() ? config.fovX_ads : config.fovX_hipfire) : config.fovX_ads;
+        int pass_fovY = config.enable_dynamic_fov ? (zooming.load() ? config.fovY_ads : config.fovY_hipfire) : config.fovY_ads;
+
+        float pass_minSpeed = config.minSpeedMultiplier;
+        float pass_maxSpeed = config.maxSpeedMultiplier;
+        if (config.enable_dynamic_fov && !zooming.load())
+        {
+            pass_minSpeed *= config.hipfire_smooth;
+            pass_maxSpeed *= config.hipfire_smooth;
+        }
+
         globalMouseThread->updateConfig(
             config.detection_resolution,
-            config.fovX,
-            config.fovY,
-            config.minSpeedMultiplier,
-            config.maxSpeedMultiplier,
+            pass_fovX,
+            pass_fovY,
+            pass_minSpeed,
+            pass_maxSpeed,
             config.predictionInterval,
             config.auto_shoot,
             config.bScope_multiplier);
@@ -803,12 +897,23 @@ void draw_mouse()
         prev_auto_shoot = config.auto_shoot;
         prev_bScope_multiplier = config.bScope_multiplier;
 
+        int pass_fovX = config.enable_dynamic_fov ? (zooming.load() ? config.fovX_ads : config.fovX_hipfire) : config.fovX_ads;
+        int pass_fovY = config.enable_dynamic_fov ? (zooming.load() ? config.fovY_ads : config.fovY_hipfire) : config.fovY_ads;
+
+        float pass_minSpeed = config.minSpeedMultiplier;
+        float pass_maxSpeed = config.maxSpeedMultiplier;
+        if (config.enable_dynamic_fov && !zooming.load())
+        {
+            pass_minSpeed *= config.hipfire_smooth;
+            pass_maxSpeed *= config.hipfire_smooth;
+        }
+
         globalMouseThread->updateConfig(
             config.detection_resolution,
-            config.fovX,
-            config.fovY,
-            config.minSpeedMultiplier,
-            config.maxSpeedMultiplier,
+            pass_fovX,
+            pass_fovY,
+            pass_minSpeed,
+            pass_maxSpeed,
             config.predictionInterval,
             config.auto_shoot,
             config.bScope_multiplier);
