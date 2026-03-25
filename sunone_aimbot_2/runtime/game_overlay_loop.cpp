@@ -1544,6 +1544,22 @@ void gameOverlayRenderLoop()
             }
         }
 
+        // DYNAMIC FOV VISUALIZER
+        if (config.game_overlay_draw_frame) 
+        {
+            float cx = baseX + regionW * 0.5f;
+            float cy = baseY + regionH * 0.5f;
+            float currentFovW = static_cast<float>(config.fovX) * scaleX;
+            float currentFovH = static_cast<float>(config.fovY) * scaleY;
+            
+            // Draws a red box showing your exact active FOV
+            gameOverlayPtr->AddRect(
+                { cx - (currentFovW * 0.5f), cy - (currentFovH * 0.5f), currentFovW, currentFovH }, 
+                ARGB(255, 255, 50, 50), // Red color
+                1.5f // Thickness
+            );
+        }
+
         // BOXES
         if (config.game_overlay_draw_boxes && (!boxesCopy.empty() || !trackDebugCopy.empty()))
         {
@@ -1779,4 +1795,3 @@ void gameOverlayRenderLoop()
         gameOverlayPtr = nullptr;
     }
 }
-
