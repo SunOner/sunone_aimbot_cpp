@@ -550,6 +550,7 @@ void OverlayThread()
     SetupImGui();
 
     bool show_overlay = false;
+    int frames_to_clear = 0;
 
     for (const auto& pair : KeyCodes::key_code_map) key_names.push_back(pair.first);
     std::sort(key_names.begin(), key_names.end());
@@ -591,6 +592,10 @@ void OverlayThread()
             show_overlay = !show_overlay;
             g_menuOpen = show_overlay; 
             
+            if (!show_overlay) {
+                frames_to_clear = 2;
+            }
+
             LONG exStyle = GetWindowLong(g_hwnd, GWL_EXSTYLE);
             if (show_overlay)
             {
@@ -608,7 +613,7 @@ void OverlayThread()
         bool should_render = false;
         bool use_vsync = false; 
 
-        if (show_overlay)
+        if (show_overlay || frames_to_clear > 0)
         {
             should_render = true;
             use_vsync = true;
@@ -753,6 +758,10 @@ void OverlayThread()
             HRESULT result = g_pSwapChain->Present(0, 0);
             if (result == DXGI_STATUS_OCCLUDED || result == DXGI_ERROR_ACCESS_LOST)
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+
+        if (frames_to_clear > 0) {
+            frames_to_clear--;
         }
     }
 
