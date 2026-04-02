@@ -37,6 +37,7 @@ std::string g_lastIconPath;
 int g_iconImageId = 0;
 std::mutex g_iconMutex;
 }
+
 static void draw_target_correction_demo_game_overlay(Game_overlay* overlay, float centerX, float centerY)
 {
     if (!overlay)
@@ -148,7 +149,6 @@ struct AimSimulationState
     int lastMoveX = 0;
     int lastMoveY = 0;
 
-    // Controller state matched to current MouseThread::moveMousePivot + Kalman logic.
     aim::AimKalman2D ctrlKalman;
     aim::AimKalmanTelemetry ctrlKalmanTelemetry;
     bool kalmanSettingsInitialized = false;
@@ -160,7 +160,6 @@ struct AimSimulationState
     AimSimVec2 kalmanEstimatedTarget;
     AimSimVec2 kalmanVelocity;
 
-    // Keep WindMouse state between frames so simulation doesn't "reset" behavior.
     double windCarryX = 0.0;
     double windCarryY = 0.0;
     double windVelX = 0.0;
@@ -445,7 +444,6 @@ static void aim_sim_enqueue_move(AimSimulationState& s, double executeAtSec, int
     if (mx == 0 && my == 0)
         return;
 
-    // Match MouseThread queue behavior: small fixed queue with drop-oldest.
     constexpr size_t queueLimit = 5;
     if (s.queuedMoves.size() >= queueLimit)
         s.queuedMoves.pop_front();
@@ -1006,8 +1004,6 @@ static void draw_aim_sim_panel(
     }
 }
 
-
-
 void gameOverlayRenderLoop()
 {
     const int vx = GetSystemMetrics(SM_XVIRTUALSCREEN);
@@ -1036,6 +1032,11 @@ void gameOverlayRenderLoop()
 #endif
     int lastDetectionVersion = -1;
     static AimSimulationState aimSimState;
+
+    static auto overlayStartTime = std::chrono::steady_clock::now();
+    static bool overlayReady = false;
+    static int lastMaxFps = -1;
+    static int lastExclude = -1;
 
     while (!gameOverlayShouldExit.load())
     {
@@ -1069,16 +1070,22 @@ void gameOverlayRenderLoop()
         {
             gameOverlayPtr = new Game_overlay();
             gameOverlayPtr->SetWindowBounds(0, 0, pw, ph);
-            gameOverlayPtr->SetMaxFPS(config.game_overlay_max_fps > 0 ? (unsigned)config.game_overlay_max_fps : 0);
-            gameOverlayPtr->SetExcludeFromCapture(config.overlay_exclude_from_capture);
             gameOverlayPtr->Start();
+            
+            overlayStartTime = std::chrono::steady_clock::now();
+            overlayReady = false;
+            lastMaxFps = -1; 
+            lastExclude = -1; 
         }
         else if (!gameOverlayPtr->IsRunning())
         {
             gameOverlayPtr->SetWindowBounds(0, 0, pw, ph);
-            gameOverlayPtr->SetMaxFPS(config.game_overlay_max_fps > 0 ? (unsigned)config.game_overlay_max_fps : 0);
-            gameOverlayPtr->SetExcludeFromCapture(config.overlay_exclude_from_capture);
             gameOverlayPtr->Start();
+            
+            overlayStartTime = std::chrono::steady_clock::now();
+            overlayReady = false;
+            lastMaxFps = -1; 
+            lastExclude = -1; 
         }
 
         if (!gameOverlayPtr || !gameOverlayPtr->IsRunning())
@@ -1087,8 +1094,28 @@ void gameOverlayRenderLoop()
             continue;
         }
 
-        gameOverlayPtr->SetMaxFPS(config.game_overlay_max_fps > 0 ? (unsigned)config.game_overlay_max_fps : 0);
-        gameOverlayPtr->SetExcludeFromCapture(config.overlay_exclude_from_capture);
+        if (!overlayReady)
+        {
+            auto now = std::chrono::steady_clock::now();
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(now - overlayStartTime).count() > 1500)
+            {
+                overlayReady = true;
+            }
+        }
+
+        if (overlayReady)
+        {
+            if (lastMaxFps != config.game_overlay_max_fps)
+            {
+                gameOverlayPtr->SetMaxFPS(config.game_overlay_max_fps > 0 ? (unsigned)config.game_overlay_max_fps : 0);
+                lastMaxFps = config.game_overlay_max_fps;
+            }
+            if (lastExclude != (config.overlay_exclude_from_capture ? 1 : 0))
+            {
+                gameOverlayPtr->SetExcludeFromCapture(config.overlay_exclude_from_capture);
+                lastExclude = config.overlay_exclude_from_capture ? 1 : 0;
+            }
+        }
 
         const int detRes = config.detection_resolution;
         if (detRes <= 0)
@@ -1141,88 +1168,112 @@ void gameOverlayRenderLoop()
             lockedTrackId = g_trackerLockedId;
         }
 
-        if (config.game_overlay_icon_enabled)
+        gameOverlayPtr->BeginFrame();
+
+        if (config.game_overlay_icon_enabled && overlayReady)
         {
             std::lock_guard<std::mutex> lk(g_iconMutex);
             if (config.game_overlay_icon_path != g_lastIconPath)
             {
-                if (g_iconImageId != 0)
-                {
-                    gameOverlayPtr->UnloadImage(g_iconImageId);
-                    g_iconImageId = 0;
-                }
-                g_lastIconPath = config.game_overlay_icon_path;
-                std::error_code fsErr;
-                std::filesystem::path p;
-                try
-                {
-                    p = std::filesystem::u8path(g_lastIconPath);
-                }
-                catch (const std::exception&)
-                {
-                    p = std::filesystem::path(g_lastIconPath);
-                }
-                const bool hasFile = !g_lastIconPath.empty() && p.has_filename() && std::filesystem::is_regular_file(p, fsErr);
-                if (fsErr)
-                {
-                    g_iconImageId = 0;
-                    g_iconLastError = "[GameOverlay] Failed to read icon path: " + g_lastIconPath + " (" + fsErr.message() + ")";
-                    std::cerr << g_iconLastError << std::endl;
-                }
-                else if (hasFile)
-                {
-                    const std::wstring wpath = p.wstring();
-                    g_iconLastError.clear();
+                static int failedIconRetries = 0;
+                static auto lastRetryTime = std::chrono::steady_clock::now();
+                auto now = std::chrono::steady_clock::now();
 
-                    UINT iw = 0, ih = 0;
-                    std::string verr;
-                    if (!IsValidImageFile(wpath, iw, ih, verr))
+                if (failedIconRetries == 0 || std::chrono::duration_cast<std::chrono::milliseconds>(now - lastRetryTime).count() > 1000)
+                {
+                    lastRetryTime = now;
+
+                    if (g_iconImageId != 0)
+                    {
+                        gameOverlayPtr->UnloadImage(g_iconImageId);
+                        g_iconImageId = 0;
+                    }
+
+                    std::error_code fsErr;
+                    std::filesystem::path p;
+                    try { p = std::filesystem::u8path(config.game_overlay_icon_path); }
+                    catch (...) { p = std::filesystem::path(config.game_overlay_icon_path); }
+
+                    const bool hasFile = !config.game_overlay_icon_path.empty() && p.has_filename() && std::filesystem::is_regular_file(p, fsErr);
+
+                    if (fsErr)
                     {
                         g_iconImageId = 0;
-                        g_iconLastError = "[GameOverlay] Invalid image '" + g_lastIconPath + "': " + verr;
+                        g_iconLastError = "[GameOverlay] Failed to read icon path: " + config.game_overlay_icon_path + " (" + fsErr.message() + ")";
                         std::cerr << g_iconLastError << std::endl;
+                        failedIconRetries = 6; 
+                    }
+                    else if (hasFile)
+                    {
+                        const std::wstring wpath = p.wstring();
+                        g_iconLastError.clear();
+
+                        UINT iw = 0, ih = 0;
+                        std::string verr;
+                        if (!IsValidImageFile(wpath, iw, ih, verr))
+                        {
+                            g_iconImageId = 0;
+                            g_iconLastError = "[GameOverlay] Invalid image '" + config.game_overlay_icon_path + "': " + verr;
+                            std::cerr << g_iconLastError << std::endl;
+                            failedIconRetries = 6; 
+                        }
+                        else
+                        {
+                            try
+                            {
+                                int id = gameOverlayPtr->LoadImageFromFile(wpath);
+                                if (id != 0)
+                                {
+                                    g_iconImageId = id;
+                                    g_lastIconPath = config.game_overlay_icon_path; 
+                                    failedIconRetries = 0;
+                                    std::cout << "[GameOverlay] Loaded icon (" << iw << "x" << ih << "): " << config.game_overlay_icon_path << std::endl;
+                                }
+                                else
+                                {
+                                    g_iconImageId = 0;
+                                    failedIconRetries++;
+                                    g_iconLastError = "[GameOverlay] Failed to load icon (loader returned 0): " + config.game_overlay_icon_path + " (Retry " + std::to_string(failedIconRetries) + "/5)";
+                                    std::cerr << g_iconLastError << std::endl;
+                                }
+                            }
+                            catch (const std::exception& e)
+                            {
+                                g_iconImageId = 0;
+                                g_iconLastError = std::string("[GameOverlay] Exception while loading icon: ") + e.what();
+                                std::cerr << g_iconLastError << std::endl;
+                                failedIconRetries = 6; 
+                            }
+                            catch (...)
+                            {
+                                g_iconImageId = 0;
+                                g_iconLastError = "[GameOverlay] Unknown exception while loading icon.";
+                                std::cerr << g_iconLastError << std::endl;
+                                failedIconRetries = 6; 
+                            }
+                        }
                     }
                     else
                     {
-                        try
-                        {
-                            int id = gameOverlayPtr->LoadImageFromFile(wpath);
-                            if (id != 0)
-                            {
-                                g_iconImageId = id;
-                                std::cout << "[GameOverlay] Loaded icon (" << iw << "x" << ih << "): " << g_lastIconPath << std::endl;
-                            }
-                            else
-                            {
-                                g_iconImageId = 0;
-                                g_iconLastError = "[GameOverlay] Failed to load icon (loader returned 0): " + g_lastIconPath;
-                                std::cerr << g_iconLastError << std::endl;
-                            }
-                        }
-                        catch (const std::exception& e)
-                        {
-                            g_iconImageId = 0;
-                            g_iconLastError = std::string("[GameOverlay] Exception while loading icon: ") + e.what();
-                            std::cerr << g_iconLastError << std::endl;
-                        }
-                        catch (...)
-                        {
-                            g_iconImageId = 0;
-                            g_iconLastError = "[GameOverlay] Unknown exception while loading icon.";
-                            std::cerr << g_iconLastError << std::endl;
-                        }
+                        g_iconImageId = 0;
+                        g_iconLastError = "[GameOverlay] Icon file not found: " + config.game_overlay_icon_path;
+                        std::cerr << g_iconLastError << std::endl;
+                        failedIconRetries = 6; 
+                    }
+
+                    if (failedIconRetries > 5)
+                    {
+                        g_lastIconPath = config.game_overlay_icon_path;
+                        failedIconRetries = 0;
                     }
                 }
-                else
-                {
-                    g_iconImageId = 0;
-                    g_iconLastError = "[GameOverlay] Icon file not found: " + g_lastIconPath;
-                    std::cerr << g_iconLastError << std::endl;
-                }
+            }
+            else
+            {
+                static int failedIconRetries = 0; 
+                failedIconRetries = 0;
             }
         }
-
-        gameOverlayPtr->BeginFrame();
 
 #ifdef USE_CUDA
         if (!config.depth_inference_enabled)
@@ -1508,7 +1559,6 @@ void gameOverlayRenderLoop()
         }
 #endif
 
-        // CAPTURE FRAME
         if (config.game_overlay_draw_frame)
         {
             int A = config.game_overlay_frame_a;
@@ -1544,7 +1594,6 @@ void gameOverlayRenderLoop()
             }
         }
 
-        // DYNAMIC FOV VISUALIZER
         if (config.game_overlay_draw_frame) 
         {
             float cx = baseX + regionW * 0.5f;
@@ -1552,15 +1601,13 @@ void gameOverlayRenderLoop()
             float currentFovW = static_cast<float>(config.fovX) * scaleX;
             float currentFovH = static_cast<float>(config.fovY) * scaleY;
             
-            // Draws a red box showing your exact active FOV
             gameOverlayPtr->AddRect(
                 { cx - (currentFovW * 0.5f), cy - (currentFovH * 0.5f), currentFovW, currentFovH }, 
-                ARGB(255, 255, 50, 50), // Red color
-                1.5f // Thickness
+                ARGB(255, 255, 50, 50), 
+                1.5f 
             );
         }
 
-        // BOXES
         if (config.game_overlay_draw_boxes && (!boxesCopy.empty() || !trackDebugCopy.empty()))
         {
             int A = config.game_overlay_box_a;
@@ -1635,7 +1682,6 @@ void gameOverlayRenderLoop()
             }
         }
 
-        // FUTURE POINTS
         if (config.game_overlay_draw_future && !futurePts.empty())
         {
             const int total = static_cast<int>(futurePts.size());
@@ -1667,7 +1713,6 @@ void gameOverlayRenderLoop()
             }
         }
 
-        // WIND DEBUG TAIL
         if (config.game_overlay_draw_wind_tail && windTailPts.size() > 1)
         {
             const size_t n = windTailPts.size();
@@ -1705,7 +1750,6 @@ void gameOverlayRenderLoop()
             );
         }
 
-        // ICONS
         if (config.game_overlay_icon_enabled && g_iconImageId != 0 && !boxesCopy.empty())
         {
             const int iconW = config.game_overlay_icon_width;
@@ -1719,7 +1763,7 @@ void gameOverlayRenderLoop()
             {
                 const auto& b = boxesCopy[i];
                 int cls = (i < classesCopy.size()) ? classesCopy[i] : -1;
-                // Class filter (-1 = all)
+                
                 if (wantedClass >= 0 && cls != wantedClass)
                 {
                     continue;
