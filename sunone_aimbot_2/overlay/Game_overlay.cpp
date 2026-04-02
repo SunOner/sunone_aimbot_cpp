@@ -1,4 +1,4 @@
-﻿#define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <dwmapi.h>
 #include <d3d11.h>
@@ -46,7 +46,7 @@ static void SetPerMonitorV2DpiAwareness()
     if (!user32) return;
     using Fn = BOOL(WINAPI*)(HANDLE);
     if (auto p = reinterpret_cast<Fn>(GetProcAddress(user32, "SetProcessDpiAwarenessContext")))
-        p(reinterpret_cast<HANDLE>(-4)); // PER_MONITOR_AWARE_V2
+        p(reinterpret_cast<HANDLE>(-4)); 
 }
 
 static D2D1_COLOR_F ToD2DColor(OverlayColor argb)
@@ -449,7 +449,6 @@ bool Game_overlay::Impl::CreateWindowAndDevices()
     }
 
     ShowWindow(hwnd, SW_SHOWNA);
-    ApplyDisplayAffinity();
     SetWindowPos(hwnd, HWND_TOPMOST, winX, winY, winW, winH,
         SWP_NOACTIVATE | SWP_SHOWWINDOW);
 
@@ -472,7 +471,6 @@ bool Game_overlay::Impl::CreateWindowAndDevices()
         return false;
     }
 
-    // DXGI factory
     ComPtr<IDXGIDevice> dxgiDev; d3d.As(&dxgiDev);
     ComPtr<IDXGIAdapter> adapter; dxgiDev->GetAdapter(&adapter);
     ComPtr<IDXGIFactory2> factory2;
@@ -657,21 +655,40 @@ void Game_overlay::Impl::ApplyDisplayAffinity()
         return;
 
     const bool wantedExclude = excludeFromCapture.load();
-    appliedExcludeFromCapture = wantedExclude;
     const DWORD affinity = wantedExclude ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE;
+    
     if (SetWindowDisplayAffinity(hwnd, affinity))
+    {
+        appliedExcludeFromCapture = wantedExclude; 
         return;
+    }
+
+    const DWORD err = GetLastError();
+    
+    if (err == 8) 
+    {
+        return; 
+    }
 
     if (wantedExclude)
     {
-        const DWORD err = GetLastError();
         std::cerr << "[GameOverlay] SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE) failed, err=" << err
                   << ". Trying WDA_MONITOR fallback." << std::endl;
-        if (!SetWindowDisplayAffinity(hwnd, WDA_MONITOR))
+                  
+        if (SetWindowDisplayAffinity(hwnd, WDA_MONITOR))
+        {
+            appliedExcludeFromCapture = wantedExclude;
+        }
+        else
         {
             std::cerr << "[GameOverlay] SetWindowDisplayAffinity(WDA_MONITOR) failed, err="
                       << GetLastError() << std::endl;
+            appliedExcludeFromCapture = wantedExclude;
         }
+    }
+    else
+    {
+        appliedExcludeFromCapture = wantedExclude;
     }
 }
 
@@ -679,6 +696,7 @@ void Game_overlay::Impl::RenderLoop()
 {
     running = true;
     auto last = std::chrono::high_resolution_clock::now();
+    
     appliedExcludeFromCapture = !excludeFromCapture.load();
 
     MSG msg{};
@@ -707,6 +725,7 @@ void Game_overlay::Impl::RenderLoop()
 
         if (appliedExcludeFromCapture != excludeFromCapture.load())
             ApplyDisplayAffinity();
+            
         RenderOne();
     }
 }
