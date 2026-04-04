@@ -6,6 +6,7 @@
 #include <d3d11.h>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include "imgui/imgui.h"
 #include "sunone_aimbot_2.h"
@@ -347,6 +348,12 @@ void draw_debug()
 
         ImGui::InputInt("Screenshot delay", &config.screenshot_delay, 50, 500);
         ImGui::Checkbox("Verbose console output", &config.verbose);
+
+        if (ImGui::Checkbox("Show Console Window", &config.show_console))
+        {
+            ::ShowWindow(::GetConsoleWindow(), config.show_console ? SW_SHOW : SW_HIDE);
+            OverlayConfig_MarkDirty();
+        }
 
         if (ImGui::Button("Print OpenCV build information##button_cv2_build_info"))
         {
